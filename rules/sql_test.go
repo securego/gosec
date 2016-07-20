@@ -1,0 +1,146 @@
+// (c) Copyright 2016 Hewlett Packard Enterprise Development LP
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package rules
+
+import (
+	gas "github.com/HewlettPackard/gas/core"
+	"testing"
+)
+
+func TestSQLInjectionViaConcatenation(t *testing.T) {
+	analyzer := gas.NewAnalyzer(false, nil)
+	analyzer.AddRule(NewSqlStrConcat())
+
+	source := `
+        package main
+        import (
+                "database/sql"
+                "os"
+                _ "github.com/mattn/go-sqlite3"
+        )
+        func main(){
+                db, err := sql.Open("sqlite3", ":memory:")
+                if err != nil {
+                        panic(err)
+                }
+                rows, err := db.Query("SELECT * FROM foo WHERE name = " + os.Args[1])
+                if err != nil {
+                        panic(err)
+                }
+                defer rows.Close()
+        }
+        `
+	issues := gasTestRunner(source, analyzer)
+	checkTestResults(t, issues, 1, "SQL string concatenation")
+}
+
+func TestSQLInjectionViaIntepolation(t *testing.T) {
+	analyzer := gas.NewAnalyzer(false, nil)
+	analyzer.AddRule(NewSqlStrFormat())
+
+	source := `
+        package main
+        import (
+                "database/sql"
+                "fmt"
+                "os"
+                _ "github.com/mattn/go-sqlite3"
+        )
+        func main(){
+                db, err := sql.Open("sqlite3", ":memory:")
+                if err != nil {
+                        panic(err)
+                }
+                q := fmt.Sprintf("SELECT * FROM foo where name = '%s'", os.Args[1])
+                rows, err := db.Query(q)
+                if err != nil {
+                        panic(err)
+                }
+                defer rows.Close()
+        }
+        `
+	issues := gasTestRunner(source, analyzer)
+	checkTestResults(t, issues, 1, "SQL string formatting")
+}
+
+func TestSQLInjectionFalsePositiveA(t *testing.T) {
+	analyzer := gas.NewAnalyzer(false, nil)
+	analyzer.AddRule(NewSqlStrConcat())
+	analyzer.AddRule(NewSqlStrFormat())
+
+	source := `
+
+        package main
+        import (
+                "database/sql"
+                "fmt"
+                "os"
+                _ "github.com/mattn/go-sqlite3"
+        )
+
+        var staticQuery = "SELECT * FROM foo WHERE age < 32"
+
+        func main(){
+                db, err := sql.Open("sqlite3", ":memory:")
+                if err != nil {
+                        panic(err)
+                }
+                rows, err := db.Query(staticQuery)
+                if err != nil {
+                        panic(err)
+                }
+                defer rows.Close()
+        }
+
+        `
+	issues := gasTestRunner(source, analyzer)
+
+	checkTestResults(t, issues, 0, "Not expected to match")
+}
+
+func TestSQLInjectionFalsePositiveB(t *testing.T) {
+	analyzer := gas.NewAnalyzer(false, nil)
+	analyzer.AddRule(NewSqlStrConcat())
+	analyzer.AddRule(NewSqlStrFormat())
+
+	source := `
+
+        package main
+        import (
+                "database/sql"
+                "fmt"
+                "os"
+                _ "github.com/mattn/go-sqlite3"
+        )
+
+        var staticQuery = "SELECT * FROM foo WHERE age < 32"
+
+        func main(){
+                db, err := sql.Open("sqlite3", ":memory:")
+                if err != nil {
+                        panic(err)
+                }
+                rows, err := db.Query(staticQuery)
+                if err != nil {
+                        panic(err)
+                }
+                defer rows.Close()
+        }
+
+        `
+	issues := gasTestRunner(source, analyzer)
+
+	checkTestResults(t, issues, 0, "Not expected to match")
+}
