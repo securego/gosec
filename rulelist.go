@@ -52,6 +52,7 @@ func newRulelist() rulelist {
 	rs.register("templates", rules.NewTemplateCheck)
 	rs.register("exec", rules.NewSubproc)
 	rs.register("errors", rules.NewNoErrorCheck)
+	rs.register("httpoxy", rules.NewHttpoxyTest)
 	return rs
 }
 
