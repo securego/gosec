@@ -19,6 +19,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"os"
 	"strings"
 )
 
@@ -64,11 +65,23 @@ func (u *utilities) run(args ...string) {
 
 func dumpAst(files ...string) {
 	for _, arg := range files {
+		// Ensure file exists and not a directory
+		st, e := os.Stat(arg)
+		if e != nil {
+			fmt.Fprintf(os.Stderr, "Skipping: %s - %s\n", arg, e)
+			continue
+		}
+		if st.IsDir() {
+			fmt.Fprintf(os.Stderr, "Skipping: %s - directory\n", arg)
+			continue
+		}
+
 		// Create the AST by parsing src.
 		fset := token.NewFileSet() // positions are relative to fset
 		f, err := parser.ParseFile(fset, arg, nil, 0)
 		if err != nil {
-			panic(err)
+			fmt.Fprintf(os.Stderr, "Unable to parse file %s\n", err)
+			continue
 		}
 
 		// Print the AST.
