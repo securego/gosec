@@ -14,6 +14,7 @@
 package core
 
 import (
+	"encoding/json"
 	"fmt"
 	"go/ast"
 	"os"
@@ -28,18 +29,22 @@ const (
 )
 
 type Issue struct {
-	Severity   Score
-	Confidence Score
-	What       string
-	File       string
-	Code       string
-	Line       int
+	Severity   Score  `json:"severity"`
+	Confidence Score  `json:"confidence"`
+	What       string `json:"details"`
+	File       string `json:"file"`
+	Code       string `json:"code"`
+	Line       int    `json:"line"`
 }
 
 type MetaData struct {
 	Severity   Score
 	Confidence Score
 	What       string
+}
+
+func (c Score) MarshalJSON() ([]byte, error) {
+	return json.Marshal(c.String())
 }
 
 func (c Score) String() string {

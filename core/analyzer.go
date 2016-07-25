@@ -40,10 +40,10 @@ type Rule interface {
 type RuleSet map[reflect.Type][]Rule
 
 type Metrics struct {
-	NumFiles int
-	NumLines int
-	NumNosec int
-	NumFound int
+	NumFiles int `json:"files"`
+	NumLines int `json:"lines"`
+	NumNosec int `json:"nosec"`
+	NumFound int `json:"found"`
 }
 
 type Analyzer struct {
@@ -51,8 +51,8 @@ type Analyzer struct {
 	ruleset     RuleSet
 	context     Context
 	logger      *log.Logger
-	Issues      []Issue
-	Stats       Metrics
+	Issues      []Issue `json:"issues"`
+	Stats       Metrics `json:"metrics"`
 }
 
 func NewAnalyzer(annotations bool, logger *log.Logger) Analyzer {
