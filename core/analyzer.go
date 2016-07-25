@@ -83,7 +83,10 @@ func (gas *Analyzer) process(filename string, source interface{}) error {
 
 		conf := types.Config{Importer: importer.Default()}
 		gas.context.Pkg, _ = conf.Check("pkg", gas.context.FileSet, []*ast.File{root}, gas.context.Info)
-		// TODO: we need to look at the err ret
+		if err != nil {
+			gas.logger.Println("failed to check imports")
+			return err
+		}
 
 		ast.Walk(gas, root)
 		gas.Stats.NumFiles++
