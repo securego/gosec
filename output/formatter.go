@@ -45,12 +45,12 @@ Summary:
 `
 
 var json = `{
-        "metrics": [
-            Files: {{.Stats.NumFiles}},
-            Lines: {{.Stats.NumLines}},
-            Nosec: {{.Stats.NumNosec}},
-            Issues: {{.Stats.NumFound}}],
-
+        "metrics": {
+            "files": {{.Stats.NumFiles}},
+            "lines": {{.Stats.NumLines}},
+            "nosec": {{.Stats.NumNosec}},
+            "issues": {{.Stats.NumFound}}
+        },
         "issues": [
         {{ range $index, $issue := .Issues }}{{ if $index }}, {{ end }}{
           "file": "{{ $issue.File }}",
