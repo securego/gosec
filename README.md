@@ -2,6 +2,11 @@
 
 Inspects source code for security problems by scanning the Go AST.
 
+### Project status
+
+Gas is still in alpha and accepting feedback from early adopters. We do
+not consider it production ready at this time.
+
 ### Usage
 
 Gas can be configured to only run a subset of rules, to exclude certain file
@@ -31,7 +36,7 @@ explicitly enabled to meet the [intermediate compatibility]( https://wiki.mozill
 - __tls_old__ - Checks to ensure ciphers and protocol versions are
 explicitly enabled to meet the [older compatibility](https://wiki.mozilla.org/Security/Server_Side_TLS#Old_compatibility_.28default.29) standards recommended by Mozilla.
 - __templates__ - Detect cases where input is not escaped when entered into Go HTML templates.
-- exec - Report cases where the application is executing an external process.
+- __exec__ - Report cases where the application is executing an external process.
 - __errors__ - Report error return values that are ignored.
 - __httpoxy__ - Report on CGI usage as it may indicate vulnerability to the [httpoxy](https://httpoxy.org/) vulnerability.
 
