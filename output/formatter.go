@@ -15,8 +15,9 @@
 package output
 
 import (
+	"encoding/json"
+	"html/template"
 	"io"
-	"text/template"
 
 	gas "github.com/HewlettPackard/gas/core"
 )
@@ -44,25 +45,6 @@ Summary:
 
 `
 
-var json = `{
-        "metrics": {
-            "files": {{.Stats.NumFiles}},
-            "lines": {{.Stats.NumLines}},
-            "nosec": {{.Stats.NumNosec}},
-            "issues": {{.Stats.NumFound}}
-        },
-        "issues": [
-        {{ range $index, $issue := .Issues }}{{ if $index }}, {{ end }}{
-          "file": "{{ $issue.File }}",
-          "line": "{{ $issue.Line }}",
-          "details": "{{ $issue.What }}",
-          "confidence": "{{ $issue.Confidence }}",
-          "severity": "{{ $issue.Severity }}",
-          "code": "{{ js $issue.Code }}"
-        }{{ end }}
-        ]
-}`
-
 var csv = `{{ range $index, $issue := .Issues -}}
 {{- $issue.File -}},
 {{- $issue.Line -}},
@@ -73,20 +55,35 @@ var csv = `{{ range $index, $issue := .Issues -}}
 {{ end }}`
 
 func CreateReport(w io.Writer, format string, data *gas.Analyzer) error {
-	reportType := text
-
+	var err error
 	switch format {
-	case "csv":
-		reportType = csv
 	case "json":
-		reportType = json
+		err = reportJSON(w, data)
+	case "csv":
+		err = reportFromTemplate(w, csv, data)
 	case "text":
-		reportType = text
+		err = reportFromTemplate(w, text, data)
 	default:
-		reportType = text
+		err = reportFromTemplate(w, text, data)
+	}
+	return err
+}
+
+func reportJSON(w io.Writer, data *gas.Analyzer) error {
+	raw, err := json.MarshalIndent(data, "", "\t")
+	if err != nil {
+		panic(err)
 	}
 
-	t, e := template.New("gas").Parse(reportType)
+	_, err = w.Write(raw)
+	if err != nil {
+		panic(err)
+	}
+	return err
+}
+
+func reportFromTemplate(w io.Writer, reportTemplate string, data *gas.Analyzer) error {
+	t, e := template.New("gas").Parse(reportTemplate)
 	if e != nil {
 		return e
 	}
