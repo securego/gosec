@@ -15,10 +15,10 @@
 package rules
 
 import (
-	gas "github.com/HewlettPackard/gas/core"
 	"go/ast"
-	"reflect"
 	"regexp"
+
+	gas "github.com/HewlettPackard/gas/core"
 )
 
 type SqlStatement struct {
@@ -30,13 +30,27 @@ type SqlStrConcat struct {
 	SqlStatement
 }
 
+// see if we can figgure out what it is
+func (s *SqlStrConcat) checkObject(n *ast.Ident) bool {
+	if n.Obj != nil {
+		return (n.Obj.Kind != ast.Var || n.Obj.Kind != ast.Fun)
+	}
+	return false
+}
+
 // Look for "SELECT * FROM table WHERE " + " ' OR 1=1"
 func (s *SqlStrConcat) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
-	a := reflect.TypeOf(&ast.BinaryExpr{})
-	b := reflect.TypeOf(&ast.BasicLit{})
-	if node := gas.SimpleSelect(n, a, b); node != nil {
-		if str, _ := gas.GetString(node); s.pattern.MatchString(str) {
-			return gas.NewIssue(c, n, s.What, s.Severity, s.Confidence), nil
+	if node, ok := n.(*ast.BinaryExpr); ok {
+		if start, ok := node.X.(*ast.BasicLit); ok {
+			if str, _ := gas.GetString(start); s.pattern.MatchString(str) {
+				if _, ok := node.Y.(*ast.BasicLit); ok {
+					return nil, nil // string cat OK
+				}
+				if second, ok := node.Y.(*ast.Ident); ok && s.checkObject(second) {
+					return nil, nil
+				}
+				return gas.NewIssue(c, n, s.What, s.Severity, s.Confidence), nil
+			}
 		}
 	}
 	return nil, nil

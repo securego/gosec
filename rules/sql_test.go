@@ -15,8 +15,9 @@
 package rules
 
 import (
-	gas "github.com/HewlettPackard/gas/core"
 	"testing"
+
+	gas "github.com/HewlettPackard/gas/core"
 )
 
 func TestSQLInjectionViaConcatenation(t *testing.T) {
@@ -133,6 +134,77 @@ func TestSQLInjectionFalsePositiveB(t *testing.T) {
                         panic(err)
                 }
                 rows, err := db.Query(staticQuery)
+                if err != nil {
+                        panic(err)
+                }
+                defer rows.Close()
+        }
+
+        `
+	issues := gasTestRunner(source, analyzer)
+
+	checkTestResults(t, issues, 0, "Not expected to match")
+}
+
+func TestSQLInjectionFalsePositiveC(t *testing.T) {
+	analyzer := gas.NewAnalyzer(false, nil)
+	analyzer.AddRule(NewSqlStrConcat())
+	analyzer.AddRule(NewSqlStrFormat())
+
+	source := `
+
+        package main
+        import (
+                "database/sql"
+                "fmt"
+                "os"
+                _ "github.com/mattn/go-sqlite3"
+        )
+
+        var staticQuery = "SELECT * FROM foo WHERE age < "
+
+        func main(){
+                db, err := sql.Open("sqlite3", ":memory:")
+                if err != nil {
+                        panic(err)
+                }
+                rows, err := db.Query(staticQuery + "32")
+                if err != nil {
+                        panic(err)
+                }
+                defer rows.Close()
+        }
+
+        `
+	issues := gasTestRunner(source, analyzer)
+
+	checkTestResults(t, issues, 0, "Not expected to match")
+}
+
+func TestSQLInjectionFalsePositiveD(t *testing.T) {
+	analyzer := gas.NewAnalyzer(false, nil)
+	analyzer.AddRule(NewSqlStrConcat())
+	analyzer.AddRule(NewSqlStrFormat())
+
+	source := `
+
+        package main
+        import (
+                "database/sql"
+                "fmt"
+                "os"
+                _ "github.com/mattn/go-sqlite3"
+        )
+
+				const age = "32"
+        var staticQuery = "SELECT * FROM foo WHERE age < "
+
+        func main(){
+                db, err := sql.Open("sqlite3", ":memory:")
+                if err != nil {
+                        panic(err)
+                }
+                rows, err := db.Query(staticQuery + age)
                 if err != nil {
                         panic(err)
                 }
