@@ -58,8 +58,8 @@ $ gas -exclude=tests* -exclude=*_example.go ./...
 
 #### Annotating code
 
-In cases where Gas reports a failure that has been verified as being safe.
-In these cases it is possible to annotate the code with a '#nosec' comment.
+As with all automated detection tools there will be cases of false positives. In cases where Gas reports a failure that has been manually verified as being safe it is possible to annotate the code with a '#nosec' comment.
+
 The annotation causes Gas to stop processing any further nodes within the
 AST so can apply to a whole block or more granularly to a single expression.
 
