@@ -15,6 +15,8 @@
 package main
 
 import (
+	"os"
+	"path"
 	"path/filepath"
 	"strings"
 )
@@ -30,17 +32,37 @@ func (f *filelist) Set(val string) error {
 	return nil
 }
 
-func (f *filelist) Contains(path string) bool {
+func (f *filelist) Contains(pathname string) bool {
+
 	// Ignore dot files
-	_, filename := filepath.Split(path)
+	_, filename := filepath.Split(pathname)
 	if strings.HasPrefix(filename, ".") {
 		return true
 	}
+
+	cwd, _ := os.Getwd()
+	abs, _ := filepath.Abs(pathname)
+
 	for _, pattern := range *f {
-		// Match entire path
-		if rv, err := filepath.Match(pattern, path); rv && err == nil {
+
+		// Also check working directory
+		rel := path.Join(cwd, pattern)
+
+		// Match pattern directly
+		if matched, _ := filepath.Match(pattern, pathname); matched {
 			return true
 		}
+		// Also check pattern relative to working directory
+		if matched, _ := filepath.Match(rel, pathname); matched {
+			return true
+		}
+
+		// Finally try absolute path
+		st, e := os.Stat(rel)
+		if !os.IsNotExist(e) && st.IsDir() && strings.HasPrefix(abs, rel) {
+			return true
+		}
+
 	}
 	return false
 }
