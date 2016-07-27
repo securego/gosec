@@ -53,7 +53,7 @@ Gas will ignore paths that match a supplied pattern via
 Multiple patterns can be specified as follows:
 
 ```
-$ gas -exclude tests* -exclude *_example.go ./...
+$ gas -exclude=tests* -exclude=*_example.go ./...
 ```
 
 #### Annotating code
