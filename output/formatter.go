@@ -15,9 +15,11 @@
 package output
 
 import (
+	"encoding/csv"
 	"encoding/json"
-	"html/template"
 	"io"
+	"strconv"
+	"text/template"
 
 	gas "github.com/HewlettPackard/gas/core"
 )
@@ -45,22 +47,13 @@ Summary:
 
 `
 
-var csv = `{{ range $index, $issue := .Issues -}}
-{{- $issue.File -}},
-{{- $issue.Line -}},
-{{- $issue.What -}},
-{{- $issue.Severity -}},
-{{- $issue.Confidence -}},
-{{- printf "%q" $issue.Code }}
-{{ end }}`
-
 func CreateReport(w io.Writer, format string, data *gas.Analyzer) error {
 	var err error
 	switch format {
 	case "json":
 		err = reportJSON(w, data)
 	case "csv":
-		err = reportFromTemplate(w, csv, data)
+		err = reportCSV(w, data)
 	case "text":
 		err = reportFromTemplate(w, text, data)
 	default:
@@ -80,6 +73,25 @@ func reportJSON(w io.Writer, data *gas.Analyzer) error {
 		panic(err)
 	}
 	return err
+}
+
+func reportCSV(w io.Writer, data *gas.Analyzer) error {
+	out := csv.NewWriter(w)
+	defer out.Flush()
+	for _, issue := range data.Issues {
+		err := out.Write([]string{
+			issue.File,
+			strconv.Itoa(issue.Line),
+			issue.What,
+			issue.Severity.String(),
+			issue.Confidence.String(),
+			issue.Code,
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func reportFromTemplate(w io.Writer, reportTemplate string, data *gas.Analyzer) error {
