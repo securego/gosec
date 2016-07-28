@@ -47,7 +47,7 @@ type Metrics struct {
 }
 
 type Analyzer struct {
-	annotations bool
+	ignoreNosec bool
 	ruleset     RuleSet
 	context     Context
 	logger      *log.Logger
@@ -55,12 +55,12 @@ type Analyzer struct {
 	Stats       Metrics `json:"metrics"`
 }
 
-func NewAnalyzer(annotations bool, logger *log.Logger) Analyzer {
+func NewAnalyzer(ignoreNosec bool, logger *log.Logger) Analyzer {
 	if logger == nil {
 		logger = log.New(os.Stdout, "[gas]", 0)
 	}
 	return Analyzer{
-		annotations: annotations,
+		ignoreNosec: ignoreNosec,
 		ruleset:     make(RuleSet),
 		Issues:      make([]Issue, 0),
 		context:     Context{token.NewFileSet(), nil, nil, nil},
@@ -124,7 +124,7 @@ func (gas *Analyzer) ProcessSource(filename string, source string) error {
 }
 
 func (gas *Analyzer) Ignore(n ast.Node) bool {
-	if groups, ok := gas.context.Comments[n]; ok {
+	if groups, ok := gas.context.Comments[n]; ok && !gas.ignoreNosec {
 		for _, group := range groups {
 			if strings.Contains(group.Text(), "nosec") {
 				gas.Stats.NumNosec++
@@ -136,7 +136,7 @@ func (gas *Analyzer) Ignore(n ast.Node) bool {
 }
 
 func (gas *Analyzer) Visit(n ast.Node) ast.Visitor {
-	if !gas.annotations || gas.Ignore(n) {
+	if !gas.Ignore(n) {
 		if val, ok := gas.ruleset[reflect.TypeOf(n)]; ok {
 			for _, rule := range val {
 				ret, err := rule.Match(n, &gas.context)
@@ -150,6 +150,7 @@ func (gas *Analyzer) Visit(n ast.Node) ast.Visitor {
 				}
 			}
 		}
+		return gas
 	}
-	return gas
+	return nil
 }
