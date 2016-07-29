@@ -27,7 +27,7 @@ import (
 )
 
 // #nosec flag
-var flagNoSec = flag.Bool("nosec", false, "Ignores #nosec comments when set")
+var flagIgnoreNoSec = flag.Bool("nosec", false, "Ignores #nosec comments when set")
 
 // format output
 var flagFormat = flag.String("fmt", "text", "Set output format. Valid options are: json, csv of text")
@@ -99,7 +99,7 @@ func main() {
 	}
 
 	// Setup analyzer
-	analyzer := gas.NewAnalyzer(*flagNoSec, logger)
+	analyzer := gas.NewAnalyzer(*flagIgnoreNoSec, logger)
 	if !rules.overwritten {
 		rules.useDefaults()
 	}
