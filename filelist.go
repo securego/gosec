@@ -59,7 +59,7 @@ func (f *filelist) Contains(pathname string) bool {
 
 		// Finally try absolute path
 		st, e := os.Stat(rel)
-		if !os.IsNotExist(e) && st.IsDir() && strings.HasPrefix(abs, rel) {
+		if os.IsExist(e) && st.IsDir() && strings.HasPrefix(abs, rel) {
 			return true
 		}
 
