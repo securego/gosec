@@ -15,12 +15,13 @@
 package rules
 
 import (
-	gas "github.com/HewlettPackard/gas/core"
 	"testing"
+
+	gas "github.com/HewlettPackard/gas/core"
 )
 
 func TestMD5(t *testing.T) {
-	analyzer := gas.NewAnalyzer(false, nil)
+	analyzer := gas.NewAnalyzer(false, nil, nil)
 	analyzer.AddRule(NewImportsWeakCryptography())
 	analyzer.AddRule(NewUsesWeakCryptography())
 
@@ -41,7 +42,7 @@ func TestMD5(t *testing.T) {
 }
 
 func TestDES(t *testing.T) {
-	analyzer := gas.NewAnalyzer(false, nil)
+	analyzer := gas.NewAnalyzer(false, nil, nil)
 	analyzer.AddRule(NewImportsWeakCryptography())
 	analyzer.AddRule(NewUsesWeakCryptography())
 
@@ -80,7 +81,7 @@ func TestDES(t *testing.T) {
 }
 
 func TestRC4(t *testing.T) {
-	analyzer := gas.NewAnalyzer(false, nil)
+	analyzer := gas.NewAnalyzer(false, nil, nil)
 	analyzer.AddRule(NewImportsWeakCryptography())
 	analyzer.AddRule(NewUsesWeakCryptography())
 

@@ -35,6 +35,8 @@ var flagFormat = flag.String("fmt", "text", "Set output format. Valid options ar
 // output file
 var flagOutput = flag.String("out", "", "Set output file for results")
 
+var flagConfig = flag.String("conf", "", "Path to optional config file")
+
 var usageText = `
 GAS - Go AST Scanner
 
@@ -99,7 +101,7 @@ func main() {
 	}
 
 	// Setup analyzer
-	analyzer := gas.NewAnalyzer(*flagIgnoreNoSec, logger)
+	analyzer := gas.NewAnalyzer(*flagIgnoreNoSec, flagConfig, logger)
 	if !rules.overwritten {
 		rules.useDefaults()
 	}

@@ -21,7 +21,7 @@ import (
 )
 
 func TestNosec(t *testing.T) {
-	analyzer := gas.NewAnalyzer(false, nil)
+	analyzer := gas.NewAnalyzer(false, nil, nil)
 	analyzer.AddRule(NewSubproc())
 
 	issues := gasTestRunner(
@@ -39,7 +39,7 @@ func TestNosec(t *testing.T) {
 }
 
 func TestNosecBlock(t *testing.T) {
-	analyzer := gas.NewAnalyzer(false, nil)
+	analyzer := gas.NewAnalyzer(false, nil, nil)
 	analyzer.AddRule(NewSubproc())
 
 	issues := gasTestRunner(

@@ -15,11 +15,13 @@
 package core
 
 import (
+	"encoding/json"
 	"go/ast"
 	"go/importer"
 	"go/parser"
 	"go/token"
 	"go/types"
+	"io/ioutil"
 	"log"
 	"os"
 	"reflect"
@@ -53,19 +55,33 @@ type Analyzer struct {
 	logger      *log.Logger
 	Issues      []Issue `json:"issues"`
 	Stats       Metrics `json:"metrics"`
+	Config      map[string]interface{}
 }
 
-func NewAnalyzer(ignoreNosec bool, logger *log.Logger) Analyzer {
+func NewAnalyzer(ignoreNosec bool, conf *string, logger *log.Logger) Analyzer {
 	if logger == nil {
 		logger = log.New(os.Stdout, "[gas]", 0)
 	}
-	return Analyzer{
+	a := Analyzer{
 		ignoreNosec: ignoreNosec,
 		ruleset:     make(RuleSet),
 		Issues:      make([]Issue, 0),
 		context:     Context{token.NewFileSet(), nil, nil, nil},
 		logger:      logger,
+		Config:      nil,
 	}
+
+	if conf != nil && *conf != "" { // if we have a config
+		if data, err := ioutil.ReadFile(*conf); err == nil {
+			if err := json.Unmarshal(data, &(a.Config)); err != nil {
+				logger.Fatal("Could not parse JSON config: ", *conf, ": ", err)
+			}
+		} else {
+			logger.Fatal("Could not read config file: ", *conf)
+		}
+	}
+
+	return a
 }
 
 func (gas *Analyzer) process(filename string, source interface{}) error {

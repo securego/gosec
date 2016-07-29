@@ -21,7 +21,7 @@ import (
 )
 
 func TestHttpoxy(t *testing.T) {
-	analyzer := gas.NewAnalyzer(false, nil)
+	analyzer := gas.NewAnalyzer(false, nil, nil)
 	analyzer.AddRule(NewHttpoxyTest())
 
 	issues := gasTestRunner(`
