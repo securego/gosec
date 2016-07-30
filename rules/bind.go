@@ -40,7 +40,7 @@ func (r *BindsToAllNetworkInterfaces) Match(n ast.Node, c *gas.Context) (gi *gas
 
 func NewBindsToAllNetworkInterfaces() (r gas.Rule, n ast.Node) {
 	r = &BindsToAllNetworkInterfaces{
-		call:    regexp.MustCompile(`^net.Listen$`),
+		call:    regexp.MustCompile(`^net\.Listen$`),
 		pattern: regexp.MustCompile(`^(0.0.0.0|:).*$`),
 		MetaData: gas.MetaData{
 			Severity:   gas.Medium,

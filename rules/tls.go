@@ -112,7 +112,7 @@ func (t *InsecureConfigTLS) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, er
 func NewModernTlsCheck() (r gas.Rule, n ast.Node) {
 	// https://wiki.mozilla.org/Security/Server_Side_TLS#Modern_compatibility
 	r = &InsecureConfigTLS{
-		pattern:    regexp.MustCompile("^tls.Config$"),
+		pattern:    regexp.MustCompile(`^tls\.Config$`),
 		MinVersion: 0x0303, // TLS 1.2 only
 		MaxVersion: 0x0303,
 		goodCiphers: []string{
@@ -129,7 +129,7 @@ func NewModernTlsCheck() (r gas.Rule, n ast.Node) {
 func NewIntermediateTlsCheck() (r gas.Rule, n ast.Node) {
 	// https://wiki.mozilla.org/Security/Server_Side_TLS#Intermediate_compatibility_.28default.29
 	r = &InsecureConfigTLS{
-		pattern:    regexp.MustCompile("^tls.Config$"),
+		pattern:    regexp.MustCompile(`^tls\.Config$`),
 		MinVersion: 0x0301, // TLS 1.2, 1.1, 1.0
 		MaxVersion: 0x0303,
 		goodCiphers: []string{
@@ -157,7 +157,7 @@ func NewIntermediateTlsCheck() (r gas.Rule, n ast.Node) {
 func NewCompatTlsCheck() (r gas.Rule, n ast.Node) {
 	// https://wiki.mozilla.org/Security/Server_Side_TLS#Old_compatibility_.28default.29
 	r = &InsecureConfigTLS{
-		pattern:    regexp.MustCompile("^tls.Config$"),
+		pattern:    regexp.MustCompile(`^tls\.Config$`),
 		MinVersion: 0x0301, // TLS 1.2, 1.1, 1.0
 		MaxVersion: 0x0303,
 		goodCiphers: []string{

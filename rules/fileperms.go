@@ -39,7 +39,7 @@ func (r *FilePermissions) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) 
 func NewChmodPerms() (r gas.Rule, n ast.Node) {
 	mode := 0600
 	r = &FilePermissions{
-		pattern: regexp.MustCompile(`^os.Chmod$`),
+		pattern: regexp.MustCompile(`^os\.Chmod$`),
 		mode:    (int64)(mode),
 		MetaData: gas.MetaData{
 			Severity:   gas.Medium,
@@ -54,7 +54,7 @@ func NewChmodPerms() (r gas.Rule, n ast.Node) {
 func NewMkdirPerms() (r gas.Rule, n ast.Node) {
 	mode := 0700
 	r = &FilePermissions{
-		pattern: regexp.MustCompile(`^(os.Mkdir|os.MkdirAll)$`),
+		pattern: regexp.MustCompile(`^(os\.Mkdir|os\.MkdirAll)$`),
 		mode:    (int64)(mode),
 		MetaData: gas.MetaData{
 			Severity:   gas.Medium,

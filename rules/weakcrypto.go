@@ -40,7 +40,7 @@ func (r *ImportsWeakCryptography) Match(n ast.Node, c *gas.Context) (gi *gas.Iss
 // Imports crypto/md5, crypto/des crypto/rc4
 func NewImportsWeakCryptography() (r gas.Rule, n ast.Node) {
 	r = &ImportsWeakCryptography{
-		pattern: regexp.MustCompile("crypto/md5|crypto/des|crypto/rc4"),
+		pattern: regexp.MustCompile(`crypto/md5|crypto/des|crypto/rc4`),
 		MetaData: gas.MetaData{
 			Severity:   gas.Medium,
 			Confidence: gas.High,
@@ -66,7 +66,7 @@ func (r *UsesWeakCryptography) Match(n ast.Node, c *gas.Context) (*gas.Issue, er
 // Uses des.* md5.* or rc4.*
 func NewUsesWeakCryptography() (r gas.Rule, n ast.Node) {
 	r = &UsesWeakCryptography{
-		pattern: regexp.MustCompile("des.NewCipher|des.NewTripleDESCipher|md5.New|md5.Sum|rc4.NewCipher"),
+		pattern: regexp.MustCompile(`des\.NewCipher|des\.NewTripleDESCipher|md5\.New|md5\.Sum|rc4\.NewCipher`),
 		MetaData: gas.MetaData{
 			Severity:   gas.Medium,
 			Confidence: gas.High,

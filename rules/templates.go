@@ -38,7 +38,7 @@ func (t *TemplateCheck) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err er
 
 func NewTemplateCheck() (r gas.Rule, n ast.Node) {
 	r = &TemplateCheck{
-		call: regexp.MustCompile("^template.(HTML|JS|URL)$"),
+		call: regexp.MustCompile(`^template\.(HTML|JS|URL)$`),
 		MetaData: gas.MetaData{
 			Severity:   gas.Medium,
 			Confidence: gas.Low,
