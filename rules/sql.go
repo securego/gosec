@@ -59,7 +59,7 @@ func (s *SqlStrConcat) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 func NewSqlStrConcat() (r gas.Rule, n ast.Node) {
 	r = &SqlStrConcat{
 		SqlStatement: SqlStatement{
-			pattern: regexp.MustCompile("(?)(SELECT|DELETE|INSERT|UPDATE|INTO|FROM|WHERE) "),
+			pattern: regexp.MustCompile(`(?)(SELECT|DELETE|INSERT|UPDATE|INTO|FROM|WHERE) `),
 			MetaData: gas.MetaData{
 				Severity:   gas.Medium,
 				Confidence: gas.High,
@@ -88,7 +88,7 @@ func (s *SqlStrFormat) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err err
 
 func NewSqlStrFormat() (r gas.Rule, n ast.Node) {
 	r = &SqlStrFormat{
-		call: regexp.MustCompile("^fmt.Sprintf$"),
+		call: regexp.MustCompile(`^fmt\.Sprintf$`),
 		SqlStatement: SqlStatement{
 			pattern: regexp.MustCompile("(?)(SELECT|DELETE|INSERT|UPDATE|INTO|FROM|WHERE) "),
 			MetaData: gas.MetaData{

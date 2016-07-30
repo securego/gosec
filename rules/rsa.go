@@ -40,7 +40,7 @@ func (w *WeakKeyStrength) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) 
 func NewWeakKeyStrength() (r gas.Rule, n ast.Node) {
 	bits := 2048
 	r = &WeakKeyStrength{
-		pattern: regexp.MustCompile(`^rsa.GenerateKey$`),
+		pattern: regexp.MustCompile(`^rsa\.GenerateKey$`),
 		bits:    bits,
 		MetaData: gas.MetaData{
 			Severity:   gas.Medium,

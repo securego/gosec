@@ -43,7 +43,7 @@ func NewHttpoxyTest() (r gas.Rule, n ast.Node) {
 			Confidence: gas.Low,
 			What:       "Go code running under CGI is vulnerable to Httpoxy attack. (CVE-2016-5386)",
 		},
-		pattern: regexp.MustCompile("^\"net/http/cgi\"$"),
+		pattern: regexp.MustCompile(`^"net/http/cgi"$`),
 	}
 	n = (*ast.ImportSpec)(nil)
 	return

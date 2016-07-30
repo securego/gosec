@@ -37,8 +37,8 @@ func (t *BadTempFile) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err erro
 
 func NewBadTempFile() (r gas.Rule, n ast.Node) {
 	r = &BadTempFile{
-		call: regexp.MustCompile("ioutil.WriteFile|os.Create"),
-		args: regexp.MustCompile("^/tmp/.*$|^/var/tmp/.*$"),
+		call: regexp.MustCompile(`ioutil\.WriteFile|os\.Create`),
+		args: regexp.MustCompile(`^/tmp/.*$|^/var/tmp/.*$`),
 		MetaData: gas.MetaData{
 			Severity:   gas.Medium,
 			Confidence: gas.High,
