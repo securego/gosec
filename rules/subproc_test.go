@@ -15,8 +15,9 @@
 package rules
 
 import (
-	gas "github.com/HewlettPackard/gas/core"
 	"testing"
+
+	gas "github.com/HewlettPackard/gas/core"
 )
 
 func TestSubprocess(t *testing.T) {
@@ -86,6 +87,32 @@ func TestSubprocessPath(t *testing.T) {
 
     func main() {
     	cmd := exec.Command("sleep", "5")
+    	err := cmd.Start()
+    	if err != nil {
+    		log.Fatal(err)
+    	}
+    	log.Printf("Waiting for command to finish...")
+    	err = cmd.Wait()
+    	log.Printf("Command finished with error: %v", err)
+    }`, analyzer)
+
+	checkTestResults(t, issues, 1, "Subprocess launching with partial path.")
+}
+
+func TestSyscallExec(t *testing.T) {
+	analyzer := gas.NewAnalyzer(false, nil)
+	analyzer.AddRule(NewSubproc())
+
+	issues := gasTestRunner(`
+    package main
+
+    import (
+    	"log"
+    	"syscall"
+    )
+
+    func main() {
+    	cmd := syscall.Exec("sleep", "5")
     	err := cmd.Start()
     	if err != nil {
     		log.Fatal(err)
