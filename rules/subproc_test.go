@@ -15,12 +15,13 @@
 package rules
 
 import (
-	gas "github.com/HewlettPackard/gas/core"
 	"testing"
+
+	gas "github.com/HewlettPackard/gas/core"
 )
 
 func TestSubprocess(t *testing.T) {
-	analyzer := gas.NewAnalyzer(false, nil)
+	analyzer := gas.NewAnalyzer(false, nil, nil)
 	analyzer.AddRule(NewSubproc())
 
 	issues := gasTestRunner(`
@@ -46,7 +47,7 @@ func TestSubprocess(t *testing.T) {
 }
 
 func TestSubprocessVar(t *testing.T) {
-	analyzer := gas.NewAnalyzer(false, nil)
+	analyzer := gas.NewAnalyzer(false, nil, nil)
 	analyzer.AddRule(NewSubproc())
 
 	issues := gasTestRunner(`
@@ -73,7 +74,7 @@ func TestSubprocessVar(t *testing.T) {
 }
 
 func TestSubprocessPath(t *testing.T) {
-	analyzer := gas.NewAnalyzer(false, nil)
+	analyzer := gas.NewAnalyzer(false, nil, nil)
 	analyzer.AddRule(NewSubproc())
 
 	issues := gasTestRunner(`

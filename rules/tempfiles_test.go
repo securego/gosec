@@ -15,12 +15,13 @@
 package rules
 
 import (
-	gas "github.com/HewlettPackard/gas/core"
 	"testing"
+
+	gas "github.com/HewlettPackard/gas/core"
 )
 
 func TestTempfiles(t *testing.T) {
-	analyzer := gas.NewAnalyzer(false, nil)
+	analyzer := gas.NewAnalyzer(false, nil, nil)
 	analyzer.AddRule(NewBadTempFile())
 
 	source := `

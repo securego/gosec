@@ -15,12 +15,13 @@
 package rules
 
 import (
-	gas "github.com/HewlettPackard/gas/core"
 	"testing"
+
+	gas "github.com/HewlettPackard/gas/core"
 )
 
 func TestBind0000(t *testing.T) {
-	analyzer := gas.NewAnalyzer(false, nil)
+	analyzer := gas.NewAnalyzer(false, nil, nil)
 	analyzer.AddRule(NewBindsToAllNetworkInterfaces())
 
 	issues := gasTestRunner(`
@@ -41,7 +42,7 @@ func TestBind0000(t *testing.T) {
 }
 
 func TestBindEmptyHost(t *testing.T) {
-	analyzer := gas.NewAnalyzer(false, nil)
+	analyzer := gas.NewAnalyzer(false, nil, nil)
 	analyzer.AddRule(NewBindsToAllNetworkInterfaces())
 
 	issues := gasTestRunner(`

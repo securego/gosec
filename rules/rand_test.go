@@ -21,7 +21,7 @@ import (
 )
 
 func TestRandOk(t *testing.T) {
-	analyzer := gas.NewAnalyzer(false, nil)
+	analyzer := gas.NewAnalyzer(false, nil, nil)
 	analyzer.AddRule(NewWeakRandCheck())
 
 	issues := gasTestRunner(
@@ -38,7 +38,7 @@ func TestRandOk(t *testing.T) {
 }
 
 func TestRandBad(t *testing.T) {
-	analyzer := gas.NewAnalyzer(false, nil)
+	analyzer := gas.NewAnalyzer(false, nil, nil)
 	analyzer.AddRule(NewWeakRandCheck())
 
 	issues := gasTestRunner(
