@@ -15,10 +15,11 @@
 package rules
 
 import (
-	gas "github.com/HewlettPackard/gas/core"
 	"go/ast"
 	"regexp"
 	"strings"
+
+	gas "github.com/HewlettPackard/gas/core"
 )
 
 type Subprocess struct {
@@ -52,7 +53,7 @@ func (r *Subprocess) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 
 func NewSubproc() (r gas.Rule, n ast.Node) {
 	r = &Subprocess{
-		pattern: regexp.MustCompile(`^exec.Command$`),
+		pattern: regexp.MustCompile(`^(exec.Command|syscall.Exec)$`),
 	}
 	n = (*ast.CallExpr)(nil)
 	return
