@@ -92,9 +92,12 @@ func (gas *Analyzer) process(filename string, source interface{}) error {
 
 		// here we get type info
 		gas.context.Info = &types.Info{
-			Types: make(map[ast.Expr]types.TypeAndValue),
-			Defs:  make(map[*ast.Ident]types.Object),
-			Uses:  make(map[*ast.Ident]types.Object),
+			Types:      make(map[ast.Expr]types.TypeAndValue),
+			Defs:       make(map[*ast.Ident]types.Object),
+			Uses:       make(map[*ast.Ident]types.Object),
+			Selections: make(map[*ast.SelectorExpr]*types.Selection),
+			Scopes:     make(map[ast.Node]*types.Scope),
+			Implicits:  make(map[ast.Node]types.Object),
 		}
 
 		conf := types.Config{Importer: importer.Default()}

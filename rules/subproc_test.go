@@ -33,7 +33,8 @@ func TestSubprocess(t *testing.T) {
     )
 
     func main() {
-    	cmd := exec.Command("/bin/sleep", "5")
+			val := "/bin/" + "sleep"
+    	cmd := exec.Command(val, "5")
     	err := cmd.Start()
     	if err != nil {
     		log.Fatal(err)
@@ -59,7 +60,7 @@ func TestSubprocessVar(t *testing.T) {
     )
 
     func main() {
-      run := "sleep"
+      run := "sleep" + someFunc()
     	cmd := exec.Command(run, "5")
     	err := cmd.Start()
     	if err != nil {
@@ -97,4 +98,23 @@ func TestSubprocessPath(t *testing.T) {
     }`, analyzer)
 
 	checkTestResults(t, issues, 1, "Subprocess launching with partial path.")
+}
+
+func TestSubprocessSyscall(t *testing.T) {
+	analyzer := gas.NewAnalyzer(false, nil, nil)
+	analyzer.AddRule(NewSubproc())
+
+	issues := gasTestRunner(`
+    package main
+
+    import (
+    	"log"
+    	"os/exec"
+    )
+
+    func main() {
+    	syscall.Exec("/bin/cat", []string{ "/etc/passwd" }, nil)
+    }`, analyzer)
+
+	checkTestResults(t, issues, 1, "Subprocess launching should be audited.")
 }
