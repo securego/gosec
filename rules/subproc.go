@@ -15,10 +15,11 @@
 package rules
 
 import (
-	gas "github.com/HewlettPackard/gas/core"
 	"go/ast"
 	"regexp"
 	"strings"
+
+	gas "github.com/HewlettPackard/gas/core"
 )
 
 type Subprocess struct {
@@ -27,10 +28,8 @@ type Subprocess struct {
 
 func (r *Subprocess) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 	if node := gas.MatchCall(n, r.pattern); node != nil {
-		// call with variable command or arguments
 		for _, arg := range node.Args {
-			if _, test := arg.(*ast.BasicLit); !test {
-				// TODO: try to resolve the symbol ...
+			if !gas.TryResolve(arg, c) {
 				what := "Subprocess launching with variable."
 				return gas.NewIssue(c, n, what, gas.High, gas.High), nil
 			}
@@ -52,7 +51,7 @@ func (r *Subprocess) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 
 func NewSubproc() (r gas.Rule, n ast.Node) {
 	r = &Subprocess{
-		pattern: regexp.MustCompile(`^exec.Command$`),
+		pattern: regexp.MustCompile(`^exec\.Command|syscall\.Exec$`),
 	}
 	n = (*ast.CallExpr)(nil)
 	return
