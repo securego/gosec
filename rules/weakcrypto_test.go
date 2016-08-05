@@ -21,7 +21,8 @@ import (
 )
 
 func TestMD5(t *testing.T) {
-	analyzer := gas.NewAnalyzer(false, nil, nil)
+	config := map[string]interface{}{"ignoreNosec": false}
+	analyzer := gas.NewAnalyzer(config, nil)
 	analyzer.AddRule(NewBlacklistImports())
 	analyzer.AddRule(NewUsesWeakCryptography())
 
@@ -42,7 +43,8 @@ func TestMD5(t *testing.T) {
 }
 
 func TestDES(t *testing.T) {
-	analyzer := gas.NewAnalyzer(false, nil, nil)
+	config := map[string]interface{}{"ignoreNosec": false}
+	analyzer := gas.NewAnalyzer(config, nil)
 	analyzer.AddRule(NewBlacklistImports())
 	analyzer.AddRule(NewUsesWeakCryptography())
 
@@ -81,7 +83,8 @@ func TestDES(t *testing.T) {
 }
 
 func TestRC4(t *testing.T) {
-	analyzer := gas.NewAnalyzer(false, nil, nil)
+	config := map[string]interface{}{"ignoreNosec": false}
+	analyzer := gas.NewAnalyzer(config, nil)
 	analyzer.AddRule(NewBlacklistImports())
 	analyzer.AddRule(NewUsesWeakCryptography())
 

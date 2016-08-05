@@ -21,7 +21,8 @@ import (
 )
 
 func TestRandOk(t *testing.T) {
-	analyzer := gas.NewAnalyzer(false, nil, nil)
+	config := map[string]interface{}{"ignoreNosec": false}
+	analyzer := gas.NewAnalyzer(config, nil)
 	analyzer.AddRule(NewWeakRandCheck())
 
 	issues := gasTestRunner(
@@ -38,7 +39,8 @@ func TestRandOk(t *testing.T) {
 }
 
 func TestRandBad(t *testing.T) {
-	analyzer := gas.NewAnalyzer(false, nil, nil)
+	config := map[string]interface{}{"ignoreNosec": false}
+	analyzer := gas.NewAnalyzer(config, nil)
 	analyzer.AddRule(NewWeakRandCheck())
 
 	issues := gasTestRunner(

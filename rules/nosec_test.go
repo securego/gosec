@@ -21,7 +21,8 @@ import (
 )
 
 func TestNosec(t *testing.T) {
-	analyzer := gas.NewAnalyzer(false, nil, nil)
+	config := map[string]interface{}{"ignoreNosec": false}
+	analyzer := gas.NewAnalyzer(config, nil)
 	analyzer.AddRule(NewSubproc())
 
 	issues := gasTestRunner(
@@ -39,7 +40,8 @@ func TestNosec(t *testing.T) {
 }
 
 func TestNosecBlock(t *testing.T) {
-	analyzer := gas.NewAnalyzer(false, nil, nil)
+	config := map[string]interface{}{"ignoreNosec": false}
+	analyzer := gas.NewAnalyzer(config, nil)
 	analyzer.AddRule(NewSubproc())
 
 	issues := gasTestRunner(
@@ -57,4 +59,23 @@ func TestNosecBlock(t *testing.T) {
     }`, analyzer)
 
 	checkTestResults(t, issues, 0, "None")
+}
+
+func TestNosecIgnore(t *testing.T) {
+	config := map[string]interface{}{"ignoreNosec": true}
+	analyzer := gas.NewAnalyzer(config, nil)
+	analyzer.AddRule(NewSubproc())
+
+	issues := gasTestRunner(
+		`package main
+
+    import (
+    	"fmt"
+    )
+
+    func main() {
+      cmd := exec.Command("sh", "-c", config.Command) // #nosec
+    }`, analyzer)
+
+	checkTestResults(t, issues, 1, "Subprocess launching with variable.")
 }
