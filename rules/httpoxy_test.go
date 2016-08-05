@@ -22,16 +22,14 @@ import (
 
 func TestHttpoxy(t *testing.T) {
 	analyzer := gas.NewAnalyzer(false, nil, nil)
-	analyzer.AddRule(NewHttpoxyTest())
+	analyzer.AddRule(NewBlacklistImports())
 
 	issues := gasTestRunner(`
 		package main
-	        import (
-                	"log"
-                	"net/http/cgi"
-        	)
-		func main() {
-		}`, analyzer)
+    import (
+        "net/http/cgi"
+  	)
+		func main() {}`, analyzer)
 
 	checkTestResults(t, issues, 1, "Go code running under CGI is vulnerable to Httpoxy attack.")
 }

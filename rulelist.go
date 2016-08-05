@@ -39,7 +39,7 @@ func newRulelist() rulelist {
 	rs.rules = make(map[string]*ruleConfig)
 	rs.overwritten = false
 	rs.register("sql", rules.NewSqlStrConcat, rules.NewSqlStrFormat)
-	rs.register("crypto", rules.NewImportsWeakCryptography, rules.NewUsesWeakCryptography)
+	rs.register("crypto", rules.NewUsesWeakCryptography)
 	rs.register("hardcoded", rules.NewHardcodedCredentials)
 	rs.register("perms", rules.NewMkdirPerms, rules.NewChmodPerms)
 	rs.register("tempfile", rules.NewBadTempFile)
@@ -52,8 +52,8 @@ func newRulelist() rulelist {
 	rs.register("templates", rules.NewTemplateCheck)
 	rs.register("exec", rules.NewSubproc)
 	rs.register("errors", rules.NewNoErrorCheck)
-	rs.register("httpoxy", rules.NewHttpoxyTest)
 	rs.register("rand", rules.NewWeakRandCheck)
+	rs.register("blacklist_imports", rules.NewBlacklistImports)
 	return rs
 }
 
