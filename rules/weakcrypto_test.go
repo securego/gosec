@@ -22,7 +22,7 @@ import (
 
 func TestMD5(t *testing.T) {
 	analyzer := gas.NewAnalyzer(false, nil, nil)
-	analyzer.AddRule(NewImportsWeakCryptography())
+	analyzer.AddRule(NewBlacklistImports())
 	analyzer.AddRule(NewUsesWeakCryptography())
 
 	issues := gasTestRunner(`
@@ -43,7 +43,7 @@ func TestMD5(t *testing.T) {
 
 func TestDES(t *testing.T) {
 	analyzer := gas.NewAnalyzer(false, nil, nil)
-	analyzer.AddRule(NewImportsWeakCryptography())
+	analyzer.AddRule(NewBlacklistImports())
 	analyzer.AddRule(NewUsesWeakCryptography())
 
 	issues := gasTestRunner(`
@@ -82,7 +82,7 @@ func TestDES(t *testing.T) {
 
 func TestRC4(t *testing.T) {
 	analyzer := gas.NewAnalyzer(false, nil, nil)
-	analyzer.AddRule(NewImportsWeakCryptography())
+	analyzer.AddRule(NewBlacklistImports())
 	analyzer.AddRule(NewUsesWeakCryptography())
 
 	issues := gasTestRunner(`
