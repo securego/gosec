@@ -1,8 +1,12 @@
+
+
 ## GAS - Go AST Scanner
 
 Inspects source code for security problems by scanning the Go AST.
 
 ### Project status
+
+[![Build Status](https://travis-ci.org/HewlettPackard/gas.svg?branch=master)](https://travis-ci.org/HewlettPackard/gas)
 
 Gas is still in alpha and accepting feedback from early adopters. We do
 not consider it production ready at this time.
