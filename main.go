@@ -15,8 +15,10 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -57,6 +59,51 @@ USAGE:
 
 `
 
+var logger *log.Logger
+
+func extendConfList(conf map[string]interface{}, name string, input []string) {
+	if val, ok := conf[name]; ok {
+		if data, ok := val.(*[]string); ok {
+			conf[name] = append(*data, input...)
+		} else {
+			logger.Fatal("Config item must be a string list: ", name)
+		}
+	} else {
+		conf[name] = []string{}
+	}
+}
+
+func buildConfig(incRules string, excRules string) map[string]interface{} {
+	config := make(map[string]interface{})
+	if flagConfig != nil && *flagConfig != "" { // parse config if we have one
+		if data, err := ioutil.ReadFile(*flagConfig); err == nil {
+			if err := json.Unmarshal(data, &(config)); err != nil {
+				logger.Fatal("Could not parse JSON config: ", *flagConfig, ": ", err)
+			}
+		} else {
+			logger.Fatal("Could not read config file: ", *flagConfig)
+		}
+	}
+
+	// add in CLI include and exclude data
+	extendConfList(config, "include", strings.Split(incRules, ","))
+	extendConfList(config, "exclude", strings.Split(excRules, ","))
+
+	// override ignoreNosec if given on CLI
+	if flagIgnoreNoSec != nil {
+		config["ignoreNosec"] = *flagIgnoreNoSec
+	} else {
+		val, ok := config["ignoreNosec"]
+		if !ok {
+			config["ignoreNosec"] = false
+		} else if _, ok := val.(bool); !ok {
+			logger.Fatal("Config value must be a bool: 'ignoreNosec'")
+		}
+	}
+
+	return config
+}
+
 func usage() {
 	fmt.Fprintln(os.Stderr, usageText)
 	fmt.Fprint(os.Stderr, "OPTIONS:\n\n")
@@ -70,11 +117,17 @@ func main() {
 
 	//  Exclude files
 	var excluded filelist = []string{"*_test.go"}
-	flag.Var(&excluded, "exclude", "File pattern to exclude from scan")
+	flag.Var(&excluded, "skip", "File pattern to exclude from scan")
 
 	// Rule configuration
 	rules := newRulelist()
 	flag.Var(&rules, "rule", "GAS rules enabled when performing a scan")
+
+	incRules := ""
+	flag.StringVar(&incRules, "include", "", "comma sperated list of rules to include")
+
+	excRules := ""
+	flag.StringVar(&excRules, "exclude", "", "comma sperated list of rules to exclude")
 
 	// Custom commands / utilities to run instead of default analyzer
 	tools := newUtils()
@@ -84,7 +137,7 @@ func main() {
 	flag.Parse()
 
 	// Setup logging
-	logger := log.New(os.Stderr, "[gas]", log.LstdFlags)
+	logger = log.New(os.Stderr, "[gas]", log.LstdFlags)
 
 	// Ensure at least one file was specified
 	if flag.NArg() == 0 {
@@ -101,7 +154,9 @@ func main() {
 	}
 
 	// Setup analyzer
-	analyzer := gas.NewAnalyzer(*flagIgnoreNoSec, flagConfig, logger)
+	config := buildConfig(incRules, excRules)
+
+	analyzer := gas.NewAnalyzer(config, logger)
 	if !rules.overwritten {
 		rules.useDefaults()
 	}

@@ -21,7 +21,8 @@ import (
 )
 
 func TestSubprocess(t *testing.T) {
-	analyzer := gas.NewAnalyzer(false, nil, nil)
+	config := map[string]interface{}{"ignoreNosec": false}
+	analyzer := gas.NewAnalyzer(config, nil)
 	analyzer.AddRule(NewSubproc())
 
 	issues := gasTestRunner(`
@@ -48,7 +49,8 @@ func TestSubprocess(t *testing.T) {
 }
 
 func TestSubprocessVar(t *testing.T) {
-	analyzer := gas.NewAnalyzer(false, nil, nil)
+	config := map[string]interface{}{"ignoreNosec": false}
+	analyzer := gas.NewAnalyzer(config, nil)
 	analyzer.AddRule(NewSubproc())
 
 	issues := gasTestRunner(`
@@ -75,7 +77,8 @@ func TestSubprocessVar(t *testing.T) {
 }
 
 func TestSubprocessPath(t *testing.T) {
-	analyzer := gas.NewAnalyzer(false, nil, nil)
+	config := map[string]interface{}{"ignoreNosec": false}
+	analyzer := gas.NewAnalyzer(config, nil)
 	analyzer.AddRule(NewSubproc())
 
 	issues := gasTestRunner(`
@@ -101,7 +104,8 @@ func TestSubprocessPath(t *testing.T) {
 }
 
 func TestSubprocessSyscall(t *testing.T) {
-	analyzer := gas.NewAnalyzer(false, nil, nil)
+	config := map[string]interface{}{"ignoreNosec": false}
+	analyzer := gas.NewAnalyzer(config, nil)
 	analyzer.AddRule(NewSubproc())
 
 	issues := gasTestRunner(`

@@ -21,7 +21,8 @@ import (
 )
 
 func TestSQLInjectionViaConcatenation(t *testing.T) {
-	analyzer := gas.NewAnalyzer(false, nil, nil)
+	config := map[string]interface{}{"ignoreNosec": false}
+	analyzer := gas.NewAnalyzer(config, nil)
 	analyzer.AddRule(NewSqlStrConcat())
 
 	source := `
@@ -48,7 +49,8 @@ func TestSQLInjectionViaConcatenation(t *testing.T) {
 }
 
 func TestSQLInjectionViaIntepolation(t *testing.T) {
-	analyzer := gas.NewAnalyzer(false, nil, nil)
+	config := map[string]interface{}{"ignoreNosec": false}
+	analyzer := gas.NewAnalyzer(config, nil)
 	analyzer.AddRule(NewSqlStrFormat())
 
 	source := `
@@ -77,7 +79,8 @@ func TestSQLInjectionViaIntepolation(t *testing.T) {
 }
 
 func TestSQLInjectionFalsePositiveA(t *testing.T) {
-	analyzer := gas.NewAnalyzer(false, nil, nil)
+	config := map[string]interface{}{"ignoreNosec": false}
+	analyzer := gas.NewAnalyzer(config, nil)
 	analyzer.AddRule(NewSqlStrConcat())
 	analyzer.AddRule(NewSqlStrFormat())
 
@@ -112,7 +115,8 @@ func TestSQLInjectionFalsePositiveA(t *testing.T) {
 }
 
 func TestSQLInjectionFalsePositiveB(t *testing.T) {
-	analyzer := gas.NewAnalyzer(false, nil, nil)
+	config := map[string]interface{}{"ignoreNosec": false}
+	analyzer := gas.NewAnalyzer(config, nil)
 	analyzer.AddRule(NewSqlStrConcat())
 	analyzer.AddRule(NewSqlStrFormat())
 
@@ -147,7 +151,8 @@ func TestSQLInjectionFalsePositiveB(t *testing.T) {
 }
 
 func TestSQLInjectionFalsePositiveC(t *testing.T) {
-	analyzer := gas.NewAnalyzer(false, nil, nil)
+	config := map[string]interface{}{"ignoreNosec": false}
+	analyzer := gas.NewAnalyzer(config, nil)
 	analyzer.AddRule(NewSqlStrConcat())
 	analyzer.AddRule(NewSqlStrFormat())
 
@@ -182,7 +187,8 @@ func TestSQLInjectionFalsePositiveC(t *testing.T) {
 }
 
 func TestSQLInjectionFalsePositiveD(t *testing.T) {
-	analyzer := gas.NewAnalyzer(false, nil, nil)
+	config := map[string]interface{}{"ignoreNosec": false}
+	analyzer := gas.NewAnalyzer(config, nil)
 	analyzer.AddRule(NewSqlStrConcat())
 	analyzer.AddRule(NewSqlStrFormat())
 
