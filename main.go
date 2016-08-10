@@ -32,7 +32,7 @@ import (
 var flagIgnoreNoSec = flag.Bool("nosec", false, "Ignores #nosec comments when set")
 
 // format output
-var flagFormat = flag.String("fmt", "text", "Set output format. Valid options are: json, csv of text")
+var flagFormat = flag.String("fmt", "text", "Set output format. Valid options are: json, csv, or text")
 
 // output file
 var flagOutput = flag.String("out", "", "Set output file for results")
