@@ -56,7 +56,7 @@ func (s *SqlStrConcat) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 	return nil, nil
 }
 
-func NewSqlStrConcat() (r gas.Rule, n ast.Node) {
+func NewSqlStrConcat(conf map[string]interface{}) (r gas.Rule, n ast.Node) {
 	r = &SqlStrConcat{
 		SqlStatement: SqlStatement{
 			pattern: regexp.MustCompile(`(?)(SELECT|DELETE|INSERT|UPDATE|INTO|FROM|WHERE) `),
@@ -86,7 +86,7 @@ func (s *SqlStrFormat) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err err
 	return nil, nil
 }
 
-func NewSqlStrFormat() (r gas.Rule, n ast.Node) {
+func NewSqlStrFormat(conf map[string]interface{}) (r gas.Rule, n ast.Node) {
 	r = &SqlStrFormat{
 		call: regexp.MustCompile(`^fmt\.Sprintf$`),
 		SqlStatement: SqlStatement{

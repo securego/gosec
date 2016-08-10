@@ -23,7 +23,7 @@ import (
 func TestUnsafe(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewUsingUnsafe())
+	analyzer.AddRule(NewUsingUnsafe(config))
 
 	issues := gasTestRunner(`
         package main

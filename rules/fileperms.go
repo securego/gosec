@@ -16,9 +16,10 @@ package rules
 
 import (
 	"fmt"
-	gas "github.com/HewlettPackard/gas/core"
 	"go/ast"
 	"regexp"
+
+	gas "github.com/HewlettPackard/gas/core"
 )
 
 type FilePermissions struct {
@@ -36,7 +37,7 @@ func (r *FilePermissions) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) 
 	return nil, nil
 }
 
-func NewChmodPerms() (r gas.Rule, n ast.Node) {
+func NewChmodPerms(conf map[string]interface{}) (r gas.Rule, n ast.Node) {
 	mode := 0600
 	r = &FilePermissions{
 		pattern: regexp.MustCompile(`^os\.Chmod$`),
@@ -51,7 +52,7 @@ func NewChmodPerms() (r gas.Rule, n ast.Node) {
 	return
 }
 
-func NewMkdirPerms() (r gas.Rule, n ast.Node) {
+func NewMkdirPerms(conf map[string]interface{}) (r gas.Rule, n ast.Node) {
 	mode := 0700
 	r = &FilePermissions{
 		pattern: regexp.MustCompile(`^(os\.Mkdir|os\.MkdirAll)$`),

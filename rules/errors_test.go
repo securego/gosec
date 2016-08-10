@@ -23,7 +23,7 @@ import (
 func TestErrorsMulti(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewNoErrorCheck())
+	analyzer.AddRule(NewNoErrorCheck(config))
 
 	issues := gasTestRunner(
 		`package main
@@ -46,7 +46,7 @@ func TestErrorsMulti(t *testing.T) {
 func TestErrorsSingle(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewNoErrorCheck())
+	analyzer.AddRule(NewNoErrorCheck(config))
 
 	issues := gasTestRunner(
 		`package main
@@ -69,7 +69,7 @@ func TestErrorsSingle(t *testing.T) {
 func TestErrorsGood(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewNoErrorCheck())
+	analyzer.AddRule(NewNoErrorCheck(config))
 
 	issues := gasTestRunner(
 		`package main

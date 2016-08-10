@@ -20,47 +20,68 @@ import (
 	gas "github.com/HewlettPackard/gas/core"
 )
 
-type BlacklistImports struct {
-	BlacklistSet map[string]gas.MetaData
+type BlacklistImport struct {
+	gas.MetaData
+	Path string
 }
 
-func (r *BlacklistImports) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err error) {
+func (r *BlacklistImport) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err error) {
 	if node, ok := n.(*ast.ImportSpec); ok {
-		if data, ok := r.BlacklistSet[node.Path.Value]; ok {
-			return gas.NewIssue(c, n, data.What, data.Severity, data.Confidence), nil
+		if r.Path == node.Path.Value {
+			return gas.NewIssue(c, n, r.What, r.Severity, r.Confidence), nil
 		}
 	}
 	return nil, nil
 }
 
-func NewBlacklistImports() (r gas.Rule, n ast.Node) {
-	// TODO(tkelsey): make this configurable
-	// TODO(tkelsey): make it so each item can be selected/excluded individually
-	r = &BlacklistImports{
-		BlacklistSet: map[string]gas.MetaData{
-			`"crypto/md5"`: gas.MetaData{
-				Severity:   gas.High,
-				Confidence: gas.High,
-				What:       "Use of weak cryptographic primitive",
-			},
-			`"crypto/des"`: gas.MetaData{
-				Severity:   gas.High,
-				Confidence: gas.High,
-				What:       "Use of weak cryptographic primitive",
-			},
-			`"crypto/rc4"`: gas.MetaData{
-				Severity:   gas.High,
-				Confidence: gas.High,
-				What:       "Use of weak cryptographic primitive",
-			},
-			`"net/http/cgi"`: gas.MetaData{
-				Severity:   gas.High,
-				Confidence: gas.Low,
-				What:       "Go code running under CGI is vulnerable to Httpoxy attack. (CVE-2016-5386)",
-			},
+func NewBlacklist_crypto_md5(conf map[string]interface{}) (r gas.Rule, n ast.Node) {
+	r = &BlacklistImport{
+		MetaData: gas.MetaData{
+			Severity:   gas.High,
+			Confidence: gas.High,
+			What:       "Use of weak cryptographic primitive",
 		},
+		Path: `"crypto/md5"`,
 	}
+	n = (*ast.ImportSpec)(nil)
+	return
+}
 
+func NewBlacklist_crypto_des(conf map[string]interface{}) (r gas.Rule, n ast.Node) {
+	r = &BlacklistImport{
+		MetaData: gas.MetaData{
+			Severity:   gas.High,
+			Confidence: gas.High,
+			What:       "Use of weak cryptographic primitive",
+		},
+		Path: `"crypto/des"`,
+	}
+	n = (*ast.ImportSpec)(nil)
+	return
+}
+
+func NewBlacklist_crypto_rc4(conf map[string]interface{}) (r gas.Rule, n ast.Node) {
+	r = &BlacklistImport{
+		MetaData: gas.MetaData{
+			Severity:   gas.High,
+			Confidence: gas.High,
+			What:       "Use of weak cryptographic primitive",
+		},
+		Path: `"crypto/rc4"`,
+	}
+	n = (*ast.ImportSpec)(nil)
+	return
+}
+
+func NewBlacklist_net_http_cgi(conf map[string]interface{}) (r gas.Rule, n ast.Node) {
+	r = &BlacklistImport{
+		MetaData: gas.MetaData{
+			Severity:   gas.High,
+			Confidence: gas.High,
+			What:       "Go code running under CGI is vulnerable to Httpoxy attack. (CVE-2016-5386)",
+		},
+		Path: `"net/http/cgi"`,
+	}
 	n = (*ast.ImportSpec)(nil)
 	return
 }

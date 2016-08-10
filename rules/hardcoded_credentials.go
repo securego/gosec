@@ -43,7 +43,7 @@ func (r *CredsAssign) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err erro
 	return
 }
 
-func NewHardcodedCredentials() (r gas.Rule, n ast.Node) {
+func NewHardcodedCredentials(conf map[string]interface{}) (r gas.Rule, n ast.Node) {
 	r = &CredsAssign{
 		pattern: regexp.MustCompile(`(?i)passwd|pass|password|pwd|secret|token`),
 		MetaData: gas.MetaData{

@@ -15,9 +15,10 @@
 package rules
 
 import (
-	gas "github.com/HewlettPackard/gas/core"
 	"go/ast"
 	"regexp"
+
+	gas "github.com/HewlettPackard/gas/core"
 )
 
 type TemplateCheck struct {
@@ -36,7 +37,7 @@ func (t *TemplateCheck) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err er
 	return nil, nil
 }
 
-func NewTemplateCheck() (r gas.Rule, n ast.Node) {
+func NewTemplateCheck(conf map[string]interface{}) (r gas.Rule, n ast.Node) {
 	r = &TemplateCheck{
 		call: regexp.MustCompile(`^template\.(HTML|JS|URL)$`),
 		MetaData: gas.MetaData{

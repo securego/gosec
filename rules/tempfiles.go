@@ -15,9 +15,10 @@
 package rules
 
 import (
-	gas "github.com/HewlettPackard/gas/core"
 	"go/ast"
 	"regexp"
+
+	gas "github.com/HewlettPackard/gas/core"
 )
 
 type BadTempFile struct {
@@ -35,7 +36,7 @@ func (t *BadTempFile) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err erro
 	return nil, nil
 }
 
-func NewBadTempFile() (r gas.Rule, n ast.Node) {
+func NewBadTempFile(conf map[string]interface{}) (r gas.Rule, n ast.Node) {
 	r = &BadTempFile{
 		call: regexp.MustCompile(`ioutil\.WriteFile|os\.Create`),
 		args: regexp.MustCompile(`^/tmp/.*$|^/var/tmp/.*$`),

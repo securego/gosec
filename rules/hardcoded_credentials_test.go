@@ -23,7 +23,7 @@ import (
 func TestHardcoded(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewHardcodedCredentials())
+	analyzer.AddRule(NewHardcodedCredentials(config))
 
 	issues := gasTestRunner(
 		`

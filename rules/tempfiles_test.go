@@ -23,7 +23,7 @@ import (
 func TestTempfiles(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewBadTempFile())
+	analyzer.AddRule(NewBadTempFile(config))
 
 	source := `
         package samples

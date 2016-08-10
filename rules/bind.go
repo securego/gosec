@@ -15,9 +15,10 @@
 package rules
 
 import (
-	gas "github.com/HewlettPackard/gas/core"
 	"go/ast"
 	"regexp"
+
+	gas "github.com/HewlettPackard/gas/core"
 )
 
 // Looks for net.Listen("0.0.0.0") or net.Listen(":8080")
@@ -38,7 +39,7 @@ func (r *BindsToAllNetworkInterfaces) Match(n ast.Node, c *gas.Context) (gi *gas
 	return
 }
 
-func NewBindsToAllNetworkInterfaces() (r gas.Rule, n ast.Node) {
+func NewBindsToAllNetworkInterfaces(conf map[string]interface{}) (r gas.Rule, n ast.Node) {
 	r = &BindsToAllNetworkInterfaces{
 		call:    regexp.MustCompile(`^net\.Listen$`),
 		pattern: regexp.MustCompile(`^(0.0.0.0|:).*$`),

@@ -34,7 +34,7 @@ func (r *UsesWeakCryptography) Match(n ast.Node, c *gas.Context) (*gas.Issue, er
 }
 
 // Uses des.* md5.* or rc4.*
-func NewUsesWeakCryptography() (r gas.Rule, n ast.Node) {
+func NewUsesWeakCryptography(conf map[string]interface{}) (r gas.Rule, n ast.Node) {
 	r = &UsesWeakCryptography{
 		pattern: regexp.MustCompile(`des\.NewCipher|des\.NewTripleDESCipher|md5\.New|md5\.Sum|rc4\.NewCipher`),
 		MetaData: gas.MetaData{
