@@ -52,12 +52,11 @@ $ gas -rule=rsa -rule=tls -rule=crypto ./...
 
 #### Excluding files:
 
-Gas will ignore paths that match a supplied pattern via
-[filepath.Match](https://golang.org/pkg/path/filepath/#Match).
-Multiple patterns can be specified as follows:
+Gas can be told to \ignore paths that match a supplied pattern using the 'skip' command line option. This accomplished via
+[filepath.Match](https://golang.org/pkg/path/filepath/#Match). Multiple patterns can be specified as follows:
 
 ```
-$ gas -exclude=tests* -exclude=*_example.go ./...
+$ gas -skip=tests* -skip=*_example.go ./...
 ```
 
 #### Annotating code
