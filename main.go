@@ -56,7 +56,10 @@ USAGE:
 	$ gas -fmt=json -out=results.json ./...
 
 	# Run a specific set of rules (by default all rules will be run):
-	$ gas -rule=sql -rule=sql ./...
+	$ gas -include=G101,G203,G401 ./...
+
+	# Run all rules except the provided
+	$ gas -exclude=G101 ./...
 
 `
 
@@ -140,10 +143,10 @@ func main() {
 	flag.Var(&excluded, "skip", "File pattern to exclude from scan")
 
 	incRules := ""
-	flag.StringVar(&incRules, "include", "", "comma sperated list of rules IDs to include, see rule list")
+	flag.StringVar(&incRules, "include", "", "Comma separated list of rules IDs to include. (see rule list)")
 
 	excRules := ""
-	flag.StringVar(&excRules, "exclude", "", "comma sperated list of rules IDs to exclude, see rule list")
+	flag.StringVar(&excRules, "exclude", "", "Comma separated list of rules IDs to exclude. (see rule list)")
 
 	// Custom commands / utilities to run instead of default analyzer
 	tools := newUtils()
