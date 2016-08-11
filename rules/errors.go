@@ -50,7 +50,7 @@ func (r *NoErrorCheck) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err err
 	return nil, nil
 }
 
-func NewNoErrorCheck() (r gas.Rule, n ast.Node) {
+func NewNoErrorCheck(conf map[string]interface{}) (r gas.Rule, n ast.Node) {
 	r = &NoErrorCheck{
 		MetaData: gas.MetaData{
 			Severity:   gas.Low,

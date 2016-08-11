@@ -109,7 +109,7 @@ func (t *InsecureConfigTLS) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, er
 	return
 }
 
-func NewModernTlsCheck() (r gas.Rule, n ast.Node) {
+func NewModernTlsCheck(conf map[string]interface{}) (r gas.Rule, n ast.Node) {
 	// https://wiki.mozilla.org/Security/Server_Side_TLS#Modern_compatibility
 	r = &InsecureConfigTLS{
 		pattern:    regexp.MustCompile(`^tls\.Config$`),
@@ -126,7 +126,7 @@ func NewModernTlsCheck() (r gas.Rule, n ast.Node) {
 	return
 }
 
-func NewIntermediateTlsCheck() (r gas.Rule, n ast.Node) {
+func NewIntermediateTlsCheck(conf map[string]interface{}) (r gas.Rule, n ast.Node) {
 	// https://wiki.mozilla.org/Security/Server_Side_TLS#Intermediate_compatibility_.28default.29
 	r = &InsecureConfigTLS{
 		pattern:    regexp.MustCompile(`^tls\.Config$`),
@@ -154,7 +154,7 @@ func NewIntermediateTlsCheck() (r gas.Rule, n ast.Node) {
 	return
 }
 
-func NewCompatTlsCheck() (r gas.Rule, n ast.Node) {
+func NewCompatTlsCheck(conf map[string]interface{}) (r gas.Rule, n ast.Node) {
 	// https://wiki.mozilla.org/Security/Server_Side_TLS#Old_compatibility_.28default.29
 	r = &InsecureConfigTLS{
 		pattern:    regexp.MustCompile(`^tls\.Config$`),

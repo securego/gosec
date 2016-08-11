@@ -23,7 +23,7 @@ import (
 func TestInsecureSkipVerify(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewModernTlsCheck())
+	analyzer.AddRule(NewModernTlsCheck(config))
 
 	issues := gasTestRunner(`
         package main
@@ -52,7 +52,7 @@ func TestInsecureSkipVerify(t *testing.T) {
 func TestInsecureMinVersion(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewModernTlsCheck())
+	analyzer.AddRule(NewModernTlsCheck(config))
 
 	issues := gasTestRunner(`
         package main
@@ -81,7 +81,7 @@ func TestInsecureMinVersion(t *testing.T) {
 func TestInsecureMaxVersion(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewModernTlsCheck())
+	analyzer.AddRule(NewModernTlsCheck(config))
 
 	issues := gasTestRunner(`
         package main
@@ -110,7 +110,7 @@ func TestInsecureMaxVersion(t *testing.T) {
 func TestInsecureCipherSuite(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewModernTlsCheck())
+	analyzer.AddRule(NewModernTlsCheck(config))
 
 	issues := gasTestRunner(`
         package main

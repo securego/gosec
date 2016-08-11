@@ -39,7 +39,7 @@ func (w *WeakRand) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 	return nil, nil
 }
 
-func NewWeakRandCheck() (r gas.Rule, n ast.Node) {
+func NewWeakRandCheck(conf map[string]interface{}) (r gas.Rule, n ast.Node) {
 	r = &WeakRand{
 		pattern:     regexp.MustCompile(`^rand\.Read$`),
 		packageName: "rand",

@@ -23,7 +23,7 @@ import (
 func TestBind0000(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewBindsToAllNetworkInterfaces())
+	analyzer.AddRule(NewBindsToAllNetworkInterfaces(config))
 
 	issues := gasTestRunner(`
 		package main
@@ -45,7 +45,7 @@ func TestBind0000(t *testing.T) {
 func TestBindEmptyHost(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewBindsToAllNetworkInterfaces())
+	analyzer.AddRule(NewBindsToAllNetworkInterfaces(config))
 
 	issues := gasTestRunner(`
 		package main

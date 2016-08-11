@@ -23,7 +23,7 @@ import (
 func TestRSAKeys(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewWeakKeyStrength())
+	analyzer.AddRule(NewWeakKeyStrength(config))
 
 	issues := gasTestRunner(
 		`package main

@@ -22,6 +22,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	gas "github.com/HewlettPackard/gas/core"
@@ -61,15 +62,20 @@ USAGE:
 
 var logger *log.Logger
 
-func extendConfList(conf map[string]interface{}, name string, input []string) {
-	if val, ok := conf[name]; ok {
-		if data, ok := val.(*[]string); ok {
-			conf[name] = append(*data, input...)
-		} else {
-			logger.Fatal("Config item must be a string list: ", name)
-		}
-	} else {
+func extendConfList(conf map[string]interface{}, name string, inputStr string) {
+	if inputStr == "" {
 		conf[name] = []string{}
+	} else {
+		input := strings.Split(inputStr, ",")
+		if val, ok := conf[name]; ok {
+			if data, ok := val.(*[]string); ok {
+				conf[name] = append(*data, input...)
+			} else {
+				logger.Fatal("Config item must be a string list: ", name)
+			}
+		} else {
+			conf[name] = input
+		}
 	}
 }
 
@@ -86,8 +92,8 @@ func buildConfig(incRules string, excRules string) map[string]interface{} {
 	}
 
 	// add in CLI include and exclude data
-	extendConfList(config, "include", strings.Split(incRules, ","))
-	extendConfList(config, "exclude", strings.Split(excRules, ","))
+	extendConfList(config, "include", incRules)
+	extendConfList(config, "exclude", excRules)
 
 	// override ignoreNosec if given on CLI
 	if flagIgnoreNoSec != nil {
@@ -108,6 +114,20 @@ func usage() {
 	fmt.Fprintln(os.Stderr, usageText)
 	fmt.Fprint(os.Stderr, "OPTIONS:\n\n")
 	flag.PrintDefaults()
+	fmt.Fprint(os.Stderr, "\n\nRULES:\n\n")
+
+	// sorted rule list for eas of reading
+	rl := GetFullRuleList()
+	keys := make([]string, 0, len(rl))
+	for key := range rl {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		v := rl[k]
+		fmt.Fprintf(os.Stderr, "\t%s: %s\n", k, v.description)
+	}
+	fmt.Fprint(os.Stderr, "\n")
 }
 
 func main() {
@@ -119,15 +139,11 @@ func main() {
 	var excluded filelist = []string{"*_test.go"}
 	flag.Var(&excluded, "skip", "File pattern to exclude from scan")
 
-	// Rule configuration
-	rules := newRulelist()
-	flag.Var(&rules, "rule", "GAS rules enabled when performing a scan")
-
 	incRules := ""
-	flag.StringVar(&incRules, "include", "", "comma sperated list of rules to include")
+	flag.StringVar(&incRules, "include", "", "comma sperated list of rules IDs to include, see rule list")
 
 	excRules := ""
-	flag.StringVar(&excRules, "exclude", "", "comma sperated list of rules to exclude")
+	flag.StringVar(&excRules, "exclude", "", "comma sperated list of rules IDs to exclude, see rule list")
 
 	// Custom commands / utilities to run instead of default analyzer
 	tools := newUtils()
@@ -155,12 +171,8 @@ func main() {
 
 	// Setup analyzer
 	config := buildConfig(incRules, excRules)
-
 	analyzer := gas.NewAnalyzer(config, logger)
-	if !rules.overwritten {
-		rules.useDefaults()
-	}
-	rules.apply(&analyzer)
+	AddRules(&analyzer, config)
 
 	// Traverse directory structure if './...'
 	if flag.NArg() == 1 && flag.Arg(0) == "./..." {

@@ -17,85 +17,77 @@ package main
 import (
 	"fmt"
 	"go/ast"
-	"strings"
 
 	gas "github.com/HewlettPackard/gas/core"
 	"github.com/HewlettPackard/gas/rules"
 )
 
-type ruleMaker func() (gas.Rule, ast.Node)
-type ruleConfig struct {
-	enabled      bool
-	constructors []ruleMaker
+type RuleInfo struct {
+	description string
+	build       func(map[string]interface{}) (gas.Rule, ast.Node)
 }
 
-type rulelist struct {
-	rules       map[string]*ruleConfig
-	overwritten bool
-}
+// GetFullRuleList get the full list of all rules available to GAS
+func GetFullRuleList() map[string]RuleInfo {
+	return map[string]RuleInfo{
+		// misc
+		"G101": RuleInfo{"hardcoded credentials", rules.NewHardcodedCredentials},
+		"G102": RuleInfo{"bind to all interfaces", rules.NewBindsToAllNetworkInterfaces},
+		"G103": RuleInfo{"use of unsafe block", rules.NewUsingUnsafe},
+		"G104": RuleInfo{"errors not checked", rules.NewTemplateCheck},
 
-func newRulelist() rulelist {
-	var rs rulelist
-	rs.rules = make(map[string]*ruleConfig)
-	rs.overwritten = false
-	rs.register("sql", rules.NewSqlStrConcat, rules.NewSqlStrFormat)
-	rs.register("crypto", rules.NewUsesWeakCryptography)
-	rs.register("hardcoded", rules.NewHardcodedCredentials)
-	rs.register("perms", rules.NewMkdirPerms, rules.NewChmodPerms)
-	rs.register("tempfile", rules.NewBadTempFile)
-	rs.register("tls_good", rules.NewModernTlsCheck)
-	rs.register("tls_ok", rules.NewIntermediateTlsCheck)
-	rs.register("tls_old", rules.NewCompatTlsCheck)
-	rs.register("bind", rules.NewBindsToAllNetworkInterfaces)
-	rs.register("unsafe", rules.NewUsingUnsafe)
-	rs.register("rsa", rules.NewWeakKeyStrength)
-	rs.register("templates", rules.NewTemplateCheck)
-	rs.register("exec", rules.NewSubproc)
-	rs.register("errors", rules.NewNoErrorCheck)
-	rs.register("rand", rules.NewWeakRandCheck)
-	rs.register("blacklist_imports", rules.NewBlacklistImports)
-	return rs
-}
+		// injection
+		"G201": RuleInfo{"sql string format", rules.NewSqlStrFormat},
+		"G202": RuleInfo{"sql string concat", rules.NewSqlStrConcat},
+		"G203": RuleInfo{"unescaped templates", rules.NewTemplateCheck},
+		"G204": RuleInfo{"use of exec", rules.NewSubproc},
 
-func (r *rulelist) register(name string, cons ...ruleMaker) {
-	r.rules[name] = &ruleConfig{false, cons}
-}
+		// filesystem
+		"G301": RuleInfo{"poor mkdir permissions", rules.NewMkdirPerms},
+		"G302": RuleInfo{"poor chmod permisions", rules.NewChmodPerms},
+		"G303": RuleInfo{"predicatable tempfile", rules.NewBadTempFile},
 
-func (r *rulelist) useDefaults() {
-	for k := range r.rules {
-		r.rules[k].enabled = true
+		// crypto
+		"G401": RuleInfo{"weak crypto", rules.NewUsesWeakCryptography},
+		"G402": RuleInfo{"bad TLS options", rules.NewIntermediateTlsCheck},
+		"G403": RuleInfo{"bad RSA key length", rules.NewWeakKeyStrength},
+		"G404": RuleInfo{"poor random source (rand)", rules.NewWeakRandCheck},
+
+		// blacklist
+		"G501": RuleInfo{"blacklist: crypto/md5", rules.NewBlacklist_crypto_md5},
+		"G502": RuleInfo{"blacklist: crypto/des", rules.NewBlacklist_crypto_des},
+		"G503": RuleInfo{"blacklist: crypto/rc4", rules.NewBlacklist_crypto_rc4},
+		"G504": RuleInfo{"blacklist: net/http/cgi", rules.NewBlacklist_net_http_cgi},
 	}
 }
 
-func (r *rulelist) list() []string {
-	i := 0
-	keys := make([]string, len(r.rules))
-	for k := range r.rules {
-		keys[i] = k
-		i++
-	}
-	return keys
-}
+func AddRules(analyzer *gas.Analyzer, conf map[string]interface{}) {
+	var all map[string]RuleInfo
 
-func (r *rulelist) apply(g *gas.Analyzer) {
-	for _, v := range r.rules {
-		if v.enabled {
-			for _, ctor := range v.constructors {
-				g.AddRule(ctor())
+	inc := conf["include"].([]string)
+	exc := conf["exclude"].([]string)
+
+	fmt.Println(len(inc))
+
+	// add included rules
+	if len(inc) == 0 {
+		all = GetFullRuleList()
+	} else {
+		all = map[string]RuleInfo{}
+		tmp := GetFullRuleList()
+		for _, v := range inc {
+			if val, ok := tmp[v]; ok {
+				all[v] = val
 			}
 		}
 	}
-}
 
-func (r *rulelist) String() string {
-	return strings.Join(r.list(), ", ")
-}
-
-func (r *rulelist) Set(opt string) error {
-	r.overwritten = true
-	if x, ok := r.rules[opt]; ok {
-		x.enabled = true
-		return nil
+	// remove excluded rules
+	for _, v := range exc {
+		delete(all, v)
 	}
-	return fmt.Errorf("Valid rules are: %s", r)
+
+	for _, v := range all {
+		analyzer.AddRule(v.build(conf))
+	}
 }

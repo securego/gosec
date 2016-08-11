@@ -23,7 +23,7 @@ import (
 func TestNosec(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewSubproc())
+	analyzer.AddRule(NewSubproc(config))
 
 	issues := gasTestRunner(
 		`package main
@@ -42,7 +42,7 @@ func TestNosec(t *testing.T) {
 func TestNosecBlock(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewSubproc())
+	analyzer.AddRule(NewSubproc(config))
 
 	issues := gasTestRunner(
 		`package main
@@ -64,7 +64,7 @@ func TestNosecBlock(t *testing.T) {
 func TestNosecIgnore(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": true}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewSubproc())
+	analyzer.AddRule(NewSubproc(config))
 
 	issues := gasTestRunner(
 		`package main
