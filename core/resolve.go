@@ -53,6 +53,9 @@ func resolveCallExpr(n *ast.CallExpr, c *Context) bool {
 	return false
 }
 
+// TryResolve will attempt, given a subtree starting at some ATS node, to resolve
+// all values contained within to a known constant. It is used to check for any
+// unkown values in compound expressions.
 func TryResolve(n ast.Node, c *Context) bool {
 	switch node := n.(type) {
 	case *ast.BasicLit:

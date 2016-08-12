@@ -20,7 +20,7 @@ import (
 	"reflect"
 )
 
-// A selector function. This is like a visitor, but has a richer interface. It
+// SelectFunc is like an AST visitor, but has a richer interface. It
 // is called with the current ast.Node being visitied and that nodes depth in
 // the tree. The function can return true to continue traversing the tree, or
 // false to end traversal here.
@@ -379,6 +379,9 @@ func Select(s Selector, n ast.Node, bits ...reflect.Type) {
 	depthWalk(n, 0, fun)
 }
 
+// SimpleSelect will try to match a path through a sub-tree starting at a given AST node.
+// The type of each node in the path at a given depth must match its entry in list of
+// node types given.
 func SimpleSelect(n ast.Node, bits ...reflect.Type) ast.Node {
 	var found ast.Node
 	fun := func(n ast.Node, d int) bool {
