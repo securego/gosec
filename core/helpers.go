@@ -37,6 +37,7 @@ func selectName(n ast.Node, s reflect.Type) (string, bool) {
 	return "", false
 }
 
+// MatchCall will match an ast.CallNode if its method name obays the given regex.
 func MatchCall(n ast.Node, r *regexp.Regexp) *ast.CallExpr {
 	t := reflect.TypeOf(&ast.CallExpr{})
 	if name, ok := selectName(n, t); ok && r.MatchString(name) {
@@ -45,6 +46,7 @@ func MatchCall(n ast.Node, r *regexp.Regexp) *ast.CallExpr {
 	return nil
 }
 
+// MatcMatchCompLit hCall will match an ast.CompositeLit if its string value obays the given regex.
 func MatchCompLit(n ast.Node, r *regexp.Regexp) *ast.CompositeLit {
 	t := reflect.TypeOf(&ast.CompositeLit{})
 	if name, ok := selectName(n, t); ok && r.MatchString(name) {
@@ -53,6 +55,7 @@ func MatchCompLit(n ast.Node, r *regexp.Regexp) *ast.CompositeLit {
 	return nil
 }
 
+// GetInt will read and return an integer value from an ast.BasicLit
 func GetInt(n ast.Node) (int64, error) {
 	if node, ok := n.(*ast.BasicLit); ok && node.Kind == token.INT {
 		return strconv.ParseInt(node.Value, 0, 64)
@@ -60,6 +63,7 @@ func GetInt(n ast.Node) (int64, error) {
 	return 0, fmt.Errorf("Unexpected AST node type: %T", n)
 }
 
+// GetInt will read and return a float value from an ast.BasicLit
 func GetFloat(n ast.Node) (float64, error) {
 	if node, ok := n.(*ast.BasicLit); ok && node.Kind == token.FLOAT {
 		return strconv.ParseFloat(node.Value, 64)
@@ -67,6 +71,7 @@ func GetFloat(n ast.Node) (float64, error) {
 	return 0.0, fmt.Errorf("Unexpected AST node type: %T", n)
 }
 
+// GetInt will read and return a char value from an ast.BasicLit
 func GetChar(n ast.Node) (byte, error) {
 	if node, ok := n.(*ast.BasicLit); ok && node.Kind == token.CHAR {
 		return node.Value[0], nil
@@ -74,6 +79,7 @@ func GetChar(n ast.Node) (byte, error) {
 	return 0, fmt.Errorf("Unexpected AST node type: %T", n)
 }
 
+// GetInt will read and return a string value from an ast.BasicLit
 func GetString(n ast.Node) (string, error) {
 	if node, ok := n.(*ast.BasicLit); ok && node.Kind == token.STRING {
 		return strconv.Unquote(node.Value)

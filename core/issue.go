@@ -20,33 +20,39 @@ import (
 	"os"
 )
 
+// Score type used by severity and confidence values
 type Score int
 
 const (
-	Low Score = iota
-	Medium
-	High
+	Low    Score = iota // Low value
+	Medium              // Medium value
+	High                // High value
 )
 
+// An Issue is returnd by a GAS rule if it discovers an issue with the scanned code.
 type Issue struct {
-	Severity   Score  `json:"severity"`
-	Confidence Score  `json:"confidence"`
-	What       string `json:"details"`
-	File       string `json:"file"`
-	Code       string `json:"code"`
-	Line       int    `json:"line"`
+	Severity   Score  `json:"severity"`   // issue severity (how problematic it is)
+	Confidence Score  `json:"confidence"` // issue confidence (how sure we are we found it)
+	What       string `json:"details"`    // Human readable explanation
+	File       string `json:"file"`       // File name we found it in
+	Code       string `json:"code"`       // Impacted code line
+	Line       int    `json:"line"`       // Line number in file
 }
 
+// MetaData is embedded in all GAS rules. The Severity, Confidence and What message
+// will be passed tbhrough to reported issues.
 type MetaData struct {
 	Severity   Score
 	Confidence Score
 	What       string
 }
 
+// MarshalJSON is used convert a Score object into a JSON representation
 func (c Score) MarshalJSON() ([]byte, error) {
 	return json.Marshal(c.String())
 }
 
+// String converts a Score into a string
 func (c Score) String() string {
 	switch c {
 	case High:
@@ -74,6 +80,7 @@ func codeSnippet(file *os.File, start int64, end int64, n ast.Node) (string, err
 	return string(buf), nil
 }
 
+// NewIssue creates a new Issue
 func NewIssue(ctx *Context, node ast.Node, desc string, severity Score, confidence Score) *Issue {
 	var code string
 	fobj := ctx.FileSet.File(node.Pos())
