@@ -20,34 +20,38 @@ directory you can supply './...' as the input argument.
 
 #### Selecting rules
 
-By default Gas will run all rules against the supplied file paths. It is however possible to select a subset of rules to run via the '-rule=' flag.
+By default Gas will run all rules against the supplied file paths. It is however possible to select a subset of rules to run via the '-include=' flag,
+or to specify a set of rules to explicitly exclude using the '-exclude=' flag.
 
 ##### Available rules
 
-- __crypto__ - Detects use of weak cryptography primitives.
-- __tls__ - Detects if TLS certificate verification is disabled.
-- __sql__ - SQL injection vectors.
-- __hardcoded__ - Potential hardcoded credentials.
-- __perms__ - Insecure file permissions.
-- __tempfile__ - Insecure creation of temporary files
-- __unsafe__- Detects use of the unsafe pointer functions.
-- __bind__- Listening on all network interfaces.
-- __rsa__- Warns for RSA keys that are less than 2048 bits.
-- __tls_good__ - Checks to ensure ciphers and protocol versions are
-explicitly enabled to meet the [modern compatibility](https://wiki.mozilla.org/Security/Server_Side_TLS#Modern_compatibility) standards recommended by Mozilla.
-- __tls_ok__ - Checks to ensure ciphers and protocol versions are
-explicitly enabled to meet the [intermediate compatibility]( https://wiki.mozilla.org/Security/Server_Side_TLS#Intermediate_compatibility_.28default.29) standards recommended by Mozilla.
-- __tls_old__ - Checks to ensure ciphers and protocol versions are
-explicitly enabled to meet the [older compatibility](https://wiki.mozilla.org/Security/Server_Side_TLS#Old_compatibility_.28default.29) standards recommended by Mozilla.
-- __templates__ - Detect cases where input is not escaped when entered into Go HTML templates.
-- __exec__ - Report cases where the application is executing an external process.
-- __errors__ - Report error return values that are ignored.
-- __httpoxy__ - Report on CGI usage as it may indicate vulnerability to the [httpoxy](https://httpoxy.org/) vulnerability.
-
+  - G101: Look for hardcoded credentials
+  - G102: Bind to all interfaces
+  - G103: Audit the use of unsafe block
+  - G104: Audit errors not checked
+  - G201: SQL query construction using format string
+  - G202: SQL query construction using string concatenation
+  - G203: Use of unescaped data in HTML templates
+  - G204: Audit use of command execution
+  - G301: Poor file permissions used when creating a directory
+  - G302: Poor file permisions used with chmod
+  - G303: Creating tempfile using a predictable path
+  - G401: Detect the usage of DES, RC4, or MD5
+  - G402: Look for bad TLS connection settings
+  - G403: Ensure minimum RSA key length of 2048 bits
+  - G404: Insecure random number source (rand)
+  - G501: Import blacklist: crypto/md5
+  - G502: Import blacklist: crypto/des
+  - G503: Import blacklist: crypto/rc4
+  - G504: Import blacklist: net/http/cgi
 
 
 ```
-$ gas -rule=rsa -rule=tls -rule=crypto ./...
+# Run a specific set of rules
+$ gas -include=G101,G203,G401 ./...
+
+# Run everything except for rule G303
+$ gas -exclude=G303 ./...
 ```
 
 #### Excluding files:
