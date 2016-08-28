@@ -4,6 +4,12 @@
 
 Inspects source code for security problems by scanning the Go AST.
 
+### License
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License [here](http://www.apache.org/licenses/LICENSE-2.0).
+
 ### Project status
 
 [![Build Status](https://travis-ci.org/HewlettPackard/gas.svg?branch=master)](https://travis-ci.org/HewlettPackard/gas)
