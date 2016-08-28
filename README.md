@@ -13,6 +13,7 @@ You may obtain a copy of the License [here](http://www.apache.org/licenses/LICEN
 ### Project status
 
 [![Build Status](https://travis-ci.org/HewlettPackard/gas.svg?branch=master)](https://travis-ci.org/HewlettPackard/gas)
+[![GoDoc](https://godoc.org/github.com/HewlettPackard/gas?status.svg)](https://godoc.org/github.com/HewlettPackard/gas)
 
 Gas is still in alpha and accepting feedback from early adopters. We do
 not consider it production ready at this time.
