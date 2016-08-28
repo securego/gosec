@@ -68,7 +68,7 @@ type Analyzer struct {
 	Stats       Metrics `json:"metrics"`
 }
 
-// NewAnalyzer buildas a new anaylzer.
+// NewAnalyzer builds a new anaylzer.
 func NewAnalyzer(conf map[string]interface{}, logger *log.Logger) Analyzer {
 	if logger == nil {
 		logger = log.New(os.Stdout, "[gas]", 0)
