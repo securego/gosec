@@ -57,6 +57,11 @@ func (f *filelist) Contains(pathname string) bool {
 			return true
 		}
 
+		// match file suffixes ie. *_test.go
+		if matched, _ := filepath.Match(filepath.Join("**", pattern), pathname); matched {
+			return true
+		}
+
 		// Finally try absolute path
 		st, e := os.Stat(rel)
 		if os.IsExist(e) && st.IsDir() && strings.HasPrefix(abs, rel) {
