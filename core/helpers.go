@@ -46,7 +46,7 @@ func MatchCall(n ast.Node, r *regexp.Regexp) *ast.CallExpr {
 	return nil
 }
 
-// MatcMatchCompLit hCall will match an ast.CompositeLit if its string value obays the given regex.
+// MatchCompLit will match an ast.CompositeLit if its string value obays the given regex.
 func MatchCompLit(n ast.Node, r *regexp.Regexp) *ast.CompositeLit {
 	t := reflect.TypeOf(&ast.CompositeLit{})
 	if name, ok := selectName(n, t); ok && r.MatchString(name) {
