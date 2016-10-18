@@ -17,9 +17,10 @@ package output
 import (
 	"encoding/csv"
 	"encoding/json"
+	htmlTemplate "html/template"
 	"io"
 	"strconv"
-	"text/template"
+	plainTemplate "text/template"
 
 	gas "github.com/HewlettPackard/gas/core"
 )
@@ -54,10 +55,12 @@ func CreateReport(w io.Writer, format string, data *gas.Analyzer) error {
 		err = reportJSON(w, data)
 	case "csv":
 		err = reportCSV(w, data)
+	case "html":
+		err = reportFromHTMLTemplate(w, html, data)
 	case "text":
-		err = reportFromTemplate(w, text, data)
+		err = reportFromPlaintextTemplate(w, text, data)
 	default:
-		err = reportFromTemplate(w, text, data)
+		err = reportFromPlaintextTemplate(w, text, data)
 	}
 	return err
 }
@@ -94,8 +97,17 @@ func reportCSV(w io.Writer, data *gas.Analyzer) error {
 	return nil
 }
 
-func reportFromTemplate(w io.Writer, reportTemplate string, data *gas.Analyzer) error {
-	t, e := template.New("gas").Parse(reportTemplate)
+func reportFromPlaintextTemplate(w io.Writer, reportTemplate string, data *gas.Analyzer) error {
+	t, e := plainTemplate.New("gas").Parse(reportTemplate)
+	if e != nil {
+		return e
+	}
+
+	return t.Execute(w, data)
+}
+
+func reportFromHTMLTemplate(w io.Writer, reportTemplate string, data *gas.Analyzer) error {
+	t, e := htmlTemplate.New("gas").Parse(reportTemplate)
 	if e != nil {
 		return e
 	}
