@@ -35,7 +35,7 @@ func (r *UsingUnsafe) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err erro
 
 func NewUsingUnsafe(conf map[string]interface{}) (r gas.Rule, n ast.Node) {
 	r = &UsingUnsafe{
-		pattern: regexp.MustCompile(`unsafe.*`),
+		pattern: regexp.MustCompile(`unsafe\..*`),
 		MetaData: gas.MetaData{
 			What:       "Use of unsafe calls should be audited",
 			Severity:   gas.Low,
