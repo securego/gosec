@@ -33,13 +33,13 @@ func TestUnsafe(t *testing.T) {
         	"unsafe"
         )
 
-		type Fake struct{}
+        type Fake struct{}
 
-		func (Fake) Good() {}
+        func (Fake) Good() {}
 
         func main() {
-			unsafeM := Fake{}
-			unsafeM.Good()
+        	unsafeM := Fake{}
+        	unsafeM.Good()
         	intArray := [...]int{1, 2}
         	fmt.Printf("\nintArray: %v\n", intArray)
         	intPtr := &intArray[0]
