@@ -139,8 +139,8 @@ func main() {
 	flag.Usage = usage
 
 	//  Exclude files
-	var excluded filelist = []string{"*_test.go"}
-	flag.Var(&excluded, "skip", "File pattern to exclude from scan")
+	excluded := newFileList("**/*_test.go")
+	flag.Var(excluded, "skip", "File pattern to exclude from scan")
 
 	incRules := ""
 	flag.StringVar(&incRules, "include", "", "Comma separated list of rules IDs to include. (see rule list)")

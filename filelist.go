@@ -15,59 +15,57 @@
 package main
 
 import (
-	"os"
-	"path"
 	"path/filepath"
 	"strings"
 )
 
-type filelist []string
-
-func (f *filelist) String() string {
-	return strings.Join([]string(*f), ", ")
+type filelist struct {
+	paths map[string]bool
+	globs []string
 }
 
-func (f *filelist) Set(val string) error {
-	*f = append(*f, val)
+func newFileList(paths ...string) *filelist {
+
+	f := &filelist{
+		make(map[string]bool),
+		make([]string, 0),
+	}
+
+	for _, path := range paths {
+		f.Set(path)
+	}
+	return f
+}
+
+func (f *filelist) String() string {
+	return strings.Join(f.globs, ", ")
+}
+
+func (f *filelist) Set(path string) error {
+	f.globs = append(f.globs, path)
+	matches, e := filepath.Glob(path)
+	if e != nil {
+		return e
+	}
+	for _, each := range matches {
+		abs, e := filepath.Abs(each)
+		if e != nil {
+			return e
+		}
+		f.paths[abs] = true
+	}
 	return nil
 }
 
-func (f *filelist) Contains(pathname string) bool {
-
-	// Ignore dot files
-	_, filename := filepath.Split(pathname)
-	if strings.HasPrefix(filename, ".") {
-		return true
-	}
-
-	cwd, _ := os.Getwd()
-	abs, _ := filepath.Abs(pathname)
-
-	for _, pattern := range *f {
-
-		// Also check working directory
-		rel := path.Join(cwd, pattern)
-
-		// Match pattern directly
-		if matched, _ := filepath.Match(pattern, pathname); matched {
-			return true
-		}
-		// Also check pattern relative to working directory
-		if matched, _ := filepath.Match(rel, pathname); matched {
-			return true
-		}
-
-		// match file suffixes ie. *_test.go
-		if matched, _ := filepath.Match(filepath.Join("**", pattern), pathname); matched {
-			return true
-		}
-
-		// Finally try absolute path
-		st, e := os.Stat(rel)
-		if os.IsExist(e) && st.IsDir() && strings.HasPrefix(abs, rel) {
-			return true
-		}
-
-	}
-	return false
+func (f filelist) Contains(path string) bool {
+	_, present := f.paths[path]
+	return present
 }
+
+/*
+func (f filelist) Dump() {
+	for k, _ := range f.paths {
+		println(k)
+	}
+}
+*/
