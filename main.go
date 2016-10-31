@@ -227,4 +227,9 @@ func main() {
 	} else {
 		output.CreateReport(os.Stdout, *flagFormat, &analyzer)
 	}
+
+	// Do we have an issue? If so exit 1
+	if len(analyzer.Issues) > 0 {
+		os.Exit(1)
+	}
 }
