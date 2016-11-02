@@ -19,7 +19,7 @@ import (
 	"go/ast"
 	"regexp"
 
-	gas "github.com/HewlettPackard/gas/core"
+	gas "github.com/GoASTScanner/gas/core"
 )
 
 type WeakKeyStrength struct {

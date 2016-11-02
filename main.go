@@ -25,8 +25,8 @@ import (
 	"sort"
 	"strings"
 
-	gas "github.com/HewlettPackard/gas/core"
-	"github.com/HewlettPackard/gas/output"
+	gas "github.com/GoASTScanner/gas/core"
+	"github.com/GoASTScanner/gas/output"
 )
 
 // #nosec flag

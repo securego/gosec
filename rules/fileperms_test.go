@@ -17,7 +17,7 @@ package rules
 import (
 	"testing"
 
-	gas "github.com/HewlettPackard/gas/core"
+	gas "github.com/GoASTScanner/gas/core"
 )
 
 func TestChmod(t *testing.T) {

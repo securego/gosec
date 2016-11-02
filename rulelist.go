@@ -15,11 +15,10 @@
 package main
 
 import (
-	"fmt"
 	"go/ast"
 
-	gas "github.com/HewlettPackard/gas/core"
-	"github.com/HewlettPackard/gas/rules"
+	gas "github.com/GoASTScanner/gas/core"
+	"github.com/GoASTScanner/gas/rules"
 )
 
 type RuleInfo struct {

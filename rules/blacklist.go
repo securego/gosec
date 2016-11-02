@@ -17,7 +17,7 @@ package rules
 import (
 	"go/ast"
 
-	gas "github.com/HewlettPackard/gas/core"
+	gas "github.com/GoASTScanner/gas/core"
 )
 
 type BlacklistImport struct {

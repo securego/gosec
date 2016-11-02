@@ -18,7 +18,7 @@ import (
 	"go/ast"
 	"regexp"
 
-	gas "github.com/HewlettPackard/gas/core"
+	gas "github.com/GoASTScanner/gas/core"
 )
 
 // Looks for net.Listen("0.0.0.0") or net.Listen(":8080")
