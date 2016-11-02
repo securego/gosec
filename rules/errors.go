@@ -19,7 +19,7 @@ import (
 	"go/types"
 	"reflect"
 
-	gas "github.com/HewlettPackard/gas/core"
+	gas "github.com/GoASTScanner/gas/core"
 )
 
 type NoErrorCheck struct {

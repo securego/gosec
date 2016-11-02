@@ -21,7 +21,7 @@ import (
 	"strconv"
 	"text/template"
 
-	gas "github.com/HewlettPackard/gas/core"
+	gas "github.com/GoASTScanner/gas/core"
 )
 
 // The output format for reported issues
