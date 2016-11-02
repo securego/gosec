@@ -55,3 +55,26 @@ func TestRandBad(t *testing.T) {
 
 	checkTestResults(t, issues, 1, "Use of weak random number generator (math/rand instead of crypto/rand)")
 }
+
+func TestRandRenamed(t *testing.T) {
+	config := map[string]interface{}{"ignoreNosec": false}
+	analyzer := gas.NewAnalyzer(config, nil)
+	analyzer.AddRule(NewWeakRandCheck(config))
+
+	issues := gasTestRunner(
+		`
+		package samples
+
+		import (
+			"crypto/rand"
+			mrand "math/rand"
+		)
+
+
+		func main() {
+			good, err := rand.Read(nil)
+			i := mrand.Int()
+		}`, analyzer)
+
+	checkTestResults(t, issues, 0, "Not expected to match")
+}
