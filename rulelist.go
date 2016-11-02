@@ -67,8 +67,6 @@ func AddRules(analyzer *gas.Analyzer, conf map[string]interface{}) {
 	inc := conf["include"].([]string)
 	exc := conf["exclude"].([]string)
 
-	fmt.Println(len(inc))
-
 	// add included rules
 	if len(inc) == 0 {
 		all = GetFullRuleList()
