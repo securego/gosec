@@ -30,10 +30,12 @@ type SqlStrConcat struct {
 	SqlStatement
 }
 
-// see if we can figgure out what it is
+// see if we can figure out what it is
 func (s *SqlStrConcat) checkObject(n *ast.Ident) bool {
 	if n.Obj != nil {
-		return (n.Obj.Kind != ast.Var || n.Obj.Kind != ast.Fun)
+		// TODO(gm): Revisit logic used here.
+		//return (n.Obj.Kind != ast.Var || n.Obj.Kind != ast.Fun)
+		return n.Obj.Kind != ast.Var && n.Obj.Kind != ast.Fun
 	}
 	return false
 }
