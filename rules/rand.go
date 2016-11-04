@@ -16,8 +16,8 @@ package rules
 
 import (
 	"go/ast"
+	"go/types"
 	"regexp"
-	"strings"
 
 	gas "github.com/GoASTScanner/gas/core"
 )
@@ -28,69 +28,38 @@ type WeakRand struct {
 	packagePath string
 }
 
-type pkgFunc struct {
-	packagePath string
-	funcName    string
-}
-
-// pkgId takes an import line and returns the identifier used
-// for that package in the rest of the file
-func pkgId(i *ast.ImportSpec) string {
-	if i.Name != nil {
-		return i.Name.String()
-	}
-	trim := strings.Trim(i.Path.Value, `"`)
-	a := strings.Split(trim, "/")
-	return a[len(a)-1]
-}
-
-// importIds returns a map of import names to their full paths
-func importIds(f *ast.File) map[string]string {
-	pkgs := make(map[string]string)
-	for _, v := range f.Imports {
-		pkgs[pkgId(v)] = strings.Trim(v.Path.Value, `"`)
-	}
-	return pkgs
-}
-
-// matchPkgFunc will return package level function calls split
-// by full package path and function name
-func matchPkgFunc(n ast.Node, c *gas.Context) *pkgFunc {
+func matchFuncCall(n ast.Node, c *gas.Context) (types.Object, *ast.Ident) {
 	call, ok := n.(*ast.CallExpr)
 	if !ok {
-		return nil
+		return nil, nil
 	}
 
 	sel, ok := call.Fun.(*ast.SelectorExpr)
 	if !ok {
-		return nil
+		return nil, nil
 	}
 
 	id, ok := sel.X.(*ast.Ident)
 	if !ok {
-		return nil
+		return nil, nil
 	}
 
-	if id.Obj != nil {
-		return nil
-	}
-
-	i := importIds(c.Root)
-	v, ok := i[id.Name]
-	if !ok {
-		return nil
-	}
-
-	return &pkgFunc{
-		packagePath: v,
-		funcName:    sel.Sel.String(),
-	}
+	return c.Info.ObjectOf(id), sel.Sel
 }
 
 func (w *WeakRand) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
-	call := matchPkgFunc(n, c)
+	o, f := matchFuncCall(n, c)
 
-	if call != nil && call.packagePath == w.packagePath && w.pattern.MatchString(call.funcName) {
+	if o == nil || f == nil {
+		return nil, nil
+	}
+
+	pkg, ok := o.(*types.PkgName)
+	if !ok {
+		return nil, nil
+	}
+
+	if pkg.Imported().Path() == w.packagePath && w.pattern.MatchString(f.String()) {
 		return gas.NewIssue(c, n, w.What, w.Severity, w.Confidence), nil
 	}
 
