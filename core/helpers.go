@@ -55,20 +55,9 @@ func MatchCall(n ast.Node, r *regexp.Regexp) *ast.CallExpr {
 // 	node, obj := MatchCall(n, ctx, "math/rand", "Read")
 //
 func MatchCallByObject(n ast.Node, c *Context, pkg, name string) (*ast.CallExpr, types.Object) {
-	var obj types.Object
-	switch node := n.(type) {
-	case *ast.CallExpr:
-		switch fn := node.Fun.(type) {
-		case *ast.Ident:
-			obj = c.Info.Uses[fn]
-		case *ast.SelectorExpr:
-			obj = c.Info.Uses[fn.Sel]
-		default:
-			obj = nil
-		}
-		if obj != nil && obj.Pkg().Path() == pkg && obj.Name() == name {
-			return node, obj
-		}
+	call, obj := GetCallObject(n, c)
+	if obj != nil && obj.Pkg().Path() == pkg && obj.Name() == name {
+		return call, obj
 	}
 	return nil, nil
 }
@@ -112,4 +101,20 @@ func GetString(n ast.Node) (string, error) {
 		return strconv.Unquote(node.Value)
 	}
 	return "", fmt.Errorf("Unexpected AST node type: %T", n)
+}
+
+// GetCallObject returns the object and call expression and associated
+// object for a given AST node. nil, nil will be returned if the
+// object cannot be resolved.
+func GetCallObject(n ast.Node, ctx *Context) (*ast.CallExpr, types.Object) {
+	switch node := n.(type) {
+	case *ast.CallExpr:
+		switch fn := node.Fun.(type) {
+		case *ast.Ident:
+			return node, ctx.Info.Uses[fn]
+		case *ast.SelectorExpr:
+			return node, ctx.Info.Uses[fn.Sel]
+		}
+	}
+	return nil, nil
 }
