@@ -33,12 +33,16 @@ import (
 var flagIgnoreNoSec = flag.Bool("nosec", false, "Ignores #nosec comments when set")
 
 // format output
-var flagFormat = flag.String("fmt", "text", "Set output format. Valid options are: json, csv, or text")
+var flagFormat = flag.String("fmt", "text", "Set output format. Valid options are: json, csv, html, or text")
 
 // output file
 var flagOutput = flag.String("out", "", "Set output file for results")
 
+// config file
 var flagConfig = flag.String("conf", "", "Path to optional config file")
+
+// quiet
+var flagQuiet = flag.Bool("quiet", false, "Only show output when errors are found")
 
 var usageText = `
 GAS - Go AST Scanner
@@ -216,6 +220,12 @@ func main() {
 		}
 	}
 
+	issuesFound := len(analyzer.Issues) > 0
+	// Exit quietly if nothing was found
+	if !issuesFound && *flagQuiet {
+		os.Exit(0)
+	}
+
 	// Create output report
 	if *flagOutput != "" {
 		outfile, err := os.Create(*flagOutput)
@@ -229,7 +239,7 @@ func main() {
 	}
 
 	// Do we have an issue? If so exit 1
-	if len(analyzer.Issues) > 0 {
+	if issuesFound {
 		os.Exit(1)
 	}
 }
