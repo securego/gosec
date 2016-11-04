@@ -16,6 +16,7 @@ package rules
 
 import (
 	"go/ast"
+	"go/types"
 	"regexp"
 
 	gas "github.com/GoASTScanner/gas/core"
@@ -24,25 +25,50 @@ import (
 type WeakRand struct {
 	gas.MetaData
 	pattern     *regexp.Regexp
-	packageName string
 	packagePath string
 }
 
-func (w *WeakRand) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
-	if call := gas.MatchCall(n, w.pattern); call != nil {
-		for _, pkg := range c.Pkg.Imports() {
-			if pkg.Name() == w.packageName && pkg.Path() == w.packagePath {
-				return gas.NewIssue(c, n, w.What, w.Severity, w.Confidence), nil
-			}
-		}
+func matchFuncCall(n ast.Node, c *gas.Context) (types.Object, *ast.Ident) {
+	call, ok := n.(*ast.CallExpr)
+	if !ok {
+		return nil, nil
 	}
+
+	sel, ok := call.Fun.(*ast.SelectorExpr)
+	if !ok {
+		return nil, nil
+	}
+
+	id, ok := sel.X.(*ast.Ident)
+	if !ok {
+		return nil, nil
+	}
+
+	return c.Info.ObjectOf(id), sel.Sel
+}
+
+func (w *WeakRand) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
+	o, f := matchFuncCall(n, c)
+
+	if o == nil || f == nil {
+		return nil, nil
+	}
+
+	pkg, ok := o.(*types.PkgName)
+	if !ok {
+		return nil, nil
+	}
+
+	if pkg.Imported().Path() == w.packagePath && w.pattern.MatchString(f.String()) {
+		return gas.NewIssue(c, n, w.What, w.Severity, w.Confidence), nil
+	}
+
 	return nil, nil
 }
 
 func NewWeakRandCheck(conf map[string]interface{}) (r gas.Rule, n ast.Node) {
 	r = &WeakRand{
-		pattern:     regexp.MustCompile(`^rand\.Read$`),
-		packageName: "rand",
+		pattern:     regexp.MustCompile(`^Read$`),
 		packagePath: "math/rand",
 		MetaData: gas.MetaData{
 			Severity:   gas.High,
