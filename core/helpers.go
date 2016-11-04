@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+	"go/types"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -44,6 +45,32 @@ func MatchCall(n ast.Node, r *regexp.Regexp) *ast.CallExpr {
 		return n.(*ast.CallExpr)
 	}
 	return nil
+}
+
+// MatchCallByObject ses the type checker to resolve the associated object with a
+// particular *ast.CallExpr. This object is used to determine if the
+// package and identifier name matches the passed in parameters.
+//
+// Usage:
+// 	node, obj := MatchCall(n, ctx, "math/rand", "Read")
+//
+func MatchCallByObject(n ast.Node, c *Context, pkg, name string) (*ast.CallExpr, types.Object) {
+	var obj types.Object
+	switch node := n.(type) {
+	case *ast.CallExpr:
+		switch fn := node.Fun.(type) {
+		case *ast.Ident:
+			obj = c.Info.Uses[fn]
+		case *ast.SelectorExpr:
+			obj = c.Info.Uses[fn.Sel]
+		default:
+			obj = nil
+		}
+		if obj != nil && obj.Pkg().Path() == pkg && obj.Name() == name {
+			return node, obj
+		}
+	}
+	return nil, nil
 }
 
 // MatchCompLit will match an ast.CompositeLit if its string value obays the given regex.
