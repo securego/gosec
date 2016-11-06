@@ -70,16 +70,23 @@ func (u *utilities) run(args ...string) {
 	}
 }
 
+func shouldSkip(path string) bool {
+	st, e := os.Stat(path)
+	if e != nil {
+		fmt.Fprintf(os.Stderr, "Skipping: %s - %s\n", path, e)
+		return true
+	}
+	if st.IsDir() {
+		fmt.Fprintf(os.Stderr, "Skipping: %s - directory\n", path)
+		return true
+	}
+	return false
+}
+
 func dumpAst(files ...string) {
 	for _, arg := range files {
 		// Ensure file exists and not a directory
-		st, e := os.Stat(arg)
-		if e != nil {
-			fmt.Fprintf(os.Stderr, "Skipping: %s - %s\n", arg, e)
-			continue
-		}
-		if st.IsDir() {
-			fmt.Fprintf(os.Stderr, "Skipping: %s - directory\n", arg)
+		if shouldSkip(arg) {
 			continue
 		}
 
@@ -142,6 +149,9 @@ func printObject(obj types.Object) {
 func dumpCallObj(files ...string) {
 
 	for _, file := range files {
+		if shouldSkip(file) {
+			continue
+		}
 		context := createContext(file)
 		ast.Inspect(context.root, func(n ast.Node) bool {
 			var obj types.Object
@@ -163,6 +173,9 @@ func dumpCallObj(files ...string) {
 
 func dumpUses(files ...string) {
 	for _, file := range files {
+		if shouldSkip(file) {
+			continue
+		}
 		context := createContext(file)
 		for ident, obj := range context.info.Uses {
 			fmt.Printf("IDENT: %v, OBJECT: %v\n", ident, obj)
@@ -172,6 +185,9 @@ func dumpUses(files ...string) {
 
 func dumpTypes(files ...string) {
 	for _, file := range files {
+		if shouldSkip(file) {
+			continue
+		}
 		context := createContext(file)
 		for expr, tv := range context.info.Types {
 			fmt.Printf("EXPR: %v, TYPE: %v\n", expr, tv)
@@ -181,6 +197,9 @@ func dumpTypes(files ...string) {
 
 func dumpDefs(files ...string) {
 	for _, file := range files {
+		if shouldSkip(file) {
+			continue
+		}
 		context := createContext(file)
 		for ident, obj := range context.info.Defs {
 			fmt.Printf("IDENT: %v, OBJ: %v\n", ident, obj)
@@ -190,6 +209,9 @@ func dumpDefs(files ...string) {
 
 func dumpComments(files ...string) {
 	for _, file := range files {
+		if shouldSkip(file) {
+			continue
+		}
 		context := createContext(file)
 		for _, group := range context.comments.Comments() {
 			fmt.Println(group.Text())
