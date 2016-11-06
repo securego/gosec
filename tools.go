@@ -36,6 +36,10 @@ func newUtils() *utilities {
 	utils := make(map[string]command)
 	utils["ast"] = dumpAst
 	utils["callobj"] = dumpCallObj
+	utils["uses"] = dumpUses
+	utils["types"] = dumpTypes
+	utils["defs"] = dumpDefs
+	utils["comments"] = dumpComments
 	return &utilities{utils, make([]string, 0)}
 }
 
@@ -143,9 +147,9 @@ func dumpCallObj(files ...string) {
 			var obj types.Object
 			switch node := n.(type) {
 			case *ast.Ident:
-				obj = context.info.Uses[node]
+				obj = context.info.ObjectOf(node) //context.info.Uses[node]
 			case *ast.SelectorExpr:
-				obj = context.info.Uses[node.Sel]
+				obj = context.info.ObjectOf(node.Sel) //context.info.Uses[node.Sel]
 			default:
 				obj = nil
 			}
@@ -154,5 +158,41 @@ func dumpCallObj(files ...string) {
 			}
 			return true
 		})
+	}
+}
+
+func dumpUses(files ...string) {
+	for _, file := range files {
+		context := createContext(file)
+		for ident, obj := range context.info.Uses {
+			fmt.Printf("IDENT: %v, OBJECT: %v\n", ident, obj)
+		}
+	}
+}
+
+func dumpTypes(files ...string) {
+	for _, file := range files {
+		context := createContext(file)
+		for expr, tv := range context.info.Types {
+			fmt.Printf("EXPR: %v, TYPE: %v\n", expr, tv)
+		}
+	}
+}
+
+func dumpDefs(files ...string) {
+	for _, file := range files {
+		context := createContext(file)
+		for ident, obj := range context.info.Defs {
+			fmt.Printf("IDENT: %v, OBJ: %v\n", ident, obj)
+		}
+	}
+}
+
+func dumpComments(files ...string) {
+	for _, file := range files {
+		context := createContext(file)
+		for _, group := range context.comments.Comments() {
+			fmt.Println(group.Text())
+		}
 	}
 }
