@@ -52,11 +52,11 @@ func MatchCall(n ast.Node, r *regexp.Regexp) *ast.CallExpr {
 // package and identifier name matches the passed in parameters.
 //
 // Usage:
-// 	node, obj := MatchCall(n, ctx, "math/rand", "Read")
+// 	node, obj := MatchCallByPackage(n, ctx, "math/rand", "Read")
 //
-func MatchCallByObject(n ast.Node, c *Context, pkg, name string) (*ast.CallExpr, types.Object) {
+func MatchCallByPackage(n ast.Node, c *Context, pkg, name string) (*ast.CallExpr, types.Object) {
 	call, obj := GetCallObject(n, c)
-	if obj != nil && obj.Pkg().Path() == pkg && obj.Name() == name {
+	if obj != nil && obj.Pkg() != nil && obj.Pkg().Path() == pkg && obj.Name() == name {
 		return call, obj
 	}
 	return nil, nil

@@ -16,50 +16,20 @@ package rules
 
 import (
 	"go/ast"
-	"go/types"
-	"regexp"
 
 	gas "github.com/GoASTScanner/gas/core"
 )
 
 type WeakRand struct {
 	gas.MetaData
-	pattern     *regexp.Regexp
+	funcName    string
 	packagePath string
 }
 
-func matchFuncCall(n ast.Node, c *gas.Context) (types.Object, *ast.Ident) {
-	call, ok := n.(*ast.CallExpr)
-	if !ok {
-		return nil, nil
-	}
-
-	sel, ok := call.Fun.(*ast.SelectorExpr)
-	if !ok {
-		return nil, nil
-	}
-
-	id, ok := sel.X.(*ast.Ident)
-	if !ok {
-		return nil, nil
-	}
-
-	return c.Info.ObjectOf(id), sel.Sel
-}
-
 func (w *WeakRand) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
-	o, f := matchFuncCall(n, c)
+	node, _ := gas.MatchCallByPackage(n, c, w.packagePath, w.funcName)
 
-	if o == nil || f == nil {
-		return nil, nil
-	}
-
-	pkg, ok := o.(*types.PkgName)
-	if !ok {
-		return nil, nil
-	}
-
-	if pkg.Imported().Path() == w.packagePath && w.pattern.MatchString(f.String()) {
+	if node != nil {
 		return gas.NewIssue(c, n, w.What, w.Severity, w.Confidence), nil
 	}
 
@@ -68,7 +38,7 @@ func (w *WeakRand) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 
 func NewWeakRandCheck(conf map[string]interface{}) (r gas.Rule, n ast.Node) {
 	r = &WeakRand{
-		pattern:     regexp.MustCompile(`^Read$`),
+		funcName:    "Read",
 		packagePath: "math/rand",
 		MetaData: gas.MetaData{
 			Severity:   gas.High,
