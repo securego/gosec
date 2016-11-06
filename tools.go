@@ -17,8 +17,10 @@ package main
 import (
 	"fmt"
 	"go/ast"
+	"go/importer"
 	"go/parser"
 	"go/token"
+	"go/types"
 	"os"
 	"strings"
 )
@@ -32,7 +34,8 @@ type utilities struct {
 // Custom commands / utilities to run instead of default analyzer
 func newUtils() *utilities {
 	utils := make(map[string]command)
-	utils["dump"] = dumpAst
+	utils["ast"] = dumpAst
+	utils["callobj"] = dumpCallObj
 	return &utilities{utils, make([]string, 0)}
 }
 
@@ -86,5 +89,70 @@ func dumpAst(files ...string) {
 
 		// Print the AST.
 		ast.Print(fset, f)
+	}
+}
+
+type context struct {
+	fileset  *token.FileSet
+	comments ast.CommentMap
+	info     *types.Info
+	pkg      *types.Package
+	config   *types.Config
+	root     *ast.File
+}
+
+func createContext(filename string) *context {
+	fileset := token.NewFileSet()
+	root, _ := parser.ParseFile(fileset, filename, nil, parser.ParseComments)
+	comments := ast.NewCommentMap(fileset, root, root.Comments)
+	info := &types.Info{
+		Types:      make(map[ast.Expr]types.TypeAndValue),
+		Defs:       make(map[*ast.Ident]types.Object),
+		Uses:       make(map[*ast.Ident]types.Object),
+		Selections: make(map[*ast.SelectorExpr]*types.Selection),
+		Scopes:     make(map[ast.Node]*types.Scope),
+		Implicits:  make(map[ast.Node]types.Object),
+	}
+	config := types.Config{Importer: importer.Default()}
+	pkg, _ := config.Check("main.go", fileset, []*ast.File{root}, info)
+	return &context{fileset, comments, info, pkg, &config, root}
+}
+
+func printObject(obj types.Object) {
+	fmt.Println("OBJECT")
+	if obj == nil {
+		fmt.Println("object is nil")
+		return
+	}
+	fmt.Printf("   Package = %v\n", obj.Pkg())
+	if obj.Pkg() != nil {
+		fmt.Println("   Path = ", obj.Pkg().Path())
+		fmt.Println("   Name = ", obj.Pkg().Name())
+		fmt.Println("   String = ", obj.Pkg().String())
+	}
+	fmt.Printf("   Name = %v\n", obj.Name())
+	fmt.Printf("   Type = %v\n", obj.Type())
+	fmt.Printf("   Id = %v\n", obj.Id())
+}
+
+func dumpCallObj(files ...string) {
+
+	for _, file := range files {
+		context := createContext(file)
+		ast.Inspect(context.root, func(n ast.Node) bool {
+			var obj types.Object
+			switch node := n.(type) {
+			case *ast.Ident:
+				obj = context.info.Uses[node]
+			case *ast.SelectorExpr:
+				obj = context.info.Uses[node.Sel]
+			default:
+				obj = nil
+			}
+			if obj != nil {
+				printObject(obj)
+			}
+			return true
+		})
 	}
 }
