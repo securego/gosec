@@ -40,6 +40,7 @@ func newUtils() *utilities {
 	utils["types"] = dumpTypes
 	utils["defs"] = dumpDefs
 	utils["comments"] = dumpComments
+	utils["imports"] = dumpImports
 	return &utilities{utils, make([]string, 0)}
 }
 
@@ -215,6 +216,21 @@ func dumpComments(files ...string) {
 		context := createContext(file)
 		for _, group := range context.comments.Comments() {
 			fmt.Println(group.Text())
+		}
+	}
+}
+
+func dumpImports(files ...string) {
+	for _, file := range files {
+		if shouldSkip(file) {
+			continue
+		}
+		context := createContext(file)
+		for _, pkg := range context.pkg.Imports() {
+			fmt.Println(pkg.Path(), pkg.Name())
+			for _, name := range pkg.Scope().Names() {
+				fmt.Println("  => ", name)
+			}
 		}
 	}
 }
