@@ -27,6 +27,13 @@ import (
 	"strings"
 )
 
+// ImportInfo is used to track aliased and initialization only imports.
+type ImportInfo struct {
+	Imported map[string]string
+	Aliased  map[string]string
+	InitOnly map[string]bool
+}
+
 // The Context is populated with data parsed from the source code as it is scanned.
 // It is passed through to all rule functions as they are called. Rules may use
 // this data in conjunction withe the encoutered AST node.
@@ -37,6 +44,7 @@ type Context struct {
 	Pkg      *types.Package
 	Root     *ast.File
 	Config   map[string]interface{}
+	Imports  *ImportInfo
 }
 
 // The Rule interface used by all rules supported by GAS.
@@ -77,8 +85,20 @@ func NewAnalyzer(conf map[string]interface{}, logger *log.Logger) Analyzer {
 		ignoreNosec: conf["ignoreNosec"].(bool),
 		ruleset:     make(RuleSet),
 		Issues:      make([]Issue, 0),
-		context:     Context{token.NewFileSet(), nil, nil, nil, nil, nil},
-		logger:      logger,
+		context: Context{
+			token.NewFileSet(),
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			&ImportInfo{
+				make(map[string]string),
+				make(map[string]string),
+				make(map[string]bool),
+			},
+		},
+		logger: logger,
 	}
 
 	// TODO(tkelsey): use the inc/exc lists
@@ -108,6 +128,10 @@ func (gas *Analyzer) process(filename string, source interface{}) error {
 		if err != nil {
 			gas.logger.Println("failed to check imports")
 			return err
+		}
+
+		for _, pkg := range gas.context.Pkg.Imports() {
+			gas.context.Imports.Imported[pkg.Path()] = pkg.Name()
 		}
 
 		ast.Walk(gas, root)
@@ -169,6 +193,20 @@ func (gas *Analyzer) ignore(n ast.Node) bool {
 // Rule methods added with AddRule will be invoked as necessary.
 func (gas *Analyzer) Visit(n ast.Node) ast.Visitor {
 	if !gas.ignore(n) {
+
+		// Track aliased and initialization imports
+		if imported, ok := n.(*ast.ImportSpec); ok {
+			if imported.Name != nil {
+				path := strings.Trim(imported.Path.Value, `"`)
+				if imported.Name.Name == "_" {
+					// Initialization import
+					gas.context.Imports.InitOnly[path] = true
+				} else {
+					// Aliased import
+					gas.context.Imports.Aliased[imported.Name.Name] = path
+				}
+			}
+		}
 		if val, ok := gas.ruleset[reflect.TypeOf(n)]; ok {
 			for _, rule := range val {
 				ret, err := rule.Match(n, &gas.context)

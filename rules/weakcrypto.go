@@ -16,33 +16,38 @@ package rules
 
 import (
 	"go/ast"
-	"regexp"
 
 	gas "github.com/GoASTScanner/gas/core"
 )
 
 type UsesWeakCryptography struct {
 	gas.MetaData
-	pattern *regexp.Regexp
+	blacklist map[string][]string
 }
 
 func (r *UsesWeakCryptography) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
-	if node := gas.MatchCall(n, r.pattern); node != nil {
-		return gas.NewIssue(c, n, r.What, r.Severity, r.Confidence), nil
+
+	for pkg, funcs := range r.blacklist {
+		if _, matched := gas.MatchCallByPackage(n, c, pkg, funcs...); matched {
+			return gas.NewIssue(c, n, r.What, r.Severity, r.Confidence), nil
+		}
 	}
 	return nil, nil
 }
 
 // Uses des.* md5.* or rc4.*
-func NewUsesWeakCryptography(conf map[string]interface{}) (r gas.Rule, n ast.Node) {
-	r = &UsesWeakCryptography{
-		pattern: regexp.MustCompile(`des\.NewCipher|des\.NewTripleDESCipher|md5\.New|md5\.Sum|rc4\.NewCipher`),
+func NewUsesWeakCryptography(conf map[string]interface{}) (gas.Rule, ast.Node) {
+	calls := make(map[string][]string)
+	calls["crypto/des"] = []string{"NewCipher", "NewTripleDESCipher"}
+	calls["crypto/md5"] = []string{"New", "Sum"}
+	calls["crypto/rc4"] = []string{"NewCipher"}
+	rule := &UsesWeakCryptography{
+		blacklist: calls,
 		MetaData: gas.MetaData{
 			Severity:   gas.Medium,
 			Confidence: gas.High,
 			What:       "Use of weak cryptographic primitive",
 		},
 	}
-	n = (*ast.CallExpr)(nil)
-	return
+	return rule, (*ast.CallExpr)(nil)
 }
