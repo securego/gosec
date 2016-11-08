@@ -47,19 +47,45 @@ func MatchCall(n ast.Node, r *regexp.Regexp) *ast.CallExpr {
 	return nil
 }
 
-// MatchCallByObject ses the type checker to resolve the associated object with a
-// particular *ast.CallExpr. This object is used to determine if the
-// package and identifier name matches the passed in parameters.
+// MatchCallByPackage ensures that the specified package is imported,
+// adjusts the name for any aliases and ignores cases that are
+// initialization only imports.
 //
 // Usage:
-// 	node, obj := MatchCall(n, ctx, "math/rand", "Read")
+// 	node, matched := MatchCallByPackage(n, ctx, "math/rand", "Read")
 //
-func MatchCallByObject(n ast.Node, c *Context, pkg, name string) (*ast.CallExpr, types.Object) {
-	call, obj := GetCallObject(n, c)
-	if obj != nil && obj.Pkg().Path() == pkg && obj.Name() == name {
-		return call, obj
+func MatchCallByPackage(n ast.Node, c *Context, pkg string, names ...string) (*ast.CallExpr, bool) {
+
+	importName, imported := c.Imports.Imported[pkg]
+	if !imported {
+		return nil, false
 	}
-	return nil, nil
+
+	if _, initonly := c.Imports.InitOnly[pkg]; initonly {
+		return nil, false
+	}
+
+	if alias, ok := c.Imports.Aliased[pkg]; ok {
+		importName = alias
+	}
+
+	switch node := n.(type) {
+	case *ast.CallExpr:
+		switch fn := node.Fun.(type) {
+		case *ast.SelectorExpr:
+			switch expr := fn.X.(type) {
+			case *ast.Ident:
+				if expr.Name == importName {
+					for _, name := range names {
+						if fn.Sel.Name == name {
+							return node, true
+						}
+					}
+				}
+			}
+		}
+	}
+	return nil, false
 }
 
 // MatchCompLit will match an ast.CompositeLit if its string value obays the given regex.

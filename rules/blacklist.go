@@ -27,7 +27,7 @@ type BlacklistImport struct {
 
 func (r *BlacklistImport) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err error) {
 	if node, ok := n.(*ast.ImportSpec); ok {
-		if r.Path == node.Path.Value {
+		if r.Path == node.Path.Value && node.Name.String() != "_" {
 			return gas.NewIssue(c, n, r.What, r.Severity, r.Confidence), nil
 		}
 	}
