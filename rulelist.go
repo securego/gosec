@@ -33,7 +33,7 @@ func GetFullRuleList() map[string]RuleInfo {
 		"G101": RuleInfo{"Look for hardcoded credentials", rules.NewHardcodedCredentials},
 		"G102": RuleInfo{"Bind to all interfaces", rules.NewBindsToAllNetworkInterfaces},
 		"G103": RuleInfo{"Audit the use of unsafe block", rules.NewUsingUnsafe},
-		"G104": RuleInfo{"Audit errors not checked", rules.NewTemplateCheck},
+		"G104": RuleInfo{"Audit errors not checked", rules.NewNoErrorCheck},
 
 		// injection
 		"G201": RuleInfo{"SQL query construction using format string", rules.NewSqlStrFormat},
