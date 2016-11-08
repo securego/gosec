@@ -27,9 +27,7 @@ type WeakRand struct {
 }
 
 func (w *WeakRand) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
-	node, _ := gas.MatchCallByPackage(n, c, w.packagePath, w.funcName)
-
-	if node != nil {
+	if _, matched := gas.MatchCallByPackage(n, c, w.packagePath, w.funcName); matched {
 		return gas.NewIssue(c, n, w.What, w.Severity, w.Confidence), nil
 	}
 

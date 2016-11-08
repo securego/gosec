@@ -203,7 +203,7 @@ func (gas *Analyzer) Visit(n ast.Node) ast.Visitor {
 					gas.context.Imports.InitOnly[path] = true
 				} else {
 					// Aliased import
-					gas.context.Imports.Aliased[imported.Name.Name] = path
+					gas.context.Imports.Aliased[path] = imported.Name.Name
 				}
 			}
 		}
