@@ -39,3 +39,43 @@ func TestHardcoded(t *testing.T) {
 
 	checkTestResults(t, issues, 1, "Potential hardcoded credentials")
 }
+
+func TestHardcodedGlobalVar(t *testing.T) {
+	config := map[string]interface{}{"ignoreNosec": false}
+	analyzer := gas.NewAnalyzer(config, nil)
+	analyzer.AddRule(NewHardcodedCredentials(config))
+
+	issues := gasTestRunner(`
+		package samples
+
+		import "fmt"
+
+		var password = "admin"
+
+		func main() {
+			username := "admin"
+			fmt.Println("Doing something with: ", username, password)
+		}`, analyzer)
+
+	checkTestResults(t, issues, 1, "Potential hardcoded credentials")
+}
+
+func TestHardcodedConstant(t *testing.T) {
+	config := map[string]interface{}{"ignoreNosec": false}
+	analyzer := gas.NewAnalyzer(config, nil)
+	analyzer.AddRule(NewHardcodedCredentials(config))
+
+	issues := gasTestRunner(`
+		package samples
+
+		import "fmt"
+
+		const password = "secret"
+
+		func main() {
+			username := "admin"
+			fmt.Println("Doing something with: ", username, password)
+		}`, analyzer)
+
+	checkTestResults(t, issues, 1, "Potential hardcoded credentials")
+}

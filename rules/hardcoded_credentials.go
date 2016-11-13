@@ -15,43 +15,71 @@
 package rules
 
 import (
-	"go/ast"
-	"regexp"
-
 	gas "github.com/GoASTScanner/gas/core"
+	"go/ast"
+	"go/token"
+	"regexp"
 )
 
-type CredsAssign struct {
+type Credentials struct {
 	gas.MetaData
 	pattern *regexp.Regexp
 }
 
-func (r *CredsAssign) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err error) {
-	if node, ok := n.(*ast.AssignStmt); ok {
-		for _, i := range node.Lhs {
-			if ident, ok := i.(*ast.Ident); ok {
-				if r.pattern.MatchString(ident.Name) {
-					for _, e := range node.Rhs {
-						if _, ok := e.(*ast.BasicLit); ok {
-							return gas.NewIssue(c, n, r.What, r.Severity, r.Confidence), nil
-						}
+func (r *Credentials) Match(n ast.Node, ctx *gas.Context) (*gas.Issue, error) {
+	switch node := n.(type) {
+	case *ast.AssignStmt:
+		return r.matchAssign(node, ctx)
+	case *ast.GenDecl:
+		return r.matchGenDecl(node, ctx)
+	}
+	return nil, nil
+}
+
+func (r *Credentials) matchAssign(assign *ast.AssignStmt, ctx *gas.Context) (*gas.Issue, error) {
+	for _, i := range assign.Lhs {
+		if ident, ok := i.(*ast.Ident); ok {
+			if r.pattern.MatchString(ident.Name) {
+				for _, e := range assign.Rhs {
+					if _, ok := e.(*ast.BasicLit); ok {
+						return gas.NewIssue(ctx, assign, r.What, r.Severity, r.Confidence), nil
 					}
 				}
 			}
 		}
 	}
-	return
+	return nil, nil
 }
 
-func NewHardcodedCredentials(conf map[string]interface{}) (r gas.Rule, n ast.Node) {
-	r = &CredsAssign{
-		pattern: regexp.MustCompile(`(?i)passwd|pass|password|pwd|secret|token`),
+func (r *Credentials) matchGenDecl(decl *ast.GenDecl, ctx *gas.Context) (*gas.Issue, error) {
+	if decl.Tok != token.CONST && decl.Tok != token.VAR {
+		return nil, nil
+	}
+	for _, spec := range decl.Specs {
+		if valueSpec, ok := spec.(*ast.ValueSpec); ok {
+			for index, ident := range valueSpec.Names {
+				if r.pattern.MatchString(ident.Name) {
+					if _, ok := valueSpec.Values[index].(*ast.BasicLit); ok {
+						return gas.NewIssue(ctx, decl, r.What, r.Severity, r.Confidence), nil
+					}
+				}
+			}
+		}
+	}
+	return nil, nil
+}
+
+func NewHardcodedCredentials(conf map[string]interface{}) (gas.Rule, []ast.Node) {
+	pattern := `(?i)passwd|pass|password|pwd|secret|token`
+	if val, ok := conf["G101"]; ok {
+		pattern = val.(string)
+	}
+	return &Credentials{
+		pattern: regexp.MustCompile(pattern),
 		MetaData: gas.MetaData{
 			What:       "Potential hardcoded credentials",
 			Confidence: gas.Low,
 			Severity:   gas.High,
 		},
-	}
-	n = (*ast.AssignStmt)(nil)
-	return
+	}, []ast.Node{(*ast.AssignStmt)(nil), (*ast.GenDecl)(nil)}
 }
