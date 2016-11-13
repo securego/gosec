@@ -23,7 +23,7 @@ import (
 
 type RuleInfo struct {
 	description string
-	build       func(map[string]interface{}) (gas.Rule, ast.Node)
+	build       func(map[string]interface{}) (gas.Rule, []ast.Node)
 }
 
 // GetFullRuleList get the full list of all rules available to GAS

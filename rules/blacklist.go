@@ -34,54 +34,46 @@ func (r *BlacklistImport) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err 
 	return nil, nil
 }
 
-func NewBlacklist_crypto_md5(conf map[string]interface{}) (r gas.Rule, n ast.Node) {
-	r = &BlacklistImport{
+func NewBlacklist_crypto_md5(conf map[string]interface{}) (gas.Rule, []ast.Node) {
+	return &BlacklistImport{
 		MetaData: gas.MetaData{
 			Severity:   gas.High,
 			Confidence: gas.High,
 			What:       "Use of weak cryptographic primitive",
 		},
 		Path: `"crypto/md5"`,
-	}
-	n = (*ast.ImportSpec)(nil)
-	return
+	}, []ast.Node{(*ast.ImportSpec)(nil)}
 }
 
-func NewBlacklist_crypto_des(conf map[string]interface{}) (r gas.Rule, n ast.Node) {
-	r = &BlacklistImport{
+func NewBlacklist_crypto_des(conf map[string]interface{}) (gas.Rule, []ast.Node) {
+	return &BlacklistImport{
 		MetaData: gas.MetaData{
 			Severity:   gas.High,
 			Confidence: gas.High,
 			What:       "Use of weak cryptographic primitive",
 		},
 		Path: `"crypto/des"`,
-	}
-	n = (*ast.ImportSpec)(nil)
-	return
+	}, []ast.Node{(*ast.ImportSpec)(nil)}
 }
 
-func NewBlacklist_crypto_rc4(conf map[string]interface{}) (r gas.Rule, n ast.Node) {
-	r = &BlacklistImport{
+func NewBlacklist_crypto_rc4(conf map[string]interface{}) (gas.Rule, []ast.Node) {
+	return &BlacklistImport{
 		MetaData: gas.MetaData{
 			Severity:   gas.High,
 			Confidence: gas.High,
 			What:       "Use of weak cryptographic primitive",
 		},
 		Path: `"crypto/rc4"`,
-	}
-	n = (*ast.ImportSpec)(nil)
-	return
+	}, []ast.Node{(*ast.ImportSpec)(nil)}
 }
 
-func NewBlacklist_net_http_cgi(conf map[string]interface{}) (r gas.Rule, n ast.Node) {
-	r = &BlacklistImport{
+func NewBlacklist_net_http_cgi(conf map[string]interface{}) (gas.Rule, []ast.Node) {
+	return &BlacklistImport{
 		MetaData: gas.MetaData{
 			Severity:   gas.High,
 			Confidence: gas.High,
-			What:       "Go code running under CGI is vulnerable to Httpoxy attack. (CVE-2016-5386)",
+			What:       "Go versions < 1.6.3 are vulnerable to Httpoxy attack: (CVE-2016-5386)",
 		},
 		Path: `"net/http/cgi"`,
-	}
-	n = (*ast.ImportSpec)(nil)
-	return
+	}, []ast.Node{(*ast.ImportSpec)(nil)}
 }

@@ -39,8 +39,8 @@ func (r *BindsToAllNetworkInterfaces) Match(n ast.Node, c *gas.Context) (gi *gas
 	return
 }
 
-func NewBindsToAllNetworkInterfaces(conf map[string]interface{}) (r gas.Rule, n ast.Node) {
-	r = &BindsToAllNetworkInterfaces{
+func NewBindsToAllNetworkInterfaces(conf map[string]interface{}) (gas.Rule, []ast.Node) {
+	return &BindsToAllNetworkInterfaces{
 		call:    regexp.MustCompile(`^net\.Listen$`),
 		pattern: regexp.MustCompile(`^(0.0.0.0|:).*$`),
 		MetaData: gas.MetaData{
@@ -48,7 +48,5 @@ func NewBindsToAllNetworkInterfaces(conf map[string]interface{}) (r gas.Rule, n 
 			Confidence: gas.High,
 			What:       "Binds to all network interfaces",
 		},
-	}
-	n = (*ast.CallExpr)(nil)
-	return
+	}, []ast.Node{(*ast.CallExpr)(nil)}
 }

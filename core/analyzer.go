@@ -142,12 +142,14 @@ func (gas *Analyzer) process(filename string, source interface{}) error {
 
 // AddRule adds a rule into a rule set list mapped to the given AST node's type.
 // The node is only needed for its type and is not otherwise used.
-func (gas *Analyzer) AddRule(r Rule, n ast.Node) {
-	t := reflect.TypeOf(n)
-	if val, ok := gas.ruleset[t]; ok {
-		gas.ruleset[t] = append(val, r)
-	} else {
-		gas.ruleset[t] = []Rule{r}
+func (gas *Analyzer) AddRule(r Rule, nodes []ast.Node) {
+	for _, n := range nodes {
+		t := reflect.TypeOf(n)
+		if val, ok := gas.ruleset[t]; ok {
+			gas.ruleset[t] = append(val, r)
+		} else {
+			gas.ruleset[t] = []Rule{r}
+		}
 	}
 }
 

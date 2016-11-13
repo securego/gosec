@@ -15,10 +15,9 @@
 package rules
 
 import (
+	gas "github.com/GoASTScanner/gas/core"
 	"go/ast"
 	"regexp"
-
-	gas "github.com/GoASTScanner/gas/core"
 )
 
 type UsingUnsafe struct {
@@ -33,15 +32,13 @@ func (r *UsingUnsafe) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err erro
 	return nil, nil
 }
 
-func NewUsingUnsafe(conf map[string]interface{}) (r gas.Rule, n ast.Node) {
-	r = &UsingUnsafe{
+func NewUsingUnsafe(conf map[string]interface{}) (gas.Rule, []ast.Node) {
+	return &UsingUnsafe{
 		pattern: regexp.MustCompile(`unsafe\..*`),
 		MetaData: gas.MetaData{
 			What:       "Use of unsafe calls should be audited",
 			Severity:   gas.Low,
 			Confidence: gas.High,
 		},
-	}
-	n = (*ast.CallExpr)(nil)
-	return
+	}, []ast.Node{(*ast.CallExpr)(nil)}
 }
