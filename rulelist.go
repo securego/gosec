@@ -43,7 +43,7 @@ func GetFullRuleList() map[string]RuleInfo {
 
 		// filesystem
 		"G301": RuleInfo{"Poor file permissions used when creating a directory", rules.NewMkdirPerms},
-		"G302": RuleInfo{"Poor file permisions used with chmod", rules.NewChmodPerms},
+		"G302": RuleInfo{"Poor file permisions used when creation file or using chmod", rules.NewFilePerms},
 		"G303": RuleInfo{"Creating tempfile using a predictable path", rules.NewBadTempFile},
 
 		// crypto

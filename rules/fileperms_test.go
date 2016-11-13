@@ -23,7 +23,7 @@ import (
 func TestChmod(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewChmodPerms(config))
+	analyzer.AddRule(NewFilePerms(config))
 
 	issues := gasTestRunner(`
 		package main
@@ -31,9 +31,11 @@ func TestChmod(t *testing.T) {
 		func main() {
 			os.Chmod("/tmp/somefile", 0777)
 			os.Chmod("/tmp/someotherfile", 0600)
+			f := os.OpenFile("/tmp/thing", os.O_CREATE|os.O_WRONLY, 0666)
+			f := os.OpenFile("/tmp/thing", os.O_CREATE|os.O_WRONLY, 0600)
 		}`, analyzer)
 
-	checkTestResults(t, issues, 1, "Expect chmod permissions")
+	checkTestResults(t, issues, 2, "Expect file permissions")
 }
 
 func TestMkdir(t *testing.T) {

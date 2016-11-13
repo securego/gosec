@@ -17,52 +17,65 @@ package rules
 import (
 	"fmt"
 	"go/ast"
-	"regexp"
+	"strconv"
 
 	gas "github.com/GoASTScanner/gas/core"
 )
 
 type FilePermissions struct {
 	gas.MetaData
-	pattern *regexp.Regexp
-	mode    int64
+	mode  int64
+	pkg   string
+	calls []string
+}
+
+func getConfiguredMode(conf map[string]interface{}, configKey string, defaultMode int64) int64 {
+	var mode int64 = defaultMode
+	if value, ok := conf[configKey]; ok {
+		switch value.(type) {
+		case int64:
+			mode = value.(int64)
+		case string:
+			mode, _ = strconv.ParseInt(value.(string), 0, 64)
+		}
+	}
+	return mode
 }
 
 func (r *FilePermissions) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
-	if node := gas.MatchCall(n, r.pattern); node != nil {
-		if val, err := gas.GetInt(node.Args[1]); err == nil && val > r.mode {
+	if callexpr, matched := gas.MatchCallByPackage(n, c, r.pkg, r.calls...); matched {
+		modeArg := callexpr.Args[len(callexpr.Args)-1]
+		if mode, err := gas.GetInt(modeArg); err == nil && mode > r.mode {
 			return gas.NewIssue(c, n, r.What, r.Severity, r.Confidence), nil
 		}
 	}
 	return nil, nil
 }
 
-func NewChmodPerms(conf map[string]interface{}) (r gas.Rule, n ast.Node) {
-	mode := 0600
-	r = &FilePermissions{
-		pattern: regexp.MustCompile(`^os\.Chmod$`),
-		mode:    (int64)(mode),
+func NewFilePerms(conf map[string]interface{}) (gas.Rule, ast.Node) {
+	mode := getConfiguredMode(conf, "G302", 0600)
+	return &FilePermissions{
+		mode:  mode,
+		pkg:   "os",
+		calls: []string{"OpenFile", "Chmod"},
 		MetaData: gas.MetaData{
 			Severity:   gas.Medium,
 			Confidence: gas.High,
-			What:       fmt.Sprintf("Expect chmod permissions to be %#o or less", mode),
+			What:       fmt.Sprintf("Expect file permissions to be %#o or less", mode),
 		},
-	}
-	n = (*ast.CallExpr)(nil)
-	return
+	}, (*ast.CallExpr)(nil)
 }
 
-func NewMkdirPerms(conf map[string]interface{}) (r gas.Rule, n ast.Node) {
-	mode := 0700
-	r = &FilePermissions{
-		pattern: regexp.MustCompile(`^(os\.Mkdir|os\.MkdirAll)$`),
-		mode:    (int64)(mode),
+func NewMkdirPerms(conf map[string]interface{}) (gas.Rule, ast.Node) {
+	mode := getConfiguredMode(conf, "G301", 0700)
+	return &FilePermissions{
+		mode:  mode,
+		pkg:   "os",
+		calls: []string{"Mkdir", "MkdirAll"},
 		MetaData: gas.MetaData{
 			Severity:   gas.Medium,
 			Confidence: gas.High,
 			What:       fmt.Sprintf("Expect directory permissions to be %#o or less", mode),
 		},
-	}
-	n = (*ast.CallExpr)(nil)
-	return
+	}, (*ast.CallExpr)(nil)
 }
