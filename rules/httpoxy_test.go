@@ -32,5 +32,5 @@ func TestHttpoxy(t *testing.T) {
   	)
 		func main() {}`, analyzer)
 
-	checkTestResults(t, issues, 1, "Go code running under CGI is vulnerable to Httpoxy attack.")
+	checkTestResults(t, issues, 1, "Go versions < 1.6.3 are vulnerable to Httpoxy")
 }

@@ -37,15 +37,13 @@ func (t *TemplateCheck) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err er
 	return nil, nil
 }
 
-func NewTemplateCheck(conf map[string]interface{}) (r gas.Rule, n ast.Node) {
-	r = &TemplateCheck{
+func NewTemplateCheck(conf map[string]interface{}) (gas.Rule, []ast.Node) {
+	return &TemplateCheck{
 		call: regexp.MustCompile(`^template\.(HTML|JS|URL)$`),
 		MetaData: gas.MetaData{
 			Severity:   gas.Medium,
 			Confidence: gas.Low,
 			What:       "this method will not auto-escape HTML. Verify data is well formed.",
 		},
-	}
-	n = (*ast.CallExpr)(nil)
-	return
+	}, []ast.Node{(*ast.CallExpr)(nil)}
 }

@@ -109,9 +109,9 @@ func (t *InsecureConfigTLS) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, er
 	return
 }
 
-func NewModernTlsCheck(conf map[string]interface{}) (r gas.Rule, n ast.Node) {
+func NewModernTlsCheck(conf map[string]interface{}) (gas.Rule, []ast.Node) {
 	// https://wiki.mozilla.org/Security/Server_Side_TLS#Modern_compatibility
-	r = &InsecureConfigTLS{
+	return &InsecureConfigTLS{
 		pattern:    regexp.MustCompile(`^tls\.Config$`),
 		MinVersion: 0x0303, // TLS 1.2 only
 		MaxVersion: 0x0303,
@@ -121,14 +121,12 @@ func NewModernTlsCheck(conf map[string]interface{}) (r gas.Rule, n ast.Node) {
 			"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
 			"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
 		},
-	}
-	n = (*ast.CompositeLit)(nil)
-	return
+	}, []ast.Node{(*ast.CompositeLit)(nil)}
 }
 
-func NewIntermediateTlsCheck(conf map[string]interface{}) (r gas.Rule, n ast.Node) {
+func NewIntermediateTlsCheck(conf map[string]interface{}) (gas.Rule, []ast.Node) {
 	// https://wiki.mozilla.org/Security/Server_Side_TLS#Intermediate_compatibility_.28default.29
-	r = &InsecureConfigTLS{
+	return &InsecureConfigTLS{
 		pattern:    regexp.MustCompile(`^tls\.Config$`),
 		MinVersion: 0x0301, // TLS 1.2, 1.1, 1.0
 		MaxVersion: 0x0303,
@@ -149,14 +147,12 @@ func NewIntermediateTlsCheck(conf map[string]interface{}) (r gas.Rule, n ast.Nod
 			"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
 			"TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",
 		},
-	}
-	n = (*ast.CompositeLit)(nil)
-	return
+	}, []ast.Node{(*ast.CompositeLit)(nil)}
 }
 
-func NewCompatTlsCheck(conf map[string]interface{}) (r gas.Rule, n ast.Node) {
+func NewCompatTlsCheck(conf map[string]interface{}) (gas.Rule, []ast.Node) {
 	// https://wiki.mozilla.org/Security/Server_Side_TLS#Old_compatibility_.28default.29
-	r = &InsecureConfigTLS{
+	return &InsecureConfigTLS{
 		pattern:    regexp.MustCompile(`^tls\.Config$`),
 		MinVersion: 0x0301, // TLS 1.2, 1.1, 1.0
 		MaxVersion: 0x0303,
@@ -179,7 +175,5 @@ func NewCompatTlsCheck(conf map[string]interface{}) (r gas.Rule, n ast.Node) {
 			"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
 			"TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",
 		},
-	}
-	n = (*ast.CompositeLit)(nil)
-	return
+	}, []ast.Node{(*ast.CompositeLit)(nil)}
 }

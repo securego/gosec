@@ -36,8 +36,8 @@ func (t *BadTempFile) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err erro
 	return nil, nil
 }
 
-func NewBadTempFile(conf map[string]interface{}) (r gas.Rule, n ast.Node) {
-	r = &BadTempFile{
+func NewBadTempFile(conf map[string]interface{}) (gas.Rule, []ast.Node) {
+	return &BadTempFile{
 		call: regexp.MustCompile(`ioutil\.WriteFile|os\.Create`),
 		args: regexp.MustCompile(`^/tmp/.*$|^/var/tmp/.*$`),
 		MetaData: gas.MetaData{
@@ -45,7 +45,5 @@ func NewBadTempFile(conf map[string]interface{}) (r gas.Rule, n ast.Node) {
 			Confidence: gas.High,
 			What:       "File creation in shared tmp directory without using ioutil.Tempfile",
 		},
-	}
-	n = (*ast.CallExpr)(nil)
-	return
+	}, []ast.Node{(*ast.CallExpr)(nil)}
 }
