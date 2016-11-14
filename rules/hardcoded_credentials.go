@@ -58,7 +58,7 @@ func (r *Credentials) matchGenDecl(decl *ast.GenDecl, ctx *gas.Context) (*gas.Is
 	for _, spec := range decl.Specs {
 		if valueSpec, ok := spec.(*ast.ValueSpec); ok {
 			for index, ident := range valueSpec.Names {
-				if r.pattern.MatchString(ident.Name) {
+				if r.pattern.MatchString(ident.Name) && valueSpec.Values != nil {
 					// const foo, bar = "same value"
 					if len(valueSpec.Values) <= index {
 						index = len(valueSpec.Values) - 1
