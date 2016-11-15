@@ -15,6 +15,7 @@
 package rules
 
 import (
+	"fmt"
 	"go/ast"
 
 	gas "github.com/GoASTScanner/gas/core"
@@ -28,6 +29,16 @@ type WeakRand struct {
 
 func (w *WeakRand) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 	if _, matched := gas.MatchCallByPackage(n, c, w.packagePath, w.funcName); matched {
+		fmt.Println("Imported:")
+		for k, v := range c.Imports.Imported {
+			fmt.Printf("%s => %s\n", k, v)
+		}
+		fmt.Println("Aliased:")
+		for k, v := range c.Imports.Aliased {
+			fmt.Printf("%s => %s\n", k, v)
+		}
+		fmt.Println("----------------------------------------")
+
 		return gas.NewIssue(c, n, w.What, w.Severity, w.Confidence), nil
 	}
 

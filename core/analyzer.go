@@ -34,6 +34,14 @@ type ImportInfo struct {
 	InitOnly map[string]bool
 }
 
+func NewImportInfo() *ImportInfo {
+	return &ImportInfo{
+		make(map[string]string),
+		make(map[string]string),
+		make(map[string]bool),
+	}
+}
+
 // The Context is populated with data parsed from the source code as it is scanned.
 // It is passed through to all rule functions as they are called. Rules may use
 // this data in conjunction withe the encoutered AST node.
@@ -92,11 +100,7 @@ func NewAnalyzer(conf map[string]interface{}, logger *log.Logger) Analyzer {
 			nil,
 			nil,
 			nil,
-			&ImportInfo{
-				make(map[string]string),
-				make(map[string]string),
-				make(map[string]bool),
-			},
+			nil,
 		},
 		logger: logger,
 	}
@@ -130,6 +134,7 @@ func (gas *Analyzer) process(filename string, source interface{}) error {
 			return err
 		}
 
+		gas.context.Imports = NewImportInfo()
 		for _, pkg := range gas.context.Pkg.Imports() {
 			gas.context.Imports.Imported[pkg.Path()] = pkg.Name()
 		}
