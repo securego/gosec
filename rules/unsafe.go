@@ -17,16 +17,16 @@ package rules
 import (
 	gas "github.com/GoASTScanner/gas/core"
 	"go/ast"
-	"regexp"
 )
 
 type UsingUnsafe struct {
 	gas.MetaData
-	pattern *regexp.Regexp
+	pkg   string
+	calls []string
 }
 
 func (r *UsingUnsafe) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err error) {
-	if node := gas.MatchCall(n, r.pattern); node != nil {
+	if _, matches := gas.MatchCallByPackage(n, c, r.pkg, r.calls...); matches {
 		return gas.NewIssue(c, n, r.What, r.Severity, r.Confidence), nil
 	}
 	return nil, nil
@@ -34,7 +34,8 @@ func (r *UsingUnsafe) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err erro
 
 func NewUsingUnsafe(conf map[string]interface{}) (gas.Rule, []ast.Node) {
 	return &UsingUnsafe{
-		pattern: regexp.MustCompile(`unsafe\..*`),
+		pkg:   "unsafe",
+		calls: []string{"Alignof", "Offsetof", "Sizeof", "Pointer"},
 		MetaData: gas.MetaData{
 			What:       "Use of unsafe calls should be audited",
 			Severity:   gas.Low,

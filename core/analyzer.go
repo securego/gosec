@@ -138,7 +138,6 @@ func (gas *Analyzer) process(filename string, source interface{}) error {
 		for _, pkg := range gas.context.Pkg.Imports() {
 			gas.context.Imports.Imported[pkg.Path()] = pkg.Name()
 		}
-
 		ast.Walk(gas, root)
 		gas.Stats.NumFiles++
 	}
@@ -203,8 +202,8 @@ func (gas *Analyzer) Visit(n ast.Node) ast.Visitor {
 
 		// Track aliased and initialization imports
 		if imported, ok := n.(*ast.ImportSpec); ok {
+			path := strings.Trim(imported.Path.Value, `"`)
 			if imported.Name != nil {
-				path := strings.Trim(imported.Path.Value, `"`)
 				if imported.Name.Name == "_" {
 					// Initialization import
 					gas.context.Imports.InitOnly[path] = true
@@ -213,7 +212,12 @@ func (gas *Analyzer) Visit(n ast.Node) ast.Visitor {
 					gas.context.Imports.Aliased[path] = imported.Name.Name
 				}
 			}
+			// unsafe is not included in Package.Imports()
+			if path == "unsafe" {
+				gas.context.Imports.Imported[path] = path
+			}
 		}
+
 		if val, ok := gas.ruleset[reflect.TypeOf(n)]; ok {
 			for _, rule := range val {
 				ret, err := rule.Match(n, &gas.context)
