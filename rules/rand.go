@@ -15,7 +15,6 @@
 package rules
 
 import (
-	"fmt"
 	"go/ast"
 
 	gas "github.com/GoASTScanner/gas/core"
