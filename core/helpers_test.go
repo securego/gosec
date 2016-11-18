@@ -56,4 +56,16 @@ func TestMatchCallByType(t *testing.T) {
 	if rule.matched != 1 || len(rule.callExpr) != 1 {
 		t.Errorf("Expected to match a bytes.Buffer.Write call")
 	}
+
+	typeName, callName, err := GetCallInfo(rule.callExpr[0], &analyzer.context)
+	if err != nil {
+		t.Errorf("Unable to resolve call info: %v\n", err)
+	}
+	if typeName != "bytes.Buffer" {
+		t.Errorf("Expected: %s, Got: %s\n", "bytes.Buffer", typeName)
+	}
+	if callName != "Write" {
+		t.Errorf("Expected: %s, Got: %s\n", "Write", callName)
+	}
+
 }

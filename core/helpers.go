@@ -69,18 +69,15 @@ func MatchCallByPackage(n ast.Node, c *Context, pkg string, names ...string) (*a
 		importName = alias
 	}
 
-	switch node := n.(type) {
-	case *ast.CallExpr:
-		switch fn := node.Fun.(type) {
-		case *ast.SelectorExpr:
-			switch expr := fn.X.(type) {
-			case *ast.Ident:
-				if expr.Name == importName {
-					for _, name := range names {
-						if fn.Sel.Name == name {
-							return node, true
-						}
-					}
+	if callExpr, ok := n.(*ast.CallExpr); ok {
+		packageName, callName, err := GetCallInfo(callExpr, c)
+		if err != nil {
+			return nil, false
+		}
+		if packageName == importName {
+			for _, name := range names {
+				if callName == name {
+					return callExpr, true
 				}
 			}
 		}
@@ -95,19 +92,15 @@ func MatchCallByPackage(n ast.Node, c *Context, pkg string, names ...string) (*a
 // 	node, matched := MatchCallByType(n, ctx, "bytes.Buffer", "WriteTo", "Write")
 //
 func MatchCallByType(n ast.Node, ctx *Context, requiredType string, calls ...string) (*ast.CallExpr, bool) {
-	switch callExpr := n.(type) {
-	case *ast.CallExpr:
-		switch fn := callExpr.Fun.(type) {
-		case *ast.SelectorExpr:
-			switch expr := fn.X.(type) {
-			case *ast.Ident:
-				t := ctx.Info.TypeOf(expr)
-				if t != nil && t.String() == requiredType {
-					for _, call := range calls {
-						if fn.Sel.Name == call {
-							return callExpr, true
-						}
-					}
+	if callExpr, ok := n.(*ast.CallExpr); ok {
+		typeName, callName, err := GetCallInfo(callExpr, ctx)
+		if err != nil {
+			return nil, false
+		}
+		if typeName == requiredType {
+			for _, call := range calls {
+				if call == callName {
+					return callExpr, true
 				}
 			}
 		}
@@ -170,4 +163,29 @@ func GetCallObject(n ast.Node, ctx *Context) (*ast.CallExpr, types.Object) {
 		}
 	}
 	return nil, nil
+}
+
+// GetCallInfo returns the package or type and name  associated with a
+// call expression.
+func GetCallInfo(n ast.Node, ctx *Context) (string, string, error) {
+	switch node := n.(type) {
+	case *ast.CallExpr:
+		switch fn := node.Fun.(type) {
+		case *ast.SelectorExpr:
+			switch expr := fn.X.(type) {
+			case *ast.Ident:
+				if expr.Obj != nil && expr.Obj.Kind == ast.Var {
+					t := ctx.Info.TypeOf(expr)
+					if t != nil {
+						return t.String(), fn.Sel.Name, nil
+					} else {
+						return "undefined", fn.Sel.Name, fmt.Errorf("missing type info")
+					}
+				} else {
+					return expr.Name, fn.Sel.Name, nil
+				}
+			}
+		}
+	}
+	return "", "", fmt.Errorf("unable to determine call info")
 }
