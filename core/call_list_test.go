@@ -21,13 +21,15 @@ func (r *callListRule) Match(n ast.Node, c *Context) (gi *Issue, err error) {
 func TestCallListContainsCallExpr(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := NewAnalyzer(config, nil)
+	calls := NewCallList()
+	calls.AddAll("bytes.Buffer", "Write", "WriteTo")
 	rule := &callListRule{
 		MetaData: MetaData{
 			Severity:   Low,
 			Confidence: Low,
 			What:       "A dummy rule",
 		},
-		callList: NewCallListFor("bytes.Buffer", "Write", "WriteTo"),
+		callList: calls,
 		matched:  0,
 	}
 	analyzer.AddRule(rule, []ast.Node{(*ast.CallExpr)(nil)})

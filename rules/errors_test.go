@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//		 http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,17 +28,17 @@ func TestErrorsMulti(t *testing.T) {
 	issues := gasTestRunner(
 		`package main
 
-    import (
-    	"fmt"
-    )
+		import (
+			"fmt"
+		)
 
-    func test() (val int, err error) {
-      return 0, nil
-    }
+		func test() (val int, err error) {
+			return 0, nil
+		}
 
-    func main() {
-      v, _ := test()
-    }`, analyzer)
+		func main() {
+			v, _ := test()
+		}`, analyzer)
 
 	checkTestResults(t, issues, 1, "Errors unhandled")
 }
@@ -51,19 +51,30 @@ func TestErrorsSingle(t *testing.T) {
 	issues := gasTestRunner(
 		`package main
 
-    import (
-    	"fmt"
-    )
+		import (
+			"fmt"
+		)
 
-    func test() (err error) {
-      return nil
-    }
+		func a() error {
+			return fmt.Errorf("This is an error")
+		}
 
-    func main() {
-      _ := test()
-    }`, analyzer)
+		func b() {
+			fmt.Println("b")
+		}
 
-	checkTestResults(t, issues, 1, "Errors unhandled")
+		func c() string {
+			return fmt.Sprintf("This isn't anything")
+		}
+
+		func main() {
+			_ = a()
+			a()
+			b()
+			_ = c()
+			c()
+		}`, analyzer)
+	checkTestResults(t, issues, 2, "Errors unhandled")
 }
 
 func TestErrorsGood(t *testing.T) {
@@ -74,17 +85,56 @@ func TestErrorsGood(t *testing.T) {
 	issues := gasTestRunner(
 		`package main
 
-    import (
-    	"fmt"
-    )
+		import (
+			"fmt"
+		)
 
-    func test() err error {
-      return 0, nil
-    }
+		func test() err error {
+			return 0, nil
+		}
 
-    func main() {
-      e := test()
-    }`, analyzer)
+		func main() {
+			e := test()
+		}`, analyzer)
 
 	checkTestResults(t, issues, 0, "")
+}
+
+func TestErrorsWhitelisted(t *testing.T) {
+	config := map[string]interface{}{
+		"ignoreNosec": false,
+		"G104": map[string][]string{
+			"compress/zlib": []string{"NewReader"},
+			"io":            []string{"Copy"},
+		},
+	}
+	analyzer := gas.NewAnalyzer(config, nil)
+	analyzer.AddRule(NewNoErrorCheck(config))
+	source := `package main
+		import (
+			"io"
+			"os"
+			"fmt"
+			"bytes"
+			"compress/zlib"
+		)
+
+		func a() error {
+			return fmt.Errorf("This is an error ok")
+		}
+
+		func main() {
+			// Expect at least one failure
+			_ = a()
+
+			var b bytes.Buffer
+			// Default whitelist
+			nbytes, _ := b.Write([]byte("Hello "))
+
+			// Whitelisted via configuration
+			r, _ := zlib.NewReader(&b)
+			io.Copy(os.Stdout, r)
+		}`
+	issues := gasTestRunner(source, analyzer)
+	checkTestResults(t, issues, 1, "Errors unhandled")
 }

@@ -56,17 +56,9 @@ func MatchCall(n ast.Node, r *regexp.Regexp) *ast.CallExpr {
 //
 func MatchCallByPackage(n ast.Node, c *Context, pkg string, names ...string) (*ast.CallExpr, bool) {
 
-	importName, imported := c.Imports.Imported[pkg]
-	if !imported {
+	importedName, found := GetImportedName(pkg, c)
+	if !found {
 		return nil, false
-	}
-
-	if _, initonly := c.Imports.InitOnly[pkg]; initonly {
-		return nil, false
-	}
-
-	if alias, ok := c.Imports.Aliased[pkg]; ok {
-		importName = alias
 	}
 
 	if callExpr, ok := n.(*ast.CallExpr); ok {
@@ -74,7 +66,7 @@ func MatchCallByPackage(n ast.Node, c *Context, pkg string, names ...string) (*a
 		if err != nil {
 			return nil, false
 		}
-		if packageName == importName {
+		if packageName == importedName {
 			for _, name := range names {
 				if callName == name {
 					return callExpr, true
@@ -185,7 +177,38 @@ func GetCallInfo(n ast.Node, ctx *Context) (string, string, error) {
 					return expr.Name, fn.Sel.Name, nil
 				}
 			}
+		case *ast.Ident:
+			return ctx.Pkg.Name(), fn.Name, nil
 		}
 	}
 	return "", "", fmt.Errorf("unable to determine call info")
+}
+
+// GetImportedName returns the name used for the package within the
+// code. It will resolve aliases and ignores initalization only imports.
+func GetImportedName(path string, ctx *Context) (string, bool) {
+	importName, imported := ctx.Imports.Imported[path]
+	if !imported {
+		return "", false
+	}
+
+	if _, initonly := ctx.Imports.InitOnly[path]; initonly {
+		return "", false
+	}
+
+	if alias, ok := ctx.Imports.Aliased[path]; ok {
+		importName = alias
+	}
+	return importName, true
+}
+
+// GetImportPath resolves the full import path of an identifer based on
+// the imports in the current context.
+func GetImportPath(name string, ctx *Context) (string, bool) {
+	for path, _ := range ctx.Imports.Imported {
+		if imported, ok := GetImportedName(path, ctx); ok && imported == name {
+			return path, true
+		}
+	}
+	return "", false
 }

@@ -13,7 +13,9 @@
 
 package core
 
-import "go/ast"
+import (
+	"go/ast"
+)
 
 type set map[string]bool
 
@@ -26,14 +28,11 @@ func NewCallList() CallList {
 	return make(CallList)
 }
 
-/// NewCallListFor createse a call list using the package path
-func NewCallListFor(selector string, idents ...string) CallList {
-	c := NewCallList()
-	c[selector] = make(set)
+/// AddAll will add several calls to the call list at once
+func (c CallList) AddAll(selector string, idents ...string) {
 	for _, ident := range idents {
 		c.Add(selector, ident)
 	}
-	return c
 }
 
 /// Add a selector and call to the call list
@@ -61,5 +60,14 @@ func (c CallList) ContainsCallExpr(n ast.Node, ctx *Context) bool {
 	if err != nil {
 		return false
 	}
-	return c.Contains(selector, ident)
+	// Try direct resolution
+	if c.Contains(selector, ident) {
+		return true
+	}
+
+	// Also support explicit path
+	if path, ok := GetImportPath(selector, ctx); ok {
+		return c.Contains(path, ident)
+	}
+	return false
 }
