@@ -88,6 +88,33 @@ func MatchCallByPackage(n ast.Node, c *Context, pkg string, names ...string) (*a
 	return nil, false
 }
 
+// MatchCallByType ensures that the node is a call expression to a
+// specific object type.
+//
+// Usage:
+// 	node, matched := MatchCallByType(n, ctx, "bytes.Buffer", "WriteTo", "Write")
+//
+func MatchCallByType(n ast.Node, ctx *Context, requiredType string, calls ...string) (*ast.CallExpr, bool) {
+	switch callExpr := n.(type) {
+	case *ast.CallExpr:
+		switch fn := callExpr.Fun.(type) {
+		case *ast.SelectorExpr:
+			switch expr := fn.X.(type) {
+			case *ast.Ident:
+				t := ctx.Info.TypeOf(expr)
+				if t != nil && t.String() == requiredType {
+					for _, call := range calls {
+						if fn.Sel.Name == call {
+							return callExpr, true
+						}
+					}
+				}
+			}
+		}
+	}
+	return nil, false
+}
+
 // MatchCompLit will match an ast.CompositeLit if its string value obays the given regex.
 func MatchCompLit(n ast.Node, r *regexp.Regexp) *ast.CompositeLit {
 	t := reflect.TypeOf(&ast.CompositeLit{})
