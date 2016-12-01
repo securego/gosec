@@ -77,6 +77,5 @@ func TryResolve(n ast.Node, c *Context) bool {
 		return resolveBinExpr(node, c)
 	}
 
-	ast.Print(c.FileSet, n)
 	return false
 }
