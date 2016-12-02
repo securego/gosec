@@ -167,11 +167,11 @@ func main() {
 	tools := newUtils()
 	flag.Var(tools, "tool", "GAS utilities to assist with rule development")
 
+	// Setup logging
+	logger = log.New(os.Stderr, "[gas] ", log.LstdFlags)
+
 	// Parse command line arguments
 	flag.Parse()
-
-	// Setup logging
-	logger = log.New(os.Stderr, "[gas]", log.LstdFlags)
 
 	// Ensure at least one file was specified
 	if flag.NArg() == 0 {
@@ -195,6 +195,7 @@ func main() {
 	toAnalyze := getFilesToAnalyze(flag.Args(), excluded)
 
 	for _, file := range toAnalyze {
+		logger.Printf("scanning \"%s\"\n", file)
 		if err := analyzer.Process(file); err != nil {
 			logger.Fatal(err)
 		}
@@ -226,10 +227,10 @@ func main() {
 
 // getFilesToAnalyze lists all files
 func getFilesToAnalyze(paths []string, excluded *fileList) []string {
-	log.Println("getFilesToAnalyze: start")
+	//log.Println("getFilesToAnalyze: start")
 	var toAnalyze []string
 	for _, path := range paths {
-		log.Printf("getFilesToAnalyze: processing \"%s\"\n", path)
+		//log.Printf("getFilesToAnalyze: processing \"%s\"\n", path)
 		// get the absolute path before doing anything else
 		path, err := filepath.Abs(path)
 		if err != nil {
@@ -257,7 +258,7 @@ func getFilesToAnalyze(paths []string, excluded *fileList) []string {
 			}
 		}
 	}
-	log.Println("getFilesToAnalyze: end")
+	//log.Println("getFilesToAnalyze: end")
 	return toAnalyze
 }
 

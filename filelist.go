@@ -15,7 +15,6 @@
 package main
 
 import (
-	"log"
 	"strings"
 
 	"github.com/ryanuber/go-glob"
@@ -57,11 +56,11 @@ func (f *fileList) Set(path string) error {
 func (f fileList) Contains(path string) bool {
 	for p := range f.patterns {
 		if glob.Glob(p, path) {
-			log.Printf("excluding: %s\n", path)
+			logger.Printf("skipping: %s\n", path)
 			return true
 		}
 	}
-	log.Printf("including: %s\n", path)
+	//log.Printf("including: %s\n", path)
 	return false
 }
 
