@@ -21,12 +21,12 @@ import (
 	gas "github.com/GoASTScanner/gas/core"
 )
 
-func gasTestRunner(source string, analyzer gas.Analyzer) []gas.Issue {
+func gasTestRunner(source string, analyzer gas.Analyzer) []*gas.Issue {
 	analyzer.ProcessSource("dummy.go", source)
 	return analyzer.Issues
 }
 
-func checkTestResults(t *testing.T, issues []gas.Issue, expected int, msg string) {
+func checkTestResults(t *testing.T, issues []*gas.Issue, expected int, msg string) {
 	found := len(issues)
 	if found != expected {
 		t.Errorf("Found %d issues, expected %d", found, expected)
