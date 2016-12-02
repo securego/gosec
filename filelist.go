@@ -56,7 +56,9 @@ func (f *fileList) Set(path string) error {
 func (f fileList) Contains(path string) bool {
 	for p := range f.patterns {
 		if glob.Glob(p, path) {
-			logger.Printf("skipping: %s\n", path)
+			if logger != nil {
+				logger.Printf("skipping: %s\n", path)
+			}
 			return true
 		}
 	}
