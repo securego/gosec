@@ -79,10 +79,10 @@ type Metrics struct {
 type Analyzer struct {
 	ignoreNosec bool
 	ruleset     RuleSet
-	context     Context
+	context     *Context
 	logger      *log.Logger
-	Issues      []Issue `json:"issues"`
-	Stats       Metrics `json:"metrics"`
+	Issues      []*Issue `json:"issues"`
+	Stats       *Metrics `json:"metrics"`
 }
 
 // NewAnalyzer builds a new anaylzer.
@@ -93,17 +93,10 @@ func NewAnalyzer(conf map[string]interface{}, logger *log.Logger) Analyzer {
 	a := Analyzer{
 		ignoreNosec: conf["ignoreNosec"].(bool),
 		ruleset:     make(RuleSet),
-		Issues:      make([]Issue, 0),
-		context: Context{
-			token.NewFileSet(),
-			nil,
-			nil,
-			nil,
-			nil,
-			nil,
-			nil,
-		},
-		logger: logger,
+		context:     &Context{nil, nil, nil, nil, nil, nil, nil},
+		logger:      logger,
+		Issues:      make([]*Issue, 0, 16),
+		Stats:       &Metrics{0, 0, 0, 0},
 	}
 
 	// TODO(tkelsey): use the inc/exc lists
@@ -113,6 +106,7 @@ func NewAnalyzer(conf map[string]interface{}, logger *log.Logger) Analyzer {
 
 func (gas *Analyzer) process(filename string, source interface{}) error {
 	mode := parser.ParseComments
+	gas.context.FileSet = token.NewFileSet()
 	root, err := parser.ParseFile(gas.context.FileSet, filename, source, mode)
 	if err == nil {
 		gas.context.Comments = ast.NewCommentMap(gas.context.FileSet, root, root.Comments)
@@ -221,14 +215,14 @@ func (gas *Analyzer) Visit(n ast.Node) ast.Visitor {
 
 		if val, ok := gas.ruleset[reflect.TypeOf(n)]; ok {
 			for _, rule := range val {
-				ret, err := rule.Match(n, &gas.context)
+				ret, err := rule.Match(n, gas.context)
 				if err != nil {
-					file, line := GetLocation(n, &gas.context)
+					file, line := GetLocation(n, gas.context)
 					file = path.Base(file)
 					gas.logger.Printf("Rule error: %v => %s (%s:%d)\n", reflect.TypeOf(rule), err, file, line)
 				}
 				if ret != nil {
-					gas.Issues = append(gas.Issues, *ret)
+					gas.Issues = append(gas.Issues, ret)
 					gas.Stats.NumFound++
 				}
 			}
