@@ -42,7 +42,7 @@ func (s *SqlStrConcat) checkObject(n *ast.Ident) bool {
 func (s *SqlStrConcat) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 	if node, ok := n.(*ast.BinaryExpr); ok {
 		if start, ok := node.X.(*ast.BasicLit); ok {
-			if str, _ := gas.GetString(start); s.pattern.MatchString(str) {
+			if str, e := gas.GetString(start); s.pattern.MatchString(str) && e == nil {
 				if _, ok := node.Y.(*ast.BasicLit); ok {
 					return nil, nil // string cat OK
 				}
@@ -77,7 +77,7 @@ type SqlStrFormat struct {
 // Looks for "fmt.Sprintf("SELECT * FROM foo where '%s', userInput)"
 func (s *SqlStrFormat) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err error) {
 	if node := gas.MatchCall(n, s.call); node != nil {
-		if arg, _ := gas.GetString(node.Args[0]); s.pattern.MatchString(arg) {
+		if arg, e := gas.GetString(node.Args[0]); s.pattern.MatchString(arg) && e == nil {
 			return gas.NewIssue(c, n, s.What, s.Severity, s.Confidence), nil
 		}
 	}

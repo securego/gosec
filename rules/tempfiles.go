@@ -29,7 +29,7 @@ type BadTempFile struct {
 
 func (t *BadTempFile) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err error) {
 	if node := gas.MatchCall(n, t.call); node != nil {
-		if arg, _ := gas.GetString(node.Args[0]); t.args.MatchString(arg) {
+		if arg, e := gas.GetString(node.Args[0]); t.args.MatchString(arg) && e == nil {
 			return gas.NewIssue(c, n, t.What, t.Severity, t.Confidence), nil
 		}
 	}

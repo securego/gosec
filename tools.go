@@ -74,10 +74,12 @@ func (u *utilities) run(args ...string) {
 func shouldSkip(path string) bool {
 	st, e := os.Stat(path)
 	if e != nil {
+		// #nosec
 		fmt.Fprintf(os.Stderr, "Skipping: %s - %s\n", path, e)
 		return true
 	}
 	if st.IsDir() {
+		// #nosec
 		fmt.Fprintf(os.Stderr, "Skipping: %s - directory\n", path)
 		return true
 	}
@@ -95,11 +97,12 @@ func dumpAst(files ...string) {
 		fset := token.NewFileSet() // positions are relative to fset
 		f, err := parser.ParseFile(fset, arg, nil, 0)
 		if err != nil {
+			// #nosec
 			fmt.Fprintf(os.Stderr, "Unable to parse file %s\n", err)
 			continue
 		}
 
-		// Print the AST.
+		// Print the AST. #nosec
 		ast.Print(fset, f)
 	}
 }
@@ -115,7 +118,12 @@ type context struct {
 
 func createContext(filename string) *context {
 	fileset := token.NewFileSet()
-	root, _ := parser.ParseFile(fileset, filename, nil, parser.ParseComments)
+	root, e := parser.ParseFile(fileset, filename, nil, parser.ParseComments)
+	if e != nil {
+		// #nosec
+		fmt.Fprintf(os.Stderr, "Unable to parse file: %s. Reason: %s\n", filename, e)
+		return nil
+	}
 	comments := ast.NewCommentMap(fileset, root, root.Comments)
 	info := &types.Info{
 		Types:      make(map[ast.Expr]types.TypeAndValue),
@@ -126,7 +134,12 @@ func createContext(filename string) *context {
 		Implicits:  make(map[ast.Node]types.Object),
 	}
 	config := types.Config{Importer: importer.Default()}
-	pkg, _ := config.Check("main.go", fileset, []*ast.File{root}, info)
+	pkg, e := config.Check("main.go", fileset, []*ast.File{root}, info)
+	if e != nil {
+		// #nosec
+		fmt.Fprintf(os.Stderr, "Type check failed for file: %s. Reason: %s\n", filename, e)
+		return nil
+	}
 	return &context{fileset, comments, info, pkg, &config, root}
 }
 
@@ -147,6 +160,15 @@ func printObject(obj types.Object) {
 	fmt.Printf("   Id = %v\n", obj.Id())
 }
 
+func checkContext(ctx *context, file string) bool {
+	// #nosec
+	if ctx == nil {
+		fmt.Fprintln(os.Stderr, "Failed to create context for file: ", file)
+		return false
+	}
+	return true
+}
+
 func dumpCallObj(files ...string) {
 
 	for _, file := range files {
@@ -154,6 +176,9 @@ func dumpCallObj(files ...string) {
 			continue
 		}
 		context := createContext(file)
+		if !checkContext(context, file) {
+			return
+		}
 		ast.Inspect(context.root, func(n ast.Node) bool {
 			var obj types.Object
 			switch node := n.(type) {
@@ -178,6 +203,9 @@ func dumpUses(files ...string) {
 			continue
 		}
 		context := createContext(file)
+		if !checkContext(context, file) {
+			return
+		}
 		for ident, obj := range context.info.Uses {
 			fmt.Printf("IDENT: %v, OBJECT: %v\n", ident, obj)
 		}
@@ -190,6 +218,9 @@ func dumpTypes(files ...string) {
 			continue
 		}
 		context := createContext(file)
+		if !checkContext(context, file) {
+			return
+		}
 		for expr, tv := range context.info.Types {
 			fmt.Printf("EXPR: %v, TYPE: %v\n", expr, tv)
 		}
@@ -202,6 +233,9 @@ func dumpDefs(files ...string) {
 			continue
 		}
 		context := createContext(file)
+		if !checkContext(context, file) {
+			return
+		}
 		for ident, obj := range context.info.Defs {
 			fmt.Printf("IDENT: %v, OBJ: %v\n", ident, obj)
 		}
@@ -214,6 +248,9 @@ func dumpComments(files ...string) {
 			continue
 		}
 		context := createContext(file)
+		if !checkContext(context, file) {
+			return
+		}
 		for _, group := range context.comments.Comments() {
 			fmt.Println(group.Text())
 		}
@@ -226,6 +263,9 @@ func dumpImports(files ...string) {
 			continue
 		}
 		context := createContext(file)
+		if !checkContext(context, file) {
+			return
+		}
 		for _, pkg := range context.pkg.Imports() {
 			fmt.Println(pkg.Path(), pkg.Name())
 			for _, name := range pkg.Scope().Names() {

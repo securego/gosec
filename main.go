@@ -117,7 +117,9 @@ func buildConfig(incRules string, excRules string) map[string]interface{} {
 	return config
 }
 
+// #nosec
 func usage() {
+
 	fmt.Fprintln(os.Stderr, usageText)
 	fmt.Fprint(os.Stderr, "OPTIONS:\n\n")
 	flag.PrintDefaults()
