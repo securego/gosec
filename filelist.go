@@ -15,60 +15,58 @@
 package main
 
 import (
-	"fmt"
-	"os"
-	"path/filepath"
+	"log"
 	"strings"
+
+	"github.com/ryanuber/go-glob"
 )
 
-type filelist struct {
-	paths map[string]bool
-	globs []string
+// fileList uses a map for patterns to ensure each pattern only
+// appears once
+type fileList struct {
+	patterns map[string]struct{}
 }
 
-func newFileList(paths ...string) *filelist {
-
-	f := &filelist{
-		make(map[string]bool),
-		make([]string, 0),
+func newFileList(paths ...string) *fileList {
+	f := &fileList{
+		patterns: make(map[string]struct{}),
 	}
-
-	for _, path := range paths {
-		if e := f.Set(path); e != nil {
-			// #nosec
-			fmt.Fprintf(os.Stderr, "Unable to add %s to filelist: %s\n", path, e)
-		}
+	for _, p := range paths {
+		f.patterns[p] = struct{}{}
 	}
 	return f
 }
 
-func (f *filelist) String() string {
-	return strings.Join(f.globs, ", ")
+func (f *fileList) String() string {
+	ps := make([]string, 0, len(f.patterns))
+	for p := range f.patterns {
+		ps = append(ps, p)
+	}
+	return strings.Join(ps, ", ")
 }
 
-func (f *filelist) Set(path string) error {
-	f.globs = append(f.globs, path)
-	matches, e := filepath.Glob(path)
-	if e != nil {
-		return e
+func (f *fileList) Set(path string) error {
+	if path == "" {
+		// don't bother adding the empty path
+		return nil
 	}
-	for _, each := range matches {
-		abs, e := filepath.Abs(each)
-		if e != nil {
-			return e
-		}
-		f.paths[abs] = true
-	}
+	f.patterns[path] = struct{}{}
 	return nil
 }
 
-func (f filelist) Contains(path string) bool {
-	_, present := f.paths[path]
-	return present
+func (f fileList) Contains(path string) bool {
+	for p := range f.patterns {
+		if glob.Glob(p, path) {
+			log.Printf("excluding: %s\n", path)
+			return true
+		}
+	}
+	log.Printf("including: %s\n", path)
+	return false
 }
 
 /*
-func (f filelist) Dump() {
+func (f fileList) Dump() {
 	for k, _ := range f.paths {
 		println(k)
 	}

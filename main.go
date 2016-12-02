@@ -29,22 +29,30 @@ import (
 	"github.com/GoASTScanner/gas/output"
 )
 
-// #nosec flag
-var flagIgnoreNoSec = flag.Bool("nosec", false, "Ignores #nosec comments when set")
+type recursion bool
 
-// format output
-var flagFormat = flag.String("fmt", "text", "Set output format. Valid options are: json, csv, html, or text")
+const (
+	recurse   recursion = true
+	noRecurse recursion = false
+)
 
-// output file
-var flagOutput = flag.String("out", "", "Set output file for results")
+var (
+	// #nosec flag
+	flagIgnoreNoSec = flag.Bool("nosec", false, "Ignores #nosec comments when set")
 
-// config file
-var flagConfig = flag.String("conf", "", "Path to optional config file")
+	// format output
+	flagFormat = flag.String("fmt", "text", "Set output format. Valid options are: json, csv, html, or text")
 
-// quiet
-var flagQuiet = flag.Bool("quiet", false, "Only show output when errors are found")
+	// output file
+	flagOutput = flag.String("out", "", "Set output file for results")
 
-var usageText = `
+	// config file
+	flagConfig = flag.String("conf", "", "Path to optional config file")
+
+	// quiet
+	flagQuiet = flag.Bool("quiet", false, "Only show output when errors are found")
+
+	usageText = `
 GAS - Go AST Scanner
 
 Gas analyzes Go source code to look for common programming mistakes that
@@ -67,7 +75,8 @@ USAGE:
 
 `
 
-var logger *log.Logger
+	logger *log.Logger
+)
 
 func extendConfList(conf map[string]interface{}, name string, inputStr string) {
 	if inputStr == "" {
@@ -145,7 +154,7 @@ func main() {
 	flag.Usage = usage
 
 	//  Exclude files
-	excluded := newFileList("**/*_test.go")
+	excluded := newFileList("*_test.go")
 	flag.Var(excluded, "skip", "File pattern to exclude from scan")
 
 	incRules := ""
@@ -183,42 +192,11 @@ func main() {
 	analyzer := gas.NewAnalyzer(config, logger)
 	AddRules(&analyzer, config)
 
-	// Traverse directory structure if './...'
-	if flag.NArg() == 1 && flag.Arg(0) == "./..." {
+	toAnalyze := getFilesToAnalyze(flag.Args(), excluded)
 
-		cwd, err := os.Getwd()
-		if err != nil {
-			logger.Fatalf("Unable to traverse path %s, reason - %s", flag.Arg(0), err)
-		}
-		filepath.Walk(cwd, func(path string, info os.FileInfo, err error) error {
-			if excluded.Contains(path) && info.IsDir() {
-				logger.Printf("Skipping %s\n", path)
-				return filepath.SkipDir
-			}
-			if !info.IsDir() && !excluded.Contains(path) &&
-				strings.HasSuffix(path, ".go") {
-				err = analyzer.Process(path)
-				if err != nil {
-					logger.Fatal(err)
-				}
-			}
-			return nil
-		})
-
-	} else {
-
-		// Process each file individually
-		for _, filename := range flag.Args() {
-			if finfo, err := os.Stat(filename); err == nil {
-				if !finfo.IsDir() && !excluded.Contains(filename) &&
-					strings.HasSuffix(filename, ".go") {
-					if err = analyzer.Process(filename); err != nil {
-						logger.Fatal(err)
-					}
-				}
-			} else {
-				logger.Fatal(err)
-			}
+	for _, file := range toAnalyze {
+		if err := analyzer.Process(file); err != nil {
+			logger.Fatal(err)
 		}
 	}
 
@@ -244,4 +222,69 @@ func main() {
 	if issuesFound {
 		os.Exit(1)
 	}
+}
+
+// getFilesToAnalyze lists all files
+func getFilesToAnalyze(paths []string, excluded *fileList) []string {
+	log.Println("getFilesToAnalyze: start")
+	var toAnalyze []string
+	for _, path := range paths {
+		log.Printf("getFilesToAnalyze: processing \"%s\"\n", path)
+		// get the absolute path before doing anything else
+		path, err := filepath.Abs(path)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if filepath.Base(path) == "..." {
+			toAnalyze = append(
+				toAnalyze,
+				listFiles(filepath.Dir(path), recurse, excluded)...,
+			)
+		} else {
+			var (
+				finfo os.FileInfo
+				err   error
+			)
+			if finfo, err = os.Stat(path); err != nil {
+				logger.Fatal(err)
+			}
+			if !finfo.IsDir() {
+				if shouldInclude(path, excluded) {
+					toAnalyze = append(toAnalyze, path)
+				}
+			} else {
+				toAnalyze = listFiles(path, noRecurse, excluded)
+			}
+		}
+	}
+	log.Println("getFilesToAnalyze: end")
+	return toAnalyze
+}
+
+// listFiles returns a list of all files found that pass the shouldInclude check.
+// If doRecursiveWalk it true, it will walk the tree rooted at absPath, otherwise it
+// will only include files directly within the dir referenced by absPath.
+func listFiles(absPath string, doRecursiveWalk recursion, excluded *fileList) []string {
+	var files []string
+
+	walk := func(path string, info os.FileInfo, err error) error {
+		if info.IsDir() && doRecursiveWalk == noRecurse {
+			return filepath.SkipDir
+		}
+		if shouldInclude(path, excluded) {
+			files = append(files, path)
+		}
+		return nil
+	}
+
+	if err := filepath.Walk(absPath, walk); err != nil {
+		log.Fatal(err)
+	}
+	return files
+}
+
+// shouldInclude checks if a specific path which is expected to reference
+// a regular file should be included
+func shouldInclude(path string, excluded *fileList) bool {
+	return filepath.Ext(path) == ".go" && !excluded.Contains(path)
 }
