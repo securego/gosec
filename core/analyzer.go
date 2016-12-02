@@ -183,11 +183,11 @@ func (gas *Analyzer) ProcessSource(filename string, source string) error {
 	return err
 }
 
-// ignore a node (and sub-tree) if it is tagged with a "nosec" comment
+// ignore a node (and sub-tree) if it is tagged with a "#nosec" comment
 func (gas *Analyzer) ignore(n ast.Node) bool {
 	if groups, ok := gas.context.Comments[n]; ok && !gas.ignoreNosec {
 		for _, group := range groups {
-			if strings.Contains(group.Text(), "nosec") {
+			if strings.Contains(group.Text(), "#nosec") {
 				gas.Stats.NumNosec++
 				return true
 			}
