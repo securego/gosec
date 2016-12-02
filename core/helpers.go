@@ -56,31 +56,43 @@ func MatchCall(n ast.Node, r *regexp.Regexp) *ast.CallExpr {
 //
 func MatchCallByPackage(n ast.Node, c *Context, pkg string, names ...string) (*ast.CallExpr, bool) {
 
-	importName, imported := c.Imports.Imported[pkg]
-	if !imported {
+	importedName, found := GetImportedName(pkg, c)
+	if !found {
 		return nil, false
 	}
 
-	if _, initonly := c.Imports.InitOnly[pkg]; initonly {
-		return nil, false
+	if callExpr, ok := n.(*ast.CallExpr); ok {
+		packageName, callName, err := GetCallInfo(callExpr, c)
+		if err != nil {
+			return nil, false
+		}
+		if packageName == importedName {
+			for _, name := range names {
+				if callName == name {
+					return callExpr, true
+				}
+			}
+		}
 	}
+	return nil, false
+}
 
-	if alias, ok := c.Imports.Aliased[pkg]; ok {
-		importName = alias
-	}
-
-	switch node := n.(type) {
-	case *ast.CallExpr:
-		switch fn := node.Fun.(type) {
-		case *ast.SelectorExpr:
-			switch expr := fn.X.(type) {
-			case *ast.Ident:
-				if expr.Name == importName {
-					for _, name := range names {
-						if fn.Sel.Name == name {
-							return node, true
-						}
-					}
+// MatchCallByType ensures that the node is a call expression to a
+// specific object type.
+//
+// Usage:
+// 	node, matched := MatchCallByType(n, ctx, "bytes.Buffer", "WriteTo", "Write")
+//
+func MatchCallByType(n ast.Node, ctx *Context, requiredType string, calls ...string) (*ast.CallExpr, bool) {
+	if callExpr, ok := n.(*ast.CallExpr); ok {
+		typeName, callName, err := GetCallInfo(callExpr, ctx)
+		if err != nil {
+			return nil, false
+		}
+		if typeName == requiredType {
+			for _, call := range calls {
+				if call == callName {
+					return callExpr, true
 				}
 			}
 		}
@@ -143,4 +155,60 @@ func GetCallObject(n ast.Node, ctx *Context) (*ast.CallExpr, types.Object) {
 		}
 	}
 	return nil, nil
+}
+
+// GetCallInfo returns the package or type and name  associated with a
+// call expression.
+func GetCallInfo(n ast.Node, ctx *Context) (string, string, error) {
+	switch node := n.(type) {
+	case *ast.CallExpr:
+		switch fn := node.Fun.(type) {
+		case *ast.SelectorExpr:
+			switch expr := fn.X.(type) {
+			case *ast.Ident:
+				if expr.Obj != nil && expr.Obj.Kind == ast.Var {
+					t := ctx.Info.TypeOf(expr)
+					if t != nil {
+						return t.String(), fn.Sel.Name, nil
+					} else {
+						return "undefined", fn.Sel.Name, fmt.Errorf("missing type info")
+					}
+				} else {
+					return expr.Name, fn.Sel.Name, nil
+				}
+			}
+		case *ast.Ident:
+			return ctx.Pkg.Name(), fn.Name, nil
+		}
+	}
+	return "", "", fmt.Errorf("unable to determine call info")
+}
+
+// GetImportedName returns the name used for the package within the
+// code. It will resolve aliases and ignores initalization only imports.
+func GetImportedName(path string, ctx *Context) (string, bool) {
+	importName, imported := ctx.Imports.Imported[path]
+	if !imported {
+		return "", false
+	}
+
+	if _, initonly := ctx.Imports.InitOnly[path]; initonly {
+		return "", false
+	}
+
+	if alias, ok := ctx.Imports.Aliased[path]; ok {
+		importName = alias
+	}
+	return importName, true
+}
+
+// GetImportPath resolves the full import path of an identifer based on
+// the imports in the current context.
+func GetImportPath(name string, ctx *Context) (string, bool) {
+	for path, _ := range ctx.Imports.Imported {
+		if imported, ok := GetImportedName(path, ctx); ok && imported == name {
+			return path, true
+		}
+	}
+	return "", false
 }

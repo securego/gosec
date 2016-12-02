@@ -13,53 +13,61 @@
 
 package core
 
-type set map[string]bool
+import (
+	"go/ast"
+)
 
-type calls struct {
-	matchAny  bool
-	functions set
-}
+type set map[string]bool
 
 /// CallList is used to check for usage of specific packages
 /// and functions.
-type CallList map[string]*calls
+type CallList map[string]set
 
 /// NewCallList creates a new empty CallList
 func NewCallList() CallList {
 	return make(CallList)
 }
 
-/// NewCallListFor createse a call list using the package path
-func NewCallListFor(pkg string, funcs ...string) CallList {
-	c := NewCallList()
-	if len(funcs) == 0 {
-		c[pkg] = &calls{true, make(set)}
-	} else {
-		for _, fn := range funcs {
-			c.Add(pkg, fn)
-		}
+/// AddAll will add several calls to the call list at once
+func (c CallList) AddAll(selector string, idents ...string) {
+	for _, ident := range idents {
+		c.Add(selector, ident)
 	}
-	return c
 }
 
-/// Add a new package and function to the call list
-func (c CallList) Add(pkg, fn string) {
-	if cl, ok := c[pkg]; ok {
-		if cl.matchAny {
-			cl.matchAny = false
-		}
-	} else {
-		c[pkg] = &calls{false, make(set)}
+/// Add a selector and call to the call list
+func (c CallList) Add(selector, ident string) {
+	if _, ok := c[selector]; !ok {
+		c[selector] = make(set)
 	}
-	c[pkg].functions[fn] = true
+	c[selector][ident] = true
 }
 
 /// Contains returns true if the package and function are
 /// members of this call list.
-func (c CallList) Contains(pkg, fn string) bool {
-	if funcs, ok := c[pkg]; ok {
-		_, ok = funcs.functions[fn]
-		return ok || funcs.matchAny
+func (c CallList) Contains(selector, ident string) bool {
+	if idents, ok := c[selector]; ok {
+		_, found := idents[ident]
+		return found
+	}
+	return false
+}
+
+/// ContainsCallExpr resolves the call expression name and type
+/// or package and determines if it exists within the CallList
+func (c CallList) ContainsCallExpr(n ast.Node, ctx *Context) bool {
+	selector, ident, err := GetCallInfo(n, ctx)
+	if err != nil {
+		return false
+	}
+	// Try direct resolution
+	if c.Contains(selector, ident) {
+		return true
+	}
+
+	// Also support explicit path
+	if path, ok := GetImportPath(selector, ctx); ok {
+		return c.Contains(path, ident)
 	}
 	return false
 }

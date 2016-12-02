@@ -15,35 +15,54 @@
 package rules
 
 import (
+	gas "github.com/GoASTScanner/gas/core"
 	"go/ast"
 	"go/types"
-	"reflect"
-
-	gas "github.com/GoASTScanner/gas/core"
 )
 
 type NoErrorCheck struct {
 	gas.MetaData
+	whitelist gas.CallList
 }
 
-func (r *NoErrorCheck) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err error) {
-	if node, ok := n.(*ast.AssignStmt); ok {
-		sel := reflect.TypeOf(&ast.CallExpr{})
-		if call, ok := gas.SimpleSelect(node.Rhs[0], sel).(*ast.CallExpr); ok {
-			if t := c.Info.Types[call].Type; t != nil {
-				if typeVal, typeErr := t.(*types.Tuple); typeErr {
-					for i := 0; i < typeVal.Len(); i++ {
-						if typeVal.At(i).Type().String() == "error" { // TODO(tkelsey): is there a better way?
-							if id, ok := node.Lhs[i].(*ast.Ident); ok && id.Name == "_" {
-								return gas.NewIssue(c, n, r.What, r.Severity, r.Confidence), nil
-							}
-						}
-					}
-				} else if t.String() == "error" { // TODO(tkelsey): is there a better way?
-					if id, ok := node.Lhs[0].(*ast.Ident); ok && id.Name == "_" {
-						return gas.NewIssue(c, n, r.What, r.Severity, r.Confidence), nil
-					}
+func returnsError(callExpr *ast.CallExpr, ctx *gas.Context) int {
+	if tv := ctx.Info.TypeOf(callExpr); tv != nil {
+		switch t := tv.(type) {
+		case *types.Tuple:
+			for pos := 0; pos < t.Len(); pos += 1 {
+				variable := t.At(pos)
+				if variable != nil && variable.Type().String() == "error" {
+					return pos
 				}
+			}
+		case *types.Named:
+			if t.String() == "error" {
+				return 0
+			}
+		}
+	}
+	return -1
+}
+
+func (r *NoErrorCheck) Match(n ast.Node, ctx *gas.Context) (*gas.Issue, error) {
+	switch stmt := n.(type) {
+	case *ast.AssignStmt:
+		for _, expr := range stmt.Rhs {
+			if callExpr, ok := expr.(*ast.CallExpr); ok && !r.whitelist.ContainsCallExpr(callExpr, ctx) {
+				pos := returnsError(callExpr, ctx)
+				if pos < 0 || pos >= len(stmt.Lhs) {
+					return nil, nil
+				}
+				if id, ok := stmt.Lhs[pos].(*ast.Ident); ok && id.Name == "_" {
+					return gas.NewIssue(ctx, n, r.What, r.Severity, r.Confidence), nil
+				}
+			}
+		}
+	case *ast.ExprStmt:
+		if callExpr, ok := stmt.X.(*ast.CallExpr); ok && !r.whitelist.ContainsCallExpr(callExpr, ctx) {
+			pos := returnsError(callExpr, ctx)
+			if pos >= 0 {
+				return gas.NewIssue(ctx, n, r.What, r.Severity, r.Confidence), nil
 			}
 		}
 	}
@@ -51,11 +70,27 @@ func (r *NoErrorCheck) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err err
 }
 
 func NewNoErrorCheck(conf map[string]interface{}) (gas.Rule, []ast.Node) {
+
+	// TODO(gm) Come up with sensible defaults here. Or flip it to use a
+	// black list instead.
+	whitelist := gas.NewCallList()
+	whitelist.AddAll("bytes.Buffer", "Write", "WriteByte", "WriteRune", "WriteString")
+	whitelist.AddAll("fmt", "Print", "Printf", "Println")
+	whitelist.Add("io.PipeWriter", "CloseWithError")
+
+	if configured, ok := conf["G104"]; ok {
+		if whitelisted, ok := configured.(map[string][]string); ok {
+			for key, val := range whitelisted {
+				whitelist.AddAll(key, val...)
+			}
+		}
+	}
 	return &NoErrorCheck{
 		MetaData: gas.MetaData{
 			Severity:   gas.Low,
 			Confidence: gas.High,
 			What:       "Errors unhandled.",
 		},
-	}, []ast.Node{(*ast.AssignStmt)(nil)}
+		whitelist: whitelist,
+	}, []ast.Node{(*ast.AssignStmt)(nil), (*ast.ExprStmt)(nil)}
 }
