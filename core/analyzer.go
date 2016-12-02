@@ -23,6 +23,7 @@ import (
 	"go/types"
 	"log"
 	"os"
+	"path"
 	"reflect"
 	"strings"
 )
@@ -222,8 +223,9 @@ func (gas *Analyzer) Visit(n ast.Node) ast.Visitor {
 			for _, rule := range val {
 				ret, err := rule.Match(n, &gas.context)
 				if err != nil {
-					// will want to give more info than this ...
-					gas.logger.Println("internal error running rule:", err)
+					file, line := GetLocation(n, &gas.context)
+					file = path.Base(file)
+					gas.logger.Printf("Rule error: %v => %s (%s:%d)\n", reflect.TypeOf(rule), err, file, line)
 				}
 				if ret != nil {
 					gas.Issues = append(gas.Issues, *ret)

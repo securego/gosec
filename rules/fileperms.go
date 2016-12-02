@@ -36,7 +36,11 @@ func getConfiguredMode(conf map[string]interface{}, configKey string, defaultMod
 		case int64:
 			mode = value.(int64)
 		case string:
-			mode, _ = strconv.ParseInt(value.(string), 0, 64)
+			if m, e := strconv.ParseInt(value.(string), 0, 64); e != nil {
+				mode = defaultMode
+			} else {
+				mode = m
+			}
 		}
 	}
 	return mode

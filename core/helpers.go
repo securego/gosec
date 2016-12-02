@@ -212,3 +212,9 @@ func GetImportPath(name string, ctx *Context) (string, bool) {
 	}
 	return "", false
 }
+
+// GetLocation returns the filename and line number of an ast.Node
+func GetLocation(n ast.Node, ctx *Context) (string, int) {
+	fobj := ctx.FileSet.File(n.Pos())
+	return fobj.Name(), fobj.Line(n.Pos())
+}

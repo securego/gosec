@@ -15,6 +15,8 @@
 package main
 
 import (
+	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 )
@@ -32,7 +34,10 @@ func newFileList(paths ...string) *filelist {
 	}
 
 	for _, path := range paths {
-		f.Set(path)
+		if e := f.Set(path); e != nil {
+			// #nosec
+			fmt.Fprintf(os.Stderr, "Unable to add %s to filelist: %s\n", path, e)
+		}
 	}
 	return f
 }
