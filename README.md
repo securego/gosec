@@ -63,8 +63,8 @@ $ gas -exclude=G303 ./...
 
 #### Excluding files:
 
-Gas can be told to \ignore paths that match a supplied pattern using the 'skip' command line option. This accomplished via
-[filepath.Match](https://golang.org/pkg/path/filepath/#Match). Multiple patterns can be specified as follows:
+Gas can be told to \ignore paths that match a supplied pattern using the 'skip' command line option. This is
+accomplished via [go-glob](github.com/ryanuber/go-glob). Multiple patterns can be specified as follows:
 
 ```
 $ gas -skip=tests* -skip=*_example.go ./...
