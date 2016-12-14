@@ -53,3 +53,25 @@ func TestUnsafe(t *testing.T) {
 	checkTestResults(t, issues, 3, "Use of unsafe calls")
 
 }
+
+func TestUnsafeFalsePositive(t *testing.T) {
+
+	config := map[string]interface{}{"ignoreNosec": false}
+	analyzer := gas.NewAnalyzer(config, nil)
+	analyzer.AddRule(NewUsingUnsafe(config))
+
+	issues := gasTestRunner(`
+        package main
+
+        import (
+        	"fmt"
+					"somethingunsafe"
+        )
+				func main(){
+					somethingunsafe.Foobar()
+        }
+        `, analyzer)
+
+	checkTestResults(t, issues, 0, "Use of unsafe calls")
+
+}
