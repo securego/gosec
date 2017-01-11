@@ -111,3 +111,36 @@ func TestHardecodedVarsNotAssigned(t *testing.T) {
 		}`, analyzer)
 	checkTestResults(t, issues, 1, "Potential hardcoded credentials")
 }
+
+func TestHardcodedConstInteger(t *testing.T) {
+	config := map[string]interface{}{"ignoreNosec": false}
+	analyzer := gas.NewAnalyzer(config, nil)
+	analyzer.AddRule(NewHardcodedCredentials(config))
+	issues := gasTestRunner(`
+		package main
+
+		const (
+			ATNStateSomethingElse = 1
+			ATNStateTokenStart = 42
+		)
+		func main() {
+			println(ATNStateTokenStart)
+		}`, analyzer)
+	checkTestResults(t, issues, 0, "Potential hardcoded credentials")
+}
+
+func TestHardcodedConstString(t *testing.T) {
+	config := map[string]interface{}{"ignoreNosec": false}
+	analyzer := gas.NewAnalyzer(config, nil)
+	analyzer.AddRule(NewHardcodedCredentials(config))
+	issues := gasTestRunner(`
+		package main
+
+		const (
+			ATNStateTokenStart = "foo bar"
+		)
+		func main() {
+			println(ATNStateTokenStart)
+		}`, analyzer)
+	checkTestResults(t, issues, 1, "Potential hardcoded credentials")
+}
