@@ -64,7 +64,7 @@ func (r *Credentials) matchGenDecl(decl *ast.GenDecl, ctx *gas.Context) (*gas.Is
 						index = len(valueSpec.Values) - 1
 					}
 					if rhs, ok := valueSpec.Values[index].(*ast.BasicLit); ok && rhs.Kind == token.STRING {
-						return gas.NewIssue(ctx, decl, r.What, r.Severity, r.Confidence), nil
+						return gas.NewIssue(ctx, valueSpec, r.What, r.Severity, r.Confidence), nil
 					}
 				}
 			}
