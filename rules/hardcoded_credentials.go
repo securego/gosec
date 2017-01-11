@@ -41,7 +41,7 @@ func (r *Credentials) matchAssign(assign *ast.AssignStmt, ctx *gas.Context) (*ga
 		if ident, ok := i.(*ast.Ident); ok {
 			if r.pattern.MatchString(ident.Name) {
 				for _, e := range assign.Rhs {
-					if _, ok := e.(*ast.BasicLit); ok {
+					if rhs, ok := e.(*ast.BasicLit); ok && rhs.Kind == token.STRING {
 						return gas.NewIssue(ctx, assign, r.What, r.Severity, r.Confidence), nil
 					}
 				}
@@ -63,7 +63,7 @@ func (r *Credentials) matchGenDecl(decl *ast.GenDecl, ctx *gas.Context) (*gas.Is
 					if len(valueSpec.Values) <= index {
 						index = len(valueSpec.Values) - 1
 					}
-					if _, ok := valueSpec.Values[index].(*ast.BasicLit); ok {
+					if rhs, ok := valueSpec.Values[index].(*ast.BasicLit); ok && rhs.Kind == token.STRING {
 						return gas.NewIssue(ctx, decl, r.What, r.Severity, r.Confidence), nil
 					}
 				}
