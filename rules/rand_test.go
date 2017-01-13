@@ -27,7 +27,7 @@ func TestRandOk(t *testing.T) {
 
 	issues := gasTestRunner(
 		`
-		package samples
+		package main 
 
 		import "crypto/rand"
 
@@ -46,7 +46,7 @@ func TestRandBad(t *testing.T) {
 
 	issues := gasTestRunner(
 		`
-		package samples
+		package main
 
 		import "math/rand"
 
@@ -66,7 +66,7 @@ func TestRandRenamed(t *testing.T) {
 
 	issues := gasTestRunner(
 		`
-		package samples
+		package main 
 
 		import (
 			"crypto/rand"
