@@ -29,8 +29,11 @@ func TestHttpoxy(t *testing.T) {
 		package main
     import (
         "net/http/cgi"
+				"net/http"
   	)
-		func main() {}`, analyzer)
+		func main() {
+			cgi.Serve(http.FileServer(http.Dir("/usr/share/doc")))
+		}`, analyzer)
 
 	checkTestResults(t, issues, 1, "Go versions < 1.6.3 are vulnerable to Httpoxy")
 }

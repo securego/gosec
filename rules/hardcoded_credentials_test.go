@@ -90,7 +90,10 @@ func TestHardcodedConstantMulti(t *testing.T) {
 
 		import "fmt"
 
-		const username, password = "secret"
+		const (
+			username = "user"
+			password = "secret"
+		)
 
 		func main() {
 			fmt.Println("Doing something with: ", username, password)
@@ -104,7 +107,7 @@ func TestHardecodedVarsNotAssigned(t *testing.T) {
 	analyzer := gas.NewAnalyzer(config, nil)
 	analyzer.AddRule(NewHardcodedCredentials(config))
 	issues := gasTestRunner(`
-		package main 
+		package main
 		var password string
 		func init() {
 			password = "this is a secret string"

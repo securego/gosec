@@ -32,12 +32,13 @@ func TestErrorsMulti(t *testing.T) {
 			"fmt"
 		)
 
-		func test() (val int, err error) {
+		func test() (int,error) {
 			return 0, nil
 		}
 
 		func main() {
 			v, _ := test()
+			fmt.Println(v)
 		}`, analyzer)
 
 	checkTestResults(t, issues, 1, "Errors unhandled")
@@ -130,6 +131,9 @@ func TestErrorsWhitelisted(t *testing.T) {
 			var b bytes.Buffer
 			// Default whitelist
 			nbytes, _ := b.Write([]byte("Hello "))
+			if nbytes <= 0 {
+				os.Exit(1)
+			}
 
 			// Whitelisted via configuration
 			r, _ := zlib.NewReader(&b)

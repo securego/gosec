@@ -124,7 +124,7 @@ func TestInsecureCipherSuite(t *testing.T) {
         func main() {
         	tr := &http.Transport{
         		TLSClientConfig: &tls.Config{CipherSuites: []uint16{
-                                tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_DERP,
+                                tls.TLS_RSA_WITH_RC4_128_SHA,
                                 tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
                                 },},
         	}
@@ -136,5 +136,5 @@ func TestInsecureCipherSuite(t *testing.T) {
         }
         `, analyzer)
 
-	checkTestResults(t, issues, 1, "TLS Bad Cipher Suite: TLS_ECDHE_RSA_WITH_AES_128_GCM_DERP")
+	checkTestResults(t, issues, 1, "TLS Bad Cipher Suite: TLS_RSA_WITH_RC4_128_SHA")
 }

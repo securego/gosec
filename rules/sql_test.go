@@ -29,8 +29,8 @@ func TestSQLInjectionViaConcatenation(t *testing.T) {
         package main
         import (
                 "database/sql"
+                //_ "github.com/mattn/go-sqlite3"
                 "os"
-                _ "github.com/mattn/go-sqlite3"
         )
         func main(){
                 db, err := sql.Open("sqlite3", ":memory:")
@@ -59,7 +59,7 @@ func TestSQLInjectionViaIntepolation(t *testing.T) {
                 "database/sql"
                 "fmt"
                 "os"
-                _ "github.com/mattn/go-sqlite3"
+                //_ "github.com/mattn/go-sqlite3"
         )
         func main(){
                 db, err := sql.Open("sqlite3", ":memory:")
@@ -91,7 +91,7 @@ func TestSQLInjectionFalsePositiveA(t *testing.T) {
                 "database/sql"
                 "fmt"
                 "os"
-                _ "github.com/mattn/go-sqlite3"
+                //_ "github.com/mattn/go-sqlite3"
         )
 
         var staticQuery = "SELECT * FROM foo WHERE age < 32"
@@ -127,7 +127,7 @@ func TestSQLInjectionFalsePositiveB(t *testing.T) {
                 "database/sql"
                 "fmt"
                 "os"
-                _ "github.com/mattn/go-sqlite3"
+                //_ "github.com/mattn/go-sqlite3"
         )
 
         var staticQuery = "SELECT * FROM foo WHERE age < 32"
@@ -163,7 +163,7 @@ func TestSQLInjectionFalsePositiveC(t *testing.T) {
                 "database/sql"
                 "fmt"
                 "os"
-                _ "github.com/mattn/go-sqlite3"
+                //_ "github.com/mattn/go-sqlite3"
         )
 
         var staticQuery = "SELECT * FROM foo WHERE age < "
@@ -199,7 +199,7 @@ func TestSQLInjectionFalsePositiveD(t *testing.T) {
                 "database/sql"
                 "fmt"
                 "os"
-                _ "github.com/mattn/go-sqlite3"
+                //_ "github.com/mattn/go-sqlite3"
         )
 
 				const age = "32"
