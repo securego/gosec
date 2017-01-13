@@ -27,14 +27,15 @@ func TestNosec(t *testing.T) {
 
 	issues := gasTestRunner(
 		`package main
+		import (
+			"os"
+			"os/exec"
+		)
 
-    import (
-    	"fmt"
-    )
-
-    func main() {
-      cmd := exec.Command("sh", "-c", config.Command) // #nosec
-    }`, analyzer)
+	func main() {
+		cmd := exec.Command("sh", "-c", os.Getenv("BLAH")) // #nosec
+		cmd.Run()
+	}`, analyzer)
 
 	checkTestResults(t, issues, 0, "None")
 }
@@ -46,17 +47,18 @@ func TestNosecBlock(t *testing.T) {
 
 	issues := gasTestRunner(
 		`package main
+		import (
+		"os" 
+		"os/exect"
+	)
 
-    import (
-    	"fmt"
-    )
-
-    func main() {
+	func main() {
 			// #nosec
 			if true {
-      	cmd := exec.Command("sh", "-c", config.Command)
+				cmd := exec.Command("sh", "-c", os.Getenv("BLAH"))
+				cmd.Run()
 			}
-    }`, analyzer)
+	}`, analyzer)
 
 	checkTestResults(t, issues, 0, "None")
 }
@@ -69,13 +71,15 @@ func TestNosecIgnore(t *testing.T) {
 	issues := gasTestRunner(
 		`package main
 
-    import (
-    	"fmt"
-    )
+		import (
+			"os"
+			"os/exec"
+		)
 
-    func main() {
-      cmd := exec.Command("sh", "-c", config.Command) // #nosec
-    }`, analyzer)
+		func main() {
+			cmd := exec.Command("sh", "-c", os.Args[1]) // #nosec
+			cmd.Run()
+		}`, analyzer)
 
 	checkTestResults(t, issues, 1, "Subprocess launching with variable.")
 }

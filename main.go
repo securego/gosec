@@ -176,7 +176,7 @@ func main() {
 	// Ensure at least one file was specified
 	if flag.NArg() == 0 {
 
-		fmt.Fprintf(os.Stderr, "\nerror: FILE [FILE...] or './...' expected\n")
+		fmt.Fprintf(os.Stderr, "\nError: FILE [FILE...] or './...' expected\n")
 		flag.Usage()
 		os.Exit(1)
 	}
@@ -195,9 +195,11 @@ func main() {
 	toAnalyze := getFilesToAnalyze(flag.Args(), excluded)
 
 	for _, file := range toAnalyze {
-		logger.Printf("scanning \"%s\"\n", file)
+		logger.Printf(`Processing "%s"...`, file)
 		if err := analyzer.Process(file); err != nil {
-			logger.Fatal(err)
+			logger.Printf(`Failed to process: "%s"`, file)
+			logger.Println(err)
+			logger.Fatalf(`Halting execution.`)
 		}
 	}
 

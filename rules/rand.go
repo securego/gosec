@@ -22,13 +22,15 @@ import (
 
 type WeakRand struct {
 	gas.MetaData
-	funcName    string
+	funcNames   []string
 	packagePath string
 }
 
 func (w *WeakRand) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
-	if _, matched := gas.MatchCallByPackage(n, c, w.packagePath, w.funcName); matched {
-		return gas.NewIssue(c, n, w.What, w.Severity, w.Confidence), nil
+	for _, funcName := range w.funcNames {
+		if _, matched := gas.MatchCallByPackage(n, c, w.packagePath, funcName); matched {
+			return gas.NewIssue(c, n, w.What, w.Severity, w.Confidence), nil
+		}
 	}
 
 	return nil, nil
@@ -36,7 +38,7 @@ func (w *WeakRand) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 
 func NewWeakRandCheck(conf map[string]interface{}) (gas.Rule, []ast.Node) {
 	return &WeakRand{
-		funcName:    "Read",
+		funcNames:   []string{"Read", "Int"},
 		packagePath: "math/rand",
 		MetaData: gas.MetaData{
 			Severity:   gas.High,

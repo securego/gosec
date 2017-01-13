@@ -16,6 +16,7 @@
 package core
 
 import (
+	"fmt"
 	"go/ast"
 	"go/importer"
 	"go/parser"
@@ -123,10 +124,9 @@ func (gas *Analyzer) process(filename string, source interface{}) error {
 		}
 
 		conf := types.Config{Importer: importer.Default()}
-		gas.context.Pkg, _ = conf.Check("pkg", gas.context.FileSet, []*ast.File{root}, gas.context.Info)
+		gas.context.Pkg, err = conf.Check("pkg", gas.context.FileSet, []*ast.File{root}, gas.context.Info)
 		if err != nil {
-			gas.logger.Println("failed to check imports")
-			return err
+			return fmt.Errorf(`Error during type checking: "%s"`, err)
 		}
 
 		gas.context.Imports = NewImportInfo()

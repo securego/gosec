@@ -27,12 +27,13 @@ func TestRandOk(t *testing.T) {
 
 	issues := gasTestRunner(
 		`
-		package samples
+		package main 
 
 		import "crypto/rand"
 
 		func main() {
-			good, err := rand.Read(nil)
+			good, _ := rand.Read(nil)
+			println(good)
 		}`, analyzer)
 
 	checkTestResults(t, issues, 0, "Not expected to match")
@@ -45,12 +46,14 @@ func TestRandBad(t *testing.T) {
 
 	issues := gasTestRunner(
 		`
-		package samples
+		package main
 
 		import "math/rand"
 
 		func main() {
-			bad, err := rand.Read(nil)
+			bad := rand.Int()
+			println(bad)
+
 		}`, analyzer)
 
 	checkTestResults(t, issues, 1, "Use of weak random number generator (math/rand instead of crypto/rand)")
@@ -63,7 +66,7 @@ func TestRandRenamed(t *testing.T) {
 
 	issues := gasTestRunner(
 		`
-		package samples
+		package main 
 
 		import (
 			"crypto/rand"
@@ -72,8 +75,10 @@ func TestRandRenamed(t *testing.T) {
 
 
 		func main() {
-			good, err := rand.Read(nil)
-			i := mrand.Int()
+			good, _ := rand.Read(nil)
+			println(good)
+			i := mrand.Int31()
+			println(i)
 		}`, analyzer)
 
 	checkTestResults(t, issues, 0, "Not expected to match")

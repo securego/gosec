@@ -27,12 +27,12 @@ func TestChmod(t *testing.T) {
 
 	issues := gasTestRunner(`
 		package main
-        	import "os"
+		import "os"
 		func main() {
 			os.Chmod("/tmp/somefile", 0777)
 			os.Chmod("/tmp/someotherfile", 0600)
-			f := os.OpenFile("/tmp/thing", os.O_CREATE|os.O_WRONLY, 0666)
-			f := os.OpenFile("/tmp/thing", os.O_CREATE|os.O_WRONLY, 0600)
+			os.OpenFile("/tmp/thing", os.O_CREATE|os.O_WRONLY, 0666)
+			os.OpenFile("/tmp/thing", os.O_CREATE|os.O_WRONLY, 0600)
 		}`, analyzer)
 
 	checkTestResults(t, issues, 2, "Expect file permissions")

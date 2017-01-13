@@ -58,11 +58,12 @@ func TestSubprocessVar(t *testing.T) {
 
     import (
     	"log"
+			"os"
     	"os/exec"
     )
 
     func main() {
-      run := "sleep" + someFunc()
+      run := "sleep" + os.Getenv("SOMETHING")
     	cmd := exec.Command(run, "5")
     	err := cmd.Start()
     	if err != nil {
@@ -112,8 +113,7 @@ func TestSubprocessSyscall(t *testing.T) {
     package main
 
     import (
-    	"log"
-    	"os/exec"
+       "syscall"
     )
 
     func main() {
