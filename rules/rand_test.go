@@ -51,7 +51,7 @@ func TestRandBad(t *testing.T) {
 		import "math/rand"
 
 		func main() {
-			bad, _ := rand.Read(nil)
+			bad := rand.Int()
 			println(bad)
 
 		}`, analyzer)
@@ -77,7 +77,7 @@ func TestRandRenamed(t *testing.T) {
 		func main() {
 			good, _ := rand.Read(nil)
 			println(good)
-			i := mrand.Int()
+			i := mrand.Int31()
 			println(i)
 		}`, analyzer)
 
