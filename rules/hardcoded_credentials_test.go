@@ -33,6 +33,51 @@ func TestHardcoded(t *testing.T) {
 
 		func main() {
 			username := "admin"
+			password := "f62e5bcda4fae4f82370da0c6f20697b8f8447ef"
+			fmt.Println("Doing something with: ", username, password)
+		}`, analyzer)
+
+	checkTestResults(t, issues, 1, "Potential hardcoded credentials")
+}
+
+func TestHardcodedWithEntropy(t *testing.T) {
+	config := map[string]interface{}{"ignoreNosec": false}
+	analyzer := gas.NewAnalyzer(config, nil)
+	analyzer.AddRule(NewHardcodedCredentials(config))
+
+	issues := gasTestRunner(
+		`
+		package samples
+
+		import "fmt"
+
+		func main() {
+			username := "admin"
+			password := "secret"
+			fmt.Println("Doing something with: ", username, password)
+		}`, analyzer)
+
+	checkTestResults(t, issues, 0, "Potential hardcoded credentials")
+}
+
+func TestHardcodedIgnoreEntropy(t *testing.T) {
+	config := map[string]interface{}{
+		"ignoreNosec": false,
+		"G101": map[string]string{
+			"ignore_entropy": "true",
+		},
+	}
+	analyzer := gas.NewAnalyzer(config, nil)
+	analyzer.AddRule(NewHardcodedCredentials(config))
+
+	issues := gasTestRunner(
+		`
+		package samples
+
+		import "fmt"
+
+		func main() {
+			username := "admin"
 			password := "admin"
 			fmt.Println("Doing something with: ", username, password)
 		}`, analyzer)
@@ -50,7 +95,7 @@ func TestHardcodedGlobalVar(t *testing.T) {
 
 		import "fmt"
 
-		var password = "admin"
+		var password = "f62e5bcda4fae4f82370da0c6f20697b8f8447ef"
 
 		func main() {
 			username := "admin"
@@ -70,7 +115,7 @@ func TestHardcodedConstant(t *testing.T) {
 
 		import "fmt"
 
-		const password = "secret"
+		const password = "f62e5bcda4fae4f82370da0c6f20697b8f8447ef"
 
 		func main() {
 			username := "admin"
@@ -92,7 +137,7 @@ func TestHardcodedConstantMulti(t *testing.T) {
 
 		const (
 			username = "user"
-			password = "secret"
+			password = "f62e5bcda4fae4f82370da0c6f20697b8f8447ef"
 		)
 
 		func main() {
@@ -110,7 +155,7 @@ func TestHardecodedVarsNotAssigned(t *testing.T) {
 		package main
 		var password string
 		func init() {
-			password = "this is a secret string"
+			password = "f62e5bcda4fae4f82370da0c6f20697b8f8447ef"
 		}`, analyzer)
 	checkTestResults(t, issues, 1, "Potential hardcoded credentials")
 }
@@ -140,7 +185,7 @@ func TestHardcodedConstString(t *testing.T) {
 		package main
 
 		const (
-			ATNStateTokenStart = "foo bar"
+			ATNStateTokenStart = "f62e5bcda4fae4f82370da0c6f20697b8f8447ef"
 		)
 		func main() {
 			println(ATNStateTokenStart)

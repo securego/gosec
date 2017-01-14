@@ -15,15 +15,32 @@
 package rules
 
 import (
+	"fmt"
 	gas "github.com/GoASTScanner/gas/core"
 	"go/ast"
 	"go/token"
 	"regexp"
+
+	"github.com/nbutton23/zxcvbn-go"
+	"strconv"
 )
 
 type Credentials struct {
 	gas.MetaData
-	pattern *regexp.Regexp
+	pattern          *regexp.Regexp
+	entropyThreshold float64
+	perCharThreshold float64
+	truncate         int64
+	ignoreEntropy    bool
+}
+
+func (r *Credentials) isHighEntropyString(str string) bool {
+	s := fmt.Sprintf("%.*s", r.truncate, str)
+	info := zxcvbn.PasswordStrength(s, []string{})
+	entropyPerChar := info.Entropy / float64(len(s))
+	return (info.Entropy >= r.entropyThreshold ||
+		(info.Entropy >= (r.entropyThreshold/2) &&
+			entropyPerChar >= r.perCharThreshold))
 }
 
 func (r *Credentials) Match(n ast.Node, ctx *gas.Context) (*gas.Issue, error) {
@@ -41,8 +58,10 @@ func (r *Credentials) matchAssign(assign *ast.AssignStmt, ctx *gas.Context) (*ga
 		if ident, ok := i.(*ast.Ident); ok {
 			if r.pattern.MatchString(ident.Name) {
 				for _, e := range assign.Rhs {
-					if rhs, ok := e.(*ast.BasicLit); ok && rhs.Kind == token.STRING {
-						return gas.NewIssue(ctx, assign, r.What, r.Severity, r.Confidence), nil
+					if val, err := gas.GetString(e); err == nil {
+						if r.ignoreEntropy || (!r.ignoreEntropy && r.isHighEntropyString(val)) {
+							return gas.NewIssue(ctx, assign, r.What, r.Severity, r.Confidence), nil
+						}
 					}
 				}
 			}
@@ -75,11 +94,43 @@ func (r *Credentials) matchGenDecl(decl *ast.GenDecl, ctx *gas.Context) (*gas.Is
 
 func NewHardcodedCredentials(conf map[string]interface{}) (gas.Rule, []ast.Node) {
 	pattern := `(?i)passwd|pass|password|pwd|secret|token`
+	entropyThreshold := 80.0
+	perCharThreshold := 3.0
+	ignoreEntropy := false
+	var truncateString int64 = 16
 	if val, ok := conf["G101"]; ok {
-		pattern = val.(string)
+		conf := val.(map[string]string)
+		if configPattern, ok := conf["pattern"]; ok {
+			pattern = configPattern
+		}
+		if configIgnoreEntropy, ok := conf["ignore_entropy"]; ok {
+			if parsedBool, err := strconv.ParseBool(configIgnoreEntropy); err == nil {
+				ignoreEntropy = parsedBool
+			}
+		}
+		if configEntropyThreshold, ok := conf["entropy_threshold"]; ok {
+			if parsedNum, err := strconv.ParseFloat(configEntropyThreshold, 64); err == nil {
+				entropyThreshold = parsedNum
+			}
+		}
+		if configCharThreshold, ok := conf["per_char_threshold"]; ok {
+			if parsedNum, err := strconv.ParseFloat(configCharThreshold, 64); err == nil {
+				perCharThreshold = parsedNum
+			}
+		}
+		if configTruncate, ok := conf["truncate"]; ok {
+			if parsedInt, err := strconv.ParseInt(configTruncate, 10, 64); err == nil {
+				truncateString = parsedInt
+			}
+		}
 	}
+
 	return &Credentials{
-		pattern: regexp.MustCompile(pattern),
+		pattern:          regexp.MustCompile(pattern),
+		entropyThreshold: entropyThreshold,
+		perCharThreshold: perCharThreshold,
+		ignoreEntropy:    ignoreEntropy,
+		truncate:         truncateString,
 		MetaData: gas.MetaData{
 			What:       "Potential hardcoded credentials",
 			Confidence: gas.Low,
