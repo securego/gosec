@@ -15,7 +15,6 @@
 package rules
 
 import (
-	"fmt"
 	gas "github.com/GoASTScanner/gas/core"
 	"go/ast"
 	"go/token"
@@ -30,12 +29,19 @@ type Credentials struct {
 	pattern          *regexp.Regexp
 	entropyThreshold float64
 	perCharThreshold float64
-	truncate         int64
+	truncate         int
 	ignoreEntropy    bool
 }
 
+func truncate(s string, n int) string {
+	if n > len(s) {
+		return s
+	}
+	return s[:n]
+}
+
 func (r *Credentials) isHighEntropyString(str string) bool {
-	s := fmt.Sprintf("%.*s", r.truncate, str)
+	s := truncate(str, r.truncate)
 	info := zxcvbn.PasswordStrength(s, []string{})
 	entropyPerChar := info.Entropy / float64(len(s))
 	return (info.Entropy >= r.entropyThreshold ||
@@ -82,8 +88,10 @@ func (r *Credentials) matchGenDecl(decl *ast.GenDecl, ctx *gas.Context) (*gas.Is
 					if len(valueSpec.Values) <= index {
 						index = len(valueSpec.Values) - 1
 					}
-					if rhs, ok := valueSpec.Values[index].(*ast.BasicLit); ok && rhs.Kind == token.STRING {
-						return gas.NewIssue(ctx, valueSpec, r.What, r.Severity, r.Confidence), nil
+					if val, err := gas.GetString(valueSpec.Values[index]); err == nil {
+						if r.ignoreEntropy || (!r.ignoreEntropy && r.isHighEntropyString(val)) {
+							return gas.NewIssue(ctx, valueSpec, r.What, r.Severity, r.Confidence), nil
+						}
 					}
 				}
 			}
@@ -97,7 +105,7 @@ func NewHardcodedCredentials(conf map[string]interface{}) (gas.Rule, []ast.Node)
 	entropyThreshold := 80.0
 	perCharThreshold := 3.0
 	ignoreEntropy := false
-	var truncateString int64 = 16
+	var truncateString int = 16
 	if val, ok := conf["G101"]; ok {
 		conf := val.(map[string]string)
 		if configPattern, ok := conf["pattern"]; ok {
@@ -119,7 +127,7 @@ func NewHardcodedCredentials(conf map[string]interface{}) (gas.Rule, []ast.Node)
 			}
 		}
 		if configTruncate, ok := conf["truncate"]; ok {
-			if parsedInt, err := strconv.ParseInt(configTruncate, 10, 64); err == nil {
+			if parsedInt, err := strconv.Atoi(configTruncate); err == nil {
 				truncateString = parsedInt
 			}
 		}
