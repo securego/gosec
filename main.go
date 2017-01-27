@@ -231,14 +231,14 @@ func main() {
 func getFilesToAnalyze(paths []string, excluded *fileList) []string {
 	//log.Println("getFilesToAnalyze: start")
 	var toAnalyze []string
-	for _, path := range paths {
+	for _, relativePath := range paths {
 		//log.Printf("getFilesToAnalyze: processing \"%s\"\n", path)
 		// get the absolute path before doing anything else
-		path, err := filepath.Abs(path)
+		path, err := filepath.Abs(relativePath)
 		if err != nil {
 			log.Fatal(err)
 		}
-		if filepath.Base(path) == "..." {
+		if filepath.Base(relativePath) == "..." {
 			toAnalyze = append(
 				toAnalyze,
 				listFiles(filepath.Dir(path), recurse, excluded)...,
