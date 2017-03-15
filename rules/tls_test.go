@@ -138,3 +138,32 @@ func TestInsecureCipherSuite(t *testing.T) {
 
 	checkTestResults(t, issues, 1, "TLS Bad Cipher Suite: TLS_RSA_WITH_RC4_128_SHA")
 }
+
+func TestPreferServerCipherSuites(t *testing.T) {
+	config := map[string]interface{}{"ignoreNosec": false}
+	analyzer := gas.NewAnalyzer(config, nil)
+	analyzer.AddRule(NewModernTlsCheck(config))
+
+	issues := gasTestRunner(`
+        package main
+
+        import (
+        	"crypto/tls"
+        	"fmt"
+        	"net/http"
+        )
+
+        func main() {
+        	tr := &http.Transport{
+        		TLSClientConfig: &tls.Config{PreferServerCipherSuites: false},
+        	}
+        	client := &http.Client{Transport: tr}
+        	_, err := client.Get("https://golang.org/")
+        	if err != nil {
+        		fmt.Println(err)
+        	}
+        }
+        `, analyzer)
+
+	checkTestResults(t, issues, 1, "TLS PreferServerCipherSuites set false")
+}
