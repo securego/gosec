@@ -68,6 +68,16 @@ func (t *InsecureConfigTLS) processTlsConfVal(n *ast.KeyValueExpr, c *gas.Contex
 				return gas.NewIssue(c, n, "TLS InsecureSkipVerify may be true.", gas.High, gas.Low)
 			}
 
+		case "PreferServerCipherSuites":
+			if node, ok := n.Value.(*ast.Ident); ok {
+				if node.Name == "false" {
+					return gas.NewIssue(c, n, "TLS PreferServerCipherSuites set false.", gas.Medium, gas.High)
+				}
+			} else {
+				// TODO(tk): symbol tab look up to get the actual value
+				return gas.NewIssue(c, n, "TLS PreferServerCipherSuites may be false.", gas.Medium, gas.Low)
+			}
+
 		case "MinVersion":
 			if ival, ierr := gas.GetInt(n.Value); ierr == nil {
 				if (int16)(ival) < t.MinVersion {
@@ -90,7 +100,9 @@ func (t *InsecureConfigTLS) processTlsConfVal(n *ast.KeyValueExpr, c *gas.Contex
 			if ret := t.processTlsCipherSuites(n, c); ret != nil {
 				return ret
 			}
+
 		}
+
 	}
 	return nil
 }
