@@ -49,7 +49,7 @@ func TestNosecBlock(t *testing.T) {
 		`package main
 		import (
 		"os" 
-		"os/exect"
+		"os/exec"
 	)
 
 	func main() {

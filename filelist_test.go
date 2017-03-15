@@ -65,8 +65,8 @@ func Test_fileList_String(t *testing.T) {
 		},
 		{
 			name:   "two patterns",
-			fields: fields{patterns: []string{"foo", "bar"}},
-			want:   "foo, bar",
+			fields: fields{patterns: []string{"bar", "foo"}},
+			want:   "bar, foo",
 		},
 	}
 	for _, tt := range tests {
