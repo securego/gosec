@@ -297,5 +297,5 @@ func shouldInclude(path string, excluded *fileList) bool {
 
 // pkgName returns a package name relative to the GOPATH
 func pkgName(absPath string) string {
-	return strings.TrimPrefix(absPath, os.Getenv("GOPATH"))
+	return strings.TrimPrefix(absPath, fmt.Sprintf("%s/src/", os.Getenv("GOPATH")))
 }
