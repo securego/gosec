@@ -43,6 +43,12 @@ func NewImportInfo() *ImportInfo {
 	}
 }
 
+// The FileInfo stored a parsed file along with its absolute file path
+type FileInfo struct {
+	FilePath string
+	File     *ast.File
+}
+
 // The Context is populated with data parsed from the source code as it is scanned.
 // It is passed through to all rule functions as they are called. Rules may use
 // this data in conjunction withe the encoutered AST node.
@@ -51,7 +57,7 @@ type Context struct {
 	Comments []ast.CommentMap
 	Info     *types.Info
 	Pkg      *types.Package
-	Files    []*ast.File
+	Files    []FileInfo
 	Config   map[string]interface{}
 	Imports  *ImportInfo
 }
@@ -106,12 +112,13 @@ func NewAnalyzer(conf map[string]interface{}, logger *log.Logger) Analyzer {
 
 func (gas *Analyzer) analyze() {
 	for _, file := range gas.context.Files {
-		ast.Walk(gas, file)
+		gas.logger.Printf("Analyzing file %s ...", file.FilePath)
+		ast.Walk(gas, file.File)
 		gas.Stats.NumFiles++
 	}
 }
 
-func (gas *Analyzer) resolveTypes() (err error) {
+func (gas *Analyzer) resolveTypes(pkg string) (err error) {
 	gas.context.Info = &types.Info{
 		Types:      make(map[ast.Expr]types.TypeAndValue),
 		Defs:       make(map[*ast.Ident]types.Object),
@@ -121,8 +128,14 @@ func (gas *Analyzer) resolveTypes() (err error) {
 		Implicits:  make(map[ast.Node]types.Object),
 	}
 
+	gas.logger.Printf("Resolving types of package %s ...", pkg)
+
 	conf := types.Config{Importer: importer.Default()}
-	gas.context.Pkg, err = conf.Check("pkg", gas.context.FileSet, gas.context.Files, gas.context.Info)
+	var files []*ast.File
+	for _, file := range gas.context.Files {
+		files = append(files, file.File)
+	}
+	gas.context.Pkg, err = conf.Check(pkg, gas.context.FileSet, files, gas.context.Info)
 	if err != nil {
 		return err
 	}
@@ -139,15 +152,17 @@ func (gas *Analyzer) parsePkg(pkg string, filenames ...string) error {
 	mode := parser.ParseComments
 	gas.context.FileSet = token.NewFileSet()
 	for _, filename := range filenames {
+		gas.logger.Printf("Parsing file %s ...", filename)
 		file, err := parser.ParseFile(gas.context.FileSet, filename, nil, mode)
 		if err != nil {
 			return err
 		}
-		gas.context.Files = append(gas.context.Files, file)
+		fileInfo := FileInfo{filename, file}
+		gas.context.Files = append(gas.context.Files, fileInfo)
 	}
 
 	for _, file := range gas.context.Files {
-		commentMap := ast.NewCommentMap(gas.context.FileSet, file, file.Comments)
+		commentMap := ast.NewCommentMap(gas.context.FileSet, file.File, file.File.Comments)
 		gas.context.Comments = append(gas.context.Comments, commentMap)
 	}
 	return nil
@@ -156,9 +171,11 @@ func (gas *Analyzer) parsePkg(pkg string, filenames ...string) error {
 func (gas *Analyzer) parseFile(filename string, source interface{}) error {
 	mode := parser.ParseComments
 	gas.context.FileSet = token.NewFileSet()
+	gas.logger.Printf("Parsing the file %s\n", filename)
 	file, err := parser.ParseFile(gas.context.FileSet, filename, source, mode)
 	if err != nil {
-		gas.context.Files = append(gas.context.Files, file)
+		fileInfo := FileInfo{filename, file}
+		gas.context.Files = append(gas.context.Files, fileInfo)
 	}
 	commentMap := ast.NewCommentMap(gas.context.FileSet, file, file.Comments)
 	gas.context.Comments = append(gas.context.Comments, commentMap)
@@ -186,7 +203,7 @@ func (gas *Analyzer) ProcessPkg(pkg string, filenames ...string) error {
 		return err
 	}
 
-	err = gas.resolveTypes()
+	err = gas.resolveTypes(pkg)
 	if err != nil {
 		return err
 	}
@@ -204,12 +221,12 @@ func (gas *Analyzer) ProcessPkg(pkg string, filenames ...string) error {
 // ProcessSource will convert a source code string into an AST and traverse it.
 // Rule methods added with AddRule will be invoked as necessary. The string is
 // identified by the filename given but no file IO will be done.
-func (gas *Analyzer) ProcessSource(filename string, source string) error {
+func (gas *Analyzer) ProcessSource(pkg string, filename string, source string) error {
 	err := gas.parseFile(filename, source)
 	if err != nil {
 		return err
 	}
-	err = gas.resolveTypes()
+	err = gas.resolveTypes(pkg)
 	if err != nil {
 		return err
 	}
