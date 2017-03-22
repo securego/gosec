@@ -89,8 +89,6 @@ func TestSQLInjectionFalsePositiveA(t *testing.T) {
         package main
         import (
                 "database/sql"
-                "fmt"
-                "os"
                 //_ "github.com/mattn/go-sqlite3"
         )
 
@@ -125,8 +123,6 @@ func TestSQLInjectionFalsePositiveB(t *testing.T) {
         package main
         import (
                 "database/sql"
-                "fmt"
-                "os"
                 //_ "github.com/mattn/go-sqlite3"
         )
 
@@ -161,8 +157,6 @@ func TestSQLInjectionFalsePositiveC(t *testing.T) {
         package main
         import (
                 "database/sql"
-                "fmt"
-                "os"
                 //_ "github.com/mattn/go-sqlite3"
         )
 
@@ -197,8 +191,6 @@ func TestSQLInjectionFalsePositiveD(t *testing.T) {
         package main
         import (
                 "database/sql"
-                "fmt"
-                "os"
                 //_ "github.com/mattn/go-sqlite3"
         )
 

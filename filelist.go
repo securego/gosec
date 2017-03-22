@@ -15,6 +15,7 @@
 package main
 
 import (
+	"sort"
 	"strings"
 
 	"github.com/ryanuber/go-glob"
@@ -41,6 +42,7 @@ func (f *fileList) String() string {
 	for p := range f.patterns {
 		ps = append(ps, p)
 	}
+	sort.Strings(ps)
 	return strings.Join(ps, ", ")
 }
 
