@@ -52,7 +52,10 @@ func TestMatchCallByType(t *testing.T) {
 		fmt.Fprintf(&b, "world!")
 	}`
 
-	analyzer.ProcessSource("pkg", "dummy.go", source)
+	err := analyzer.ProcessSource("pkg", "dummy.go", source)
+	if err != nil {
+		t.Errorf("Failed to process the source: %v\n", err)
+	}
 	if rule.matched != 1 || len(rule.callExpr) != 1 {
 		t.Errorf("Expected to match a bytes.Buffer.Write call")
 	}

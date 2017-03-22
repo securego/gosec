@@ -174,9 +174,10 @@ func (gas *Analyzer) parseFile(filename string, source interface{}) error {
 	gas.logger.Printf("Parsing the file %s\n", filename)
 	file, err := parser.ParseFile(gas.context.FileSet, filename, source, mode)
 	if err != nil {
-		fileInfo := FileInfo{filename, file}
-		gas.context.Files = append(gas.context.Files, fileInfo)
+		return err
 	}
+	fileInfo := FileInfo{filename, file}
+	gas.context.Files = append(gas.context.Files, fileInfo)
 	commentMap := ast.NewCommentMap(gas.context.FileSet, file, file.Comments)
 	gas.context.Comments = append(gas.context.Comments, commentMap)
 	return err
