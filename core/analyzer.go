@@ -48,10 +48,10 @@ func NewImportInfo() *ImportInfo {
 // this data in conjunction withe the encoutered AST node.
 type Context struct {
 	FileSet  *token.FileSet
-	Comments ast.CommentMap
+	Comments []ast.CommentMap
 	Info     *types.Info
 	Pkg      *types.Package
-	Root     *ast.File
+	Files    []*ast.File
 	Config   map[string]interface{}
 	Imports  *ImportInfo
 }
@@ -104,40 +104,64 @@ func NewAnalyzer(conf map[string]interface{}, logger *log.Logger) Analyzer {
 	return a
 }
 
-func (gas *Analyzer) process(filename string, source interface{}) error {
-	mode := parser.ParseComments
-	gas.context.FileSet = token.NewFileSet()
-	root, err := parser.ParseFile(gas.context.FileSet, filename, source, mode)
-	if err == nil {
-		gas.context.Comments = ast.NewCommentMap(gas.context.FileSet, root, root.Comments)
-		gas.context.Root = root
-
-		// here we get type info
-		gas.context.Info = &types.Info{
-			Types:      make(map[ast.Expr]types.TypeAndValue),
-			Defs:       make(map[*ast.Ident]types.Object),
-			Uses:       make(map[*ast.Ident]types.Object),
-			Selections: make(map[*ast.SelectorExpr]*types.Selection),
-			Scopes:     make(map[ast.Node]*types.Scope),
-			Implicits:  make(map[ast.Node]types.Object),
-		}
-
-		conf := types.Config{Importer: importer.Default()}
-		gas.context.Pkg, err = conf.Check("pkg", gas.context.FileSet, []*ast.File{root}, gas.context.Info)
-		if err != nil {
-			// TODO(gm) Type checker not currently considering all files within a package
-			// see: issue #113
-			gas.logger.Printf(`Error during type checking: "%s"`, err)
-			err = nil
-		}
-
-		gas.context.Imports = NewImportInfo()
-		for _, pkg := range gas.context.Pkg.Imports() {
-			gas.context.Imports.Imported[pkg.Path()] = pkg.Name()
-		}
-		ast.Walk(gas, root)
+func (gas *Analyzer) analyze() {
+	for _, file := range gas.context.Files {
+		ast.Walk(gas, file)
 		gas.Stats.NumFiles++
 	}
+}
+
+func (gas *Analyzer) resolveTypes() (err error) {
+	gas.context.Info = &types.Info{
+		Types:      make(map[ast.Expr]types.TypeAndValue),
+		Defs:       make(map[*ast.Ident]types.Object),
+		Uses:       make(map[*ast.Ident]types.Object),
+		Selections: make(map[*ast.SelectorExpr]*types.Selection),
+		Scopes:     make(map[ast.Node]*types.Scope),
+		Implicits:  make(map[ast.Node]types.Object),
+	}
+
+	conf := types.Config{Importer: importer.Default()}
+	gas.context.Pkg, err = conf.Check("pkg", gas.context.FileSet, gas.context.Files, gas.context.Info)
+	if err != nil {
+		return err
+	}
+
+	gas.context.Imports = NewImportInfo()
+	for _, pkg := range gas.context.Pkg.Imports() {
+		gas.context.Imports.Imported[pkg.Path()] = pkg.Name()
+	}
+
+	return nil
+}
+
+func (gas *Analyzer) parsePkg(pkg string, filenames ...string) error {
+	mode := parser.ParseComments
+	gas.context.FileSet = token.NewFileSet()
+	for _, filename := range filenames {
+		file, err := parser.ParseFile(gas.context.FileSet, filename, nil, mode)
+		if err != nil {
+			return err
+		}
+		gas.context.Files = append(gas.context.Files, file)
+	}
+
+	for _, file := range gas.context.Files {
+		commentMap := ast.NewCommentMap(gas.context.FileSet, file, file.Comments)
+		gas.context.Comments = append(gas.context.Comments, commentMap)
+	}
+	return nil
+}
+
+func (gas *Analyzer) parseFile(filename string, source interface{}) error {
+	mode := parser.ParseComments
+	gas.context.FileSet = token.NewFileSet()
+	file, err := parser.ParseFile(gas.context.FileSet, filename, source, mode)
+	if err != nil {
+		gas.context.Files = append(gas.context.Files, file)
+	}
+	commentMap := ast.NewCommentMap(gas.context.FileSet, file, file.Comments)
+	gas.context.Comments = append(gas.context.Comments, commentMap)
 	return err
 }
 
@@ -154,38 +178,60 @@ func (gas *Analyzer) AddRule(r Rule, nodes []ast.Node) {
 	}
 }
 
-// Process reads in a source file, convert it to an AST and traverse it.
+// ProcessPkg reads in all files of a package, convert them to an AST and traverse it.
 // Rule methods added with AddRule will be invoked as necessary.
-func (gas *Analyzer) Process(filename string) error {
-	err := gas.process(filename, nil)
+func (gas *Analyzer) ProcessPkg(pkg string, filenames ...string) error {
+	err := gas.parsePkg(pkg, filenames...)
+	if err != nil {
+		return err
+	}
+
+	err = gas.resolveTypes()
+	if err != nil {
+		return err
+	}
+
+	gas.analyze()
+
 	fun := func(f *token.File) bool {
 		gas.Stats.NumLines += f.LineCount()
 		return true
 	}
 	gas.context.FileSet.Iterate(fun)
-	return err
+	return nil
 }
 
 // ProcessSource will convert a source code string into an AST and traverse it.
 // Rule methods added with AddRule will be invoked as necessary. The string is
 // identified by the filename given but no file IO will be done.
 func (gas *Analyzer) ProcessSource(filename string, source string) error {
-	err := gas.process(filename, source)
+	err := gas.parseFile(filename, source)
+	if err != nil {
+		return err
+	}
+	err = gas.resolveTypes()
+	if err != nil {
+		return err
+	}
+	gas.analyze()
+
 	fun := func(f *token.File) bool {
 		gas.Stats.NumLines += f.LineCount()
 		return true
 	}
 	gas.context.FileSet.Iterate(fun)
-	return err
+	return nil
 }
 
 // ignore a node (and sub-tree) if it is tagged with a "#nosec" comment
 func (gas *Analyzer) ignore(n ast.Node) bool {
-	if groups, ok := gas.context.Comments[n]; ok && !gas.ignoreNosec {
-		for _, group := range groups {
-			if strings.Contains(group.Text(), "#nosec") {
-				gas.Stats.NumNosec++
-				return true
+	for _, commentMap := range gas.context.Comments {
+		if groups, ok := commentMap[n]; ok && !gas.ignoreNosec {
+			for _, group := range groups {
+				if strings.Contains(group.Text(), "#nosec") {
+					gas.Stats.NumNosec++
+					return true
+				}
 			}
 		}
 	}
