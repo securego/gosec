@@ -1,4 +1,4 @@
-package fixtures
+package pkg1
 
 import (
 	"fmt"

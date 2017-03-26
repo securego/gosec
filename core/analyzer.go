@@ -151,6 +151,7 @@ func (gas *Analyzer) resolveTypes(pkg string) (err error) {
 func (gas *Analyzer) parsePkg(pkg string, filenames ...string) error {
 	mode := parser.ParseComments
 	gas.context.FileSet = token.NewFileSet()
+	gas.context.Files = nil
 	for _, filename := range filenames {
 		gas.logger.Printf("Parsing file %s ...", filename)
 		file, err := parser.ParseFile(gas.context.FileSet, filename, nil, mode)
