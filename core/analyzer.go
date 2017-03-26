@@ -166,6 +166,7 @@ func (gas *Analyzer) parsePkg(pkg string, filenames ...string) error {
 		commentMap := ast.NewCommentMap(gas.context.FileSet, file.File, file.File.Comments)
 		gas.context.Comments = append(gas.context.Comments, commentMap)
 	}
+
 	return nil
 }
 
@@ -177,10 +178,12 @@ func (gas *Analyzer) parseFile(filename string, source interface{}) error {
 	if err != nil {
 		return err
 	}
+
 	fileInfo := FileInfo{filename, file}
 	gas.context.Files = append(gas.context.Files, fileInfo)
 	commentMap := ast.NewCommentMap(gas.context.FileSet, file, file.Comments)
 	gas.context.Comments = append(gas.context.Comments, commentMap)
+
 	return err
 }
 
