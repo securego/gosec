@@ -155,7 +155,7 @@ func main() {
 
 	//  Exclude files
 	excluded := newFileList("*_test.go")
-	flag.Var(excluded, "skip", "File pattern to exclude from scan. Uses simple * globs and requires full match")
+	flag.Var(excluded, "skip", "File pattern to exclude from scan. Uses simple * globs and requires full or partial match")
 
 	incRules := ""
 	flag.StringVar(&incRules, "include", "", "Comma separated list of rules IDs to include. (see rule list)")

@@ -235,6 +235,12 @@ func Test_fileList_Contains(t *testing.T) {
 			args:   args{path: "/baz/bar/foo_test.go"},
 			want:   true,
 		},
+		{
+			name:   "sub-folder, match",
+			fields: fields{patterns: []string{"vendor"}},
+			args:   args{path: "/baz/vendor/bar/foo_test.go"},
+			want:   true,
+		},
 	}
 	for _, tt := range tests {
 		f := newFileList(tt.fields.patterns...)
