@@ -15,30 +15,35 @@
 package rules
 
 import (
+	"testing"
+
 	gas "github.com/GoASTScanner/gas/core"
-	"go/ast"
 )
 
-type UsingBigExp struct {
-	gas.MetaData
-	pkg   string
-	calls []string
-}
+func TestBigExp(t *testing.T) {
+	config := map[string]interface{}{"ignoreNosec": false}
+	analyzer := gas.NewAnalyzer(config, nil)
+	analyzer.AddRule(NewUsingBigExp(config))
 
-func (r *UsingBigExp) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err error) {
-	if _, matched := gas.MatchCallByType(n, c, r.pkg, r.calls...); matched {
-		return gas.NewIssue(c, n, r.What, r.Severity, r.Confidence), nil
-	}
-	return nil, nil
-}
-func NewUsingBigExp(conf map[string]interface{}) (gas.Rule, []ast.Node) {
-	return &UsingBigExp{
-		pkg:   "*math/big.Int",
-		calls: []string{"Exp"},
-		MetaData: gas.MetaData{
-			What:       "Use of math/big.Int.Exp function should be audited for modulus == 0",
-			Severity:   gas.Low,
-			Confidence: gas.High,
-		},
-	}, []ast.Node{(*ast.CallExpr)(nil)}
+	issues := gasTestRunner(`
+        package main
+
+        import (
+        	"math/big"
+        )
+
+        func main() {
+            z := new(big.Int)
+            x := new(big.Int)
+            x = x.SetUint64(2)
+            y := new(big.Int)
+            y = y.SetUint64(4)
+            m := new(big.Int)
+            m = m.SetUint64(0)
+
+            z = z.Exp(x, y, m)
+        }
+        `, analyzer)
+
+	checkTestResults(t, issues, 1, "Use of math/big.Int.Exp function")
 }
