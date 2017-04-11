@@ -36,6 +36,7 @@ or to specify a set of rules to explicitly exclude using the '-exclude=' flag.
   - G102: Bind to all interfaces
   - G103: Audit the use of unsafe block
   - G104: Audit errors not checked
+  - G105: Audit the use of math/big.Int.Exp
   - G201: SQL query construction using format string
   - G202: SQL query construction using string concatenation
   - G203: Use of unescaped data in HTML templates

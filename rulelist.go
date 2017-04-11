@@ -34,6 +34,7 @@ func GetFullRuleList() map[string]RuleInfo {
 		"G102": RuleInfo{"Bind to all interfaces", rules.NewBindsToAllNetworkInterfaces},
 		"G103": RuleInfo{"Audit the use of unsafe block", rules.NewUsingUnsafe},
 		"G104": RuleInfo{"Audit errors not checked", rules.NewNoErrorCheck},
+		"G105": RuleInfo{"Audit the use of big.Exp function", rules.NewUsingBigExp},
 
 		// injection
 		"G201": RuleInfo{"SQL query construction using format string", rules.NewSqlStrFormat},
