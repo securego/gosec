@@ -194,10 +194,9 @@ func main() {
 
 	toAnalyze := getFilesToAnalyze(flag.Args(), excluded)
 
-	for _, file := range toAnalyze {
-		logger.Printf(`Processing "%s"...`, file)
-		if err := analyzer.Process(file); err != nil {
-			logger.Printf(`Failed to process: "%s"`, file)
+	for pkg, filenames := range toAnalyze {
+		logger.Printf(`Processing pkg "%s" ...`, pkg)
+		if err := analyzer.ProcessPkg(pkg, filenames...); err != nil {
 			logger.Println(err)
 			logger.Fatalf(`Halting execution.`)
 		}
@@ -221,16 +220,16 @@ func main() {
 		output.CreateReport(os.Stdout, *flagFormat, &analyzer)
 	}
 
-	// Do we have an issue? If so exit 1
+	// Do we have an issue?
 	if issuesFound {
 		os.Exit(1)
 	}
 }
 
 // getFilesToAnalyze lists all files
-func getFilesToAnalyze(paths []string, excluded *fileList) []string {
+func getFilesToAnalyze(paths []string, excluded *fileList) map[string][]string {
 	//log.Println("getFilesToAnalyze: start")
-	var toAnalyze []string
+	toAnalyze := make(map[string][]string)
 	for _, relativePath := range paths {
 		//log.Printf("getFilesToAnalyze: processing \"%s\"\n", path)
 		// get the absolute path before doing anything else
@@ -239,10 +238,10 @@ func getFilesToAnalyze(paths []string, excluded *fileList) []string {
 			log.Fatal(err)
 		}
 		if filepath.Base(relativePath) == "..." {
-			toAnalyze = append(
-				toAnalyze,
-				listFiles(filepath.Dir(path), recurse, excluded)...,
-			)
+			for _, file := range listFiles(filepath.Dir(path), recurse, excluded) {
+				pkg := pkgName(filepath.Dir(file))
+				toAnalyze[pkg] = append(toAnalyze[pkg], file)
+			}
 		} else {
 			var (
 				finfo os.FileInfo
@@ -253,10 +252,14 @@ func getFilesToAnalyze(paths []string, excluded *fileList) []string {
 			}
 			if !finfo.IsDir() {
 				if shouldInclude(path, excluded) {
-					toAnalyze = append(toAnalyze, path)
+					pkg := pkgName(filepath.Dir(path))
+					toAnalyze[pkg] = append(toAnalyze[pkg], path)
 				}
 			} else {
-				toAnalyze = listFiles(path, noRecurse, excluded)
+				for _, file := range listFiles(path, noRecurse, excluded) {
+					pkg := pkgName(filepath.Dir(file))
+					toAnalyze[pkg] = append(toAnalyze[pkg], file)
+				}
 			}
 		}
 	}
@@ -290,4 +293,9 @@ func listFiles(absPath string, doRecursiveWalk recursion, excluded *fileList) []
 // a regular file should be included
 func shouldInclude(path string, excluded *fileList) bool {
 	return filepath.Ext(path) == ".go" && !excluded.Contains(path)
+}
+
+// pkgName returns a package name relative to the GOPATH
+func pkgName(absPath string) string {
+	return strings.TrimPrefix(absPath, fmt.Sprintf("%s/src/", os.Getenv("GOPATH")))
 }

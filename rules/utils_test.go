@@ -22,7 +22,7 @@ import (
 )
 
 func gasTestRunner(source string, analyzer gas.Analyzer) []*gas.Issue {
-	analyzer.ProcessSource("dummy.go", source)
+	analyzer.ProcessSource("pkg", "dummy.go", source)
 	return analyzer.Issues
 }
 
