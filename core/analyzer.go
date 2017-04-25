@@ -26,6 +26,8 @@ import (
 	"path"
 	"reflect"
 	"strings"
+
+	"golang.org/x/tools/go/loader"
 )
 
 // ImportInfo is used to track aliased and initialization only imports.
@@ -93,7 +95,7 @@ func NewAnalyzer(conf map[string]interface{}, logger *log.Logger) Analyzer {
 	a := Analyzer{
 		ignoreNosec: conf["ignoreNosec"].(bool),
 		ruleset:     make(RuleSet),
-		context:     &Context{nil, nil, nil, nil, nil, nil, nil},
+		context:     &Context{},
 		logger:      logger,
 		Issues:      make([]*Issue, 0, 16),
 		Stats:       &Metrics{0, 0, 0, 0},
@@ -164,6 +166,28 @@ func (gas *Analyzer) Process(filename string) error {
 	}
 	gas.context.FileSet.Iterate(fun)
 	return err
+}
+
+func (gas *Analyzer) ProcessPackage(prog *loader.Program, pkg *loader.PackageInfo, file *ast.File) error {
+
+	gas.context.FileSet = prog.Fset
+	gas.context.Comments = ast.NewCommentMap(gas.context.FileSet, file, file.Comments)
+	gas.context.Root = file
+	gas.context.Info = &pkg.Info
+	gas.context.Pkg = pkg.Pkg
+	gas.context.Imports = NewImportInfo()
+	for _, imported := range gas.context.Pkg.Imports() {
+		gas.context.Imports.Imported[imported.Path()] = imported.Name()
+	}
+	ast.Walk(gas, file)
+	gas.Stats.NumFiles++
+
+	count := func(f *token.File) bool {
+		gas.Stats.NumLines += f.LineCount()
+		return true
+	}
+	prog.Fset.Iterate(count)
+	return nil
 }
 
 // ProcessSource will convert a source code string into an AST and traverse it.

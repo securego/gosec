@@ -18,15 +18,17 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"go/build"
 	"io/ioutil"
 	"log"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
 
 	gas "github.com/GoASTScanner/gas/core"
-	"github.com/GoASTScanner/gas/output"
+	"golang.org/x/tools/go/loader"
 )
 
 type recursion bool
@@ -60,10 +62,10 @@ can lead to security problems.
 
 USAGE:
 
-	# Check a single Go file
-	$ gas example.go
+	# Check a single package
+	$ gas $GOPATH/src/github.com/example/project
 
-	# Check all files under the current directory and save results in
+	# Check all packages under the current directory and save results in
 	# json format.
 	$ gas -fmt=json -out=results.json ./...
 
@@ -148,6 +150,38 @@ func usage() {
 	fmt.Fprint(os.Stderr, "\n")
 }
 
+// TODO(gm) This needs to be refactored (potentially included in Analyzer)
+func analyzePackage(packageDirectory string, config map[string]interface{}, logger *log.Logger) ([]*gas.Issue, error) {
+
+	basePackage, err := build.Default.ImportDir(packageDirectory, build.ImportComment)
+	if err != nil {
+		return nil, err
+	}
+
+	packageConfig := loader.Config{Build: &build.Default}
+	packageFiles := make([]string, 0)
+	for _, filename := range basePackage.GoFiles {
+		packageFiles = append(packageFiles, path.Join(packageDirectory, filename))
+	}
+
+	packageConfig.CreateFromFilenames(basePackage.Name, packageFiles...)
+	builtPackage, err := packageConfig.Load()
+	if err != nil {
+		return nil, err
+	}
+	issues := make([]*gas.Issue, 0)
+
+	for _, pkg := range builtPackage.Created {
+		analyzer := gas.NewAnalyzer(config, logger)
+		AddRules(&analyzer, config)
+		for _, file := range pkg.Files {
+			analyzer.ProcessPackage(builtPackage, pkg, file)
+		}
+		issues = append(issues, analyzer.Issues...)
+	}
+	return issues, nil
+}
+
 func main() {
 
 	// Setup usage description
@@ -187,107 +221,69 @@ func main() {
 		os.Exit(0)
 	}
 
-	// Setup analyzer
 	config := buildConfig(incRules, excRules)
-	analyzer := gas.NewAnalyzer(config, logger)
-	AddRules(&analyzer, config)
+	issues := make([]*gas.Issue, 0)
+	for _, arg := range flag.Args() {
+		if arg == "./..." {
+			baseDirectory, err := os.Getwd()
+			if err != nil {
+				log.Fatal(err)
+			}
 
-	toAnalyze := getFilesToAnalyze(flag.Args(), excluded)
-
-	for _, file := range toAnalyze {
-		logger.Printf(`Processing "%s"...`, file)
-		if err := analyzer.Process(file); err != nil {
-			logger.Printf(`Failed to process: "%s"`, file)
-			logger.Println(err)
-			logger.Fatalf(`Halting execution.`)
+			filepath.Walk(baseDirectory, func(path string, finfo os.FileInfo, e error) error {
+				dir := filepath.Base(path)
+				if finfo.IsDir() {
+					// TODO(gm) - This...
+					if strings.HasPrefix(dir, ".") || dir == "vendor" || dir == "GoDeps" {
+						log.Printf("Skipping %s\n", path)
+						return filepath.SkipDir
+					}
+					newIssues, err := analyzePackage(path, config, logger)
+					if err != nil {
+						log.Println(err)
+					} else {
+						issues = append(issues, newIssues...)
+					}
+				}
+				return nil
+			})
+		} else {
+			newIssues, err := analyzePackage(arg, config, logger)
+			if err != nil {
+				log.Fatal(err)
+			}
+			issues = newIssues
 		}
 	}
 
-	issuesFound := len(analyzer.Issues) > 0
+	issuesFound := len(issues) > 0
 	// Exit quietly if nothing was found
 	if !issuesFound && *flagQuiet {
 		os.Exit(0)
 	}
 
-	// Create output report
-	if *flagOutput != "" {
-		outfile, err := os.Create(*flagOutput)
-		if err != nil {
-			logger.Fatalf("Couldn't open: %s for writing. Reason - %s", *flagOutput, err)
+	// TODO(gm) - Report output is borken...
+	/*
+		for _, issue := range issues {
+			log.Println(issue)
 		}
-		defer outfile.Close()
-		output.CreateReport(outfile, *flagFormat, &analyzer)
-	} else {
-		output.CreateReport(os.Stdout, *flagFormat, &analyzer)
-	}
+
+			// Create output report
+			if *flagOutput != "" {
+				outfile, err := os.Create(*flagOutput)
+				if err != nil {
+					logger.Fatalf("Couldn't open: %s for writing. Reason - %s", *flagOutput, err)
+				}
+				defer outfile.Close()
+				output.CreateReport(outfile, *flagFormat, &analyzer)
+			} else {
+				output.CreateReport(os.Stdout, *flagFormat, &analyzer)
+			}
+
+	*/
 
 	// Do we have an issue? If so exit 1
 	if issuesFound {
 		os.Exit(1)
 	}
-}
-
-// getFilesToAnalyze lists all files
-func getFilesToAnalyze(paths []string, excluded *fileList) []string {
-	//log.Println("getFilesToAnalyze: start")
-	var toAnalyze []string
-	for _, relativePath := range paths {
-		//log.Printf("getFilesToAnalyze: processing \"%s\"\n", path)
-		// get the absolute path before doing anything else
-		path, err := filepath.Abs(relativePath)
-		if err != nil {
-			log.Fatal(err)
-		}
-		if filepath.Base(relativePath) == "..." {
-			toAnalyze = append(
-				toAnalyze,
-				listFiles(filepath.Dir(path), recurse, excluded)...,
-			)
-		} else {
-			var (
-				finfo os.FileInfo
-				err   error
-			)
-			if finfo, err = os.Stat(path); err != nil {
-				logger.Fatal(err)
-			}
-			if !finfo.IsDir() {
-				if shouldInclude(path, excluded) {
-					toAnalyze = append(toAnalyze, path)
-				}
-			} else {
-				toAnalyze = listFiles(path, noRecurse, excluded)
-			}
-		}
-	}
-	//log.Println("getFilesToAnalyze: end")
-	return toAnalyze
-}
-
-// listFiles returns a list of all files found that pass the shouldInclude check.
-// If doRecursiveWalk it true, it will walk the tree rooted at absPath, otherwise it
-// will only include files directly within the dir referenced by absPath.
-func listFiles(absPath string, doRecursiveWalk recursion, excluded *fileList) []string {
-	var files []string
-
-	walk := func(path string, info os.FileInfo, err error) error {
-		if info.IsDir() && doRecursiveWalk == noRecurse {
-			return filepath.SkipDir
-		}
-		if shouldInclude(path, excluded) {
-			files = append(files, path)
-		}
-		return nil
-	}
-
-	if err := filepath.Walk(absPath, walk); err != nil {
-		log.Fatal(err)
-	}
-	return files
-}
-
-// shouldInclude checks if a specific path which is expected to reference
-// a regular file should be included
-func shouldInclude(path string, excluded *fileList) bool {
-	return filepath.Ext(path) == ".go" && !excluded.Contains(path)
 }
