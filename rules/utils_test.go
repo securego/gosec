@@ -18,7 +18,7 @@ import (
 	"strings"
 	"testing"
 
-	gas "github.com/GoASTScanner/gas/core"
+	"github.com/GoASTScanner/gas"
 )
 
 func gasTestRunner(source string, analyzer gas.Analyzer) []*gas.Issue {

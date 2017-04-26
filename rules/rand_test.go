@@ -17,7 +17,7 @@ package rules
 import (
 	"testing"
 
-	gas "github.com/GoASTScanner/gas/core"
+	"github.com/GoASTScanner/gas"
 )
 
 func TestRandOk(t *testing.T) {
@@ -27,7 +27,7 @@ func TestRandOk(t *testing.T) {
 
 	issues := gasTestRunner(
 		`
-		package main 
+		package main
 
 		import "crypto/rand"
 
@@ -66,7 +66,7 @@ func TestRandRenamed(t *testing.T) {
 
 	issues := gasTestRunner(
 		`
-		package main 
+		package main
 
 		import (
 			"crypto/rand"

@@ -17,7 +17,7 @@ package rules
 import (
 	"testing"
 
-	gas "github.com/GoASTScanner/gas/core"
+	"github.com/GoASTScanner/gas"
 )
 
 func TestBigExp(t *testing.T) {

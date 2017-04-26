@@ -15,9 +15,10 @@
 package rules
 
 import (
-	gas "github.com/GoASTScanner/gas/core"
 	"go/ast"
 	"go/types"
+
+	"github.com/GoASTScanner/gas"
 )
 
 type NoErrorCheck struct {

@@ -15,8 +15,9 @@
 package rules
 
 import (
-	gas "github.com/GoASTScanner/gas/core"
 	"go/ast"
+
+	"github.com/GoASTScanner/gas"
 )
 
 type UsingUnsafe struct {

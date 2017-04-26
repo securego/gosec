@@ -17,7 +17,7 @@ package main
 import (
 	"go/ast"
 
-	gas "github.com/GoASTScanner/gas/core"
+	"github.com/GoASTScanner/gas"
 	"github.com/GoASTScanner/gas/rules"
 )
 

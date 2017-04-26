@@ -15,7 +15,7 @@
 package rules
 
 import (
-	gas "github.com/GoASTScanner/gas/core"
+	"github.com/GoASTScanner/gas"
 	"go/ast"
 )
 

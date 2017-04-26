@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // Package core holds the central scanning logic used by GAS
-package core
+package gas
 
 import (
 	"go/ast"

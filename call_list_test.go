@@ -1,4 +1,4 @@
-package core
+package gas
 
 import (
 	"go/ast"

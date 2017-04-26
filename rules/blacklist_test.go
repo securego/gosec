@@ -13,8 +13,9 @@
 package rules
 
 import (
-	gas "github.com/GoASTScanner/gas/core"
 	"testing"
+
+	"github.com/GoASTScanner/gas"
 )
 
 const initOnlyImportSrc = `

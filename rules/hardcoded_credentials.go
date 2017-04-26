@@ -15,13 +15,13 @@
 package rules
 
 import (
-	gas "github.com/GoASTScanner/gas/core"
 	"go/ast"
 	"go/token"
 	"regexp"
-
-	"github.com/nbutton23/zxcvbn-go"
 	"strconv"
+
+	"github.com/GoASTScanner/gas"
+	"github.com/nbutton23/zxcvbn-go"
 )
 
 type Credentials struct {

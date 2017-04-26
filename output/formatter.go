@@ -22,7 +22,7 @@ import (
 	"strconv"
 	plainTemplate "text/template"
 
-	gas "github.com/GoASTScanner/gas/core"
+	"github.com/GoASTScanner/gas"
 )
 
 // The output format for reported issues

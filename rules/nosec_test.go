@@ -17,7 +17,7 @@ package rules
 import (
 	"testing"
 
-	gas "github.com/GoASTScanner/gas/core"
+	"github.com/GoASTScanner/gas"
 )
 
 func TestNosec(t *testing.T) {
@@ -48,7 +48,7 @@ func TestNosecBlock(t *testing.T) {
 	issues := gasTestRunner(
 		`package main
 		import (
-		"os" 
+		"os"
 		"os/exec"
 	)
 

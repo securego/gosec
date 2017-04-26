@@ -27,7 +27,7 @@ import (
 	"sort"
 	"strings"
 
-	gas "github.com/GoASTScanner/gas/core"
+	"github.com/GoASTScanner/gas"
 	"github.com/GoASTScanner/gas/output"
 	"golang.org/x/tools/go/loader"
 )

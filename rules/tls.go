@@ -20,7 +20,7 @@ import (
 	"reflect"
 	"regexp"
 
-	gas "github.com/GoASTScanner/gas/core"
+	"github.com/GoASTScanner/gas"
 )
 
 type InsecureConfigTLS struct {
