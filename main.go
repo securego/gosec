@@ -28,6 +28,7 @@ import (
 	"strings"
 
 	gas "github.com/GoASTScanner/gas/core"
+	"github.com/GoASTScanner/gas/output"
 	"golang.org/x/tools/go/loader"
 )
 
@@ -151,7 +152,7 @@ func usage() {
 }
 
 // TODO(gm) This needs to be refactored (potentially included in Analyzer)
-func analyzePackage(packageDirectory string, config map[string]interface{}, logger *log.Logger) ([]*gas.Issue, error) {
+func analyzePackage(packageDirectory string, metrics *gas.Metrics, config map[string]interface{}, logger *log.Logger) ([]*gas.Issue, error) {
 
 	basePackage, err := build.Default.ImportDir(packageDirectory, build.ImportComment)
 	if err != nil {
@@ -178,7 +179,12 @@ func analyzePackage(packageDirectory string, config map[string]interface{}, logg
 			analyzer.ProcessPackage(builtPackage, pkg, file)
 		}
 		issues = append(issues, analyzer.Issues...)
+		metrics.NumFiles += analyzer.Stats.NumFiles
+		metrics.NumFound += analyzer.Stats.NumFound
+		metrics.NumLines += analyzer.Stats.NumLines
+		metrics.NumNosec += analyzer.Stats.NumNosec
 	}
+
 	return issues, nil
 }
 
@@ -223,6 +229,8 @@ func main() {
 
 	config := buildConfig(incRules, excRules)
 	issues := make([]*gas.Issue, 0)
+	metrics := &gas.Metrics{}
+
 	for _, arg := range flag.Args() {
 		if arg == "./..." {
 			baseDirectory, err := os.Getwd()
@@ -238,7 +246,7 @@ func main() {
 						log.Printf("Skipping %s\n", path)
 						return filepath.SkipDir
 					}
-					newIssues, err := analyzePackage(path, config, logger)
+					newIssues, err := analyzePackage(path, metrics, config, logger)
 					if err != nil {
 						log.Println(err)
 					} else {
@@ -248,7 +256,7 @@ func main() {
 				return nil
 			})
 		} else {
-			newIssues, err := analyzePackage(arg, config, logger)
+			newIssues, err := analyzePackage(arg, metrics, config, logger)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -262,25 +270,17 @@ func main() {
 		os.Exit(0)
 	}
 
-	// TODO(gm) - Report output is borken...
-	/*
-		for _, issue := range issues {
-			log.Println(issue)
+	// Create output report
+	if *flagOutput != "" {
+		outfile, err := os.Create(*flagOutput)
+		if err != nil {
+			logger.Fatalf("Couldn't open: %s for writing. Reason - %s", *flagOutput, err)
 		}
-
-			// Create output report
-			if *flagOutput != "" {
-				outfile, err := os.Create(*flagOutput)
-				if err != nil {
-					logger.Fatalf("Couldn't open: %s for writing. Reason - %s", *flagOutput, err)
-				}
-				defer outfile.Close()
-				output.CreateReport(outfile, *flagFormat, &analyzer)
-			} else {
-				output.CreateReport(os.Stdout, *flagFormat, &analyzer)
-			}
-
-	*/
+		defer outfile.Close()
+		output.CreateReport(outfile, *flagFormat, issues, metrics)
+	} else {
+		output.CreateReport(os.Stdout, *flagFormat, issues, metrics)
+	}
 
 	// Do we have an issue? If so exit 1
 	if issuesFound {

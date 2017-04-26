@@ -181,12 +181,7 @@ func (gas *Analyzer) ProcessPackage(prog *loader.Program, pkg *loader.PackageInf
 	}
 	ast.Walk(gas, file)
 	gas.Stats.NumFiles++
-
-	count := func(f *token.File) bool {
-		gas.Stats.NumLines += f.LineCount()
-		return true
-	}
-	prog.Fset.Iterate(count)
+	gas.Stats.NumLines += prog.Fset.File(file.Pos()).LineCount()
 	return nil
 }
 

@@ -48,7 +48,16 @@ Summary:
 
 `
 
-func CreateReport(w io.Writer, format string, data *gas.Analyzer) error {
+type reportInfo struct {
+	Issues []*gas.Issue
+	Stats  *gas.Metrics
+}
+
+func CreateReport(w io.Writer, format string, issues []*gas.Issue, metrics *gas.Metrics) error {
+	data := &reportInfo{
+		Issues: issues,
+		Stats:  metrics,
+	}
 	var err error
 	switch format {
 	case "json":
@@ -65,7 +74,7 @@ func CreateReport(w io.Writer, format string, data *gas.Analyzer) error {
 	return err
 }
 
-func reportJSON(w io.Writer, data *gas.Analyzer) error {
+func reportJSON(w io.Writer, data *reportInfo) error {
 	raw, err := json.MarshalIndent(data, "", "\t")
 	if err != nil {
 		panic(err)
@@ -78,7 +87,7 @@ func reportJSON(w io.Writer, data *gas.Analyzer) error {
 	return err
 }
 
-func reportCSV(w io.Writer, data *gas.Analyzer) error {
+func reportCSV(w io.Writer, data *reportInfo) error {
 	out := csv.NewWriter(w)
 	defer out.Flush()
 	for _, issue := range data.Issues {
@@ -97,7 +106,7 @@ func reportCSV(w io.Writer, data *gas.Analyzer) error {
 	return nil
 }
 
-func reportFromPlaintextTemplate(w io.Writer, reportTemplate string, data *gas.Analyzer) error {
+func reportFromPlaintextTemplate(w io.Writer, reportTemplate string, data *reportInfo) error {
 	t, e := plainTemplate.New("gas").Parse(reportTemplate)
 	if e != nil {
 		return e
@@ -106,7 +115,7 @@ func reportFromPlaintextTemplate(w io.Writer, reportTemplate string, data *gas.A
 	return t.Execute(w, data)
 }
 
-func reportFromHTMLTemplate(w io.Writer, reportTemplate string, data *gas.Analyzer) error {
+func reportFromHTMLTemplate(w io.Writer, reportTemplate string, data *reportInfo) error {
 	t, e := htmlTemplate.New("gas").Parse(reportTemplate)
 	if e != nil {
 		return e
