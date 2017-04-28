@@ -100,7 +100,7 @@ func (r *Credentials) matchGenDecl(decl *ast.GenDecl, ctx *gas.Context) (*gas.Is
 	return nil, nil
 }
 
-func NewHardcodedCredentials(conf map[string]interface{}) (gas.Rule, []ast.Node) {
+func NewHardcodedCredentials(conf gas.Config) (gas.Rule, []ast.Node) {
 	pattern := `(?i)passwd|pass|password|pwd|secret|token`
 	entropyThreshold := 80.0
 	perCharThreshold := 3.0

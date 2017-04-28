@@ -37,7 +37,7 @@ func (w *WeakKeyStrength) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) 
 	return nil, nil
 }
 
-func NewWeakKeyStrength(conf map[string]interface{}) (gas.Rule, []ast.Node) {
+func NewWeakKeyStrength(conf gas.Config) (gas.Rule, []ast.Node) {
 	bits := 2048
 	return &WeakKeyStrength{
 		pattern: regexp.MustCompile(`^rsa\.GenerateKey$`),

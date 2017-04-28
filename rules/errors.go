@@ -70,7 +70,7 @@ func (r *NoErrorCheck) Match(n ast.Node, ctx *gas.Context) (*gas.Issue, error) {
 	return nil, nil
 }
 
-func NewNoErrorCheck(conf map[string]interface{}) (gas.Rule, []ast.Node) {
+func NewNoErrorCheck(conf gas.Config) (gas.Rule, []ast.Node) {
 
 	// TODO(gm) Come up with sensible defaults here. Or flip it to use a
 	// black list instead.

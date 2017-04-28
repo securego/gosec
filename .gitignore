@@ -3,7 +3,6 @@
 *.a
 *.so
 *.swp
-gas
 
 # Folders
 _obj

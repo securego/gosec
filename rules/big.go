@@ -15,8 +15,9 @@
 package rules
 
 import (
-	"github.com/GoASTScanner/gas"
 	"go/ast"
+
+	"github.com/GoASTScanner/gas"
 )
 
 type UsingBigExp struct {
@@ -31,7 +32,7 @@ func (r *UsingBigExp) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err erro
 	}
 	return nil, nil
 }
-func NewUsingBigExp(conf map[string]interface{}) (gas.Rule, []ast.Node) {
+func NewUsingBigExp(conf gas.Config) (gas.Rule, []ast.Node) {
 	return &UsingBigExp{
 		pkg:   "*math/big.Int",
 		calls: []string{"Exp"},

@@ -36,7 +36,7 @@ func (t *BadTempFile) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err erro
 	return nil, nil
 }
 
-func NewBadTempFile(conf map[string]interface{}) (gas.Rule, []ast.Node) {
+func NewBadTempFile(conf gas.Config) (gas.Rule, []ast.Node) {
 	return &BadTempFile{
 		call: regexp.MustCompile(`ioutil\.WriteFile|os\.Create`),
 		args: regexp.MustCompile(`^/tmp/.*$|^/var/tmp/.*$`),

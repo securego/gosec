@@ -82,26 +82,32 @@ type Analyzer struct {
 	ignoreNosec bool
 	ruleset     RuleSet
 	context     *Context
+	config      Config
 	logger      *log.Logger
 	Issues      []*Issue `json:"issues"`
 	Stats       *Metrics `json:"metrics"`
 }
 
 // NewAnalyzer builds a new anaylzer.
-func NewAnalyzer(conf map[string]interface{}, logger *log.Logger) Analyzer {
+func NewAnalyzer(conf Config, logger *log.Logger) Analyzer {
 	if logger == nil {
 		logger = log.New(os.Stdout, "[gas]", 0)
 	}
+	ignoreNoSec := false
+	if val, err := conf.Get("ignoreNoSec"); err == nil {
+		if override, ok := val.(bool); ok {
+			ignoreNoSec = override
+		}
+	}
 	a := Analyzer{
-		ignoreNosec: conf["ignoreNosec"].(bool),
+		ignoreNosec: ignoreNoSec,
 		ruleset:     make(RuleSet),
 		context:     &Context{},
+		config:      conf,
 		logger:      logger,
 		Issues:      make([]*Issue, 0, 16),
 		Stats:       &Metrics{0, 0, 0, 0},
 	}
-
-	// TODO(tkelsey): use the inc/exc lists
 
 	return a
 }
@@ -111,6 +117,7 @@ func (gas *Analyzer) process(filename string, source interface{}) error {
 	gas.context.FileSet = token.NewFileSet()
 	root, err := parser.ParseFile(gas.context.FileSet, filename, source, mode)
 	if err == nil {
+		gas.context.Config = gas.config
 		gas.context.Comments = ast.NewCommentMap(gas.context.FileSet, root, root.Comments)
 		gas.context.Root = root
 
@@ -171,6 +178,7 @@ func (gas *Analyzer) Process(filename string) error {
 func (gas *Analyzer) ProcessPackage(prog *loader.Program, pkg *loader.PackageInfo, file *ast.File) error {
 
 	gas.context.FileSet = prog.Fset
+	gas.context.Config = gas.config
 	gas.context.Comments = ast.NewCommentMap(gas.context.FileSet, file, file.Comments)
 	gas.context.Root = file
 	gas.context.Info = &pkg.Info

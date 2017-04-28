@@ -36,7 +36,7 @@ func (w *WeakRand) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 	return nil, nil
 }
 
-func NewWeakRandCheck(conf map[string]interface{}) (gas.Rule, []ast.Node) {
+func NewWeakRandCheck(conf gas.Config) (gas.Rule, []ast.Node) {
 	return &WeakRand{
 		funcNames:   []string{"Read", "Int"},
 		packagePath: "math/rand",

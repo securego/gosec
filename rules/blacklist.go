@@ -34,7 +34,7 @@ func (r *BlacklistImport) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err 
 	return nil, nil
 }
 
-func NewBlacklist_crypto_md5(conf map[string]interface{}) (gas.Rule, []ast.Node) {
+func NewBlacklist_crypto_md5(conf gas.Config) (gas.Rule, []ast.Node) {
 	return &BlacklistImport{
 		MetaData: gas.MetaData{
 			Severity:   gas.High,
@@ -45,7 +45,7 @@ func NewBlacklist_crypto_md5(conf map[string]interface{}) (gas.Rule, []ast.Node)
 	}, []ast.Node{(*ast.ImportSpec)(nil)}
 }
 
-func NewBlacklist_crypto_des(conf map[string]interface{}) (gas.Rule, []ast.Node) {
+func NewBlacklist_crypto_des(conf gas.Config) (gas.Rule, []ast.Node) {
 	return &BlacklistImport{
 		MetaData: gas.MetaData{
 			Severity:   gas.High,
@@ -56,7 +56,7 @@ func NewBlacklist_crypto_des(conf map[string]interface{}) (gas.Rule, []ast.Node)
 	}, []ast.Node{(*ast.ImportSpec)(nil)}
 }
 
-func NewBlacklist_crypto_rc4(conf map[string]interface{}) (gas.Rule, []ast.Node) {
+func NewBlacklist_crypto_rc4(conf gas.Config) (gas.Rule, []ast.Node) {
 	return &BlacklistImport{
 		MetaData: gas.MetaData{
 			Severity:   gas.High,
@@ -67,7 +67,7 @@ func NewBlacklist_crypto_rc4(conf map[string]interface{}) (gas.Rule, []ast.Node)
 	}, []ast.Node{(*ast.ImportSpec)(nil)}
 }
 
-func NewBlacklist_net_http_cgi(conf map[string]interface{}) (gas.Rule, []ast.Node) {
+func NewBlacklist_net_http_cgi(conf gas.Config) (gas.Rule, []ast.Node) {
 	return &BlacklistImport{
 		MetaData: gas.MetaData{
 			Severity:   gas.High,

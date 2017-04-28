@@ -49,7 +49,7 @@ func (r *Subprocess) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 	return nil, nil
 }
 
-func NewSubproc(conf map[string]interface{}) (gas.Rule, []ast.Node) {
+func NewSubproc(conf gas.Config) (gas.Rule, []ast.Node) {
 	return &Subprocess{
 		pattern: regexp.MustCompile(`^exec\.Command|syscall\.Exec$`),
 	}, []ast.Node{(*ast.CallExpr)(nil)}

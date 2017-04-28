@@ -56,7 +56,7 @@ func (r *FilePermissions) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) 
 	return nil, nil
 }
 
-func NewFilePerms(conf map[string]interface{}) (gas.Rule, []ast.Node) {
+func NewFilePerms(conf gas.Config) (gas.Rule, []ast.Node) {
 	mode := getConfiguredMode(conf, "G302", 0600)
 	return &FilePermissions{
 		mode:  mode,
@@ -70,7 +70,7 @@ func NewFilePerms(conf map[string]interface{}) (gas.Rule, []ast.Node) {
 	}, []ast.Node{(*ast.CallExpr)(nil)}
 }
 
-func NewMkdirPerms(conf map[string]interface{}) (gas.Rule, []ast.Node) {
+func NewMkdirPerms(conf gas.Config) (gas.Rule, []ast.Node) {
 	mode := getConfiguredMode(conf, "G301", 0700)
 	return &FilePermissions{
 		mode:  mode,

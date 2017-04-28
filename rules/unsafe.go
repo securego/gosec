@@ -33,7 +33,7 @@ func (r *UsingUnsafe) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err erro
 	return nil, nil
 }
 
-func NewUsingUnsafe(conf map[string]interface{}) (gas.Rule, []ast.Node) {
+func NewUsingUnsafe(conf gas.Config) (gas.Rule, []ast.Node) {
 	return &UsingUnsafe{
 		pkg:   "unsafe",
 		calls: []string{"Alignof", "Offsetof", "Sizeof", "Pointer"},
