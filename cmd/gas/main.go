@@ -15,47 +15,22 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
-	"go/build"
-	"io/ioutil"
 	"log"
 	"os"
-	"path"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
 	"github.com/GoASTScanner/gas"
 	"github.com/GoASTScanner/gas/output"
 	"github.com/GoASTScanner/gas/rules"
-	"golang.org/x/tools/go/loader"
+	"github.com/kisielk/gotool"
 )
-
-type recursion bool
 
 const (
-	recurse   recursion = true
-	noRecurse recursion = false
-)
-
-var (
-	// #nosec flag
-	flagIgnoreNoSec = flag.Bool("nosec", false, "Ignores #nosec comments when set")
-
-	// format output
-	flagFormat = flag.String("fmt", "text", "Set output format. Valid options are: json, csv, html, or text")
-
-	// output file
-	flagOutput = flag.String("out", "", "Set output file for results")
-
-	// config file
-	flagConfig = flag.String("conf", "", "Path to optional config file")
-
-	// quiet
-	flagQuiet = flag.Bool("quiet", false, "Only show output when errors are found")
-
 	usageText = `
 GAS - Go AST Scanner
 
@@ -78,57 +53,35 @@ USAGE:
 	$ gas -exclude=G101 ./...
 
 `
+)
+
+var (
+	// #nosec flag
+	flagIgnoreNoSec = flag.Bool("nosec", false, "Ignores #nosec comments when set")
+
+	// format output
+	flagFormat = flag.String("fmt", "text", "Set output format. Valid options are: json, csv, html, or text")
+
+	// output file
+	flagOutput = flag.String("out", "", "Set output file for results")
+
+	// config file
+	flagConfig = flag.String("conf", "", "Path to optional config file")
+
+	// quiet
+	flagQuiet = flag.Bool("quiet", false, "Only show output when errors are found")
+
+	// rules to explicitly include
+	flagRulesInclude = flag.String("include", "", "Comma separated list of rules IDs to include. (see rule list)")
+
+	// rules to explicitly exclude
+	flagRulesExclude = flag.String("exclude", "", "Comma separated list of rules IDs to exclude. (see rule list)")
+
+	// log to file or stderr
+	flagLogfile = flag.String("log", "", "Log messages to file rather than stderr")
 
 	logger *log.Logger
 )
-
-func extendConfList(conf map[string]interface{}, name string, inputStr string) {
-	if inputStr == "" {
-		conf[name] = []string{}
-	} else {
-		input := strings.Split(inputStr, ",")
-		if val, ok := conf[name]; ok {
-			if data, ok := val.(*[]string); ok {
-				conf[name] = append(*data, input...)
-			} else {
-				logger.Fatal("Config item must be a string list: ", name)
-			}
-		} else {
-			conf[name] = input
-		}
-	}
-}
-
-func buildConfig(incRules string, excRules string) map[string]interface{} {
-	config := make(map[string]interface{})
-	if flagConfig != nil && *flagConfig != "" { // parse config if we have one
-		if data, err := ioutil.ReadFile(*flagConfig); err == nil {
-			if err := json.Unmarshal(data, &(config)); err != nil {
-				logger.Fatal("Could not parse JSON config: ", *flagConfig, ": ", err)
-			}
-		} else {
-			logger.Fatal("Could not read config file: ", *flagConfig)
-		}
-	}
-
-	// add in CLI include and exclude data
-	extendConfList(config, "include", incRules)
-	extendConfList(config, "exclude", excRules)
-
-	// override ignoreNosec if given on CLI
-	if flagIgnoreNoSec != nil {
-		config["ignoreNosec"] = *flagIgnoreNoSec
-	} else {
-		val, ok := config["ignoreNosec"]
-		if !ok {
-			config["ignoreNosec"] = false
-		} else if _, ok := val.(bool); !ok {
-			logger.Fatal("Config value must be a bool: 'ignoreNosec'")
-		}
-	}
-
-	return config
-}
 
 // #nosec
 func usage() {
@@ -152,43 +105,47 @@ func usage() {
 	fmt.Fprint(os.Stderr, "\n")
 }
 
-// TODO(gm) This needs to be refactored (potentially included in Analyzer)
-func analyzePackage(packageDirectory string, metrics *gas.Metrics, config gas.Config, logger *log.Logger, ruleDefs rules.RuleList) ([]*gas.Issue, error) {
-
-	basePackage, err := build.Default.ImportDir(packageDirectory, build.ImportComment)
-	if err != nil {
-		return nil, err
-	}
-
-	packageConfig := loader.Config{Build: &build.Default}
-	packageFiles := make([]string, 0)
-	for _, filename := range basePackage.GoFiles {
-		packageFiles = append(packageFiles, path.Join(packageDirectory, filename))
-	}
-
-	packageConfig.CreateFromFilenames(basePackage.Name, packageFiles...)
-	builtPackage, err := packageConfig.Load()
-	if err != nil {
-		return nil, err
-	}
-	issues := make([]*gas.Issue, 0)
-
-	for _, pkg := range builtPackage.Created {
-		analyzer := gas.NewAnalyzer(config, logger)
-		for _, rule := range ruleDefs {
-			analyzer.AddRule(rule.Create(config))
+func loadConfig(configFile string) (gas.Config, error) {
+	config := gas.NewConfig()
+	if configFile != "" {
+		file, err := os.Open(configFile)
+		if err != nil {
+			return nil, err
 		}
-		for _, file := range pkg.Files {
-			analyzer.ProcessPackage(builtPackage, pkg, file)
+		defer file.Close()
+		if _, err := config.ReadFrom(file); err != nil {
+			return nil, err
 		}
-		issues = append(issues, analyzer.Issues...)
-		metrics.NumFiles += analyzer.Stats.NumFiles
-		metrics.NumFound += analyzer.Stats.NumFound
-		metrics.NumLines += analyzer.Stats.NumLines
-		metrics.NumNosec += analyzer.Stats.NumNosec
+	}
+	return config, nil
+}
+
+func loadRules(include, exclude string) rules.RuleList {
+	filters := make([]rules.RuleFilter, 0)
+	if include != "" {
+		including := strings.Split(include, ",")
+		filters = append(filters, rules.NewRuleFilter(false, including...))
 	}
 
-	return issues, nil
+	if exclude != "" {
+		excluding := strings.Split(exclude, ",")
+		filters = append(filters, rules.NewRuleFilter(true, excluding...))
+	}
+	return rules.Generate(filters...)
+}
+
+func saveOutput(filename, format string, issues []*gas.Issue, metrics *gas.Metrics) error {
+	if filename != "" {
+		outfile, err := os.Create(filename)
+		if err != nil {
+			return err
+		}
+		defer outfile.Close()
+		output.CreateReport(outfile, format, issues, metrics)
+	} else {
+		output.CreateReport(os.Stdout, format, issues, metrics)
+	}
+	return nil
 }
 
 func main() {
@@ -200,92 +157,60 @@ func main() {
 	excluded := newFileList("*_test.go")
 	flag.Var(excluded, "skip", "File pattern to exclude from scan. Uses simple * globs and requires full or partial match")
 
-	incRules := ""
-	flag.StringVar(&incRules, "include", "", "Comma separated list of rules IDs to include. (see rule list)")
-
-	excRules := ""
-	flag.StringVar(&excRules, "exclude", "", "Comma separated list of rules IDs to exclude. (see rule list)")
-
-	// Custom commands / utilities to run instead of default analyzer
-	tools := newUtils()
-	flag.Var(tools, "tool", "GAS utilities to assist with rule development")
-
-	// Setup logging
-	logger = log.New(os.Stderr, "[gas] ", log.LstdFlags)
-
 	// Parse command line arguments
 	flag.Parse()
 
 	// Ensure at least one file was specified
 	if flag.NArg() == 0 {
-
 		fmt.Fprintf(os.Stderr, "\nError: FILE [FILE...] or './...' expected\n")
 		flag.Usage()
 		os.Exit(1)
 	}
 
-	// Run utils instead of analysis
-	if len(tools.call) > 0 {
-		tools.run(flag.Args()...)
-		os.Exit(0)
+	// Setup logging
+	logWriter := os.Stderr
+	if *flagLogfile != "" {
+		var e error
+		logWriter, e = os.Create(*flagLogfile)
+		if e != nil {
+			flag.Usage()
+			log.Fatal(e)
+		}
 	}
+	logger = log.New(logWriter, "[gas] ", log.LstdFlags)
 
 	// Load config
-	config := gas.NewConfig()
-	if flagConfig != nil && *flagConfig != "" {
-		file, err := os.Open(*flagConfig)
-		if err != nil {
-			logger.Fatal(err)
-		}
-		defer file.Close()
-		if _, err := config.ReadFrom(file); err != nil {
-			logger.Fatal(err)
-		}
+	config, err := loadConfig(*flagConfig)
+	if err != nil {
+		logger.Fatal(err)
 	}
-	filters := make([]rules.RuleFilter, 0)
-	if incRules != "" {
-		including := strings.Split(incRules, ",")
-		filters = append(filters, rules.NewRuleFilter(false, including...))
-	}
-	if excRules != "" {
-		excluding := strings.Split(excRules, ",")
-		filters = append(filters, rules.NewRuleFilter(true, excluding...))
-	}
-	ruleDefinitions := rules.Generate(filters...)
-	issues := make([]*gas.Issue, 0)
-	metrics := &gas.Metrics{}
-	for _, arg := range flag.Args() {
-		if arg == "./..." {
-			baseDirectory, err := os.Getwd()
-			if err != nil {
-				log.Fatal(err)
-			}
 
-			filepath.Walk(baseDirectory, func(path string, finfo os.FileInfo, e error) error {
-				dir := filepath.Base(path)
-				if finfo.IsDir() {
-					// TODO(gm) - This...
-					if strings.HasPrefix(dir, ".") || dir == "vendor" || dir == "GoDeps" {
-						log.Printf("Skipping %s\n", path)
-						return filepath.SkipDir
-					}
-					newIssues, err := analyzePackage(path, metrics, config, logger, ruleDefinitions)
-					if err != nil {
-						log.Println(err)
-					} else {
-						issues = append(issues, newIssues...)
-					}
-				}
-				return nil
-			})
-		} else {
-			newIssues, err := analyzePackage(arg, metrics, config, logger, ruleDefinitions)
-			if err != nil {
-				log.Fatal(err)
-			}
-			issues = newIssues
+	// Load enabled rule definitions
+	ruleDefinitions := loadRules(*flagRulesInclude, *flagRulesExclude)
+
+	// Create the analyzer
+	analyzer := gas.NewAnalyzer(config, logger)
+	analyzer.LoadRules(ruleDefinitions.Builders()...)
+
+	vendor := regexp.MustCompile(`[\\/]vendor([\\/]|$)`)
+
+	// Iterate over packages on the import paths
+	for _, pkg := range gotool.ImportPaths(flag.Args()) {
+
+		// Skip vendor directory
+		if vendor.MatchString(pkg) {
+			continue
+		}
+
+		abspath, _ := filepath.Abs(pkg)
+		logger.Println("Searching directory:", abspath)
+		if err := analyzer.Process(pkg); err != nil {
+			logger.Fatal(err)
 		}
 	}
+
+	// Collect the results
+	issues, metrics := analyzer.Report()
 
 	issuesFound := len(issues) > 0
 	// Exit quietly if nothing was found
@@ -294,16 +219,12 @@ func main() {
 	}
 
 	// Create output report
-	if *flagOutput != "" {
-		outfile, err := os.Create(*flagOutput)
-		if err != nil {
-			logger.Fatalf("Couldn't open: %s for writing. Reason - %s", *flagOutput, err)
-		}
-		defer outfile.Close()
-		output.CreateReport(outfile, *flagFormat, issues, metrics)
-	} else {
-		output.CreateReport(os.Stdout, *flagFormat, issues, metrics)
+	if err := saveOutput(*flagOutput, *flagFormat, issues, metrics); err != nil {
+		logger.Fatal(err)
 	}
+
+	// Finialize logging
+	logWriter.Close()
 
 	// Do we have an issue? If so exit 1
 	if issuesFound {
