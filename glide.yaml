@@ -1,0 +1,9 @@
+package: github.com/GoASTScanner/gas
+import:
+- package: github.com/kisielk/gotool
+- package: github.com/nbutton23/zxcvbn-go
+- package: github.com/ryanuber/go-glob
+  version: ^0.1.0
+- package: golang.org/x/tools
+  subpackages:
+  - go/loader
