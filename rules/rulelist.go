@@ -15,17 +15,23 @@
 package rules
 
 import (
-	"go/ast"
-
 	"github.com/GoASTScanner/gas"
 )
 
 type RuleDefinition struct {
 	Description string
-	Create      func(c gas.Config) (gas.Rule, []ast.Node)
+	Create      gas.RuleBuilder
 }
 
 type RuleList map[string]RuleDefinition
+
+func (rl RuleList) Builders() []gas.RuleBuilder {
+	builders := make([]gas.RuleBuilder, 0, len(rl))
+	for _, def := range rl {
+		builders = append(builders, def.Create)
+	}
+	return builders
+}
 
 type RuleFilter func(string) bool
 
