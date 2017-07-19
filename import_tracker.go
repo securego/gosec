@@ -34,9 +34,11 @@ func NewImportTracker() *ImportTracker {
 
 func (t *ImportTracker) TrackPackages(pkgs ...*types.Package) {
 	for _, pkg := range pkgs {
-		for _, imp := range pkg.Imports() {
-			t.Imported[imp.Path()] = imp.Name()
-		}
+		t.Imported[pkg.Path()] = pkg.Name()
+		// Transient imports
+		//for _, imp := range pkg.Imports() {
+		//	t.Imported[imp.Path()] = imp.Name()
+		//}
 	}
 }
 
@@ -52,8 +54,6 @@ func (t *ImportTracker) TrackImport(n ast.Node) {
 				t.Aliased[path] = imported.Name.Name
 			}
 		}
-
-		// unsafe is not included in Package.Imports()
 		if path == "unsafe" {
 			t.Imported[path] = path
 		}

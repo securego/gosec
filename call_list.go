@@ -55,19 +55,19 @@ func (c CallList) Contains(selector, ident string) bool {
 
 /// ContainsCallExpr resolves the call expression name and type
 /// or package and determines if it exists within the CallList
-func (c CallList) ContainsCallExpr(n ast.Node, ctx *Context) bool {
+func (c CallList) ContainsCallExpr(n ast.Node, ctx *Context) *ast.CallExpr {
 	selector, ident, err := GetCallInfo(n, ctx)
 	if err != nil {
-		return false
+		return nil
 	}
 	// Try direct resolution
 	if c.Contains(selector, ident) {
-		return true
+		return n.(*ast.CallExpr)
 	}
 
 	// Also support explicit path
-	if path, ok := GetImportPath(selector, ctx); ok {
-		return c.Contains(path, ident)
+	if path, ok := GetImportPath(selector, ctx); ok && c.Contains(path, ident) {
+		return n.(*ast.CallExpr)
 	}
-	return false
+	return nil
 }

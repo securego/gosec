@@ -117,6 +117,9 @@ func loadConfig(configFile string) (gas.Config, error) {
 			return nil, err
 		}
 	}
+	if *flagIgnoreNoSec {
+		config.SetGlobal("nosec", "true")
+	}
 	return config, nil
 }
 

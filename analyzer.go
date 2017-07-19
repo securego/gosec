@@ -18,9 +18,11 @@ package gas
 import (
 	"go/ast"
 	"go/build"
+	"go/parser"
 	"go/token"
 	"go/types"
 	"log"
+	"os"
 	"path"
 	"reflect"
 	"strings"
@@ -64,10 +66,11 @@ type Analyzer struct {
 // NewAnalyzer builds a new anaylzer.
 func NewAnalyzer(conf Config, logger *log.Logger) *Analyzer {
 	ignoreNoSec := false
-	if val, err := conf.Get("ignoreNoSec"); err == nil {
-		if override, ok := val.(bool); ok {
-			ignoreNoSec = override
-		}
+	if setting, err := conf.GetGlobal("nosec"); err == nil {
+		ignoreNoSec = setting == "true" || setting == "enabled"
+	}
+	if logger == nil {
+		logger = log.New(os.Stderr, "[gas]", log.LstdFlags)
 	}
 	return &Analyzer{
 		ignoreNosec: ignoreNoSec,
@@ -94,7 +97,7 @@ func (gas *Analyzer) Process(packagePath string) error {
 		return err
 	}
 
-	packageConfig := loader.Config{Build: &build.Default}
+	packageConfig := loader.Config{Build: &build.Default, ParserMode: parser.ParseComments}
 	packageFiles := make([]string, 0)
 	for _, filename := range basePackage.GoFiles {
 		packageFiles = append(packageFiles, path.Join(packagePath, filename))
@@ -167,4 +170,11 @@ func (gas *Analyzer) Visit(n ast.Node) ast.Visitor {
 // Report returns the current issues discovered and the metrics about the scan
 func (gas *Analyzer) Report() ([]*Issue, *Metrics) {
 	return gas.issues, gas.stats
+}
+
+// Reset clears state such as context, issues and metrics from the configured analyzer
+func (gas *Analyzer) Reset() {
+	gas.context = &Context{}
+	gas.issues = make([]*Issue, 0, 16)
+	gas.stats = &Metrics{}
 }

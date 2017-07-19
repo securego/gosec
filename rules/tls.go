@@ -17,17 +17,15 @@ package rules
 import (
 	"fmt"
 	"go/ast"
-	"reflect"
-	"regexp"
 
 	"github.com/GoASTScanner/gas"
 )
 
 type InsecureConfigTLS struct {
-	MinVersion  int16
-	MaxVersion  int16
-	pattern     *regexp.Regexp
-	goodCiphers []string
+	MinVersion   int16
+	MaxVersion   int16
+	requiredType string
+	goodCiphers  []string
 }
 
 func stringInSlice(a string, list []string) bool {
@@ -39,15 +37,24 @@ func stringInSlice(a string, list []string) bool {
 	return false
 }
 
-func (t *InsecureConfigTLS) processTlsCipherSuites(n ast.Node, c *gas.Context) *gas.Issue {
-	a := reflect.TypeOf(&ast.KeyValueExpr{})
-	b := reflect.TypeOf(&ast.CompositeLit{})
-	if node, ok := gas.SimpleSelect(n, a, b).(*ast.CompositeLit); ok {
-		for _, elt := range node.Elts {
-			if ident, ok := elt.(*ast.SelectorExpr); ok {
-				if !stringInSlice(ident.Sel.Name, t.goodCiphers) {
-					str := fmt.Sprintf("TLS Bad Cipher Suite: %s", ident.Sel.Name)
-					return gas.NewIssue(c, n, str, gas.High, gas.High)
+func (t *InsecureConfigTLS) processTLSCipherSuites(n ast.Node, c *gas.Context) *gas.Issue {
+	tlsConfig := gas.MatchCompLit(n, c, t.requiredType)
+	if tlsConfig == nil {
+		return nil
+	}
+
+	for _, expr := range tlsConfig.Elts {
+		if keyvalExpr, ok := expr.(*ast.KeyValueExpr); ok {
+			if keyname, ok := keyvalExpr.Key.(*ast.Ident); ok && keyname.Name == "CipherSuites" {
+				if ciphers, ok := keyvalExpr.Value.(*ast.CompositeLit); ok {
+					for _, cipher := range ciphers.Elts {
+						if ident, ok := cipher.(*ast.SelectorExpr); ok {
+							if !stringInSlice(ident.Sel.Name, t.goodCiphers) {
+								str := fmt.Sprintf("TLS Bad Cipher Suite: %s", ident.Sel.Name)
+								return gas.NewIssue(c, n, str, gas.High, gas.High)
+							}
+						}
+					}
 				}
 			}
 		}
@@ -97,7 +104,7 @@ func (t *InsecureConfigTLS) processTlsConfVal(n *ast.KeyValueExpr, c *gas.Contex
 			}
 
 		case "CipherSuites":
-			if ret := t.processTlsCipherSuites(n, c); ret != nil {
+			if ret := t.processTLSCipherSuites(n, c); ret != nil {
 				return ret
 			}
 
@@ -108,7 +115,7 @@ func (t *InsecureConfigTLS) processTlsConfVal(n *ast.KeyValueExpr, c *gas.Contex
 }
 
 func (t *InsecureConfigTLS) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err error) {
-	if node := gas.MatchCompLit(n, t.pattern); node != nil {
+	if node := gas.MatchCompLit(n, c, t.requiredType); node != nil {
 		for _, elt := range node.Elts {
 			if kve, ok := elt.(*ast.KeyValueExpr); ok {
 				gi = t.processTlsConfVal(kve, c)
@@ -124,9 +131,9 @@ func (t *InsecureConfigTLS) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, er
 func NewModernTlsCheck(conf gas.Config) (gas.Rule, []ast.Node) {
 	// https://wiki.mozilla.org/Security/Server_Side_TLS#Modern_compatibility
 	return &InsecureConfigTLS{
-		pattern:    regexp.MustCompile(`^tls\.Config$`),
-		MinVersion: 0x0303, // TLS 1.2 only
-		MaxVersion: 0x0303,
+		requiredType: "tls.Config",
+		MinVersion:   0x0303, // TLS 1.2 only
+		MaxVersion:   0x0303,
 		goodCiphers: []string{
 			"TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
 			"TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",
@@ -139,9 +146,9 @@ func NewModernTlsCheck(conf gas.Config) (gas.Rule, []ast.Node) {
 func NewIntermediateTlsCheck(conf gas.Config) (gas.Rule, []ast.Node) {
 	// https://wiki.mozilla.org/Security/Server_Side_TLS#Intermediate_compatibility_.28default.29
 	return &InsecureConfigTLS{
-		pattern:    regexp.MustCompile(`^tls\.Config$`),
-		MinVersion: 0x0301, // TLS 1.2, 1.1, 1.0
-		MaxVersion: 0x0303,
+		requiredType: "tls.Config",
+		MinVersion:   0x0301, // TLS 1.2, 1.1, 1.0
+		MaxVersion:   0x0303,
 		goodCiphers: []string{
 			"TLS_RSA_WITH_AES_128_CBC_SHA",
 			"TLS_RSA_WITH_AES_256_CBC_SHA",
@@ -165,9 +172,9 @@ func NewIntermediateTlsCheck(conf gas.Config) (gas.Rule, []ast.Node) {
 func NewCompatTlsCheck(conf gas.Config) (gas.Rule, []ast.Node) {
 	// https://wiki.mozilla.org/Security/Server_Side_TLS#Old_compatibility_.28default.29
 	return &InsecureConfigTLS{
-		pattern:    regexp.MustCompile(`^tls\.Config$`),
-		MinVersion: 0x0301, // TLS 1.2, 1.1, 1.0
-		MaxVersion: 0x0303,
+		requiredType: "tls.Config",
+		MinVersion:   0x0301, // TLS 1.2, 1.1, 1.0
+		MaxVersion:   0x0303,
 		goodCiphers: []string{
 			"TLS_RSA_WITH_RC4_128_SHA",
 			"TLS_RSA_WITH_3DES_EDE_CBC_SHA",

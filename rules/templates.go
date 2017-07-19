@@ -16,18 +16,17 @@ package rules
 
 import (
 	"go/ast"
-	"regexp"
 
 	"github.com/GoASTScanner/gas"
 )
 
 type TemplateCheck struct {
 	gas.MetaData
-	call *regexp.Regexp
+	calls gas.CallList
 }
 
-func (t *TemplateCheck) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err error) {
-	if node := gas.MatchCall(n, t.call); node != nil {
+func (t *TemplateCheck) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
+	if node := t.calls.ContainsCallExpr(n, c); node != nil {
 		for _, arg := range node.Args {
 			if _, ok := arg.(*ast.BasicLit); !ok { // basic lits are safe
 				return gas.NewIssue(c, n, t.What, t.Severity, t.Confidence), nil
@@ -38,8 +37,9 @@ func (t *TemplateCheck) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err er
 }
 
 func NewTemplateCheck(conf gas.Config) (gas.Rule, []ast.Node) {
+
 	return &TemplateCheck{
-		call: regexp.MustCompile(`^template\.(HTML|JS|URL)$`),
+		calls: gas.NewCallList(),
 		MetaData: gas.MetaData{
 			Severity:   gas.Medium,
 			Confidence: gas.Low,

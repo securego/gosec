@@ -71,12 +71,14 @@ func NewSqlStrConcat(conf gas.Config) (gas.Rule, []ast.Node) {
 
 type SqlStrFormat struct {
 	SqlStatement
-	call *regexp.Regexp
+	calls gas.CallList
 }
 
 // Looks for "fmt.Sprintf("SELECT * FROM foo where '%s', userInput)"
-func (s *SqlStrFormat) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err error) {
-	if node := gas.MatchCall(n, s.call); node != nil {
+func (s *SqlStrFormat) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
+
+	// TODO(gm) improve confidence if database/sql is being used
+	if node := s.calls.ContainsCallExpr(n, c); node != nil {
 		if arg, e := gas.GetString(node.Args[0]); s.pattern.MatchString(arg) && e == nil {
 			return gas.NewIssue(c, n, s.What, s.Severity, s.Confidence), nil
 		}
@@ -85,8 +87,8 @@ func (s *SqlStrFormat) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err err
 }
 
 func NewSqlStrFormat(conf gas.Config) (gas.Rule, []ast.Node) {
-	return &SqlStrFormat{
-		call: regexp.MustCompile(`^fmt\.Sprintf$`),
+	rule := &SqlStrFormat{
+		calls: gas.NewCallList(),
 		SqlStatement: SqlStatement{
 			pattern: regexp.MustCompile("(?)(SELECT|DELETE|INSERT|UPDATE|INTO|FROM|WHERE) "),
 			MetaData: gas.MetaData{
@@ -95,5 +97,7 @@ func NewSqlStrFormat(conf gas.Config) (gas.Rule, []ast.Node) {
 				What:       "SQL string formatting",
 			},
 		},
-	}, []ast.Node{(*ast.CallExpr)(nil)}
+	}
+	rule.calls.AddAll("fmt", "Sprint", "Sprintf", "Sprintln")
+	return rule, []ast.Node{(*ast.CallExpr)(nil)}
 }

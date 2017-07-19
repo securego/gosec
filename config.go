@@ -15,7 +15,9 @@ type Config map[string]interface{}
 // needs to be loaded via c.ReadFrom(strings.NewReader("config data"))
 // or from a *os.File.
 func NewConfig() Config {
-	return make(Config)
+	cfg := make(Config)
+	cfg["global"] = make(map[string]string)
+	return cfg
 }
 
 // ReadFrom implements the io.ReaderFrom interface. This
@@ -26,7 +28,7 @@ func (c Config) ReadFrom(r io.Reader) (int64, error) {
 	if err != nil {
 		return int64(len(data)), err
 	}
-	if err = json.Unmarshal(data, c); err != nil {
+	if err = json.Unmarshal(data, &c); err != nil {
 		return int64(len(data)), err
 	}
 	return int64(len(data)), nil
@@ -42,39 +44,39 @@ func (c Config) WriteTo(w io.Writer) (int64, error) {
 	return io.Copy(w, bytes.NewReader(data))
 }
 
-// EnableRule will change the rule to the specified enabled state
-func (c Config) EnableRule(ruleID string, enabled bool) {
-	if data, found := c["rules"]; found {
-		if rules, ok := data.(map[string]bool); ok {
-			rules[ruleID] = enabled
-		}
-	}
-}
-
-// Enabled returns a list of rules that are enabled
-func (c Config) Enabled() []string {
-	if data, found := c["rules"]; found {
-		if rules, ok := data.(map[string]bool); ok {
-			enabled := make([]string, len(rules))
-			for ruleID := range rules {
-				enabled = append(enabled, ruleID)
-			}
-			return enabled
-		}
-	}
-	return nil
-}
-
-// Get returns the configuration section for a given rule
-func (c Config) Get(ruleID string) (interface{}, error) {
-	section, found := c[ruleID]
+// Get returns the configuration section for the supplied key
+func (c Config) Get(section string) (interface{}, error) {
+	settings, found := c[section]
 	if !found {
-		return nil, fmt.Errorf("Rule %s not in configuration", ruleID)
+		return nil, fmt.Errorf("Section %s not in configuration", section)
 	}
-	return section, nil
+	return settings, nil
 }
 
-// Set section for a given rule
-func (c Config) Set(ruleID string, val interface{}) {
-	c[ruleID] = val
+// Set section in the configuration to specified value
+func (c Config) Set(section string, value interface{}) {
+	c[section] = value
+}
+
+// GetGlobal returns value associated with global configuration option
+func (c Config) GetGlobal(option string) (string, error) {
+	if globals, ok := c["global"]; ok {
+		if settings, ok := globals.(map[string]string); ok {
+			if value, ok := settings[option]; ok {
+				return value, nil
+			}
+			return "", fmt.Errorf("global setting for %s not found", option)
+		}
+	}
+	return "", fmt.Errorf("no global config options found")
+
+}
+
+// SetGlobal associates a value with a global configuration ooption
+func (c Config) SetGlobal(option, value string) {
+	if globals, ok := c["global"]; ok {
+		if settings, ok := globals.(map[string]string); ok {
+			settings[option] = value
+		}
+	}
 }
