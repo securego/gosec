@@ -32,6 +32,7 @@ var _ = Describe("gas rules", func() {
 			for n, sample := range samples {
 				analyzer.Reset()
 				pkg := testutils.NewTestPackage()
+				defer pkg.Close()
 				pkg.AddFile(fmt.Sprintf("sample_%d.go", n), sample.Code)
 				pkg.Build()
 				e := analyzer.Process(pkg.Path)

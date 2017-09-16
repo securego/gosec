@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"go/ast"
 	"os"
+	"strconv"
 )
 
 // Score type used by severity and confidence values
@@ -36,7 +37,7 @@ type Issue struct {
 	What       string `json:"details"`    // Human readable explanation
 	File       string `json:"file"`       // File name we found it in
 	Code       string `json:"code"`       // Impacted code line
-	Line       int    `json:"line"`       // Line number in file
+	Line       string `json:"line"`       // Line number in file
 }
 
 // MetaData is embedded in all GAS rules. The Severity, Confidence and What message
@@ -85,7 +86,12 @@ func NewIssue(ctx *Context, node ast.Node, desc string, severity Score, confiden
 	var code string
 	fobj := ctx.FileSet.File(node.Pos())
 	name := fobj.Name()
-	line := fobj.Line(node.Pos())
+
+	start, end := fobj.Line(node.Pos()), fobj.Line(node.End())
+	line := strconv.Itoa(start)
+	if start != end {
+		line = fmt.Sprintf("%d-%d", start, end)
+	}
 
 	if file, err := os.Open(fobj.Name()); err == nil {
 		defer file.Close()

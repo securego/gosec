@@ -15,6 +15,7 @@ var _ = Describe("Resolve ast node to concrete value", func() {
 			var basicLiteral *ast.BasicLit
 
 			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
 			pkg.AddFile("foo.go", `package main; const foo = "bar"; func main(){}`)
 			ctx := pkg.CreateContext("foo.go")
 			v := testutils.NewMockVisitor()
@@ -34,6 +35,7 @@ var _ = Describe("Resolve ast node to concrete value", func() {
 		It("should successfully resolve identifier", func() {
 			var ident *ast.Ident
 			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
 			pkg.AddFile("foo.go", `package main; var foo string = "bar"; func main(){}`)
 			ctx := pkg.CreateContext("foo.go")
 			v := testutils.NewMockVisitor()
@@ -53,6 +55,7 @@ var _ = Describe("Resolve ast node to concrete value", func() {
 		It("should successfully resolve assign statement", func() {
 			var assign *ast.AssignStmt
 			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
 			pkg.AddFile("foo.go", `package main; const x = "bar"; func main(){ y := x; println(y) }`)
 			ctx := pkg.CreateContext("foo.go")
 			v := testutils.NewMockVisitor()
@@ -73,6 +76,7 @@ var _ = Describe("Resolve ast node to concrete value", func() {
 		It("should successfully resolve a binary statement", func() {
 			var target *ast.BinaryExpr
 			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
 			pkg.AddFile("foo.go", `package main; const (x = "bar"; y = "baz"); func main(){ z := x + y; println(z) }`)
 			ctx := pkg.CreateContext("foo.go")
 			v := testutils.NewMockVisitor()

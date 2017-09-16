@@ -46,7 +46,7 @@ var _ = Describe("Rule", func() {
 					What:       `Some explanation of the thing`,
 					File:       "main.go",
 					Code:       `#include <stdio.h> int main(){ puts("hello world"); }`,
-					Line:       42,
+					Line:       "42",
 				},
 				err:      nil,
 				callback: func(n ast.Node, ctx *gas.Context) bool { return true },
