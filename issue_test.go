@@ -40,7 +40,7 @@ var _ = Describe("Issue", func() {
 			issue := gas.NewIssue(ctx, target, "", gas.High, gas.High)
 			Expect(issue).ShouldNot(BeNil())
 			Expect(issue.Code).Should(MatchRegexp(`"bar"`))
-			Expect(issue.Line).Should(Equal(2))
+			Expect(issue.Line).Should(Equal("2"))
 
 		})
 

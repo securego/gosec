@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	htmlTemplate "html/template"
 	"io"
-	"strconv"
 	plainTemplate "text/template"
 
 	"github.com/GoASTScanner/gas"
@@ -93,7 +92,7 @@ func reportCSV(w io.Writer, data *reportInfo) error {
 	for _, issue := range data.Issues {
 		err := out.Write([]string{
 			issue.File,
-			strconv.Itoa(issue.Line),
+			issue.Line,
 			issue.What,
 			issue.Severity.String(),
 			issue.Confidence.String(),
