@@ -49,7 +49,37 @@ var _ = Describe("Issue", func() {
 		})
 
 		It("should provide accurate line and file information", func() {
-			Fail("Not implemented")
+			var target *ast.BasicLit
+			source := `package main
+			import (
+				"fmt"
+				"os"
+			)
+			func main(){
+				q := fmt.Sprintf("SELECT * FROM table WHERE %s = ?", os.Args[1]) // nolint: gas
+				println(q)
+			}
+			`
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("foo.go", source)
+			ctx := pkg.CreateContext("foo.go")
+			v := testutils.NewMockVisitor()
+			v.Callback = func(n ast.Node, ctx *gas.Context) bool {
+				if node, ok := n.(*ast.BasicLit); ok {
+					target = node
+					return false
+				}
+				return true
+			}
+			v.Context = ctx
+			ast.Walk(v, ctx.Root)
+			Expect(target).ShouldNot(BeNil())
+
+			issue := gas.NewIssue(ctx, target, "", gas.High, gas.High)
+			Expect(issue).ShouldNot(BeNil())
+			Expect(issue.File).Should(MatchRegexp("foo.go"))
+			Expect(issue.Line).Should(Equal("7"))
 		})
 
 		It("should provide accurate line and file information for multi-line statements", func() {
@@ -87,11 +117,69 @@ var _ = Describe("Issue", func() {
 		})
 
 		It("should maintain the provided severity score", func() {
-			Fail("Not implemented")
+			var target *ast.BasicLit
+			source := `package main
+			import (
+				"fmt"
+				"os"
+			)
+			func main(){
+				q := fmt.Sprintf("SELECT * FROM table WHERE %s = ?", os.Args[1]) // nolint: gas
+				println(q)
+			}
+			`
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("foo.go", source)
+			ctx := pkg.CreateContext("foo.go")
+			v := testutils.NewMockVisitor()
+			v.Callback = func(n ast.Node, ctx *gas.Context) bool {
+				if node, ok := n.(*ast.BasicLit); ok {
+					target = node
+					return false
+				}
+				return true
+			}
+			v.Context = ctx
+			ast.Walk(v, ctx.Root)
+			Expect(target).ShouldNot(BeNil())
+
+			issue := gas.NewIssue(ctx, target, "", gas.High, gas.High)
+			Expect(issue).ShouldNot(BeNil())
+			Expect(issue.Severity).Should(Equal(gas.High))
 		})
 
 		It("should maintain the provided confidence score", func() {
-			Fail("Not implemented")
+			var target *ast.BasicLit
+			source := `package main
+			import (
+				"fmt"
+				"os"
+			)
+			func main(){
+				q := fmt.Sprintf("SELECT * FROM table WHERE %s = ?", os.Args[1]) // nolint: gas
+				println(q)
+			}
+			`
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("foo.go", source)
+			ctx := pkg.CreateContext("foo.go")
+			v := testutils.NewMockVisitor()
+			v.Callback = func(n ast.Node, ctx *gas.Context) bool {
+				if node, ok := n.(*ast.BasicLit); ok {
+					target = node
+					return false
+				}
+				return true
+			}
+			v.Context = ctx
+			ast.Walk(v, ctx.Root)
+			Expect(target).ShouldNot(BeNil())
+
+			issue := gas.NewIssue(ctx, target, "", gas.High, gas.High)
+			Expect(issue).ShouldNot(BeNil())
+			Expect(issue.Confidence).Should(Equal(gas.High))
 		})
 
 	})
