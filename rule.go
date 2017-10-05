@@ -19,11 +19,12 @@ import (
 
 // The Rule interface used by all rules supported by GAS.
 type Rule interface {
+	ID() string
 	Match(ast.Node, *Context) (*Issue, error)
 }
 
 // RuleBuilder is used to register a rule definition with the analyzer
-type RuleBuilder func(c Config) (Rule, []ast.Node)
+type RuleBuilder func(id string, c Config) (Rule, []ast.Node)
 
 // A RuleSet maps lists of rules to the type of AST node they should be run on.
 // The anaylzer will only invoke rules contained in the list associated with the

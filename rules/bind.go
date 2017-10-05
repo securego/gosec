@@ -28,6 +28,10 @@ type bindsToAllNetworkInterfaces struct {
 	pattern *regexp.Regexp
 }
 
+func (r *bindsToAllNetworkInterfaces) ID() string {
+	return r.MetaData.ID
+}
+
 func (r *bindsToAllNetworkInterfaces) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 	callExpr := r.calls.ContainsCallExpr(n, c)
 	if callExpr == nil {
@@ -43,7 +47,7 @@ func (r *bindsToAllNetworkInterfaces) Match(n ast.Node, c *gas.Context) (*gas.Is
 
 // NewBindsToAllNetworkInterfaces detects socket connections that are setup to
 // listen on all network interfaces.
-func NewBindsToAllNetworkInterfaces(conf gas.Config) (gas.Rule, []ast.Node) {
+func NewBindsToAllNetworkInterfaces(id string, conf gas.Config) (gas.Rule, []ast.Node) {
 	calls := gas.NewCallList()
 	calls.Add("net", "Listen")
 	calls.Add("crypto/tls", "Listen")
@@ -51,6 +55,7 @@ func NewBindsToAllNetworkInterfaces(conf gas.Config) (gas.Rule, []ast.Node) {
 		calls:   calls,
 		pattern: regexp.MustCompile(`^(0.0.0.0|:).*$`),
 		MetaData: gas.MetaData{
+			ID:         id,
 			Severity:   gas.Medium,
 			Confidence: gas.High,
 			What:       "Binds to all network interfaces",

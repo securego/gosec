@@ -28,6 +28,10 @@ type sqlStatement struct {
 	patterns []*regexp.Regexp
 }
 
+func (r *sqlStatement) ID() string {
+	return r.MetaData.ID
+}
+
 // See if the string matches the patterns for the statement.
 func (s sqlStatement) MatchPatterns(str string) bool {
 	for _, pattern := range s.patterns {
@@ -40,6 +44,10 @@ func (s sqlStatement) MatchPatterns(str string) bool {
 
 type sqlStrConcat struct {
 	sqlStatement
+}
+
+func (r *sqlStrConcat) ID() string {
+	return r.MetaData.ID
 }
 
 // see if we can figure out what it is
@@ -72,13 +80,14 @@ func (s *sqlStrConcat) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 }
 
 // NewSQLStrConcat looks for cases where we are building SQL strings via concatenation
-func NewSQLStrConcat(conf gas.Config) (gas.Rule, []ast.Node) {
+func NewSQLStrConcat(id string, conf gas.Config) (gas.Rule, []ast.Node) {
 	return &sqlStrConcat{
 		sqlStatement: sqlStatement{
 			patterns: []*regexp.Regexp{
 				regexp.MustCompile(`(?)(SELECT|DELETE|INSERT|UPDATE|INTO|FROM|WHERE) `),
 			},
 			MetaData: gas.MetaData{
+				ID:         id,
 				Severity:   gas.Medium,
 				Confidence: gas.High,
 				What:       "SQL string concatenation",
@@ -105,7 +114,7 @@ func (s *sqlStrFormat) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 }
 
 // NewSQLStrFormat looks for cases where we're building SQL query strings using format strings
-func NewSQLStrFormat(conf gas.Config) (gas.Rule, []ast.Node) {
+func NewSQLStrFormat(id string, conf gas.Config) (gas.Rule, []ast.Node) {
 	rule := &sqlStrFormat{
 		calls: gas.NewCallList(),
 		sqlStatement: sqlStatement{
@@ -114,6 +123,7 @@ func NewSQLStrFormat(conf gas.Config) (gas.Rule, []ast.Node) {
 				regexp.MustCompile("%[^bdoxXfFp]"),
 			},
 			MetaData: gas.MetaData{
+				ID:         id,
 				Severity:   gas.Medium,
 				Confidence: gas.High,
 				What:       "SQL string formatting",

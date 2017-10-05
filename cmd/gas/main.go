@@ -206,7 +206,7 @@ func main() {
 
 	// Create the analyzer
 	analyzer := gas.NewAnalyzer(config, logger)
-	analyzer.LoadRules(ruleDefinitions.Builders()...)
+	analyzer.LoadRules(ruleDefinitions.Builders())
 
 	vendor := regexp.MustCompile(`[\\/]vendor([\\/]|$)`)
 
