@@ -28,6 +28,10 @@ type BindsToAllNetworkInterfaces struct {
 	pattern *regexp.Regexp
 }
 
+func (r *BindsToAllNetworkInterfaces) ID() string {
+	return r.MetaData.ID
+}
+
 func (r *BindsToAllNetworkInterfaces) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err error) {
 	if node := gas.MatchCall(n, r.call); node != nil {
 		if arg, err := gas.GetString(node.Args[1]); err == nil {
@@ -39,11 +43,12 @@ func (r *BindsToAllNetworkInterfaces) Match(n ast.Node, c *gas.Context) (gi *gas
 	return
 }
 
-func NewBindsToAllNetworkInterfaces(conf map[string]interface{}) (gas.Rule, []ast.Node) {
+func NewBindsToAllNetworkInterfaces(id string, conf map[string]interface{}) (gas.Rule, []ast.Node) {
 	return &BindsToAllNetworkInterfaces{
 		call:    regexp.MustCompile(`^(net|tls)\.Listen$`),
 		pattern: regexp.MustCompile(`^(0.0.0.0|:).*$`),
 		MetaData: gas.MetaData{
+			ID:         id,
 			Severity:   gas.Medium,
 			Confidence: gas.High,
 			What:       "Binds to all network interfaces",

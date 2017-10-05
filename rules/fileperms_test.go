@@ -23,7 +23,7 @@ import (
 func TestChmod(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewFilePerms(config))
+	analyzer.AddRule(NewFilePerms("TEST", config))
 
 	issues := gasTestRunner(`
 		package main
@@ -41,7 +41,7 @@ func TestChmod(t *testing.T) {
 func TestMkdir(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewMkdirPerms(config))
+	analyzer.AddRule(NewMkdirPerms("TEST", config))
 
 	issues := gasTestRunner(`
 		package main

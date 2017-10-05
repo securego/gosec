@@ -11,6 +11,10 @@ type callListRule struct {
 	matched  int
 }
 
+func (r *callListRule) ID() string {
+	return r.MetaData.ID
+}
+
 func (r *callListRule) Match(n ast.Node, c *Context) (gi *Issue, err error) {
 	if r.callList.ContainsCallExpr(n, c) {
 		r.matched += 1
@@ -25,6 +29,7 @@ func TestCallListContainsCallExpr(t *testing.T) {
 	calls.AddAll("bytes.Buffer", "Write", "WriteTo")
 	rule := &callListRule{
 		MetaData: MetaData{
+			ID:         "TEST",
 			Severity:   Low,
 			Confidence: Low,
 			What:       "A dummy rule",

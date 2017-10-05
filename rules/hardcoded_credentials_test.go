@@ -23,7 +23,7 @@ import (
 func TestHardcoded(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewHardcodedCredentials(config))
+	analyzer.AddRule(NewHardcodedCredentials("TEST", config))
 
 	issues := gasTestRunner(
 		`
@@ -43,7 +43,7 @@ func TestHardcoded(t *testing.T) {
 func TestHardcodedWithEntropy(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewHardcodedCredentials(config))
+	analyzer.AddRule(NewHardcodedCredentials("TEST", config))
 
 	issues := gasTestRunner(
 		`
@@ -68,7 +68,7 @@ func TestHardcodedIgnoreEntropy(t *testing.T) {
 		},
 	}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewHardcodedCredentials(config))
+	analyzer.AddRule(NewHardcodedCredentials("TEST", config))
 
 	issues := gasTestRunner(
 		`
@@ -88,7 +88,7 @@ func TestHardcodedIgnoreEntropy(t *testing.T) {
 func TestHardcodedGlobalVar(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewHardcodedCredentials(config))
+	analyzer.AddRule(NewHardcodedCredentials("TEST", config))
 
 	issues := gasTestRunner(`
 		package samples
@@ -108,7 +108,7 @@ func TestHardcodedGlobalVar(t *testing.T) {
 func TestHardcodedConstant(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewHardcodedCredentials(config))
+	analyzer.AddRule(NewHardcodedCredentials("TEST", config))
 
 	issues := gasTestRunner(`
 		package samples
@@ -128,7 +128,7 @@ func TestHardcodedConstant(t *testing.T) {
 func TestHardcodedConstantMulti(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewHardcodedCredentials(config))
+	analyzer.AddRule(NewHardcodedCredentials("TEST", config))
 
 	issues := gasTestRunner(`
 		package samples
@@ -150,7 +150,7 @@ func TestHardcodedConstantMulti(t *testing.T) {
 func TestHardecodedVarsNotAssigned(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewHardcodedCredentials(config))
+	analyzer.AddRule(NewHardcodedCredentials("TEST", config))
 	issues := gasTestRunner(`
 		package main
 		var password string
@@ -163,7 +163,7 @@ func TestHardecodedVarsNotAssigned(t *testing.T) {
 func TestHardcodedConstInteger(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewHardcodedCredentials(config))
+	analyzer.AddRule(NewHardcodedCredentials("TEST", config))
 	issues := gasTestRunner(`
 		package main
 
@@ -180,7 +180,7 @@ func TestHardcodedConstInteger(t *testing.T) {
 func TestHardcodedConstString(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewHardcodedCredentials(config))
+	analyzer.AddRule(NewHardcodedCredentials("TEST", config))
 	issues := gasTestRunner(`
 		package main
 

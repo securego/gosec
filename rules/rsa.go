@@ -28,6 +28,10 @@ type WeakKeyStrength struct {
 	bits    int
 }
 
+func (r *WeakKeyStrength) ID() string {
+	return r.MetaData.ID
+}
+
 func (w *WeakKeyStrength) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 	if node := gas.MatchCall(n, w.pattern); node != nil {
 		if bits, err := gas.GetInt(node.Args[1]); err == nil && bits < (int64)(w.bits) {
@@ -37,12 +41,13 @@ func (w *WeakKeyStrength) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) 
 	return nil, nil
 }
 
-func NewWeakKeyStrength(conf map[string]interface{}) (gas.Rule, []ast.Node) {
+func NewWeakKeyStrength(id string, conf map[string]interface{}) (gas.Rule, []ast.Node) {
 	bits := 2048
 	return &WeakKeyStrength{
 		pattern: regexp.MustCompile(`^rsa\.GenerateKey$`),
 		bits:    bits,
 		MetaData: gas.MetaData{
+			ID:         id,
 			Severity:   gas.Medium,
 			Confidence: gas.High,
 			What:       fmt.Sprintf("RSA keys should be at least %d bits", bits),

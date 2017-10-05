@@ -30,6 +30,14 @@ type SqlStrConcat struct {
 	SqlStatement
 }
 
+func (r *SqlStatement) ID() string {
+	return r.MetaData.ID
+}
+
+func (r *SqlStrConcat) ID() string {
+	return r.MetaData.ID
+}
+
 // see if we can figure out what it is
 func (s *SqlStrConcat) checkObject(n *ast.Ident) bool {
 	if n.Obj != nil {
@@ -56,11 +64,12 @@ func (s *SqlStrConcat) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 	return nil, nil
 }
 
-func NewSqlStrConcat(conf map[string]interface{}) (gas.Rule, []ast.Node) {
+func NewSqlStrConcat(id string, conf map[string]interface{}) (gas.Rule, []ast.Node) {
 	return &SqlStrConcat{
 		SqlStatement: SqlStatement{
 			pattern: regexp.MustCompile(`(?)(SELECT|DELETE|INSERT|UPDATE|INTO|FROM|WHERE) `),
 			MetaData: gas.MetaData{
+				ID:         id,
 				Severity:   gas.Medium,
 				Confidence: gas.High,
 				What:       "SQL string concatenation",
@@ -84,12 +93,13 @@ func (s *SqlStrFormat) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err err
 	return nil, nil
 }
 
-func NewSqlStrFormat(conf map[string]interface{}) (gas.Rule, []ast.Node) {
+func NewSqlStrFormat(id string, conf map[string]interface{}) (gas.Rule, []ast.Node) {
 	return &SqlStrFormat{
 		call: regexp.MustCompile(`^fmt\.Sprintf$`),
 		SqlStatement: SqlStatement{
 			pattern: regexp.MustCompile("(?)(SELECT|DELETE|INSERT|UPDATE|INTO|FROM|WHERE) "),
 			MetaData: gas.MetaData{
+				ID:         id,
 				Severity:   gas.Medium,
 				Confidence: gas.High,
 				What:       "SQL string formatting",

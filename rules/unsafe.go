@@ -15,14 +15,19 @@
 package rules
 
 import (
-	gas "github.com/GoASTScanner/gas/core"
 	"go/ast"
+
+	gas "github.com/GoASTScanner/gas/core"
 )
 
 type UsingUnsafe struct {
 	gas.MetaData
 	pkg   string
 	calls []string
+}
+
+func (r *UsingUnsafe) ID() string {
+	return r.MetaData.ID
 }
 
 func (r *UsingUnsafe) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err error) {
@@ -32,11 +37,12 @@ func (r *UsingUnsafe) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err erro
 	return nil, nil
 }
 
-func NewUsingUnsafe(conf map[string]interface{}) (gas.Rule, []ast.Node) {
+func NewUsingUnsafe(id string, conf map[string]interface{}) (gas.Rule, []ast.Node) {
 	return &UsingUnsafe{
 		pkg:   "unsafe",
 		calls: []string{"Alignof", "Offsetof", "Sizeof", "Pointer"},
 		MetaData: gas.MetaData{
+			ID:         id,
 			What:       "Use of unsafe calls should be audited",
 			Severity:   gas.Low,
 			Confidence: gas.High,

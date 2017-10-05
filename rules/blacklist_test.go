@@ -13,8 +13,9 @@
 package rules
 
 import (
-	gas "github.com/GoASTScanner/gas/core"
 	"testing"
+
+	gas "github.com/GoASTScanner/gas/core"
 )
 
 const initOnlyImportSrc = `
@@ -33,7 +34,7 @@ func main() {
 func TestInitOnlyImport(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewBlacklist_crypto_md5(config))
+	analyzer.AddRule(NewBlacklist_crypto_md5("TEST", config))
 	issues := gasTestRunner(initOnlyImportSrc, analyzer)
 	checkTestResults(t, issues, 0, "")
 }

@@ -27,6 +27,10 @@ type BadTempFile struct {
 	call *regexp.Regexp
 }
 
+func (r *BadTempFile) ID() string {
+	return r.MetaData.ID
+}
+
 func (t *BadTempFile) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err error) {
 	if node := gas.MatchCall(n, t.call); node != nil {
 		if arg, e := gas.GetString(node.Args[0]); t.args.MatchString(arg) && e == nil {
@@ -36,11 +40,12 @@ func (t *BadTempFile) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err erro
 	return nil, nil
 }
 
-func NewBadTempFile(conf map[string]interface{}) (gas.Rule, []ast.Node) {
+func NewBadTempFile(id string, conf map[string]interface{}) (gas.Rule, []ast.Node) {
 	return &BadTempFile{
 		call: regexp.MustCompile(`ioutil\.WriteFile|os\.Create`),
 		args: regexp.MustCompile(`^/tmp/.*$|^/var/tmp/.*$`),
 		MetaData: gas.MetaData{
+			ID:         id,
 			Severity:   gas.Medium,
 			Confidence: gas.High,
 			What:       "File creation in shared tmp directory without using ioutil.Tempfile",

@@ -16,6 +16,10 @@ type dummyRule struct {
 	matched        int
 }
 
+func (r *dummyRule) ID() string {
+	return r.MetaData.ID
+}
+
 func (r *dummyRule) Match(n ast.Node, c *Context) (gi *Issue, err error) {
 	if callexpr, matched := r.callback(n, c, r.pkgOrType, r.funcsOrMethods...); matched {
 		r.matched += 1

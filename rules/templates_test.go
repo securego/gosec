@@ -23,7 +23,7 @@ import (
 func TestTemplateCheckSafe(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewTemplateCheck(config))
+	analyzer.AddRule(NewTemplateCheck("TEST", config))
 
 	source := `
   package samples
@@ -51,7 +51,7 @@ func TestTemplateCheckSafe(t *testing.T) {
 func TestTemplateCheckBadHTML(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewTemplateCheck(config))
+	analyzer.AddRule(NewTemplateCheck("TEST", config))
 
 	source := `
   package samples
@@ -80,7 +80,7 @@ func TestTemplateCheckBadHTML(t *testing.T) {
 func TestTemplateCheckBadJS(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewTemplateCheck(config))
+	analyzer.AddRule(NewTemplateCheck("TEST", config))
 
 	source := `
   package samples
@@ -109,7 +109,7 @@ func TestTemplateCheckBadJS(t *testing.T) {
 func TestTemplateCheckBadURL(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewTemplateCheck(config))
+	analyzer.AddRule(NewTemplateCheck("TEST", config))
 
 	source := `
   package samples

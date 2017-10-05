@@ -23,7 +23,7 @@ import (
 func TestSQLInjectionViaConcatenation(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewSqlStrConcat(config))
+	analyzer.AddRule(NewSqlStrConcat("TEST", config))
 
 	source := `
         package main
@@ -51,7 +51,7 @@ func TestSQLInjectionViaConcatenation(t *testing.T) {
 func TestSQLInjectionViaIntepolation(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewSqlStrFormat(config))
+	analyzer.AddRule(NewSqlStrFormat("TEST", config))
 
 	source := `
         package main
@@ -81,8 +81,8 @@ func TestSQLInjectionViaIntepolation(t *testing.T) {
 func TestSQLInjectionFalsePositiveA(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewSqlStrConcat(config))
-	analyzer.AddRule(NewSqlStrFormat(config))
+	analyzer.AddRule(NewSqlStrConcat("TEST1", config))
+	analyzer.AddRule(NewSqlStrFormat("TEST2", config))
 
 	source := `
 
@@ -115,8 +115,8 @@ func TestSQLInjectionFalsePositiveA(t *testing.T) {
 func TestSQLInjectionFalsePositiveB(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewSqlStrConcat(config))
-	analyzer.AddRule(NewSqlStrFormat(config))
+	analyzer.AddRule(NewSqlStrConcat("TEST1", config))
+	analyzer.AddRule(NewSqlStrFormat("TEST2", config))
 
 	source := `
 
@@ -149,8 +149,8 @@ func TestSQLInjectionFalsePositiveB(t *testing.T) {
 func TestSQLInjectionFalsePositiveC(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewSqlStrConcat(config))
-	analyzer.AddRule(NewSqlStrFormat(config))
+	analyzer.AddRule(NewSqlStrConcat("TEST1", config))
+	analyzer.AddRule(NewSqlStrFormat("TEST2", config))
 
 	source := `
 
@@ -183,8 +183,8 @@ func TestSQLInjectionFalsePositiveC(t *testing.T) {
 func TestSQLInjectionFalsePositiveD(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewSqlStrConcat(config))
-	analyzer.AddRule(NewSqlStrFormat(config))
+	analyzer.AddRule(NewSqlStrConcat("TEST1", config))
+	analyzer.AddRule(NewSqlStrFormat("TEST2", config))
 
 	source := `
 

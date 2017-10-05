@@ -42,6 +42,7 @@ type Issue struct {
 // MetaData is embedded in all GAS rules. The Severity, Confidence and What message
 // will be passed tbhrough to reported issues.
 type MetaData struct {
+	ID         string
 	Severity   Score
 	Confidence Score
 	What       string

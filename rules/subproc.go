@@ -23,7 +23,12 @@ import (
 )
 
 type Subprocess struct {
+	gas.MetaData
 	pattern *regexp.Regexp
+}
+
+func (r *Subprocess) ID() string {
+	return r.MetaData.ID
 }
 
 func (r *Subprocess) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
@@ -43,14 +48,19 @@ func (r *Subprocess) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 			}
 		}
 
-		what := "Subprocess launching should be audited."
-		return gas.NewIssue(c, n, what, gas.Low, gas.High), nil
+		return gas.NewIssue(c, n, r.What, r.Severity, r.Confidence), nil
 	}
 	return nil, nil
 }
 
-func NewSubproc(conf map[string]interface{}) (gas.Rule, []ast.Node) {
+func NewSubproc(id string, conf map[string]interface{}) (gas.Rule, []ast.Node) {
 	return &Subprocess{
 		pattern: regexp.MustCompile(`^exec\.Command|syscall\.Exec$`),
+		MetaData: gas.MetaData{
+			ID:         id,
+			Severity:   gas.Low,
+			Confidence: gas.High,
+			What:       "Subprocess launching should be audited.",
+		},
 	}, []ast.Node{(*ast.CallExpr)(nil)}
 }

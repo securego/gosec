@@ -24,10 +24,15 @@ import (
 )
 
 type InsecureConfigTLS struct {
+	gas.MetaData
 	MinVersion  int16
 	MaxVersion  int16
 	pattern     *regexp.Regexp
 	goodCiphers []string
+}
+
+func (r *InsecureConfigTLS) ID() string {
+	return r.MetaData.ID
 }
 
 func stringInSlice(a string, list []string) bool {
@@ -121,7 +126,7 @@ func (t *InsecureConfigTLS) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, er
 	return
 }
 
-func NewModernTlsCheck(conf map[string]interface{}) (gas.Rule, []ast.Node) {
+func NewModernTlsCheck(id string, conf map[string]interface{}) (gas.Rule, []ast.Node) {
 	// https://wiki.mozilla.org/Security/Server_Side_TLS#Modern_compatibility
 	return &InsecureConfigTLS{
 		pattern:    regexp.MustCompile(`^tls\.Config$`),
@@ -135,10 +140,13 @@ func NewModernTlsCheck(conf map[string]interface{}) (gas.Rule, []ast.Node) {
 			"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
 			"TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305",
 		},
+		MetaData: gas.MetaData{
+			ID: id,
+		},
 	}, []ast.Node{(*ast.CompositeLit)(nil)}
 }
 
-func NewIntermediateTlsCheck(conf map[string]interface{}) (gas.Rule, []ast.Node) {
+func NewIntermediateTlsCheck(id string, conf map[string]interface{}) (gas.Rule, []ast.Node) {
 	// https://wiki.mozilla.org/Security/Server_Side_TLS#Intermediate_compatibility_.28default.29
 	return &InsecureConfigTLS{
 		pattern:    regexp.MustCompile(`^tls\.Config$`),
@@ -161,10 +169,13 @@ func NewIntermediateTlsCheck(conf map[string]interface{}) (gas.Rule, []ast.Node)
 			"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
 			"TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",
 		},
+		MetaData: gas.MetaData{
+			ID: id,
+		},
 	}, []ast.Node{(*ast.CompositeLit)(nil)}
 }
 
-func NewCompatTlsCheck(conf map[string]interface{}) (gas.Rule, []ast.Node) {
+func NewCompatTlsCheck(id string, conf map[string]interface{}) (gas.Rule, []ast.Node) {
 	// https://wiki.mozilla.org/Security/Server_Side_TLS#Old_compatibility_.28default.29
 	return &InsecureConfigTLS{
 		pattern:    regexp.MustCompile(`^tls\.Config$`),
@@ -188,6 +199,9 @@ func NewCompatTlsCheck(conf map[string]interface{}) (gas.Rule, []ast.Node) {
 			"TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
 			"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
 			"TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",
+		},
+		MetaData: gas.MetaData{
+			ID: id,
 		},
 	}, []ast.Node{(*ast.CompositeLit)(nil)}
 }

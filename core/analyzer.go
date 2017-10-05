@@ -25,6 +25,7 @@ import (
 	"os"
 	"path"
 	"reflect"
+	"regexp"
 	"strings"
 )
 
@@ -54,10 +55,12 @@ type Context struct {
 	Root     *ast.File
 	Config   map[string]interface{}
 	Imports  *ImportInfo
+	Ignores  []map[string]bool
 }
 
 // The Rule interface used by all rules supported by GAS.
 type Rule interface {
+	ID() string
 	Match(ast.Node, *Context) (*Issue, error)
 }
 
@@ -93,7 +96,7 @@ func NewAnalyzer(conf map[string]interface{}, logger *log.Logger) Analyzer {
 	a := Analyzer{
 		ignoreNosec: conf["ignoreNosec"].(bool),
 		ruleset:     make(RuleSet),
-		context:     &Context{nil, nil, nil, nil, nil, nil, nil},
+		context:     &Context{nil, nil, nil, nil, nil, nil, nil, nil},
 		logger:      logger,
 		Issues:      make([]*Issue, 0, 16),
 		Stats:       &Metrics{0, 0, 0, 0},
@@ -180,56 +183,98 @@ func (gas *Analyzer) ProcessSource(filename string, source string) error {
 }
 
 // ignore a node (and sub-tree) if it is tagged with a "#nosec" comment
-func (gas *Analyzer) ignore(n ast.Node) bool {
+func (gas *Analyzer) ignore(n ast.Node) ([]string, bool) {
 	if groups, ok := gas.context.Comments[n]; ok && !gas.ignoreNosec {
 		for _, group := range groups {
 			if strings.Contains(group.Text(), "#nosec") {
+				return nil, true
+			}
+
+			if strings.Contains(group.Text(), "#exclude") {
 				gas.Stats.NumNosec++
-				return true
+
+				// Pull out the specific rules that are listed to be ignored.
+				re := regexp.MustCompile("!(G\\d{3})")
+				matches := re.FindAllStringSubmatch(group.Text(), -1)
+
+				// Find the rule IDs to ignore.
+				ignores := make([]string, 0)
+				for _, v := range matches {
+					ignores = append(ignores, v[1])
+				}
+				return ignores, false
 			}
 		}
 	}
-	return false
+	return nil, false
 }
 
 // Visit runs the GAS visitor logic over an AST created by parsing go code.
 // Rule methods added with AddRule will be invoked as necessary.
 func (gas *Analyzer) Visit(n ast.Node) ast.Visitor {
-	if !gas.ignore(n) {
-
-		// Track aliased and initialization imports
-		if imported, ok := n.(*ast.ImportSpec); ok {
-			path := strings.Trim(imported.Path.Value, `"`)
-			if imported.Name != nil {
-				if imported.Name.Name == "_" {
-					// Initialization import
-					gas.context.Imports.InitOnly[path] = true
-				} else {
-					// Aliased import
-					gas.context.Imports.Aliased[path] = imported.Name.Name
-				}
-			}
-			// unsafe is not included in Package.Imports()
-			if path == "unsafe" {
-				gas.context.Imports.Imported[path] = path
-			}
-		}
-
-		if val, ok := gas.ruleset[reflect.TypeOf(n)]; ok {
-			for _, rule := range val {
-				ret, err := rule.Match(n, gas.context)
-				if err != nil {
-					file, line := GetLocation(n, gas.context)
-					file = path.Base(file)
-					gas.logger.Printf("Rule error: %v => %s (%s:%d)\n", reflect.TypeOf(rule), err, file, line)
-				}
-				if ret != nil {
-					gas.Issues = append(gas.Issues, ret)
-					gas.Stats.NumFound++
-				}
-			}
+	// If we've reached the end of this branch, pop off the ignores stack.
+	if n == nil {
+		if len(gas.context.Ignores) > 0 {
+			gas.context.Ignores = gas.context.Ignores[1:]
 		}
 		return gas
 	}
-	return nil
+
+	// Get any new rule exclusions.
+	ignoredRules, ignoreAll := gas.ignore(n)
+	if ignoreAll {
+		return nil
+	}
+
+	// Now create the union of exclusions.
+	ignores := make(map[string]bool, 0)
+	if len(gas.context.Ignores) > 0 {
+		for k, v := range gas.context.Ignores[0] {
+			ignores[k] = v
+		}
+	}
+
+	for _, v := range ignoredRules {
+		ignores[v] = true
+	}
+
+	// Push the new set onto the stack.
+	gas.context.Ignores = append([]map[string]bool{ignores}, gas.context.Ignores...)
+
+	// Track aliased and initialization imports
+	if imported, ok := n.(*ast.ImportSpec); ok {
+		path := strings.Trim(imported.Path.Value, `"`)
+		if imported.Name != nil {
+			if imported.Name.Name == "_" {
+				// Initialization import
+				gas.context.Imports.InitOnly[path] = true
+			} else {
+				// Aliased import
+				gas.context.Imports.Aliased[path] = imported.Name.Name
+			}
+		}
+		// unsafe is not included in Package.Imports()
+		if path == "unsafe" {
+			gas.context.Imports.Imported[path] = path
+		}
+	}
+
+	if val, ok := gas.ruleset[reflect.TypeOf(n)]; ok {
+		for _, rule := range val {
+			if _, ok := ignores[rule.ID()]; ok {
+				continue
+			}
+			ret, err := rule.Match(n, gas.context)
+			if err != nil {
+				file, line := GetLocation(n, gas.context)
+				file = path.Base(file)
+				gas.logger.Printf("Rule error: %v => %s (%s:%d)\n", reflect.TypeOf(rule), err, file, line)
+			}
+			if ret != nil {
+				gas.Issues = append(gas.Issues, ret)
+				gas.Stats.NumFound++
+			}
+		}
+	}
+	return gas
 }

@@ -15,14 +15,19 @@
 package rules
 
 import (
-	gas "github.com/GoASTScanner/gas/core"
 	"go/ast"
 	"go/types"
+
+	gas "github.com/GoASTScanner/gas/core"
 )
 
 type NoErrorCheck struct {
 	gas.MetaData
 	whitelist gas.CallList
+}
+
+func (r *NoErrorCheck) ID() string {
+	return r.MetaData.ID
 }
 
 func returnsError(callExpr *ast.CallExpr, ctx *gas.Context) int {
@@ -69,7 +74,7 @@ func (r *NoErrorCheck) Match(n ast.Node, ctx *gas.Context) (*gas.Issue, error) {
 	return nil, nil
 }
 
-func NewNoErrorCheck(conf map[string]interface{}) (gas.Rule, []ast.Node) {
+func NewNoErrorCheck(id string, conf map[string]interface{}) (gas.Rule, []ast.Node) {
 
 	// TODO(gm) Come up with sensible defaults here. Or flip it to use a
 	// black list instead.
@@ -87,6 +92,7 @@ func NewNoErrorCheck(conf map[string]interface{}) (gas.Rule, []ast.Node) {
 	}
 	return &NoErrorCheck{
 		MetaData: gas.MetaData{
+			ID:         id,
 			Severity:   gas.Low,
 			Confidence: gas.High,
 			What:       "Errors unhandled.",

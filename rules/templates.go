@@ -26,6 +26,10 @@ type TemplateCheck struct {
 	call *regexp.Regexp
 }
 
+func (r *TemplateCheck) ID() string {
+	return r.MetaData.ID
+}
+
 func (t *TemplateCheck) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err error) {
 	if node := gas.MatchCall(n, t.call); node != nil {
 		for _, arg := range node.Args {
@@ -37,10 +41,11 @@ func (t *TemplateCheck) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err er
 	return nil, nil
 }
 
-func NewTemplateCheck(conf map[string]interface{}) (gas.Rule, []ast.Node) {
+func NewTemplateCheck(id string, conf map[string]interface{}) (gas.Rule, []ast.Node) {
 	return &TemplateCheck{
 		call: regexp.MustCompile(`^template\.(HTML|JS|URL)$`),
 		MetaData: gas.MetaData{
+			ID:         id,
 			Severity:   gas.Medium,
 			Confidence: gas.Low,
 			What:       "this method will not auto-escape HTML. Verify data is well formed.",

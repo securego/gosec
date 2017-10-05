@@ -25,6 +25,10 @@ type UsesWeakCryptography struct {
 	blacklist map[string][]string
 }
 
+func (r *UsesWeakCryptography) ID() string {
+	return r.MetaData.ID
+}
+
 func (r *UsesWeakCryptography) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 
 	for pkg, funcs := range r.blacklist {
@@ -36,7 +40,7 @@ func (r *UsesWeakCryptography) Match(n ast.Node, c *gas.Context) (*gas.Issue, er
 }
 
 // Uses des.* md5.* or rc4.*
-func NewUsesWeakCryptography(conf map[string]interface{}) (gas.Rule, []ast.Node) {
+func NewUsesWeakCryptography(id string, conf map[string]interface{}) (gas.Rule, []ast.Node) {
 	calls := make(map[string][]string)
 	calls["crypto/des"] = []string{"NewCipher", "NewTripleDESCipher"}
 	calls["crypto/md5"] = []string{"New", "Sum"}
@@ -44,6 +48,7 @@ func NewUsesWeakCryptography(conf map[string]interface{}) (gas.Rule, []ast.Node)
 	rule := &UsesWeakCryptography{
 		blacklist: calls,
 		MetaData: gas.MetaData{
+			ID:         id,
 			Severity:   gas.Medium,
 			Confidence: gas.High,
 			What:       "Use of weak cryptographic primitive",

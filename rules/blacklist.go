@@ -25,6 +25,10 @@ type BlacklistImport struct {
 	Path string
 }
 
+func (r *BlacklistImport) ID() string {
+	return r.MetaData.ID
+}
+
 func (r *BlacklistImport) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err error) {
 	if node, ok := n.(*ast.ImportSpec); ok {
 		if r.Path == node.Path.Value && node.Name.String() != "_" {
@@ -34,9 +38,10 @@ func (r *BlacklistImport) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err 
 	return nil, nil
 }
 
-func NewBlacklist_crypto_md5(conf map[string]interface{}) (gas.Rule, []ast.Node) {
+func NewBlacklist_crypto_md5(id string, conf map[string]interface{}) (gas.Rule, []ast.Node) {
 	return &BlacklistImport{
 		MetaData: gas.MetaData{
+			ID:         id,
 			Severity:   gas.High,
 			Confidence: gas.High,
 			What:       "Use of weak cryptographic primitive",
@@ -45,9 +50,10 @@ func NewBlacklist_crypto_md5(conf map[string]interface{}) (gas.Rule, []ast.Node)
 	}, []ast.Node{(*ast.ImportSpec)(nil)}
 }
 
-func NewBlacklist_crypto_des(conf map[string]interface{}) (gas.Rule, []ast.Node) {
+func NewBlacklist_crypto_des(id string, conf map[string]interface{}) (gas.Rule, []ast.Node) {
 	return &BlacklistImport{
 		MetaData: gas.MetaData{
+			ID:         id,
 			Severity:   gas.High,
 			Confidence: gas.High,
 			What:       "Use of weak cryptographic primitive",
@@ -56,9 +62,10 @@ func NewBlacklist_crypto_des(conf map[string]interface{}) (gas.Rule, []ast.Node)
 	}, []ast.Node{(*ast.ImportSpec)(nil)}
 }
 
-func NewBlacklist_crypto_rc4(conf map[string]interface{}) (gas.Rule, []ast.Node) {
+func NewBlacklist_crypto_rc4(id string, conf map[string]interface{}) (gas.Rule, []ast.Node) {
 	return &BlacklistImport{
 		MetaData: gas.MetaData{
+			ID:         id,
 			Severity:   gas.High,
 			Confidence: gas.High,
 			What:       "Use of weak cryptographic primitive",
@@ -67,9 +74,10 @@ func NewBlacklist_crypto_rc4(conf map[string]interface{}) (gas.Rule, []ast.Node)
 	}, []ast.Node{(*ast.ImportSpec)(nil)}
 }
 
-func NewBlacklist_net_http_cgi(conf map[string]interface{}) (gas.Rule, []ast.Node) {
+func NewBlacklist_net_http_cgi(id string, conf map[string]interface{}) (gas.Rule, []ast.Node) {
 	return &BlacklistImport{
 		MetaData: gas.MetaData{
+			ID:         id,
 			Severity:   gas.High,
 			Confidence: gas.High,
 			What:       "Go versions < 1.6.3 are vulnerable to Httpoxy attack: (CVE-2016-5386)",

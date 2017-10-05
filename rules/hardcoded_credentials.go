@@ -15,12 +15,13 @@
 package rules
 
 import (
-	gas "github.com/GoASTScanner/gas/core"
 	"go/ast"
 	"go/token"
 	"regexp"
 
-	"github.com/nbutton23/zxcvbn-go"
+	gas "github.com/GoASTScanner/gas/core"
+	zxcvbn "github.com/nbutton23/zxcvbn-go"
+
 	"strconv"
 )
 
@@ -31,6 +32,10 @@ type Credentials struct {
 	perCharThreshold float64
 	truncate         int
 	ignoreEntropy    bool
+}
+
+func (r *Credentials) ID() string {
+	return r.MetaData.ID
 }
 
 func truncate(s string, n int) string {
@@ -100,7 +105,7 @@ func (r *Credentials) matchGenDecl(decl *ast.GenDecl, ctx *gas.Context) (*gas.Is
 	return nil, nil
 }
 
-func NewHardcodedCredentials(conf map[string]interface{}) (gas.Rule, []ast.Node) {
+func NewHardcodedCredentials(id string, conf map[string]interface{}) (gas.Rule, []ast.Node) {
 	pattern := `(?i)passwd|pass|password|pwd|secret|token`
 	entropyThreshold := 80.0
 	perCharThreshold := 3.0
@@ -140,6 +145,7 @@ func NewHardcodedCredentials(conf map[string]interface{}) (gas.Rule, []ast.Node)
 		ignoreEntropy:    ignoreEntropy,
 		truncate:         truncateString,
 		MetaData: gas.MetaData{
+			ID:         id,
 			What:       "Potential hardcoded credentials",
 			Confidence: gas.Low,
 			Severity:   gas.High,

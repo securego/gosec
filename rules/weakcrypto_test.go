@@ -23,8 +23,8 @@ import (
 func TestMD5(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewBlacklist_crypto_md5(config))
-	analyzer.AddRule(NewUsesWeakCryptography(config))
+	analyzer.AddRule(NewBlacklist_crypto_md5("TEST1", config))
+	analyzer.AddRule(NewUsesWeakCryptography("TEST2", config))
 
 	issues := gasTestRunner(`
                 package main
@@ -45,8 +45,8 @@ func TestMD5(t *testing.T) {
 func TestDES(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewBlacklist_crypto_des(config))
-	analyzer.AddRule(NewUsesWeakCryptography(config))
+	analyzer.AddRule(NewBlacklist_crypto_des("TEST1", config))
+	analyzer.AddRule(NewUsesWeakCryptography("TEST2", config))
 
 	issues := gasTestRunner(`
                 package main
@@ -85,8 +85,8 @@ func TestDES(t *testing.T) {
 func TestRC4(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewBlacklist_crypto_rc4(config))
-	analyzer.AddRule(NewUsesWeakCryptography(config))
+	analyzer.AddRule(NewBlacklist_crypto_rc4("TEST1", config))
+	analyzer.AddRule(NewUsesWeakCryptography("TEST2", config))
 
 	issues := gasTestRunner(`
                 package main

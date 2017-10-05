@@ -23,7 +23,7 @@ import (
 func TestNosec(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewSubproc(config))
+	analyzer.AddRule(NewSubproc("G001", config))
 
 	issues := gasTestRunner(
 		`package main
@@ -43,7 +43,7 @@ func TestNosec(t *testing.T) {
 func TestNosecBlock(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewSubproc(config))
+	analyzer.AddRule(NewSubproc("G001", config))
 
 	issues := gasTestRunner(
 		`package main
@@ -66,7 +66,7 @@ func TestNosecBlock(t *testing.T) {
 func TestNosecIgnore(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": true}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewSubproc(config))
+	analyzer.AddRule(NewSubproc("G001", config))
 
 	issues := gasTestRunner(
 		`package main
@@ -82,4 +82,177 @@ func TestNosecIgnore(t *testing.T) {
 		}`, analyzer)
 
 	checkTestResults(t, issues, 1, "Subprocess launching with variable.")
+}
+
+func TestNosecExcludeOne(t *testing.T) {
+	config := map[string]interface{}{"ignoreNosec": false}
+	analyzer := gas.NewAnalyzer(config, nil)
+	analyzer.AddRule(NewSubproc("G001", config))
+
+	issues := gasTestRunner(
+		`package main
+		import (
+			"os"
+			"os/exec"
+		)
+
+	func main() {
+		cmd := exec.Command("sh", "-c", os.Getenv("BLAH")) // #exclude !G001
+		cmd.Run()
+	}`, analyzer)
+
+	checkTestResults(t, issues, 0, "None")
+}
+
+func TestNosecExcludeOneNoMatch(t *testing.T) {
+	config := map[string]interface{}{"ignoreNosec": false}
+	analyzer := gas.NewAnalyzer(config, nil)
+	analyzer.AddRule(NewSubproc("G001", config))
+
+	issues := gasTestRunner(
+		`package main
+		import (
+			"os"
+			"os/exec"
+		)
+
+	func main() {
+		cmd := exec.Command("sh", "-c", os.Getenv("BLAH")) // #exclude !G002
+		cmd.Run()
+	}`, analyzer)
+
+	checkTestResults(t, issues, 1, "Subprocess launching with variable.")
+}
+
+func TestNosecExcludeOneMatchNextLine(t *testing.T) {
+	config := map[string]interface{}{"ignoreNosec": false}
+	analyzer := gas.NewAnalyzer(config, nil)
+	analyzer.AddRule(NewSubproc("G001", config))
+
+	issues := gasTestRunner(
+		`package main
+		import (
+			"os"
+			"os/exec"
+		)
+
+	func main() {
+		cmd := exec.Command("sh", "-c", os.Getenv("FOO")) // #exclude !G001
+		cmd = exec.Command("sh", "-c", os.Getenv("BAR")) 
+		cmd.Run()
+	}`, analyzer)
+
+	checkTestResults(t, issues, 1, "Subprocess launching with variable.")
+}
+
+func TestNosecBlockExcludeOne(t *testing.T) {
+	config := map[string]interface{}{"ignoreNosec": false}
+	analyzer := gas.NewAnalyzer(config, nil)
+	analyzer.AddRule(NewSubproc("G001", config))
+
+	issues := gasTestRunner(
+		`package main
+		import (
+		"os" 
+		"os/exec"
+	)
+
+	func main() {
+			// #exclude !G001
+			if true {
+				cmd := exec.Command("sh", "-c", os.Getenv("BLAH"))
+				cmd.Run()
+			}
+	}`, analyzer)
+
+	checkTestResults(t, issues, 0, "None")
+}
+
+func TestNosecBlockExcludeOneNoMatch(t *testing.T) {
+	config := map[string]interface{}{"ignoreNosec": false}
+	analyzer := gas.NewAnalyzer(config, nil)
+	analyzer.AddRule(NewSubproc("G001", config))
+
+	issues := gasTestRunner(
+		`package main
+		import (
+		"os" 
+		"os/exec"
+	)
+
+	func main() {
+			// #exclude !G002
+			if true {
+				cmd := exec.Command("sh", "-c", os.Getenv("BLAH"))
+				cmd.Run()
+			}
+	}`, analyzer)
+
+	checkTestResults(t, issues, 1, "Subprocess launching with variable.")
+}
+
+func TestNosecExcludeTwoNoMatch(t *testing.T) {
+	config := map[string]interface{}{"ignoreNosec": false}
+	analyzer := gas.NewAnalyzer(config, nil)
+	analyzer.AddRule(NewSubproc("G001", config))
+	analyzer.AddRule(NewWeakRandCheck("G002", config))
+
+	issues := gasTestRunner(
+		`package main
+		import (
+			"math/rand"
+			"os"
+			"os/exec"
+		)
+
+	func main() {
+		cmd := exec.Command("sh", "-c", os.Getenv("BLAH"), string(rand.Int())) // #exclude !G003 !G004
+		cmd.Run()
+	}`, analyzer)
+
+	checkTestResults(t, issues, 2, "")
+}
+
+func TestNosecExcludeTwoOneMatch(t *testing.T) {
+	config := map[string]interface{}{"ignoreNosec": false}
+	analyzer := gas.NewAnalyzer(config, nil)
+	analyzer.AddRule(NewSubproc("G001", config))
+	analyzer.AddRule(NewWeakRandCheck("G002", config))
+
+	issues := gasTestRunner(
+		`package main
+		import (
+			"math/rand"
+			"os"
+			"os/exec"
+		)
+
+	func main() {
+		cmd := exec.Command("sh", "-c", os.Getenv("BLAH"), string(rand.Int())) // #exclude !G001 !G004
+		cmd.Run()
+	}`, analyzer)
+
+	checkTestResults(t, issues, 1, "Use of weak random number generator")
+}
+
+func TestNosecExcludeTwoBothMatch(t *testing.T) {
+	config := map[string]interface{}{"ignoreNosec": false}
+	analyzer := gas.NewAnalyzer(config, nil)
+	analyzer.AddRule(NewSubproc("G001", config))
+	analyzer.AddRule(NewWeakRandCheck("G002", config))
+
+	issues := gasTestRunner(
+		`package main
+		import (
+			"math/rand"
+			"os"
+			"os/exec"
+		)
+
+	func main() {
+		cmd := exec.Command("sh", "-c", os.Getenv("BLAH"), string(rand.Int())) // #exclude !G001 !G002
+		cmd.Run()
+	}`, analyzer)
+
+	checkTestResults(t, issues, 0, "No issues")
 }

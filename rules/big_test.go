@@ -23,7 +23,7 @@ import (
 func TestBigExp(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewUsingBigExp(config))
+	analyzer.AddRule(NewUsingBigExp("TEST", config))
 
 	issues := gasTestRunner(`
         package main

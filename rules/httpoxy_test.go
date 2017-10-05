@@ -23,7 +23,7 @@ import (
 func TestHttpoxy(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
-	analyzer.AddRule(NewBlacklist_net_http_cgi(config))
+	analyzer.AddRule(NewBlacklist_net_http_cgi("TEST", config))
 
 	issues := gasTestRunner(`
 		package main
