@@ -23,7 +23,19 @@ import (
 
 type sqlStatement struct {
 	gas.MetaData
-	pattern *regexp.Regexp
+
+	// Contains a list of patterns which must all match for the rule to match.
+	patterns []*regexp.Regexp
+}
+
+// See if the string matches the patterns for the statement.
+func (s sqlStatement) Match(str string) bool {
+	for _, pattern := range s.patterns {
+		if !pattern.MatchString(str) {
+			return false
+		}
+	}
+	return true
 }
 
 type sqlStrConcat struct {
@@ -42,7 +54,10 @@ func (s *sqlStrConcat) checkObject(n *ast.Ident) bool {
 func (s *sqlStrConcat) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 	if node, ok := n.(*ast.BinaryExpr); ok {
 		if start, ok := node.X.(*ast.BasicLit); ok {
-			if str, e := gas.GetString(start); s.pattern.MatchString(str) && e == nil {
+			if str, e := gas.GetString(start); e == nil {
+				if !s.Match(str) {
+					return nil, nil
+				}
 				if _, ok := node.Y.(*ast.BasicLit); ok {
 					return nil, nil // string cat OK
 				}
@@ -58,9 +73,11 @@ func (s *sqlStrConcat) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 
 // NewSQLStrConcat looks for cases where we are building SQL strings via concatenation
 func NewSQLStrConcat(conf gas.Config) (gas.Rule, []ast.Node) {
-	return &sqlStrConcat{
-		sqlStatement: sqlStatement{
-			pattern: regexp.MustCompile(`(?)(SELECT|DELETE|INSERT|UPDATE|INTO|FROM|WHERE) `),
+	return &SqlStrConcat{
+		SqlStatement: SqlStatement{
+			patterns: []*regexp.Regexp{
+				regexp.MustCompile(`(?)(SELECT|DELETE|INSERT|UPDATE|INTO|FROM|WHERE) `),
+			},
 			MetaData: gas.MetaData{
 				Severity:   gas.Medium,
 				Confidence: gas.High,
@@ -80,7 +97,10 @@ func (s *sqlStrFormat) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 
 	// TODO(gm) improve confidence if database/sql is being used
 	if node := s.calls.ContainsCallExpr(n, c); node != nil {
-		if arg, e := gas.GetString(node.Args[0]); s.pattern.MatchString(arg) && e == nil {
+		if arg, e := gas.GetString(node.Args[0]); e == nil {
+			if !s.Match(str) {
+				return nil, nil
+			}
 			return gas.NewIssue(c, n, s.What, s.Severity, s.Confidence), nil
 		}
 	}
@@ -92,7 +112,10 @@ func NewSQLStrFormat(conf gas.Config) (gas.Rule, []ast.Node) {
 	rule := &sqlStrFormat{
 		calls: gas.NewCallList(),
 		sqlStatement: sqlStatement{
-			pattern: regexp.MustCompile("(?)(SELECT|DELETE|INSERT|UPDATE|INTO|FROM|WHERE) "),
+			patterns: []*regexp.Regexp{
+				regexp.MustCompile("(?)(SELECT|DELETE|INSERT|UPDATE|INTO|FROM|WHERE) "),
+				regexp.MustCompile("%[^bdoxXfFp]"),
+			},
 			MetaData: gas.MetaData{
 				Severity:   gas.Medium,
 				Confidence: gas.High,
