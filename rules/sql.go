@@ -23,7 +23,7 @@ import (
 
 type SqlStatement struct {
 	gas.MetaData
-	pattern *regexp.Regexp
+	patterns []*regexp.Regexp
 }
 
 type SqlStrConcat struct {
@@ -42,7 +42,12 @@ func (s *SqlStrConcat) checkObject(n *ast.Ident) bool {
 func (s *SqlStrConcat) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 	if node, ok := n.(*ast.BinaryExpr); ok {
 		if start, ok := node.X.(*ast.BasicLit); ok {
-			if str, e := gas.GetString(start); s.pattern.MatchString(str) && e == nil {
+			if str, e := gas.GetString(start); e == nil {
+				for _, pattern := range s.patterns {
+					if !pattern.MatchString(str) {
+						return nil, nil
+					}
+				}
 				if _, ok := node.Y.(*ast.BasicLit); ok {
 					return nil, nil // string cat OK
 				}
@@ -59,7 +64,9 @@ func (s *SqlStrConcat) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 func NewSqlStrConcat(conf map[string]interface{}) (gas.Rule, []ast.Node) {
 	return &SqlStrConcat{
 		SqlStatement: SqlStatement{
-			pattern: regexp.MustCompile(`(?)(SELECT|DELETE|INSERT|UPDATE|INTO|FROM|WHERE) `),
+			patterns: []*regexp.Regexp{
+				regexp.MustCompile(`(?)(SELECT|DELETE|INSERT|UPDATE|INTO|FROM|WHERE) `),
+			},
 			MetaData: gas.MetaData{
 				Severity:   gas.Medium,
 				Confidence: gas.High,
@@ -77,7 +84,12 @@ type SqlStrFormat struct {
 // Looks for "fmt.Sprintf("SELECT * FROM foo where '%s', userInput)"
 func (s *SqlStrFormat) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err error) {
 	if node := gas.MatchCall(n, s.call); node != nil {
-		if arg, e := gas.GetString(node.Args[0]); s.pattern.MatchString(arg) && e == nil {
+		if arg, e := gas.GetString(node.Args[0]); e == nil {
+			for _, pattern := range s.patterns {
+				if !pattern.MatchString(arg) {
+					return nil, nil
+				}
+			}
 			return gas.NewIssue(c, n, s.What, s.Severity, s.Confidence), nil
 		}
 	}
@@ -88,7 +100,10 @@ func NewSqlStrFormat(conf map[string]interface{}) (gas.Rule, []ast.Node) {
 	return &SqlStrFormat{
 		call: regexp.MustCompile(`^fmt\.Sprintf$`),
 		SqlStatement: SqlStatement{
-			pattern: regexp.MustCompile("(?)(SELECT|DELETE|INSERT|UPDATE|INTO|FROM|WHERE) "),
+			patterns: []*regexp.Regexp{
+				regexp.MustCompile("(?)(SELECT|DELETE|INSERT|UPDATE|INTO|FROM|WHERE) "),
+				regexp.MustCompile("%[^bdoxXfFp]"),
+			},
 			MetaData: gas.MetaData{
 				Severity:   gas.Medium,
 				Confidence: gas.High,

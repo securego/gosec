@@ -214,3 +214,35 @@ func TestSQLInjectionFalsePositiveD(t *testing.T) {
 
 	checkTestResults(t, issues, 0, "Not expected to match")
 }
+
+func TestSQLInjectionFalsePositiveE(t *testing.T) {
+	config := map[string]interface{}{"ignoreNosec": false}
+	analyzer := gas.NewAnalyzer(config, nil)
+	analyzer.AddRule(NewSqlStrFormat(config))
+
+	source := `
+        package main
+        import (
+                "database/sql"
+                "fmt"
+                "os"
+				"strconv"
+                //_ "github.com/mattn/go-sqlite3"
+        )
+        func main(){
+                db, err := sql.Open("sqlite3", ":memory:")
+                if err != nil {
+                        panic(err)
+                }
+				id, _ := strconv.Atoi(os.Args[1])
+                q := fmt.Sprintf("SELECT * FROM foo where id = %d", id)
+                rows, err := db.Query(q)
+                if err != nil {
+                        panic(err)
+                }
+                defer rows.Close()
+        }
+        `
+	issues := gasTestRunner(source, analyzer)
+	checkTestResults(t, issues, 0, "Not expected to match")
+}
