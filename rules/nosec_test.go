@@ -168,6 +168,29 @@ func TestNosecBlockExcludeOne(t *testing.T) {
 	checkTestResults(t, issues, 0, "None")
 }
 
+func TestNosecBlockExcludeOneWithComment(t *testing.T) {
+	config := map[string]interface{}{"ignoreNosec": false}
+	analyzer := gas.NewAnalyzer(config, nil)
+	analyzer.AddRule(NewSubproc("G001", config))
+
+	issues := gasTestRunner(
+		`package main
+		import (
+		"os" 
+		"os/exec"
+	)
+
+	func main() {
+			// #exclude !G001(This rule is bogus)
+			if true {
+				cmd := exec.Command("sh", "-c", os.Getenv("BLAH"))
+				cmd.Run()
+			}
+	}`, analyzer)
+
+	checkTestResults(t, issues, 0, "None")
+}
+
 func TestNosecBlockExcludeOneNoMatch(t *testing.T) {
 	config := map[string]interface{}{"ignoreNosec": false}
 	analyzer := gas.NewAnalyzer(config, nil)
@@ -251,6 +274,29 @@ func TestNosecExcludeTwoBothMatch(t *testing.T) {
 
 	func main() {
 		cmd := exec.Command("sh", "-c", os.Getenv("BLAH"), string(rand.Int())) // #exclude !G001 !G002
+		cmd.Run()
+	}`, analyzer)
+
+	checkTestResults(t, issues, 0, "No issues")
+}
+
+func TestNosecExcludeTwoWithComments(t *testing.T) {
+	config := map[string]interface{}{"ignoreNosec": false}
+	analyzer := gas.NewAnalyzer(config, nil)
+	analyzer.AddRule(NewSubproc("G001", config))
+	analyzer.AddRule(NewWeakRandCheck("G002", config))
+
+	issues := gasTestRunner(
+		`package main
+		import (
+			"math/rand"
+			"os"
+			"os/exec"
+		)
+
+	func main() {
+		// #exclude !G001(The env var is trusted) !G002(Unimportant random number)
+		cmd := exec.Command("sh", "-c", os.Getenv("BLAH"), string(rand.Int()))
 		cmd.Run()
 	}`, analyzer)
 
