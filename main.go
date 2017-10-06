@@ -153,9 +153,9 @@ func main() {
 	// Setup usage description
 	flag.Usage = usage
 
-	//  Exclude files
-	excluded := newFileList("*_test.go")
-	flag.Var(excluded, "skip", "File pattern to exclude from scan. Uses simple * globs and requires full or partial match")
+	//  Exclude test files and files starting with _ or .
+	excluded := newFileList("*_test.go", "(^|.*[^a-zA-Z0-9_]+)?_[a-zA-Z0-9_]+.go", "(^|.*[^a-zA-Z0-9_]+)?\\.[a-zA-Z0-9_]+.go")
+	flag.Var(excluded, "skip", "File pattern to exclude from scan. Uses simple * globs or a regexp and requires full or partial match")
 
 	incRules := ""
 	flag.StringVar(&incRules, "include", "", "Comma separated list of rules IDs to include. (see rule list)")
