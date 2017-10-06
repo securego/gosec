@@ -15,10 +15,9 @@
 package main
 
 import (
+	"regexp"
 	"sort"
 	"strings"
-
-	"github.com/ryanuber/go-glob"
 )
 
 // fileList uses a map for patterns to ensure each pattern only
@@ -31,7 +30,9 @@ func newFileList(paths ...string) *fileList {
 	f := &fileList{
 		patterns: make(map[string]struct{}),
 	}
+	var replacer = strings.NewReplacer("*", ".*")
 	for _, p := range paths {
+		p = replacer.Replace(p)
 		f.patterns[p] = struct{}{}
 	}
 	return f
@@ -57,31 +58,27 @@ func (f *fileList) Set(path string) error {
 
 func (f fileList) Contains(path string) bool {
 	for p := range f.patterns {
-		if strings.Contains(p, glob.GLOB) {
-			if glob.Glob(p, path) {
-				if logger != nil {
-					logger.Printf("skipping: %s\n", path)
-				}
-				return true
+		// check if the path matches the regular expression pattern
+		r, err := regexp.Compile(p)
+		if err != nil {
+			if logger != nil {
+				logger.Printf("invalid pattern: %s\n", p)
 			}
-		} else {
-			// check if only a sub-folder of the path is excluded
-			if strings.Contains(path, p) {
-				if logger != nil {
-					logger.Printf("skipping: %s\n", path)
-				}
-				return true
+			continue
+		}
+		if r.MatchString(path) {
+			if logger != nil {
+				logger.Printf("skipping: %s\n", path)
 			}
-
+			return true
+		}
+		// check if only a sub-folder of the path is excluded
+		if strings.Contains(path, p) {
+			if logger != nil {
+				logger.Printf("skipping: %s\n", path)
+			}
+			return true
 		}
 	}
 	return false
 }
-
-/*
-func (f fileList) Dump() {
-	for k, _ := range f.paths {
-		println(k)
-	}
-}
-*/

@@ -28,7 +28,7 @@ func Test_newFileList(t *testing.T) {
 			name: "have paths",
 			args: args{paths: []string{"*_test.go"}},
 			want: &fileList{patterns: map[string]struct{}{
-				"*_test.go": struct{}{},
+				".*_test.go": struct{}{},
 			}},
 		},
 	}
