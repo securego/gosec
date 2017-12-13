@@ -47,10 +47,10 @@ USAGE:
 	$ gas -fmt=json -out=results.json ./...
 
 	# Run a specific set of rules (by default all rules will be run):
-	$ gas -include=G101,G203,G401 ./...
+	$ gas -include=G101,G203,G401  ./...
 
 	# Run all rules except the provided
-	$ gas -exclude=G101 ./...
+	$ gas -exclude=G101 $GOPATH/src/github.com/example/project/...
 
 `
 )
@@ -155,10 +155,6 @@ func main() {
 
 	// Setup usage description
 	flag.Usage = usage
-
-	//  Exclude files
-	excluded := newFileList("*_test.go")
-	flag.Var(excluded, "skip", "File pattern to exclude from scan. Uses simple * globs and requires full or partial match")
 
 	// Parse command line arguments
 	flag.Parse()
