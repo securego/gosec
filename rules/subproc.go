@@ -21,7 +21,7 @@ import (
 	"github.com/GoASTScanner/gas"
 )
 
-type Subprocess struct {
+type subprocess struct {
 	gas.CallList
 }
 
@@ -34,7 +34,7 @@ type Subprocess struct {
 // is unsafe. For example:
 //
 // syscall.Exec("echo", "foobar" + tainted)
-func (r *Subprocess) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
+func (r *subprocess) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 	if node := r.ContainsCallExpr(n, c); node != nil {
 		for _, arg := range node.Args {
 			if ident, ok := arg.(*ast.Ident); ok {
@@ -49,8 +49,9 @@ func (r *Subprocess) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 	return nil, nil
 }
 
+// NewSubproc detects cases where we are forking out to an external process
 func NewSubproc(conf gas.Config) (gas.Rule, []ast.Node) {
-	rule := &Subprocess{gas.NewCallList()}
+	rule := &subprocess{gas.NewCallList()}
 	rule.Add("exec", "Command")
 	rule.Add("syscall", "Exec")
 	return rule, []ast.Node{(*ast.CallExpr)(nil)}

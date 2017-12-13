@@ -20,12 +20,12 @@ import (
 	"github.com/GoASTScanner/gas"
 )
 
-type UsesWeakCryptography struct {
+type usesWeakCryptography struct {
 	gas.MetaData
 	blacklist map[string][]string
 }
 
-func (r *UsesWeakCryptography) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
+func (r *usesWeakCryptography) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 
 	for pkg, funcs := range r.blacklist {
 		if _, matched := gas.MatchCallByPackage(n, c, pkg, funcs...); matched {
@@ -35,13 +35,13 @@ func (r *UsesWeakCryptography) Match(n ast.Node, c *gas.Context) (*gas.Issue, er
 	return nil, nil
 }
 
-// Uses des.* md5.* or rc4.*
+// NewUsesWeakCryptography detects uses of des.* md5.* or rc4.*
 func NewUsesWeakCryptography(conf gas.Config) (gas.Rule, []ast.Node) {
 	calls := make(map[string][]string)
 	calls["crypto/des"] = []string{"NewCipher", "NewTripleDESCipher"}
 	calls["crypto/md5"] = []string{"New", "Sum"}
 	calls["crypto/rc4"] = []string{"NewCipher"}
-	rule := &UsesWeakCryptography{
+	rule := &usesWeakCryptography{
 		blacklist: calls,
 		MetaData: gas.MetaData{
 			Severity:   gas.Medium,

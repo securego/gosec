@@ -24,13 +24,18 @@ import (
 	"github.com/GoASTScanner/gas"
 )
 
-// The output format for reported issues
+// ReportFormat enumrates the output format for reported issues
 type ReportFormat int
 
 const (
+	// ReportText is the default format that writes to stdout
 	ReportText ReportFormat = iota // Plain text format
-	ReportJSON                     // Json format
-	ReportCSV                      // CSV format
+
+	// ReportJSON set the output format to json
+	ReportJSON // Json format
+
+	// ReportCSV set the output format to csv
+	ReportCSV // CSV format
 )
 
 var text = `Results:

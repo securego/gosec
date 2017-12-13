@@ -22,7 +22,7 @@ import (
 	"github.com/GoASTScanner/gas"
 )
 
-type FilePermissions struct {
+type filePermissions struct {
 	gas.MetaData
 	mode  int64
 	pkg   string
@@ -30,7 +30,7 @@ type FilePermissions struct {
 }
 
 func getConfiguredMode(conf map[string]interface{}, configKey string, defaultMode int64) int64 {
-	var mode int64 = defaultMode
+	var mode = defaultMode
 	if value, ok := conf[configKey]; ok {
 		switch value.(type) {
 		case int64:
@@ -46,7 +46,7 @@ func getConfiguredMode(conf map[string]interface{}, configKey string, defaultMod
 	return mode
 }
 
-func (r *FilePermissions) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
+func (r *filePermissions) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 	if callexpr, matched := gas.MatchCallByPackage(n, c, r.pkg, r.calls...); matched {
 		modeArg := callexpr.Args[len(callexpr.Args)-1]
 		if mode, err := gas.GetInt(modeArg); err == nil && mode > r.mode {
@@ -56,9 +56,11 @@ func (r *FilePermissions) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) 
 	return nil, nil
 }
 
+// NewFilePerms creates a rule to detect file creation with a more permissive than configured
+// permission mask.
 func NewFilePerms(conf gas.Config) (gas.Rule, []ast.Node) {
 	mode := getConfiguredMode(conf, "G302", 0600)
-	return &FilePermissions{
+	return &filePermissions{
 		mode:  mode,
 		pkg:   "os",
 		calls: []string{"OpenFile", "Chmod"},
@@ -70,9 +72,11 @@ func NewFilePerms(conf gas.Config) (gas.Rule, []ast.Node) {
 	}, []ast.Node{(*ast.CallExpr)(nil)}
 }
 
+// NewMkdirPerms creates a rule to detect directory creation with more permissive than
+// configured permission mask.
 func NewMkdirPerms(conf gas.Config) (gas.Rule, []ast.Node) {
 	mode := getConfiguredMode(conf, "G301", 0700)
-	return &FilePermissions{
+	return &filePermissions{
 		mode:  mode,
 		pkg:   "os",
 		calls: []string{"Mkdir", "MkdirAll"},

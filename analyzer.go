@@ -51,7 +51,7 @@ type Metrics struct {
 	NumFound int `json:"found"`
 }
 
-// The Analyzer object is the main object of GAS. It has methods traverse an AST
+// Analyzer object is the main object of GAS. It has methods traverse an AST
 // and invoke the correct checking rules as on each node as required.
 type Analyzer struct {
 	ignoreNosec bool
@@ -83,6 +83,8 @@ func NewAnalyzer(conf Config, logger *log.Logger) *Analyzer {
 	}
 }
 
+// LoadRules instantiates all the rules to be used when analyzing source
+// packages
 func (gas *Analyzer) LoadRules(ruleDefinitions ...RuleBuilder) {
 	for _, builder := range ruleDefinitions {
 		r, nodes := builder(gas.config)
@@ -90,6 +92,7 @@ func (gas *Analyzer) LoadRules(ruleDefinitions ...RuleBuilder) {
 	}
 }
 
+// Process kicks off the analysis process for a given package
 func (gas *Analyzer) Process(packagePath string) error {
 
 	basePackage, err := build.Default.ImportDir(packagePath, build.ImportComment)

@@ -62,7 +62,7 @@ func (t *insecureConfigTLS) processTLSCipherSuites(n ast.Node, c *gas.Context) *
 	return nil
 }
 
-func (t *insecureConfigTLS) processTlsConfVal(n *ast.KeyValueExpr, c *gas.Context) *gas.Issue {
+func (t *insecureConfigTLS) processTLSConfVal(n *ast.KeyValueExpr, c *gas.Context) *gas.Issue {
 	if ident, ok := n.Key.(*ast.Ident); ok {
 		switch ident.Name {
 		case "InsecureSkipVerify":
@@ -118,7 +118,7 @@ func (t *insecureConfigTLS) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, er
 	if node := gas.MatchCompLit(n, c, t.requiredType); node != nil {
 		for _, elt := range node.Elts {
 			if kve, ok := elt.(*ast.KeyValueExpr); ok {
-				gi = t.processTlsConfVal(kve, c)
+				gi = t.processTLSConfVal(kve, c)
 				if gi != nil {
 					break
 				}
@@ -128,8 +128,8 @@ func (t *insecureConfigTLS) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, er
 	return
 }
 
-// NewModernTlsCheck see: https://wiki.mozilla.org/Security/Server_Side_TLS#Modern_compatibility
-func NewModernTlsCheck(conf gas.Config) (gas.Rule, []ast.Node) {
+// NewModernTLSCheck see: https://wiki.mozilla.org/Security/Server_Side_TLS#Modern_compatibility
+func NewModernTLSCheck(conf gas.Config) (gas.Rule, []ast.Node) {
 	return &insecureConfigTLS{
 		requiredType: "tls.Config",
 		MinVersion:   0x0303, // TLS 1.2 only
@@ -143,8 +143,8 @@ func NewModernTlsCheck(conf gas.Config) (gas.Rule, []ast.Node) {
 	}, []ast.Node{(*ast.CompositeLit)(nil)}
 }
 
-// NewIntermediateTlsCheck see: https://wiki.mozilla.org/Security/Server_Side_TLS#Intermediate_compatibility_.28default.29
-func NewIntermediateTlsCheck(conf gas.Config) (gas.Rule, []ast.Node) {
+// NewIntermediateTLSCheck see: https://wiki.mozilla.org/Security/Server_Side_TLS#Intermediate_compatibility_.28default.29
+func NewIntermediateTLSCheck(conf gas.Config) (gas.Rule, []ast.Node) {
 	return &insecureConfigTLS{
 		requiredType: "tls.Config",
 		MinVersion:   0x0301, // TLS 1.2, 1.1, 1.0
@@ -169,8 +169,8 @@ func NewIntermediateTlsCheck(conf gas.Config) (gas.Rule, []ast.Node) {
 	}, []ast.Node{(*ast.CompositeLit)(nil)}
 }
 
-// NewCompatTlsCheck see: https://wiki.mozilla.org/Security/Server_Side_TLS#Old_compatibility_.28default.29
-func NewCompatTlsCheck(conf gas.Config) (gas.Rule, []ast.Node) {
+// NewCompatTLSCheck see: https://wiki.mozilla.org/Security/Server_Side_TLS#Old_compatibility_.28default.29
+func NewCompatTLSCheck(conf gas.Config) (gas.Rule, []ast.Node) {
 	return &insecureConfigTLS{
 		requiredType: "tls.Config",
 		MinVersion:   0x0301, // TLS 1.2, 1.1, 1.0

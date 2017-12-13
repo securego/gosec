@@ -21,13 +21,13 @@ import (
 	"github.com/GoASTScanner/gas"
 )
 
-type BadTempFile struct {
+type badTempFile struct {
 	gas.MetaData
 	calls gas.CallList
 	args  *regexp.Regexp
 }
 
-func (t *BadTempFile) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err error) {
+func (t *badTempFile) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err error) {
 	if node := t.calls.ContainsCallExpr(n, c); node != nil {
 		if arg, e := gas.GetString(node.Args[0]); t.args.MatchString(arg) && e == nil {
 			return gas.NewIssue(c, n, t.What, t.Severity, t.Confidence), nil
@@ -36,11 +36,12 @@ func (t *BadTempFile) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err erro
 	return nil, nil
 }
 
+// NewBadTempFile detects direct writes to predictable path in temporary directory
 func NewBadTempFile(conf gas.Config) (gas.Rule, []ast.Node) {
 	calls := gas.NewCallList()
 	calls.Add("ioutil", "WriteFile")
 	calls.Add("os", "Create")
-	return &BadTempFile{
+	return &badTempFile{
 		calls: calls,
 		args:  regexp.MustCompile(`^/tmp/.*$|^/var/tmp/.*$`),
 		MetaData: gas.MetaData{

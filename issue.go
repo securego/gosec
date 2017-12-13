@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 package gas
 
 import (
@@ -25,12 +26,15 @@ import (
 type Score int
 
 const (
-	Low    Score = iota // Low value
-	Medium              // Medium value
-	High                // High value
+	// Low severity or confidence
+	Low Score = iota
+	// Medium severity or confidence
+	Medium
+	// High severity or confidence
+	High
 )
 
-// An Issue is returnd by a GAS rule if it discovers an issue with the scanned code.
+// Issue is returnd by a GAS rule if it discovers an issue with the scanned code.
 type Issue struct {
 	Severity   Score  `json:"severity"`   // issue severity (how problematic it is)
 	Confidence Score  `json:"confidence"` // issue confidence (how sure we are we found it)

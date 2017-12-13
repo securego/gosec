@@ -67,8 +67,8 @@ func Generate(filters ...RuleFilter) RuleList {
 		"G105": RuleDefinition{"Audit the use of big.Exp function", NewUsingBigExp},
 
 		// injection
-		"G201": RuleDefinition{"SQL query construction using format string", NewSqlStrFormat},
-		"G202": RuleDefinition{"SQL query construction using string concatenation", NewSqlStrConcat},
+		"G201": RuleDefinition{"SQL query construction using format string", NewSQLStrFormat},
+		"G202": RuleDefinition{"SQL query construction using string concatenation", NewSQLStrConcat},
 		"G203": RuleDefinition{"Use of unescaped data in HTML templates", NewTemplateCheck},
 		"G204": RuleDefinition{"Audit use of command execution", NewSubproc},
 
@@ -79,15 +79,15 @@ func Generate(filters ...RuleFilter) RuleList {
 
 		// crypto
 		"G401": RuleDefinition{"Detect the usage of DES, RC4, or MD5", NewUsesWeakCryptography},
-		"G402": RuleDefinition{"Look for bad TLS connection settings", NewIntermediateTlsCheck},
+		"G402": RuleDefinition{"Look for bad TLS connection settings", NewIntermediateTLSCheck},
 		"G403": RuleDefinition{"Ensure minimum RSA key length of 2048 bits", NewWeakKeyStrength},
 		"G404": RuleDefinition{"Insecure random number source (rand)", NewWeakRandCheck},
 
 		// blacklist
-		"G501": RuleDefinition{"Import blacklist: crypto/md5", NewBlacklist_crypto_md5},
-		"G502": RuleDefinition{"Import blacklist: crypto/des", NewBlacklist_crypto_des},
-		"G503": RuleDefinition{"Import blacklist: crypto/rc4", NewBlacklist_crypto_rc4},
-		"G504": RuleDefinition{"Import blacklist: net/http/cgi", NewBlacklist_net_http_cgi},
+		"G501": RuleDefinition{"Import blacklist: crypto/md5", NewBlacklistedImportMD5},
+		"G502": RuleDefinition{"Import blacklist: crypto/des", NewBlacklistedImportDES},
+		"G503": RuleDefinition{"Import blacklist: crypto/rc4", NewBlacklistedImportRC4},
+		"G504": RuleDefinition{"Import blacklist: net/http/cgi", NewBlacklistedImportCGI},
 	}
 
 	for rule := range rules {
