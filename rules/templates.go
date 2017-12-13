@@ -20,12 +20,12 @@ import (
 	"github.com/GoASTScanner/gas"
 )
 
-type TemplateCheck struct {
+type templateCheck struct {
 	gas.MetaData
 	calls gas.CallList
 }
 
-func (t *TemplateCheck) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
+func (t *templateCheck) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 	if node := t.calls.ContainsCallExpr(n, c); node != nil {
 		for _, arg := range node.Args {
 			if _, ok := arg.(*ast.BasicLit); !ok { // basic lits are safe
@@ -36,9 +36,15 @@ func (t *TemplateCheck) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 	return nil, nil
 }
 
+// NewTemplateCheck constructs the template check rule. This rule is used to
+// find use of tempaltes where HTML/JS escaping is not being used
 func NewTemplateCheck(conf gas.Config) (gas.Rule, []ast.Node) {
 
-	return &TemplateCheck{
+	calls := gas.NewCallList()
+	calls.Add("template", "HTML")
+	calls.Add("template", "HTMLAttr")
+	calls.Add("template", "JS")
+	return &templateCheck{
 		calls: gas.NewCallList(),
 		MetaData: gas.MetaData{
 			Severity:   gas.Medium,

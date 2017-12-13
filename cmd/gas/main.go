@@ -124,7 +124,7 @@ func loadConfig(configFile string) (gas.Config, error) {
 }
 
 func loadRules(include, exclude string) rules.RuleList {
-	filters := make([]rules.RuleFilter, 0)
+	var filters []rules.RuleFilter
 	if include != "" {
 		including := strings.Split(include, ",")
 		filters = append(filters, rules.NewRuleFilter(false, including...))

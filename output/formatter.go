@@ -52,6 +52,8 @@ type reportInfo struct {
 	Stats  *gas.Metrics
 }
 
+// CreateReport generates a report based for the supplied issues and metrics given
+// the specified format. The formats currently accepted are: json, csv, html and text.
 func CreateReport(w io.Writer, format string, issues []*gas.Issue, metrics *gas.Metrics) error {
 	data := &reportInfo{
 		Issues: issues,

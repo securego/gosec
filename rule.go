@@ -30,6 +30,7 @@ type RuleBuilder func(c Config) (Rule, []ast.Node)
 // type of AST node it is currently visiting.
 type RuleSet map[reflect.Type][]Rule
 
+// NewRuleSet constructs a new RuleSet
 func NewRuleSet() RuleSet {
 	return make(RuleSet)
 }

@@ -18,13 +18,17 @@ import (
 	"github.com/GoASTScanner/gas"
 )
 
+// RuleDefinition contains the description of a rule and a mechanism to
+// create it.
 type RuleDefinition struct {
 	Description string
 	Create      gas.RuleBuilder
 }
 
+// RuleList is a mapping of rule ID's to rule definitions
 type RuleList map[string]RuleDefinition
 
+// Builders returns all the create methods for a given rule list
 func (rl RuleList) Builders() []gas.RuleBuilder {
 	builders := make([]gas.RuleBuilder, 0, len(rl))
 	for _, def := range rl {
@@ -33,8 +37,12 @@ func (rl RuleList) Builders() []gas.RuleBuilder {
 	return builders
 }
 
+// RuleFilter can be used to include or exclude a rule depending on the return
+// value of the function
 type RuleFilter func(string) bool
 
+// NewRuleFilter is a closure that will include/exclude the rule ID's based on
+// the supplied boolean value.
 func NewRuleFilter(action bool, ruleIDs ...string) RuleFilter {
 	rulelist := make(map[string]bool)
 	for _, rule := range ruleIDs {

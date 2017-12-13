@@ -18,12 +18,16 @@ import (
 	"strings"
 )
 
+// ImportTracker is used to normalize the packages that have been imported
+// by a source file. It is able to differentiate between plain imports, aliased
+// imports and init only imports.
 type ImportTracker struct {
 	Imported map[string]string
 	Aliased  map[string]string
 	InitOnly map[string]bool
 }
 
+// NewImportTracker creates an empty Import tracker instance
 func NewImportTracker() *ImportTracker {
 	return &ImportTracker{
 		make(map[string]string),
@@ -32,6 +36,7 @@ func NewImportTracker() *ImportTracker {
 	}
 }
 
+// TrackPackages tracks all the imports used by the supplied packages
 func (t *ImportTracker) TrackPackages(pkgs ...*types.Package) {
 	for _, pkg := range pkgs {
 		t.Imported[pkg.Path()] = pkg.Name()
@@ -42,6 +47,7 @@ func (t *ImportTracker) TrackPackages(pkgs ...*types.Package) {
 	}
 }
 
+// TrackImport tracks imports and handles the 'unsafe' import
 func (t *ImportTracker) TrackImport(n ast.Node) {
 	if imported, ok := n.(*ast.ImportSpec); ok {
 		path := strings.Trim(imported.Path.Value, `"`)

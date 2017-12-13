@@ -20,6 +20,7 @@ type buildObj struct {
 	program *loader.Program
 }
 
+// TestPackage is a mock package for testing purposes
 type TestPackage struct {
 	Path   string
 	Files  map[string]string
@@ -27,7 +28,7 @@ type TestPackage struct {
 	build  *buildObj
 }
 
-// NewPackage will create a new and empty package. Must call Close() to cleanup
+// NewTestPackage will create a new and empty package. Must call Close() to cleanup
 // auxilary files
 func NewTestPackage() *TestPackage {
 	// Files must exist in $GOPATH
@@ -76,8 +77,8 @@ func (p *TestPackage) Build() error {
 		return err
 	}
 
+	var packageFiles []string
 	packageConfig := loader.Config{Build: &build.Default, ParserMode: parser.ParseComments}
-	packageFiles := make([]string, 0)
 	for _, filename := range basePackage.GoFiles {
 		packageFiles = append(packageFiles, path.Join(p.Path, filename))
 	}
