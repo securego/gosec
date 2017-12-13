@@ -8,7 +8,7 @@ import (
 var _ = Describe("Helpers", func() {
 	Context("todo", func() {
 		It("should fail", func() {
-			Fail("Not implemented")
+			Skip("Not implemented")
 		})
 	})
 })

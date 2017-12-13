@@ -45,11 +45,11 @@ var _ = Describe("Issue", func() {
 		})
 
 		It("should return an error if specific context is not able to be obtained", func() {
-			Fail("Not implemented")
+			Skip("Not implemented")
 		})
 
 		It("should provide accurate line and file information", func() {
-			Fail("Not implemented")
+			Skip("Not implemented")
 		})
 
 		It("should provide accurate line and file information for multi-line statements", func() {
@@ -87,11 +87,11 @@ var _ = Describe("Issue", func() {
 		})
 
 		It("should maintain the provided severity score", func() {
-			Fail("Not implemented")
+			Skip("Not implemented")
 		})
 
 		It("should maintain the provided confidence score", func() {
-			Fail("Not implemented")
+			Skip("Not implemented")
 		})
 
 	})

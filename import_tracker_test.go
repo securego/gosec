@@ -15,15 +15,15 @@ var _ = Describe("ImportTracker", func() {
 	})
 	Context("when I have a valid go package", func() {
 		It("should record all import specs", func() {
-			Fail("Not implemented")
+			Skip("Not implemented")
 		})
 
 		It("should correctly track aliased package imports", func() {
-			Fail("Not implemented")
+			Skip("Not implemented")
 		})
 
 		It("should correctly track init only packages", func() {
-			Fail("Not implemented")
+			Skip("Not implemented")
 		})
 	})
 })
