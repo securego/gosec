@@ -91,7 +91,7 @@ func usage() {
 	flag.PrintDefaults()
 	fmt.Fprint(os.Stderr, "\n\nRULES:\n\n")
 
-	// sorted rule list for eas of reading
+	// sorted rule list for ease of reading
 	rl := rules.Generate()
 	keys := make([]string, 0, len(rl))
 	for key := range rl {
@@ -126,13 +126,19 @@ func loadConfig(configFile string) (gas.Config, error) {
 func loadRules(include, exclude string) rules.RuleList {
 	var filters []rules.RuleFilter
 	if include != "" {
+		log.Printf("including rules: %s", include)
 		including := strings.Split(include, ",")
 		filters = append(filters, rules.NewRuleFilter(false, including...))
+	} else {
+		log.Println("including rules: default")
 	}
 
 	if exclude != "" {
+		log.Printf("excluding rules: %s", exclude)
 		excluding := strings.Split(exclude, ",")
 		filters = append(filters, rules.NewRuleFilter(true, excluding...))
+	} else {
+		log.Println("excluding rules: default")
 	}
 	return rules.Generate(filters...)
 }
@@ -186,6 +192,9 @@ func main() {
 
 	// Load enabled rule definitions
 	ruleDefinitions := loadRules(*flagRulesInclude, *flagRulesExclude)
+	if len(ruleDefinitions) <= 0 {
+		log.Fatal("cannot continue: no rules are configured.")
+	}
 
 	// Create the analyzer
 	analyzer := gas.NewAnalyzer(config, logger)

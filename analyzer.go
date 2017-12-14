@@ -101,7 +101,7 @@ func (gas *Analyzer) Process(packagePath string) error {
 	}
 
 	packageConfig := loader.Config{Build: &build.Default, ParserMode: parser.ParseComments}
-	packageFiles := make([]string, 0)
+	var packageFiles []string
 	for _, filename := range basePackage.GoFiles {
 		packageFiles = append(packageFiles, path.Join(packagePath, filename))
 	}
