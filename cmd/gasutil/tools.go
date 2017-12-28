@@ -15,6 +15,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"go/ast"
 	"go/importer"
@@ -272,5 +273,16 @@ func dumpImports(files ...string) {
 				fmt.Println("  => ", name)
 			}
 		}
+	}
+}
+
+func main() {
+	tools := newUtils()
+	flag.Var(tools, "tool", "Utils to assist with rule development")
+	flag.Parse()
+
+	if len(tools.call) > 0 {
+		tools.run(flag.Args()...)
+		os.Exit(0)
 	}
 }
