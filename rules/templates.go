@@ -44,8 +44,9 @@ func NewTemplateCheck(conf gas.Config) (gas.Rule, []ast.Node) {
 	calls.Add("template", "HTML")
 	calls.Add("template", "HTMLAttr")
 	calls.Add("template", "JS")
+	calls.Add("template", "URL")
 	return &templateCheck{
-		calls: gas.NewCallList(),
+		calls: calls,
 		MetaData: gas.MetaData{
 			Severity:   gas.Medium,
 			Confidence: gas.Low,

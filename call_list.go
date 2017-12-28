@@ -60,6 +60,7 @@ func (c CallList) ContainsCallExpr(n ast.Node, ctx *Context) *ast.CallExpr {
 	if err != nil {
 		return nil
 	}
+
 	// Try direct resolution
 	if c.Contains(selector, ident) {
 		return n.(*ast.CallExpr)

@@ -38,23 +38,13 @@ func stringInSlice(a string, list []string) bool {
 }
 
 func (t *insecureConfigTLS) processTLSCipherSuites(n ast.Node, c *gas.Context) *gas.Issue {
-	tlsConfig := gas.MatchCompLit(n, c, t.requiredType)
-	if tlsConfig == nil {
-		return nil
-	}
 
-	for _, expr := range tlsConfig.Elts {
-		if keyvalExpr, ok := expr.(*ast.KeyValueExpr); ok {
-			if keyname, ok := keyvalExpr.Key.(*ast.Ident); ok && keyname.Name == "CipherSuites" {
-				if ciphers, ok := keyvalExpr.Value.(*ast.CompositeLit); ok {
-					for _, cipher := range ciphers.Elts {
-						if ident, ok := cipher.(*ast.SelectorExpr); ok {
-							if !stringInSlice(ident.Sel.Name, t.goodCiphers) {
-								str := fmt.Sprintf("TLS Bad Cipher Suite: %s", ident.Sel.Name)
-								return gas.NewIssue(c, n, str, gas.High, gas.High)
-							}
-						}
-					}
+	if ciphers, ok := n.(*ast.CompositeLit); ok {
+		for _, cipher := range ciphers.Elts {
+			if ident, ok := cipher.(*ast.SelectorExpr); ok {
+				if !stringInSlice(ident.Sel.Name, t.goodCiphers) {
+					err := fmt.Sprintf("TLS Bad Cipher Suite: %s", ident.Sel.Name)
+					return gas.NewIssue(c, ident, err, gas.High, gas.High)
 				}
 			}
 		}
@@ -65,6 +55,7 @@ func (t *insecureConfigTLS) processTLSCipherSuites(n ast.Node, c *gas.Context) *
 func (t *insecureConfigTLS) processTLSConfVal(n *ast.KeyValueExpr, c *gas.Context) *gas.Issue {
 	if ident, ok := n.Key.(*ast.Ident); ok {
 		switch ident.Name {
+
 		case "InsecureSkipVerify":
 			if node, ok := n.Value.(*ast.Ident); ok {
 				if node.Name != "false" {
@@ -104,7 +95,7 @@ func (t *insecureConfigTLS) processTLSConfVal(n *ast.KeyValueExpr, c *gas.Contex
 			}
 
 		case "CipherSuites":
-			if ret := t.processTLSCipherSuites(n, c); ret != nil {
+			if ret := t.processTLSCipherSuites(n.Value, c); ret != nil {
 				return ret
 			}
 
@@ -114,24 +105,24 @@ func (t *insecureConfigTLS) processTLSConfVal(n *ast.KeyValueExpr, c *gas.Contex
 	return nil
 }
 
-func (t *insecureConfigTLS) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err error) {
-	if node := gas.MatchCompLit(n, c, t.requiredType); node != nil {
-		for _, elt := range node.Elts {
+func (t *insecureConfigTLS) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
+	if complit, ok := n.(*ast.CompositeLit); ok && c.Info.TypeOf(complit.Type).String() == t.requiredType {
+		for _, elt := range complit.Elts {
 			if kve, ok := elt.(*ast.KeyValueExpr); ok {
-				gi = t.processTLSConfVal(kve, c)
-				if gi != nil {
-					break
+				issue := t.processTLSConfVal(kve, c)
+				if issue != nil {
+					return issue, nil
 				}
 			}
 		}
 	}
-	return
+	return nil, nil
 }
 
 // NewModernTLSCheck see: https://wiki.mozilla.org/Security/Server_Side_TLS#Modern_compatibility
 func NewModernTLSCheck(conf gas.Config) (gas.Rule, []ast.Node) {
 	return &insecureConfigTLS{
-		requiredType: "tls.Config",
+		requiredType: "crypto/tls.Config",
 		MinVersion:   0x0303, // TLS 1.2 only
 		MaxVersion:   0x0303,
 		goodCiphers: []string{
@@ -146,7 +137,7 @@ func NewModernTLSCheck(conf gas.Config) (gas.Rule, []ast.Node) {
 // NewIntermediateTLSCheck see: https://wiki.mozilla.org/Security/Server_Side_TLS#Intermediate_compatibility_.28default.29
 func NewIntermediateTLSCheck(conf gas.Config) (gas.Rule, []ast.Node) {
 	return &insecureConfigTLS{
-		requiredType: "tls.Config",
+		requiredType: "crypto/tls.Config",
 		MinVersion:   0x0301, // TLS 1.2, 1.1, 1.0
 		MaxVersion:   0x0303,
 		goodCiphers: []string{
@@ -172,7 +163,7 @@ func NewIntermediateTLSCheck(conf gas.Config) (gas.Rule, []ast.Node) {
 // NewCompatTLSCheck see: https://wiki.mozilla.org/Security/Server_Side_TLS#Old_compatibility_.28default.29
 func NewCompatTLSCheck(conf gas.Config) (gas.Rule, []ast.Node) {
 	return &insecureConfigTLS{
-		requiredType: "tls.Config",
+		requiredType: "crypto/tls.Config",
 		MinVersion:   0x0301, // TLS 1.2, 1.1, 1.0
 		MaxVersion:   0x0303,
 		goodCiphers: []string{

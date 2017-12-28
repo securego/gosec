@@ -16,6 +16,7 @@ package rules
 
 import (
 	"go/ast"
+	"strings"
 
 	"github.com/GoASTScanner/gas"
 )
@@ -25,11 +26,16 @@ type blacklistedImport struct {
 	Blacklisted map[string]string
 }
 
-func (r *blacklistedImport) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err error) {
+func unquote(original string) string {
+	copy := strings.TrimSpace(original)
+	copy = strings.TrimLeft(copy, `"`)
+	return strings.TrimRight(copy, `"`)
+}
+
+func (r *blacklistedImport) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 	if node, ok := n.(*ast.ImportSpec); ok {
-		description, ok := r.Blacklisted[node.Path.Value]
-		if ok && node.Name.String() != "_" {
-			return gas.NewIssue(c, n, description, r.Severity, r.Confidence), nil
+		if description, ok := r.Blacklisted[unquote(node.Path.Value)]; ok {
+			return gas.NewIssue(c, node, description, r.Severity, r.Confidence), nil
 		}
 	}
 	return nil, nil
@@ -50,27 +56,27 @@ func NewBlacklistedImports(conf gas.Config, blacklist map[string]string) (gas.Ru
 // NewBlacklistedImportMD5 fails if MD5 is imported
 func NewBlacklistedImportMD5(conf gas.Config) (gas.Rule, []ast.Node) {
 	return NewBlacklistedImports(conf, map[string]string{
-		"crypto/md5": "Use of weak cryptographic primitive",
+		"crypto/md5": "Blacklisted import crypto/md5: weak cryptographic primitive",
 	})
 }
 
 // NewBlacklistedImportDES fails if DES is imported
 func NewBlacklistedImportDES(conf gas.Config) (gas.Rule, []ast.Node) {
 	return NewBlacklistedImports(conf, map[string]string{
-		"crypto/des": "Use of weak cryptographic primitive",
+		"crypto/des": "Blacklisted import crypto/des: weak cryptographic primitive",
 	})
 }
 
 // NewBlacklistedImportRC4 fails if DES is imported
 func NewBlacklistedImportRC4(conf gas.Config) (gas.Rule, []ast.Node) {
 	return NewBlacklistedImports(conf, map[string]string{
-		"crypto/rc4": "Use of weak cryptographic primitive",
+		"crypto/rc4": "Blacklisted import crypto/rc4: weak cryptographic primitive",
 	})
 }
 
 // NewBlacklistedImportCGI fails if CGI is imported
 func NewBlacklistedImportCGI(conf gas.Config) (gas.Rule, []ast.Node) {
 	return NewBlacklistedImports(conf, map[string]string{
-		"net/http/cgi": "Go versions < 1.6.3 are vulnerable to Httpoxy attack: (CVE-2016-5386)",
+		"net/http/cgi": "Blacklisted import net/http/cgi: Go versions < 1.6.3 are vulnerable to Httpoxy attack: (CVE-2016-5386)",
 	})
 }
