@@ -577,7 +577,7 @@ func main() {
 	println(i)
 }`, 0}}
 
-	// SampleCode501 - Blacklisted import MD5
+	// SampleCodeG501 - Blacklisted import MD5
 	SampleCodeG501 = []CodeSample{
 		{`
 package main
@@ -592,7 +592,7 @@ func main() {
 	}
 }`, 1}}
 
-	// SampleCode502 - Blacklisted import DES
+	// SampleCodeG502 - Blacklisted import DES
 	SampleCodeG502 = []CodeSample{
 		{`
 package main
