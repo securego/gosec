@@ -15,24 +15,27 @@
 package rules
 
 import (
-	gas "github.com/GoASTScanner/gas/core"
 	"go/ast"
+
+	"github.com/GoASTScanner/gas"
 )
 
-type UsingBigExp struct {
+type usingBigExp struct {
 	gas.MetaData
 	pkg   string
 	calls []string
 }
 
-func (r *UsingBigExp) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err error) {
+func (r *usingBigExp) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err error) {
 	if _, matched := gas.MatchCallByType(n, c, r.pkg, r.calls...); matched {
 		return gas.NewIssue(c, n, r.What, r.Severity, r.Confidence), nil
 	}
 	return nil, nil
 }
-func NewUsingBigExp(conf map[string]interface{}) (gas.Rule, []ast.Node) {
-	return &UsingBigExp{
+
+// NewUsingBigExp detects issues with modulus == 0 for Bignum
+func NewUsingBigExp(conf gas.Config) (gas.Rule, []ast.Node) {
+	return &usingBigExp{
 		pkg:   "*math/big.Int",
 		calls: []string{"Exp"},
 		MetaData: gas.MetaData{

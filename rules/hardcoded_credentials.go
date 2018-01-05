@@ -15,16 +15,16 @@
 package rules
 
 import (
-	gas "github.com/GoASTScanner/gas/core"
 	"go/ast"
 	"go/token"
 	"regexp"
-
-	"github.com/nbutton23/zxcvbn-go"
 	"strconv"
+
+	"github.com/GoASTScanner/gas"
+	"github.com/nbutton23/zxcvbn-go"
 )
 
-type Credentials struct {
+type credentials struct {
 	gas.MetaData
 	pattern          *regexp.Regexp
 	entropyThreshold float64
@@ -40,7 +40,7 @@ func truncate(s string, n int) string {
 	return s[:n]
 }
 
-func (r *Credentials) isHighEntropyString(str string) bool {
+func (r *credentials) isHighEntropyString(str string) bool {
 	s := truncate(str, r.truncate)
 	info := zxcvbn.PasswordStrength(s, []string{})
 	entropyPerChar := info.Entropy / float64(len(s))
@@ -49,7 +49,7 @@ func (r *Credentials) isHighEntropyString(str string) bool {
 			entropyPerChar >= r.perCharThreshold))
 }
 
-func (r *Credentials) Match(n ast.Node, ctx *gas.Context) (*gas.Issue, error) {
+func (r *credentials) Match(n ast.Node, ctx *gas.Context) (*gas.Issue, error) {
 	switch node := n.(type) {
 	case *ast.AssignStmt:
 		return r.matchAssign(node, ctx)
@@ -59,7 +59,7 @@ func (r *Credentials) Match(n ast.Node, ctx *gas.Context) (*gas.Issue, error) {
 	return nil, nil
 }
 
-func (r *Credentials) matchAssign(assign *ast.AssignStmt, ctx *gas.Context) (*gas.Issue, error) {
+func (r *credentials) matchAssign(assign *ast.AssignStmt, ctx *gas.Context) (*gas.Issue, error) {
 	for _, i := range assign.Lhs {
 		if ident, ok := i.(*ast.Ident); ok {
 			if r.pattern.MatchString(ident.Name) {
@@ -76,7 +76,7 @@ func (r *Credentials) matchAssign(assign *ast.AssignStmt, ctx *gas.Context) (*ga
 	return nil, nil
 }
 
-func (r *Credentials) matchGenDecl(decl *ast.GenDecl, ctx *gas.Context) (*gas.Issue, error) {
+func (r *credentials) matchGenDecl(decl *ast.GenDecl, ctx *gas.Context) (*gas.Issue, error) {
 	if decl.Tok != token.CONST && decl.Tok != token.VAR {
 		return nil, nil
 	}
@@ -100,12 +100,14 @@ func (r *Credentials) matchGenDecl(decl *ast.GenDecl, ctx *gas.Context) (*gas.Is
 	return nil, nil
 }
 
-func NewHardcodedCredentials(conf map[string]interface{}) (gas.Rule, []ast.Node) {
+// NewHardcodedCredentials attempts to find high entropy string constants being
+// assigned to variables that appear to be related to credentials.
+func NewHardcodedCredentials(conf gas.Config) (gas.Rule, []ast.Node) {
 	pattern := `(?i)passwd|pass|password|pwd|secret|token`
 	entropyThreshold := 80.0
 	perCharThreshold := 3.0
 	ignoreEntropy := false
-	var truncateString int = 16
+	var truncateString = 16
 	if val, ok := conf["G101"]; ok {
 		conf := val.(map[string]string)
 		if configPattern, ok := conf["pattern"]; ok {
@@ -133,7 +135,7 @@ func NewHardcodedCredentials(conf map[string]interface{}) (gas.Rule, []ast.Node)
 		}
 	}
 
-	return &Credentials{
+	return &credentials{
 		pattern:          regexp.MustCompile(pattern),
 		entropyThreshold: entropyThreshold,
 		perCharThreshold: perCharThreshold,

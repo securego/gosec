@@ -17,17 +17,15 @@ package rules
 import (
 	"fmt"
 	"go/ast"
-	"reflect"
-	"regexp"
 
-	gas "github.com/GoASTScanner/gas/core"
+	"github.com/GoASTScanner/gas"
 )
 
-type InsecureConfigTLS struct {
-	MinVersion  int16
-	MaxVersion  int16
-	pattern     *regexp.Regexp
-	goodCiphers []string
+type insecureConfigTLS struct {
+	MinVersion   int16
+	MaxVersion   int16
+	requiredType string
+	goodCiphers  []string
 }
 
 func stringInSlice(a string, list []string) bool {
@@ -39,15 +37,14 @@ func stringInSlice(a string, list []string) bool {
 	return false
 }
 
-func (t *InsecureConfigTLS) processTlsCipherSuites(n ast.Node, c *gas.Context) *gas.Issue {
-	a := reflect.TypeOf(&ast.KeyValueExpr{})
-	b := reflect.TypeOf(&ast.CompositeLit{})
-	if node, ok := gas.SimpleSelect(n, a, b).(*ast.CompositeLit); ok {
-		for _, elt := range node.Elts {
-			if ident, ok := elt.(*ast.SelectorExpr); ok {
+func (t *insecureConfigTLS) processTLSCipherSuites(n ast.Node, c *gas.Context) *gas.Issue {
+
+	if ciphers, ok := n.(*ast.CompositeLit); ok {
+		for _, cipher := range ciphers.Elts {
+			if ident, ok := cipher.(*ast.SelectorExpr); ok {
 				if !stringInSlice(ident.Sel.Name, t.goodCiphers) {
-					str := fmt.Sprintf("TLS Bad Cipher Suite: %s", ident.Sel.Name)
-					return gas.NewIssue(c, n, str, gas.High, gas.High)
+					err := fmt.Sprintf("TLS Bad Cipher Suite: %s", ident.Sel.Name)
+					return gas.NewIssue(c, ident, err, gas.High, gas.High)
 				}
 			}
 		}
@@ -55,9 +52,10 @@ func (t *InsecureConfigTLS) processTlsCipherSuites(n ast.Node, c *gas.Context) *
 	return nil
 }
 
-func (t *InsecureConfigTLS) processTlsConfVal(n *ast.KeyValueExpr, c *gas.Context) *gas.Issue {
+func (t *insecureConfigTLS) processTLSConfVal(n *ast.KeyValueExpr, c *gas.Context) *gas.Issue {
 	if ident, ok := n.Key.(*ast.Ident); ok {
 		switch ident.Name {
+
 		case "InsecureSkipVerify":
 			if node, ok := n.Value.(*ast.Ident); ok {
 				if node.Name != "false" {
@@ -97,7 +95,7 @@ func (t *InsecureConfigTLS) processTlsConfVal(n *ast.KeyValueExpr, c *gas.Contex
 			}
 
 		case "CipherSuites":
-			if ret := t.processTlsCipherSuites(n, c); ret != nil {
+			if ret := t.processTLSCipherSuites(n.Value, c); ret != nil {
 				return ret
 			}
 
@@ -107,26 +105,26 @@ func (t *InsecureConfigTLS) processTlsConfVal(n *ast.KeyValueExpr, c *gas.Contex
 	return nil
 }
 
-func (t *InsecureConfigTLS) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err error) {
-	if node := gas.MatchCompLit(n, t.pattern); node != nil {
-		for _, elt := range node.Elts {
+func (t *insecureConfigTLS) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
+	if complit, ok := n.(*ast.CompositeLit); ok && c.Info.TypeOf(complit.Type).String() == t.requiredType {
+		for _, elt := range complit.Elts {
 			if kve, ok := elt.(*ast.KeyValueExpr); ok {
-				gi = t.processTlsConfVal(kve, c)
-				if gi != nil {
-					break
+				issue := t.processTLSConfVal(kve, c)
+				if issue != nil {
+					return issue, nil
 				}
 			}
 		}
 	}
-	return
+	return nil, nil
 }
 
-func NewModernTlsCheck(conf map[string]interface{}) (gas.Rule, []ast.Node) {
-	// https://wiki.mozilla.org/Security/Server_Side_TLS#Modern_compatibility
-	return &InsecureConfigTLS{
-		pattern:    regexp.MustCompile(`^tls\.Config$`),
-		MinVersion: 0x0303, // TLS 1.2 only
-		MaxVersion: 0x0303,
+// NewModernTLSCheck see: https://wiki.mozilla.org/Security/Server_Side_TLS#Modern_compatibility
+func NewModernTLSCheck(conf gas.Config) (gas.Rule, []ast.Node) {
+	return &insecureConfigTLS{
+		requiredType: "crypto/tls.Config",
+		MinVersion:   0x0303, // TLS 1.2 only
+		MaxVersion:   0x0303,
 		goodCiphers: []string{
 			"TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
 			"TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",
@@ -138,12 +136,12 @@ func NewModernTlsCheck(conf map[string]interface{}) (gas.Rule, []ast.Node) {
 	}, []ast.Node{(*ast.CompositeLit)(nil)}
 }
 
-func NewIntermediateTlsCheck(conf map[string]interface{}) (gas.Rule, []ast.Node) {
-	// https://wiki.mozilla.org/Security/Server_Side_TLS#Intermediate_compatibility_.28default.29
-	return &InsecureConfigTLS{
-		pattern:    regexp.MustCompile(`^tls\.Config$`),
-		MinVersion: 0x0301, // TLS 1.2, 1.1, 1.0
-		MaxVersion: 0x0303,
+// NewIntermediateTLSCheck see: https://wiki.mozilla.org/Security/Server_Side_TLS#Intermediate_compatibility_.28default.29
+func NewIntermediateTLSCheck(conf gas.Config) (gas.Rule, []ast.Node) {
+	return &insecureConfigTLS{
+		requiredType: "crypto/tls.Config",
+		MinVersion:   0x0301, // TLS 1.2, 1.1, 1.0
+		MaxVersion:   0x0303,
 		goodCiphers: []string{
 			"TLS_RSA_WITH_AES_128_CBC_SHA",
 			"TLS_RSA_WITH_AES_256_CBC_SHA",
@@ -164,12 +162,12 @@ func NewIntermediateTlsCheck(conf map[string]interface{}) (gas.Rule, []ast.Node)
 	}, []ast.Node{(*ast.CompositeLit)(nil)}
 }
 
-func NewCompatTlsCheck(conf map[string]interface{}) (gas.Rule, []ast.Node) {
-	// https://wiki.mozilla.org/Security/Server_Side_TLS#Old_compatibility_.28default.29
-	return &InsecureConfigTLS{
-		pattern:    regexp.MustCompile(`^tls\.Config$`),
-		MinVersion: 0x0301, // TLS 1.2, 1.1, 1.0
-		MaxVersion: 0x0303,
+// NewCompatTLSCheck see: https://wiki.mozilla.org/Security/Server_Side_TLS#Old_compatibility_.28default.29
+func NewCompatTLSCheck(conf gas.Config) (gas.Rule, []ast.Node) {
+	return &insecureConfigTLS{
+		requiredType: "crypto/tls.Config",
+		MinVersion:   0x0301, // TLS 1.2, 1.1, 1.0
+		MaxVersion:   0x0303,
 		goodCiphers: []string{
 			"TLS_RSA_WITH_RC4_128_SHA",
 			"TLS_RSA_WITH_3DES_EDE_CBC_SHA",

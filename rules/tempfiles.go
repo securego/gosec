@@ -18,17 +18,17 @@ import (
 	"go/ast"
 	"regexp"
 
-	gas "github.com/GoASTScanner/gas/core"
+	"github.com/GoASTScanner/gas"
 )
 
-type BadTempFile struct {
+type badTempFile struct {
 	gas.MetaData
-	args *regexp.Regexp
-	call *regexp.Regexp
+	calls gas.CallList
+	args  *regexp.Regexp
 }
 
-func (t *BadTempFile) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err error) {
-	if node := gas.MatchCall(n, t.call); node != nil {
+func (t *badTempFile) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err error) {
+	if node := t.calls.ContainsCallExpr(n, c); node != nil {
 		if arg, e := gas.GetString(node.Args[0]); t.args.MatchString(arg) && e == nil {
 			return gas.NewIssue(c, n, t.What, t.Severity, t.Confidence), nil
 		}
@@ -36,10 +36,14 @@ func (t *BadTempFile) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err erro
 	return nil, nil
 }
 
-func NewBadTempFile(conf map[string]interface{}) (gas.Rule, []ast.Node) {
-	return &BadTempFile{
-		call: regexp.MustCompile(`ioutil\.WriteFile|os\.Create`),
-		args: regexp.MustCompile(`^/tmp/.*$|^/var/tmp/.*$`),
+// NewBadTempFile detects direct writes to predictable path in temporary directory
+func NewBadTempFile(conf gas.Config) (gas.Rule, []ast.Node) {
+	calls := gas.NewCallList()
+	calls.Add("ioutil", "WriteFile")
+	calls.Add("os", "Create")
+	return &badTempFile{
+		calls: calls,
+		args:  regexp.MustCompile(`^/tmp/.*$|^/var/tmp/.*$`),
 		MetaData: gas.MetaData{
 			Severity:   gas.Medium,
 			Confidence: gas.High,

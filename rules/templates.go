@@ -16,18 +16,17 @@ package rules
 
 import (
 	"go/ast"
-	"regexp"
 
-	gas "github.com/GoASTScanner/gas/core"
+	"github.com/GoASTScanner/gas"
 )
 
-type TemplateCheck struct {
+type templateCheck struct {
 	gas.MetaData
-	call *regexp.Regexp
+	calls gas.CallList
 }
 
-func (t *TemplateCheck) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err error) {
-	if node := gas.MatchCall(n, t.call); node != nil {
+func (t *templateCheck) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
+	if node := t.calls.ContainsCallExpr(n, c); node != nil {
 		for _, arg := range node.Args {
 			if _, ok := arg.(*ast.BasicLit); !ok { // basic lits are safe
 				return gas.NewIssue(c, n, t.What, t.Severity, t.Confidence), nil
@@ -37,9 +36,17 @@ func (t *TemplateCheck) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err er
 	return nil, nil
 }
 
-func NewTemplateCheck(conf map[string]interface{}) (gas.Rule, []ast.Node) {
-	return &TemplateCheck{
-		call: regexp.MustCompile(`^template\.(HTML|JS|URL)$`),
+// NewTemplateCheck constructs the template check rule. This rule is used to
+// find use of tempaltes where HTML/JS escaping is not being used
+func NewTemplateCheck(conf gas.Config) (gas.Rule, []ast.Node) {
+
+	calls := gas.NewCallList()
+	calls.Add("template", "HTML")
+	calls.Add("template", "HTMLAttr")
+	calls.Add("template", "JS")
+	calls.Add("template", "URL")
+	return &templateCheck{
+		calls: calls,
 		MetaData: gas.MetaData{
 			Severity:   gas.Medium,
 			Confidence: gas.Low,

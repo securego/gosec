@@ -18,20 +18,20 @@ import (
 	"go/ast"
 	"regexp"
 
-	gas "github.com/GoASTScanner/gas/core"
+	"github.com/GoASTScanner/gas"
 )
 
-type SqlStatement struct {
+type sqlStatement struct {
 	gas.MetaData
 	pattern *regexp.Regexp
 }
 
-type SqlStrConcat struct {
-	SqlStatement
+type sqlStrConcat struct {
+	sqlStatement
 }
 
 // see if we can figure out what it is
-func (s *SqlStrConcat) checkObject(n *ast.Ident) bool {
+func (s *sqlStrConcat) checkObject(n *ast.Ident) bool {
 	if n.Obj != nil {
 		return n.Obj.Kind != ast.Var && n.Obj.Kind != ast.Fun
 	}
@@ -39,7 +39,7 @@ func (s *SqlStrConcat) checkObject(n *ast.Ident) bool {
 }
 
 // Look for "SELECT * FROM table WHERE " + " ' OR 1=1"
-func (s *SqlStrConcat) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
+func (s *sqlStrConcat) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 	if node, ok := n.(*ast.BinaryExpr); ok {
 		if start, ok := node.X.(*ast.BasicLit); ok {
 			if str, e := gas.GetString(start); s.pattern.MatchString(str) && e == nil {
@@ -56,9 +56,10 @@ func (s *SqlStrConcat) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 	return nil, nil
 }
 
-func NewSqlStrConcat(conf map[string]interface{}) (gas.Rule, []ast.Node) {
-	return &SqlStrConcat{
-		SqlStatement: SqlStatement{
+// NewSQLStrConcat looks for cases where we are building SQL strings via concatenation
+func NewSQLStrConcat(conf gas.Config) (gas.Rule, []ast.Node) {
+	return &sqlStrConcat{
+		sqlStatement: sqlStatement{
 			pattern: regexp.MustCompile(`(?)(SELECT|DELETE|INSERT|UPDATE|INTO|FROM|WHERE) `),
 			MetaData: gas.MetaData{
 				Severity:   gas.Medium,
@@ -69,14 +70,16 @@ func NewSqlStrConcat(conf map[string]interface{}) (gas.Rule, []ast.Node) {
 	}, []ast.Node{(*ast.BinaryExpr)(nil)}
 }
 
-type SqlStrFormat struct {
-	SqlStatement
-	call *regexp.Regexp
+type sqlStrFormat struct {
+	sqlStatement
+	calls gas.CallList
 }
 
 // Looks for "fmt.Sprintf("SELECT * FROM foo where '%s', userInput)"
-func (s *SqlStrFormat) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err error) {
-	if node := gas.MatchCall(n, s.call); node != nil {
+func (s *sqlStrFormat) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
+
+	// TODO(gm) improve confidence if database/sql is being used
+	if node := s.calls.ContainsCallExpr(n, c); node != nil {
 		if arg, e := gas.GetString(node.Args[0]); s.pattern.MatchString(arg) && e == nil {
 			return gas.NewIssue(c, n, s.What, s.Severity, s.Confidence), nil
 		}
@@ -84,10 +87,11 @@ func (s *SqlStrFormat) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err err
 	return nil, nil
 }
 
-func NewSqlStrFormat(conf map[string]interface{}) (gas.Rule, []ast.Node) {
-	return &SqlStrFormat{
-		call: regexp.MustCompile(`^fmt\.Sprintf$`),
-		SqlStatement: SqlStatement{
+// NewSQLStrFormat looks for cases where we're building SQL query strings using format strings
+func NewSQLStrFormat(conf gas.Config) (gas.Rule, []ast.Node) {
+	rule := &sqlStrFormat{
+		calls: gas.NewCallList(),
+		sqlStatement: sqlStatement{
 			pattern: regexp.MustCompile("(?)(SELECT|DELETE|INSERT|UPDATE|INTO|FROM|WHERE) "),
 			MetaData: gas.MetaData{
 				Severity:   gas.Medium,
@@ -95,5 +99,7 @@ func NewSqlStrFormat(conf map[string]interface{}) (gas.Rule, []ast.Node) {
 				What:       "SQL string formatting",
 			},
 		},
-	}, []ast.Node{(*ast.CallExpr)(nil)}
+	}
+	rule.calls.AddAll("fmt", "Sprint", "Sprintf", "Sprintln")
+	return rule, []ast.Node{(*ast.CallExpr)(nil)}
 }
