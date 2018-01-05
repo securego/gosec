@@ -41,10 +41,10 @@ func (t *templateCheck) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 func NewTemplateCheck(conf gas.Config) (gas.Rule, []ast.Node) {
 
 	calls := gas.NewCallList()
-	calls.Add("template", "HTML")
-	calls.Add("template", "HTMLAttr")
-	calls.Add("template", "JS")
-	calls.Add("template", "URL")
+	calls.Add("html/template", "HTML")
+	calls.Add("html/template", "HTMLAttr")
+	calls.Add("html/template", "JS")
+	calls.Add("html/template", "URL")
 	return &templateCheck{
 		calls: calls,
 		MetaData: gas.MetaData{

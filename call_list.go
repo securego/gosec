@@ -61,14 +61,18 @@ func (c CallList) ContainsCallExpr(n ast.Node, ctx *Context) *ast.CallExpr {
 		return nil
 	}
 
-	// Try direct resolution
-	if c.Contains(selector, ident) {
-		return n.(*ast.CallExpr)
-	}
-
-	// Also support explicit path
+	// Use only explicit path to reduce conflicts
 	if path, ok := GetImportPath(selector, ctx); ok && c.Contains(path, ident) {
 		return n.(*ast.CallExpr)
 	}
+
+	/*
+		// Try direct resolution
+		if c.Contains(selector, ident) {
+			log.Printf("c.Contains == true, %s, %s.", selector, ident)
+			return n.(*ast.CallExpr)
+		}
+	*/
+
 	return nil
 }
