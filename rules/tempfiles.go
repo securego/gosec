@@ -39,7 +39,7 @@ func (t *badTempFile) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err erro
 // NewBadTempFile detects direct writes to predictable path in temporary directory
 func NewBadTempFile(conf gas.Config) (gas.Rule, []ast.Node) {
 	calls := gas.NewCallList()
-	calls.Add("ioutil", "WriteFile")
+	calls.Add("io/ioutil", "WriteFile")
 	calls.Add("os", "Create")
 	return &badTempFile{
 		calls: calls,

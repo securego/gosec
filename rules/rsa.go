@@ -39,7 +39,7 @@ func (w *weakKeyStrength) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) 
 // NewWeakKeyStrength builds a rule that detects RSA keys < 2048 bits
 func NewWeakKeyStrength(conf gas.Config) (gas.Rule, []ast.Node) {
 	calls := gas.NewCallList()
-	calls.Add("rsa", "GenerateKey")
+	calls.Add("crypto/rsa", "GenerateKey")
 	bits := 2048
 	return &weakKeyStrength{
 		calls: calls,

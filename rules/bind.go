@@ -46,7 +46,7 @@ func (r *bindsToAllNetworkInterfaces) Match(n ast.Node, c *gas.Context) (*gas.Is
 func NewBindsToAllNetworkInterfaces(conf gas.Config) (gas.Rule, []ast.Node) {
 	calls := gas.NewCallList()
 	calls.Add("net", "Listen")
-	calls.Add("tls", "Listen")
+	calls.Add("crypto/tls", "Listen")
 	return &bindsToAllNetworkInterfaces{
 		calls:   calls,
 		pattern: regexp.MustCompile(`^(0.0.0.0|:).*$`),

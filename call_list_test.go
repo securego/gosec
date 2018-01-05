@@ -66,7 +66,7 @@ var _ = Describe("call list", func() {
 		ctx := pkg.CreateContext("md5.go")
 
 		// Search for md5.New()
-		calls.Add("md5", "New")
+		calls.Add("crypto/md5", "New")
 
 		// Stub out visitor and count number of matched call expr
 		matched := 0

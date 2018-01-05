@@ -52,7 +52,7 @@ func (r *subprocess) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 // NewSubproc detects cases where we are forking out to an external process
 func NewSubproc(conf gas.Config) (gas.Rule, []ast.Node) {
 	rule := &subprocess{gas.NewCallList()}
-	rule.Add("exec", "Command")
+	rule.Add("os/exec", "Command")
 	rule.Add("syscall", "Exec")
 	return rule, []ast.Node{(*ast.CallExpr)(nil)}
 }
