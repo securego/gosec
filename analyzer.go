@@ -54,13 +54,19 @@ type Metrics struct {
 // Analyzer object is the main object of GAS. It has methods traverse an AST
 // and invoke the correct checking rules as on each node as required.
 type Analyzer struct {
-	ignoreNosec bool
-	ruleset     RuleSet
-	context     *Context
-	config      Config
-	logger      *log.Logger
-	issues      []*Issue
-	stats       *Metrics
+	ignoreNosec   bool
+	ruleset       RuleSet
+	context       *Context
+	config        Config
+	logger        *log.Logger
+	issues        []*Issue
+	stats         *Metrics
+	builtPkgCache map[string]*buildPackageCacheEntry
+}
+
+type buildPackageCacheEntry struct {
+	info *loader.PackageInfo
+	fset *token.FileSet
 }
 
 // NewAnalyzer builds a new anaylzer.
@@ -73,13 +79,14 @@ func NewAnalyzer(conf Config, logger *log.Logger) *Analyzer {
 		logger = log.New(os.Stderr, "[gas]", log.LstdFlags)
 	}
 	return &Analyzer{
-		ignoreNosec: ignoreNoSec,
-		ruleset:     make(RuleSet),
-		context:     &Context{},
-		config:      conf,
-		logger:      logger,
-		issues:      make([]*Issue, 0, 16),
-		stats:       &Metrics{},
+		ignoreNosec:   ignoreNoSec,
+		ruleset:       make(RuleSet),
+		context:       &Context{},
+		config:        conf,
+		logger:        logger,
+		issues:        make([]*Issue, 0, 16),
+		stats:         &Metrics{},
+		builtPkgCache: make(map[string]*buildPackageCacheEntry),
 	}
 }
 
@@ -94,6 +101,8 @@ func (gas *Analyzer) LoadRules(ruleDefinitions ...RuleBuilder) {
 
 // Process kicks off the analysis process for a given package
 func (gas *Analyzer) Process(packagePath string) error {
+	var packages []*loader.PackageInfo
+	var fset *token.FileSet
 
 	basePackage, err := build.Default.ImportDir(packagePath, build.ImportComment)
 	if err != nil {
@@ -107,16 +116,53 @@ func (gas *Analyzer) Process(packagePath string) error {
 	}
 
 	packageConfig.CreateFromFilenames(basePackage.Name, packageFiles...)
-	builtPackage, err := packageConfig.Load()
-	if err != nil {
-		return err
+
+	pkgCachePath := packagePath
+	// Calculate an absolute import path because the cache is keyed by the absolute import path
+	if build.IsLocalImport(pkgCachePath) {
+		wd, err := os.Getwd()
+		if err != nil {
+			return err
+		}
+
+		pkg, err := build.Default.Import(packagePath, wd, build.ImportComment)
+		if err != nil {
+			return err
+		}
+		pkgCachePath = pkg.ImportPath
 	}
 
-	for _, pkg := range builtPackage.Created {
+	if gas.builtPkgCache[pkgCachePath] != nil {
+		entry := gas.builtPkgCache[pkgCachePath]
+		packages = append(packages, entry.info)
+		fset = entry.fset
+	} else {
+		builtPackage, err := packageConfig.Load()
+		if err != nil {
+			return err
+		}
+
+		packages = builtPackage.Created
+		fset = builtPackage.Fset
+
+		// Cache built packages
+		for details, pkg := range builtPackage.AllPackages {
+			if !details.Complete() {
+				continue
+			}
+			entry := buildPackageCacheEntry{
+				info: pkg,
+				fset: builtPackage.Fset,
+			}
+			gas.builtPkgCache[pkg.Pkg.Path()] = &entry
+		}
+	}
+
+	for _, pkg := range packages {
 		gas.logger.Println("Checking package:", pkg.String())
 		for _, file := range pkg.Files {
-			gas.logger.Println("Checking file:", builtPackage.Fset.File(file.Pos()).Name())
-			gas.context.FileSet = builtPackage.Fset
+			gas.logger.Println("Checking file:", fset.File(file.Pos()).Name())
+			gas.context.FileSet = fset
 			gas.context.Config = gas.config
 			gas.context.Comments = ast.NewCommentMap(gas.context.FileSet, file, file.Comments)
 			gas.context.Root = file
@@ -126,7 +172,7 @@ func (gas *Analyzer) Process(packagePath string) error {
 			gas.context.Imports.TrackPackages(gas.context.Pkg.Imports()...)
 			ast.Walk(gas, file)
 			gas.stats.NumFiles++
-			gas.stats.NumLines += builtPackage.Fset.File(file.Pos()).LineCount()
+			gas.stats.NumLines += fset.File(file.Pos()).LineCount()
 		}
 	}
 	return nil

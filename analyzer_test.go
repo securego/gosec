@@ -73,6 +73,32 @@ var _ = Describe("Analyzer", func() {
 			Expect(metrics.NumFiles).To(Equal(2))
 		})
 
+		It("should return report double the lines even when a package is processed twice (despite caching)", func() {
+			analyzer.LoadRules(rules.Generate().Builders()...)
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("foo.go", `
+				package main
+				func main(){
+					bar()
+				}`)
+			pkg.AddFile("bar.go", `
+				package main
+				func bar(){
+					println("package has two files!")
+				}`)
+			pkg.Build()
+			err := analyzer.Process(pkg.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			_, metrics := analyzer.Report()
+			Expect(metrics.NumFiles).To(Equal(2))
+
+			err = analyzer.Process(pkg.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			_, metrics = analyzer.Report()
+			Expect(metrics.NumFiles).To(Equal(4))
+		})
+
 		It("should find errors when nosec is not in use", func() {
 
 			// Rule for MD5 weak crypto usage
