@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -202,6 +201,7 @@ func main() {
 
 	vendor := regexp.MustCompile(`[\\/]vendor([\\/]|$)`)
 
+	var packages []string
 	// Iterate over packages on the import paths
 	for _, pkg := range gotool.ImportPaths(flag.Args()) {
 
@@ -209,12 +209,11 @@ func main() {
 		if vendor.MatchString(pkg) {
 			continue
 		}
+		packages = append(packages, pkg)
+	}
 
-		abspath, _ := filepath.Abs(pkg)
-		logger.Println("Searching directory:", abspath)
-		if err := analyzer.Process(pkg); err != nil {
-			logger.Fatal(err)
-		}
+	if err := analyzer.Process(packages...); err != nil {
+		logger.Fatal(err)
 	}
 
 	// Collect the results

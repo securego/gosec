@@ -27,6 +27,8 @@ import (
 	"reflect"
 	"strings"
 
+	"path/filepath"
+
 	"golang.org/x/tools/go/loader"
 )
 
@@ -93,20 +95,25 @@ func (gas *Analyzer) LoadRules(ruleDefinitions ...RuleBuilder) {
 }
 
 // Process kicks off the analysis process for a given package
-func (gas *Analyzer) Process(packagePath string) error {
-
-	basePackage, err := build.Default.ImportDir(packagePath, build.ImportComment)
-	if err != nil {
-		return err
-	}
-
+func (gas *Analyzer) Process(packagePaths ...string) error {
 	packageConfig := loader.Config{Build: &build.Default, ParserMode: parser.ParseComments}
-	var packageFiles []string
-	for _, filename := range basePackage.GoFiles {
-		packageFiles = append(packageFiles, path.Join(packagePath, filename))
+	for _, packagePath := range packagePaths {
+		abspath, _ := filepath.Abs(packagePath)
+		gas.logger.Println("Searching directory:", abspath)
+
+		basePackage, err := build.Default.ImportDir(packagePath, build.ImportComment)
+		if err != nil {
+			return err
+		}
+
+		var packageFiles []string
+		for _, filename := range basePackage.GoFiles {
+			packageFiles = append(packageFiles, path.Join(packagePath, filename))
+		}
+
+		packageConfig.CreateFromFilenames(basePackage.Name, packageFiles...)
 	}
 
-	packageConfig.CreateFromFilenames(basePackage.Name, packageFiles...)
 	builtPackage, err := packageConfig.Load()
 	if err != nil {
 		return err
