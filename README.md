@@ -18,6 +18,10 @@ You may obtain a copy of the License [here](http://www.apache.org/licenses/LICEN
 Gas is still in alpha and accepting feedback from early adopters. We do
 not consider it production ready at this time.
 
+### Install
+
+`$ go get github.com/GoASTScanner/gas/cmd/gas/...`
+
 ### Usage
 
 Gas can be configured to only run a subset of rules, to exclude certain file
@@ -109,19 +113,3 @@ file. The output format is controlled by the '-fmt' flag, and the output file is
 $ gas -fmt=json -out=results.json *.go
 ```
 
-### Docker container
-
-A Dockerfile is included with the Gas source code to provide a container that 
-allows users to easily run Gas on their code. It builds Gas, then runs it on 
-all Go files in your current directory. Use the following commands to build 
-and run locally:
-
-To build: (run command in cloned Gas source code directory)
-          docker build --build-arg http_proxy --build-arg https_proxy
-          --build-arg no_proxy -t goastscanner/gas:latest .
-
-To run:  (run command in desired directory with Go files)
-          docker run -v $PWD:$PWD --workdir $PWD goastscanner/gas:latest
-
-Note: Docker version 17.05 or later is required (to permit multistage build).
-```
