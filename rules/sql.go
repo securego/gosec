@@ -29,7 +29,7 @@ type sqlStatement struct {
 }
 
 // See if the string matches the patterns for the statement.
-func (s sqlStatement) Match(str string) bool {
+func (s sqlStatement) MatchPatterns(str string) bool {
 	for _, pattern := range s.patterns {
 		if !pattern.MatchString(str) {
 			return false
@@ -55,7 +55,7 @@ func (s *sqlStrConcat) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 	if node, ok := n.(*ast.BinaryExpr); ok {
 		if start, ok := node.X.(*ast.BasicLit); ok {
 			if str, e := gas.GetString(start); e == nil {
-				if !s.Match(str) {
+				if !s.MatchPatterns(str) {
 					return nil, nil
 				}
 				if _, ok := node.Y.(*ast.BasicLit); ok {
@@ -73,8 +73,8 @@ func (s *sqlStrConcat) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 
 // NewSQLStrConcat looks for cases where we are building SQL strings via concatenation
 func NewSQLStrConcat(conf gas.Config) (gas.Rule, []ast.Node) {
-	return &SqlStrConcat{
-		SqlStatement: SqlStatement{
+	return &sqlStrConcat{
+		sqlStatement: sqlStatement{
 			patterns: []*regexp.Regexp{
 				regexp.MustCompile(`(?)(SELECT|DELETE|INSERT|UPDATE|INTO|FROM|WHERE) `),
 			},
@@ -97,10 +97,7 @@ func (s *sqlStrFormat) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 
 	// TODO(gm) improve confidence if database/sql is being used
 	if node := s.calls.ContainsCallExpr(n, c); node != nil {
-		if arg, e := gas.GetString(node.Args[0]); e == nil {
-			if !s.Match(str) {
-				return nil, nil
-			}
+		if arg, e := gas.GetString(node.Args[0]); s.MatchPatterns(arg) && e == nil {
 			return gas.NewIssue(c, n, s.What, s.Severity, s.Confidence), nil
 		}
 	}
