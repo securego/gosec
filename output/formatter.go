@@ -17,6 +17,7 @@ package output
 import (
 	"encoding/csv"
 	"encoding/json"
+	"encoding/xml"
 	htmlTemplate "html/template"
 	"io"
 	plainTemplate "text/template"
@@ -36,6 +37,9 @@ const (
 
 	// ReportCSV set the output format to csv
 	ReportCSV // CSV format
+
+	// ReportXML set the output format to junit xml
+	ReportXML // JUnit XML format
 )
 
 var text = `Results:
@@ -57,6 +61,30 @@ type reportInfo struct {
 	Stats  *gas.Metrics
 }
 
+type XMLReport struct {
+	XMLName    xml.Name    `xml:"testsuites"`
+	Testsuites []Testsuite `xml:"testsuite"`
+}
+
+type Testsuite struct {
+	XMLName   xml.Name   `xml:"testsuite"`
+	Name      string     `xml:"name,attr"`
+	Tests     int        `xml:"tests,attr"`
+	Testcases []Testcase `xml:"testcase"`
+}
+
+type Testcase struct {
+	XMLName xml.Name `xml:"testcase"`
+	Name    string   `xml:"name,attr"`
+	Failure Failure  `xml:"failure"`
+}
+
+type Failure struct {
+	XMLName xml.Name `xml:"failure"`
+	Message string   `xml:"message,attr"`
+	Text    string   `xml:",innerxml"`
+}
+
 // CreateReport generates a report based for the supplied issues and metrics given
 // the specified format. The formats currently accepted are: json, csv, html and text.
 func CreateReport(w io.Writer, format string, issues []*gas.Issue, metrics *gas.Metrics) error {
@@ -70,6 +98,8 @@ func CreateReport(w io.Writer, format string, issues []*gas.Issue, metrics *gas.
 		err = reportJSON(w, data)
 	case "csv":
 		err = reportCSV(w, data)
+	case "xml":
+		err = reportXML(w, data)
 	case "html":
 		err = reportFromHTMLTemplate(w, html, data)
 	case "text":
@@ -110,6 +140,52 @@ func reportCSV(w io.Writer, data *reportInfo) error {
 		}
 	}
 	return nil
+}
+
+func reportXML(w io.Writer, data *reportInfo) error {
+	testsuites := make(map[string][]Testcase)
+	for _, issue := range data.Issues {
+		stacktrace, err := json.MarshalIndent(issue, "", "\t")
+		if err != nil {
+			panic(err)
+		}
+		testcase := Testcase{
+			Name: issue.File,
+			Failure: Failure{
+				Message: "Found 1 vulnerability. See stacktrace for details.",
+				Text:    string(stacktrace),
+			},
+		}
+		if _, ok := testsuites[issue.What]; ok {
+			testsuites[issue.What] = append(testsuites[issue.What], testcase)
+		} else {
+			testsuites[issue.What] = []Testcase{testcase}
+		}
+	}
+
+	var xmlReport XMLReport
+	for what, testcases := range testsuites {
+		testsuite := Testsuite{
+			Name:  what,
+			Tests: len(testcases),
+		}
+		for _, testcase := range testcases {
+			testsuite.Testcases = append(testsuite.Testcases, testcase)
+		}
+		xmlReport.Testsuites = append(xmlReport.Testsuites, testsuite)
+	}
+
+	raw, err := xml.Marshal(xmlReport)
+	if err != nil {
+		panic(err)
+	}
+
+	_, err = w.Write(raw)
+	if err != nil {
+		panic(err)
+	}
+
+	return err
 }
 
 func reportFromPlaintextTemplate(w io.Writer, reportTemplate string, data *reportInfo) error {
