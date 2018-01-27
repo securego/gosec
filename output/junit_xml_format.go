@@ -31,7 +31,7 @@ type failure struct {
 	Text    string   `xml:",innerxml"`
 }
 
-func genereratePlaintext(issue *gas.Issue) string {
+func generatePlaintext(issue *gas.Issue) string {
 	return "Results:\n" +
 		"[" + issue.File + ":" + issue.Line + "] - " +
 		issue.What + " (Confidence: " + strconv.Itoa(int(issue.Confidence)) +
@@ -62,7 +62,7 @@ func createJUnitXMLStruct(groupedData map[string][]*gas.Issue) junitXMLReport {
 				Name: issue.File,
 				Failure: failure{
 					Message: "Found 1 vulnerability. See stacktrace for details.",
-					Text:    genereratePlaintext(issue),
+					Text:    generatePlaintext(issue),
 				},
 			}
 			testsuite.Testcases = append(testsuite.Testcases, testcase)
