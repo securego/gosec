@@ -1,8 +1,8 @@
 package output
 
 import (
-	"encoding/json"
 	"encoding/xml"
+	"strconv"
 
 	"github.com/GoASTScanner/gas"
 )
@@ -51,15 +51,17 @@ func createJUnitXMLStruct(groupedData map[string][]*gas.Issue) JUnitXMLReport {
 			Tests: len(issues),
 		}
 		for _, issue := range issues {
-			stacktrace, err := json.MarshalIndent(issue, "", "\t")
-			if err != nil {
-				panic(err)
-			}
+			text := "Results:\n"
+			text += "[" + issue.File + ":" + issue.Line + "] - " +
+				issue.What + " (Confidence: " + strconv.Itoa(int(issue.Confidence)) +
+				", Severity: " + strconv.Itoa(int(issue.Severity)) + ")\n"
+			text += "> " + issue.Code
+
 			testcase := Testcase{
 				Name: issue.File,
 				Failure: Failure{
 					Message: "Found 1 vulnerability. See stacktrace for details.",
-					Text:    string(stacktrace),
+					Text:    text,
 				},
 			}
 			testsuite.Testcases = append(testsuite.Testcases, testcase)
