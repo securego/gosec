@@ -180,6 +180,7 @@ func reportXML(w io.Writer, data *reportInfo) error {
 		panic(err)
 	}
 
+	raw = append([]byte("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"), raw...)
 	_, err = w.Write(raw)
 	if err != nil {
 		panic(err)
