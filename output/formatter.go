@@ -122,7 +122,7 @@ func reportJUnitXML(w io.Writer, data *reportInfo) error {
 	groupedData := groupDataByRules(data)
 	junitXMLStruct := createJUnitXMLStruct(groupedData)
 
-	raw, err := xml.Marshal(junitXMLStruct)
+	raw, err := xml.MarshalIndent(junitXMLStruct, "", "\t")
 	if err != nil {
 		panic(err)
 	}
