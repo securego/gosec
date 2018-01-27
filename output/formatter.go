@@ -38,8 +38,8 @@ const (
 	// ReportCSV set the output format to csv
 	ReportCSV // CSV format
 
-	// ReportXML set the output format to junit xml
-	ReportXML // JUnit XML format
+	// ReportJUnitXML set the output format to junit xml
+	ReportJUnitXML // JUnit XML format
 )
 
 var text = `Results:
@@ -59,30 +59,6 @@ Summary:
 type reportInfo struct {
 	Issues []*gas.Issue
 	Stats  *gas.Metrics
-}
-
-type XMLReport struct {
-	XMLName    xml.Name    `xml:"testsuites"`
-	Testsuites []Testsuite `xml:"testsuite"`
-}
-
-type Testsuite struct {
-	XMLName   xml.Name   `xml:"testsuite"`
-	Name      string     `xml:"name,attr"`
-	Tests     int        `xml:"tests,attr"`
-	Testcases []Testcase `xml:"testcase"`
-}
-
-type Testcase struct {
-	XMLName xml.Name `xml:"testcase"`
-	Name    string   `xml:"name,attr"`
-	Failure Failure  `xml:"failure"`
-}
-
-type Failure struct {
-	XMLName xml.Name `xml:"failure"`
-	Message string   `xml:"message,attr"`
-	Text    string   `xml:",innerxml"`
 }
 
 // CreateReport generates a report based for the supplied issues and metrics given
@@ -143,44 +119,16 @@ func reportCSV(w io.Writer, data *reportInfo) error {
 }
 
 func reportXML(w io.Writer, data *reportInfo) error {
-	testsuites := make(map[string][]Testcase)
-	for _, issue := range data.Issues {
-		stacktrace, err := json.MarshalIndent(issue, "", "\t")
-		if err != nil {
-			panic(err)
-		}
-		testcase := Testcase{
-			Name: issue.File,
-			Failure: Failure{
-				Message: "Found 1 vulnerability. See stacktrace for details.",
-				Text:    string(stacktrace),
-			},
-		}
-		if _, ok := testsuites[issue.What]; ok {
-			testsuites[issue.What] = append(testsuites[issue.What], testcase)
-		} else {
-			testsuites[issue.What] = []Testcase{testcase}
-		}
-	}
+	groupedData := groupDataByRules(data)
+	junitXMLStruct := createJUnitXMLStruct(groupedData)
 
-	var xmlReport XMLReport
-	for what, testcases := range testsuites {
-		testsuite := Testsuite{
-			Name:  what,
-			Tests: len(testcases),
-		}
-		for _, testcase := range testcases {
-			testsuite.Testcases = append(testsuite.Testcases, testcase)
-		}
-		xmlReport.Testsuites = append(xmlReport.Testsuites, testsuite)
-	}
-
-	raw, err := xml.Marshal(xmlReport)
+	raw, err := xml.Marshal(junitXMLStruct)
 	if err != nil {
 		panic(err)
 	}
 
-	raw = append([]byte("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"), raw...)
+	xmlHeader := []byte("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
+	raw = append(xmlHeader, raw...)
 	_, err = w.Write(raw)
 	if err != nil {
 		panic(err)
