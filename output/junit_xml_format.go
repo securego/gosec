@@ -7,28 +7,35 @@ import (
 	"github.com/GoASTScanner/gas"
 )
 
-type JUnitXMLReport struct {
+type junitXMLReport struct {
 	XMLName    xml.Name    `xml:"testsuites"`
-	Testsuites []Testsuite `xml:"testsuite"`
+	Testsuites []testsuite `xml:"testsuite"`
 }
 
-type Testsuite struct {
+type testsuite struct {
 	XMLName   xml.Name   `xml:"testsuite"`
 	Name      string     `xml:"name,attr"`
 	Tests     int        `xml:"tests,attr"`
-	Testcases []Testcase `xml:"testcase"`
+	Testcases []testcase `xml:"testcase"`
 }
 
-type Testcase struct {
+type testcase struct {
 	XMLName xml.Name `xml:"testcase"`
 	Name    string   `xml:"name,attr"`
-	Failure Failure  `xml:"failure"`
+	Failure failure  `xml:"failure"`
 }
 
-type Failure struct {
+type failure struct {
 	XMLName xml.Name `xml:"failure"`
 	Message string   `xml:"message,attr"`
 	Text    string   `xml:",innerxml"`
+}
+
+func genereratePlaintext(issue *gas.Issue) string {
+	return "Results:\n" +
+		"[" + issue.File + ":" + issue.Line + "] - " +
+		issue.What + " (Confidence: " + strconv.Itoa(int(issue.Confidence)) +
+		", Severity: " + strconv.Itoa(int(issue.Severity)) + ")\n" + "> " + issue.Code
 }
 
 func groupDataByRules(data *reportInfo) map[string][]*gas.Issue {
@@ -43,25 +50,19 @@ func groupDataByRules(data *reportInfo) map[string][]*gas.Issue {
 	return groupedData
 }
 
-func createJUnitXMLStruct(groupedData map[string][]*gas.Issue) JUnitXMLReport {
-	var xmlReport JUnitXMLReport
+func createJUnitXMLStruct(groupedData map[string][]*gas.Issue) junitXMLReport {
+	var xmlReport junitXMLReport
 	for what, issues := range groupedData {
-		testsuite := Testsuite{
+		testsuite := testsuite{
 			Name:  what,
 			Tests: len(issues),
 		}
 		for _, issue := range issues {
-			text := "Results:\n"
-			text += "[" + issue.File + ":" + issue.Line + "] - " +
-				issue.What + " (Confidence: " + strconv.Itoa(int(issue.Confidence)) +
-				", Severity: " + strconv.Itoa(int(issue.Severity)) + ")\n"
-			text += "> " + issue.Code
-
-			testcase := Testcase{
+			testcase := testcase{
 				Name: issue.File,
-				Failure: Failure{
+				Failure: failure{
 					Message: "Found 1 vulnerability. See stacktrace for details.",
-					Text:    text,
+					Text:    genereratePlaintext(issue),
 				},
 			}
 			testsuite.Testcases = append(testsuite.Testcases, testcase)
