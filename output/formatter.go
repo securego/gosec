@@ -74,8 +74,8 @@ func CreateReport(w io.Writer, format string, issues []*gas.Issue, metrics *gas.
 		err = reportJSON(w, data)
 	case "csv":
 		err = reportCSV(w, data)
-	case "xml":
-		err = reportXML(w, data)
+	case "junit-xml":
+		err = reportJUnitXML(w, data)
 	case "html":
 		err = reportFromHTMLTemplate(w, html, data)
 	case "text":
@@ -118,7 +118,7 @@ func reportCSV(w io.Writer, data *reportInfo) error {
 	return nil
 }
 
-func reportXML(w io.Writer, data *reportInfo) error {
+func reportJUnitXML(w io.Writer, data *reportInfo) error {
 	groupedData := groupDataByRules(data)
 	junitXMLStruct := createJUnitXMLStruct(groupedData)
 

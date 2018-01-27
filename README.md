@@ -104,7 +104,7 @@ $ gas -nosec=true ./...
 
 ### Output formats
 
-Gas currently supports text, json and csv output formats. By default
+Gas currently supports text, json, csv and JUnit XML output formats. By default
 results will be reported to stdout, but can also be written to an output
 file. The output format is controlled by the '-fmt' flag, and the output file is controlled by the '-out' flag as follows:
 

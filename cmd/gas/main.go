@@ -59,7 +59,7 @@ var (
 	flagIgnoreNoSec = flag.Bool("nosec", false, "Ignores #nosec comments when set")
 
 	// format output
-	flagFormat = flag.String("fmt", "text", "Set output format. Valid options are: json, csv, html, or text")
+	flagFormat = flag.String("fmt", "text", "Set output format. Valid options are: json, csv, junit-xml, html, or text")
 
 	// output file
 	flagOutput = flag.String("out", "", "Set output file for results")
