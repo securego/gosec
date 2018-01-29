@@ -1,7 +1,6 @@
 package gas_test
 
 import (
-	"bytes"
 	"io/ioutil"
 	"log"
 	"os"
@@ -20,10 +19,9 @@ var _ = Describe("Analyzer", func() {
 	var (
 		analyzer *gas.Analyzer
 		logger   *log.Logger
-		output   *bytes.Buffer
 	)
 	BeforeEach(func() {
-		logger, output = testutils.NewLogger()
+		logger, _ = testutils.NewLogger()
 		analyzer = gas.NewAnalyzer(nil, logger)
 	})
 
