@@ -1,7 +1,6 @@
 package rules_test
 
 import (
-	"bytes"
 	"fmt"
 	"log"
 
@@ -17,14 +16,13 @@ var _ = Describe("gas rules", func() {
 
 	var (
 		logger   *log.Logger
-		output   *bytes.Buffer
 		config   gas.Config
 		analyzer *gas.Analyzer
 		runner   func(string, []testutils.CodeSample)
 	)
 
 	BeforeEach(func() {
-		logger, output = testutils.NewLogger()
+		logger, _ = testutils.NewLogger()
 		config = gas.NewConfig()
 		analyzer = gas.NewAnalyzer(config, logger)
 		runner = func(rule string, samples []testutils.CodeSample) {
