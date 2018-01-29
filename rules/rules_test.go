@@ -1,7 +1,6 @@
 package rules_test
 
 import (
-	"bytes"
 	"fmt"
 	"log"
 
