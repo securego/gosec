@@ -96,7 +96,11 @@ func (gas *Analyzer) LoadRules(ruleDefinitions ...RuleBuilder) {
 
 // Process kicks off the analysis process for a given package
 func (gas *Analyzer) Process(packagePaths ...string) error {
-	packageConfig := loader.Config{Build: &build.Default, ParserMode: parser.ParseComments}
+	packageConfig := loader.Config{
+		Build:       &build.Default,
+		ParserMode:  parser.ParseComments,
+		AllowErrors: true,
+	}
 	for _, packagePath := range packagePaths {
 		abspath, _ := filepath.Abs(packagePath)
 		gas.logger.Println("Searching directory:", abspath)
