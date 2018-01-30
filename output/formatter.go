@@ -124,17 +124,17 @@ func reportJUnitXML(w io.Writer, data *reportInfo) error {
 
 	raw, err := xml.MarshalIndent(junitXMLStruct, "", "\t")
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	xmlHeader := []byte("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
 	raw = append(xmlHeader, raw...)
 	_, err = w.Write(raw)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
-	return err
+	return nil
 }
 
 func reportFromPlaintextTemplate(w io.Writer, reportTemplate string, data *reportInfo) error {
