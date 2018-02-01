@@ -2,6 +2,7 @@ package output
 
 import (
 	"encoding/xml"
+	htmlLib "html"
 	"strconv"
 
 	"github.com/GoASTScanner/gas"
@@ -35,7 +36,7 @@ func generatePlaintext(issue *gas.Issue) string {
 	return "Results:\n" +
 		"[" + issue.File + ":" + issue.Line + "] - " +
 		issue.What + " (Confidence: " + strconv.Itoa(int(issue.Confidence)) +
-		", Severity: " + strconv.Itoa(int(issue.Severity)) + ")\n" + "> " + issue.Code
+		", Severity: " + strconv.Itoa(int(issue.Severity)) + ")\n" + "> " + htmlLib.EscapeString(issue.Code)
 }
 
 func groupDataByRules(data *reportInfo) map[string][]*gas.Issue {
