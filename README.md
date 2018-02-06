@@ -41,6 +41,7 @@ or to specify a set of rules to explicitly exclude using the '-exclude=' flag.
   - G103: Audit the use of unsafe block
   - G104: Audit errors not checked
   - G105: Audit the use of math/big.Int.Exp
+  - G106: Audit the use of ssh.InsecureIgnoreHostKey
   - G201: SQL query construction using format string
   - G202: SQL query construction using string concatenation
   - G203: Use of unescaped data in HTML templates
