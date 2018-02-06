@@ -183,6 +183,15 @@ func main() {
     z = z.Exp(x, y, m)
 }`, 1}}
 
+	// SampleCodeG106 - ssh InsecureIgnoreHostKey
+	SampleCodeG106 = []CodeSample{{`
+package main
+import (
+        "golang.org/x/crypto/ssh"
+)
+func main() {
+        _ :=  ssh.InsecureIgnoreHostKey()
+}`, 1}}
 	// SampleCodeG201 - SQL injection via format string
 	SampleCodeG201 = []CodeSample{
 		{`
