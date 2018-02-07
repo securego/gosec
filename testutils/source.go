@@ -190,7 +190,7 @@ import (
         "golang.org/x/crypto/ssh"
 )
 func main() {
-        _ :=  ssh.InsecureIgnoreHostKey()
+        _ =  ssh.InsecureIgnoreHostKey()
 }`, 1}}
 	// SampleCodeG201 - SQL injection via format string
 	SampleCodeG201 = []CodeSample{
