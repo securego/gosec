@@ -149,9 +149,15 @@ func saveOutput(filename, format string, issues []*gas.Issue, metrics *gas.Metri
 			return err
 		}
 		defer outfile.Close()
-		output.CreateReport(outfile, format, issues, metrics)
+		err = output.CreateReport(outfile, format, issues, metrics)
+		if err != nil {
+			return err
+		}
 	} else {
-		output.CreateReport(os.Stdout, format, issues, metrics)
+		err := output.CreateReport(os.Stdout, format, issues, metrics)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -166,7 +172,7 @@ func main() {
 
 	// Ensure at least one file was specified
 	if flag.NArg() == 0 {
-		fmt.Fprintf(os.Stderr, "\nError: FILE [FILE...] or './...' expected\n")
+		fmt.Fprintf(os.Stderr, "\nError: FILE [FILE...] or './...' expected\n") // #nosec
 		flag.Usage()
 		os.Exit(1)
 	}
@@ -231,7 +237,7 @@ func main() {
 	}
 
 	// Finialize logging
-	logWriter.Close()
+	logWriter.Close() // #nosec
 
 	// Do we have an issue? If so exit 1
 	if issuesFound {
