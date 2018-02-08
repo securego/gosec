@@ -237,7 +237,7 @@ func main() {
 
 	// Sort the issue by severity
 	if *flagSortIssues {
-		sortIssues(issues)
+		sort.Slice(issues, func(i, j int) bool { return (issues[i].Severity > issues[j].Severity) })
 	}
 
 	// Create output report
