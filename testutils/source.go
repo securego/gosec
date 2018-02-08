@@ -450,6 +450,7 @@ func main() {
 	ioutil.WriteFile("/tmp/demo2", []byte("This is some data"), 0644)
 }`, 2}}
 
+// SampleCodeG304 - potential file inclusion vulnerability
 SampleCodeG304 = []CodeSample{{`
 package main
 import (
