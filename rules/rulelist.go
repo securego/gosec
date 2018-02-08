@@ -65,6 +65,7 @@ func Generate(filters ...RuleFilter) RuleList {
 		"G103": RuleDefinition{"Audit the use of unsafe block", NewUsingUnsafe},
 		"G104": RuleDefinition{"Audit errors not checked", NewNoErrorCheck},
 		"G105": RuleDefinition{"Audit the use of big.Exp function", NewUsingBigExp},
+		"G106": RuleDefinition{"Audit the use of ssh.InsecureIgnoreHostKey function", NewSSHHostKey},
 
 		// injection
 		"G201": RuleDefinition{"SQL query construction using format string", NewSQLStrFormat},
