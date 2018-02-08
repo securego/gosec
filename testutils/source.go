@@ -183,15 +183,6 @@ func main() {
     z = z.Exp(x, y, m)
 }`, 1}}
 
-	// SampleCodeG106 - ssh InsecureIgnoreHostKey
-	SampleCodeG106 = []CodeSample{{`
-package main
-import (
-        "golang.org/x/crypto/ssh"
-)
-func main() {
-        _ =  ssh.InsecureIgnoreHostKey()
-}`, 1}}
 	// SampleCodeG201 - SQL injection via format string
 	SampleCodeG201 = []CodeSample{
 		{`
@@ -458,6 +449,38 @@ func main() {
 	defer file1.Close()
 	ioutil.WriteFile("/tmp/demo2", []byte("This is some data"), 0644)
 }`, 2}}
+
+SampleCodeG304 = []CodeSample{{`
+package main
+import (
+	"os"
+	"ioutil"
+	"log"
+)
+func main() {
+	f := os.Getenv("tainted_file")
+	body, err := ioutil.ReadFile(f)
+	if err != nil {
+	 log.Printf("Error: %v\n", err)
+	}
+	log.Print(f)
+
+}`, 1}, {`
+package main
+import (
+"log"
+"os/exec"
+)
+func main() {
+cmd := exec.Command("sleep", "5")
+err := cmd.Start()
+if err != nil {
+	log.Fatal(err)
+}
+log.Printf("Waiting for command to finish...")
+	err = cmd.Wait()
+	log.Printf("Command finished with error: %v", err)
+}`, 1}}
 
 	// SampleCodeG401 - Use of weak crypto MD5
 	SampleCodeG401 = []CodeSample{
