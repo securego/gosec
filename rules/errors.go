@@ -77,7 +77,7 @@ func NewNoErrorCheck(conf gas.Config) (gas.Rule, []ast.Node) {
 	// black list instead.
 	whitelist := gas.NewCallList()
 	whitelist.AddAll("bytes.Buffer", "Write", "WriteByte", "WriteRune", "WriteString")
-	whitelist.AddAll("fmt", "Print", "Printf", "Println")
+	whitelist.AddAll("fmt", "Print", "Printf", "Println", "Fprint", "Fprintf", "Fprintln")
 	whitelist.Add("io.PipeWriter", "CloseWithError")
 
 	if configured, ok := conf["G104"]; ok {
