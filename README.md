@@ -49,6 +49,7 @@ or to specify a set of rules to explicitly exclude using the '-exclude=' flag.
   - G301: Poor file permissions used when creating a directory
   - G302: Poor file permisions used with chmod
   - G303: Creating tempfile using a predictable path
+  - G304: Audit use of reading files
   - G401: Detect the usage of DES, RC4, or MD5
   - G402: Look for bad TLS connection settings
   - G403: Ensure minimum RSA key length of 2048 bits
@@ -113,4 +114,3 @@ file. The output format is controlled by the '-fmt' flag, and the output file is
 # Write output in json format to results.json
 $ gas -fmt=json -out=results.json *.go
 ```
-
