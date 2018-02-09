@@ -477,20 +477,30 @@ func main() {
 
 }`, 1}, {`
 package main
-import (
-"log"
-"os/exec"
-)
-func main() {
-cmd := exec.Command("sleep", "5")
-err := cmd.Start()
-if err != nil {
-	log.Fatal(err)
-}
-log.Printf("Waiting for command to finish...")
-	err = cmd.Wait()
-	log.Printf("Command finished with error: %v", err)
-}`, 1}}
+
+	import (
+		"fmt"
+		"log"
+		"net/http"
+		"os"
+	)
+
+	func main() {
+		http.HandleFunc("/bar", func(w http.ResponseWriter, r *http.Request) {
+			title := r.URL.Query().Get("title")
+			f, err := os.Open(title)
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+			}
+			body := make([]byte, 5)
+			n1, err := f.Read(body)
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+			}
+			fmt.Fprintf(w, "%s", body)
+		})
+		log.Fatal(http.ListenAndServe(":3000", nil))
+	}`, 1}}
 
 	// SampleCodeG401 - Use of weak crypto MD5
 	SampleCodeG401 = []CodeSample{
