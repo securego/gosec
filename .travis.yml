@@ -1,17 +1,25 @@
 language: go
-before_script:
-  - go vet $(go list ./... | grep -v /vendor/)
+
 go:
   - 1.7
   - 1.8
   - 1.9
   - tip
+
 install:
+  - go get -u github.com/golang/lint/golint
   - go get -v github.com/onsi/ginkgo/ginkgo
   - go get -v github.com/onsi/gomega
   - go get -v golang.org/x/crypto/ssh
+  - go get github.com/GoASTScanner/gas/cmd/gas/...
   - go get -v -t ./...
   - export PATH=$PATH:$HOME/gopath/bin
+
+before_script:
+  - test -z "$(gofmt -s -l -w $(find . -type f -name '*.go' -not -path './vendor/*') | tee /dev/stderr)"
+  - test -z "$(golint . |  tee /dev/stderr)"
+  - go vet $(go list ./... | grep -v /vendor/)
+  - gas ./...
 
 script: ginkgo -r
 
