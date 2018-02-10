@@ -76,7 +76,7 @@ func codeSnippet(file *os.File, start int64, end int64, n ast.Node) (string, err
 	}
 
 	size := (int)(end - start) // Go bug, os.File.Read should return int64 ...
-	file.Seek(start, 0)
+	file.Seek(start, 0)        // #nosec
 
 	buf := make([]byte, size)
 	if nread, err := file.Read(buf); err != nil || nread != size {
