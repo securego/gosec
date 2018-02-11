@@ -2,7 +2,9 @@ language: go
 before_script:
   - go vet $(go list ./... | grep -v /vendor/)
 go:
-  - 1.5
+  - 1.7
+  - 1.8
+  - 1.9
   - tip
 install:
   - go get -v github.com/onsi/ginkgo/ginkgo
