@@ -60,35 +60,35 @@ func NewRuleFilter(action bool, ruleIDs ...string) RuleFilter {
 func Generate(filters ...RuleFilter) RuleList {
 	rules := map[string]RuleDefinition{
 		// misc
-		"G101": RuleDefinition{"Look for hardcoded credentials", NewHardcodedCredentials},
-		"G102": RuleDefinition{"Bind to all interfaces", NewBindsToAllNetworkInterfaces},
-		"G103": RuleDefinition{"Audit the use of unsafe block", NewUsingUnsafe},
-		"G104": RuleDefinition{"Audit errors not checked", NewNoErrorCheck},
-		"G105": RuleDefinition{"Audit the use of big.Exp function", NewUsingBigExp},
-		"G106": RuleDefinition{"Audit the use of ssh.InsecureIgnoreHostKey function", NewSSHHostKey},
+		"G101": {"Look for hardcoded credentials", NewHardcodedCredentials},
+		"G102": {"Bind to all interfaces", NewBindsToAllNetworkInterfaces},
+		"G103": {"Audit the use of unsafe block", NewUsingUnsafe},
+		"G104": {"Audit errors not checked", NewNoErrorCheck},
+		"G105": {"Audit the use of big.Exp function", NewUsingBigExp},
+		"G106": {"Audit the use of ssh.InsecureIgnoreHostKey function", NewSSHHostKey},
 
 		// injection
-		"G201": RuleDefinition{"SQL query construction using format string", NewSQLStrFormat},
-		"G202": RuleDefinition{"SQL query construction using string concatenation", NewSQLStrConcat},
-		"G203": RuleDefinition{"Use of unescaped data in HTML templates", NewTemplateCheck},
-		"G204": RuleDefinition{"Audit use of command execution", NewSubproc},
+		"G201": {"SQL query construction using format string", NewSQLStrFormat},
+		"G202": {"SQL query construction using string concatenation", NewSQLStrConcat},
+		"G203": {"Use of unescaped data in HTML templates", NewTemplateCheck},
+		"G204": {"Audit use of command execution", NewSubproc},
 
 		// filesystem
-		"G301": RuleDefinition{"Poor file permissions used when creating a directory", NewMkdirPerms},
-		"G302": RuleDefinition{"Poor file permisions used when creation file or using chmod", NewFilePerms},
-		"G303": RuleDefinition{"Creating tempfile using a predictable path", NewBadTempFile},
+		"G301": {"Poor file permissions used when creating a directory", NewMkdirPerms},
+		"G302": {"Poor file permisions used when creation file or using chmod", NewFilePerms},
+		"G303": {"Creating tempfile using a predictable path", NewBadTempFile},
 
 		// crypto
-		"G401": RuleDefinition{"Detect the usage of DES, RC4, or MD5", NewUsesWeakCryptography},
-		"G402": RuleDefinition{"Look for bad TLS connection settings", NewIntermediateTLSCheck},
-		"G403": RuleDefinition{"Ensure minimum RSA key length of 2048 bits", NewWeakKeyStrength},
-		"G404": RuleDefinition{"Insecure random number source (rand)", NewWeakRandCheck},
+		"G401": {"Detect the usage of DES, RC4, or MD5", NewUsesWeakCryptography},
+		"G402": {"Look for bad TLS connection settings", NewIntermediateTLSCheck},
+		"G403": {"Ensure minimum RSA key length of 2048 bits", NewWeakKeyStrength},
+		"G404": {"Insecure random number source (rand)", NewWeakRandCheck},
 
 		// blacklist
-		"G501": RuleDefinition{"Import blacklist: crypto/md5", NewBlacklistedImportMD5},
-		"G502": RuleDefinition{"Import blacklist: crypto/des", NewBlacklistedImportDES},
-		"G503": RuleDefinition{"Import blacklist: crypto/rc4", NewBlacklistedImportRC4},
-		"G504": RuleDefinition{"Import blacklist: net/http/cgi", NewBlacklistedImportCGI},
+		"G501": {"Import blacklist: crypto/md5", NewBlacklistedImportMD5},
+		"G502": {"Import blacklist: crypto/des", NewBlacklistedImportDES},
+		"G503": {"Import blacklist: crypto/rc4", NewBlacklistedImportRC4},
+		"G504": {"Import blacklist: net/http/cgi", NewBlacklistedImportCGI},
 	}
 
 	for rule := range rules {
