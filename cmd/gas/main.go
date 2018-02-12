@@ -79,6 +79,9 @@ var (
 	// log to file or stderr
 	flagLogfile = flag.String("log", "", "Log messages to file rather than stderr")
 
+	// sort the issues by severity
+	flagSortIssues = flag.Bool("sort", true, "Sort issues by severity")
+
 	logger *log.Logger
 )
 
@@ -229,6 +232,11 @@ func main() {
 	// Exit quietly if nothing was found
 	if !issuesFound && *flagQuiet {
 		os.Exit(0)
+	}
+
+	// Sort the issue by severity
+	if *flagSortIssues {
+		sortIssues(issues)
 	}
 
 	// Create output report

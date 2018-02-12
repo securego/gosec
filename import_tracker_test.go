@@ -15,7 +15,7 @@ var _ = Describe("ImportTracker", func() {
 	})
 	Context("when I have a valid go package", func() {
 		It("should record all import specs", func() {
-            Expect(source).To(Equal(source))
+			Expect(source).To(Equal(source))
 			Skip("Not implemented")
 		})
 

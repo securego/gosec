@@ -102,7 +102,10 @@ func (gas *Analyzer) Process(packagePaths ...string) error {
 		AllowErrors: true,
 	}
 	for _, packagePath := range packagePaths {
-		abspath, _ := filepath.Abs(packagePath)
+		abspath, err := filepath.Abs(packagePath)
+		if err != nil {
+			return err
+		}
 		gas.logger.Println("Searching directory:", abspath)
 
 		basePackage, err := build.Default.ImportDir(packagePath, build.ImportComment)
