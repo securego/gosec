@@ -74,10 +74,10 @@ func Generate(filters ...RuleFilter) RuleList {
 		"G204": {"Audit use of command execution", NewSubproc},
 
 		// filesystem
-		"G301": RuleDefinition{"Poor file permissions used when creating a directory", NewMkdirPerms},
-		"G302": RuleDefinition{"Poor file permisions used when creation file or using chmod", NewFilePerms},
-		"G303": RuleDefinition{"Creating tempfile using a predictable path", NewBadTempFile},
-		"G304": RuleDefinition{"Audit use of file inclusion", NewReadFile},
+		"G301": {"Poor file permissions used when creating a directory", NewMkdirPerms},
+		"G302": {"Poor file permisions used when creation file or using chmod", NewFilePerms},
+		"G303": {"Creating tempfile using a predictable path", NewBadTempFile},
+		"G304": {"Audit use of file inclusion", NewReadFile},
 
 		// crypto
 		"G401": {"Detect the usage of DES, RC4, or MD5", NewUsesWeakCryptography},

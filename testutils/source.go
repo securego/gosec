@@ -184,7 +184,7 @@ func main() {
 }`, 1}}
 
 	// SampleCodeG106 - ssh InsecureIgnoreHostKey
- 	SampleCodeG106 = []CodeSample{{`
+	SampleCodeG106 = []CodeSample{{`
  package main
  import (
          "golang.org/x/crypto/ssh"
@@ -192,7 +192,7 @@ func main() {
  func main() {
          _ =  ssh.InsecureIgnoreHostKey()
  }`, 1}}
-	
+
 	// SampleCodeG201 - SQL injection via format string
 	SampleCodeG201 = []CodeSample{{`
 // Format string without proper quoting
@@ -237,7 +237,7 @@ func main(){
 	}
 	defer rows.Close()
 }`, 0}, {
-			`
+		`
 // Format string false positive
 package main
 import (
@@ -459,8 +459,8 @@ func main() {
 	ioutil.WriteFile("/tmp/demo2", []byte("This is some data"), 0644)
 }`, 2}}
 
-// SampleCodeG304 - potential file inclusion vulnerability
-SampleCodeG304 = []CodeSample{{`
+	// SampleCodeG304 - potential file inclusion vulnerability
+	SampleCodeG304 = []CodeSample{{`
 package main
 import (
 	"os"
