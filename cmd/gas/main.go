@@ -110,6 +110,7 @@ func usage() {
 func loadConfig(configFile string) (gas.Config, error) {
 	config := gas.NewConfig()
 	if configFile != "" {
+		// #nosec
 		file, err := os.Open(configFile)
 		if err != nil {
 			return nil, err
