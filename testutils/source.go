@@ -192,11 +192,10 @@ func main() {
  func main() {
          _ =  ssh.InsecureIgnoreHostKey()
  }`, 1}}
-<<<<<<< HEAD
 
 =======
-	
->>>>>>> Update source.go
+
+>>>>>>> gofmt
 	// SampleCodeG201 - SQL injection via format string
 	SampleCodeG201 = []CodeSample{{`
 // Format string without proper quoting
