@@ -36,6 +36,8 @@ GAS - Go AST Scanner
 Gas analyzes Go source code to look for common programming mistakes that
 can lead to security problems.
 
+VERSION: %s
+
 USAGE:
 
 	# Check a single package
@@ -88,6 +90,7 @@ var (
 // #nosec
 func usage() {
 
+	usageText := fmt.Sprintf(usageText, Version())
 	fmt.Fprintln(os.Stderr, usageText)
 	fmt.Fprint(os.Stderr, "OPTIONS:\n\n")
 	flag.PrintDefaults()
