@@ -75,7 +75,7 @@ func NewFilePerms(conf gas.Config) (gas.Rule, []ast.Node) {
 // NewMkdirPerms creates a rule to detect directory creation with more permissive than
 // configured permission mask.
 func NewMkdirPerms(conf gas.Config) (gas.Rule, []ast.Node) {
-	mode := getConfiguredMode(conf, "G301", 0700)
+	mode := getConfiguredMode(conf, "G301", 0750)
 	return &filePermissions{
 		mode:  mode,
 		pkg:   "os",
