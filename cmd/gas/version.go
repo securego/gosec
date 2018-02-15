@@ -11,6 +11,7 @@ const (
 	tag   = ""
 )
 
+// Version builds a semantic version
 func Version() string {
 	version := fmt.Sprintf("%d.%d.%d", major, minor, patch)
 	if tag != "" {
