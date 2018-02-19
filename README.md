@@ -114,7 +114,7 @@ file. The output format is controlled by the '-fmt' flag, and the output file is
 $ gas -fmt=json -out=results.json *.go
 ```
 
-### Generate TLS rule 
+### Generate TLS rule
 
 The configuration of TLS rule can be generated from [Mozilla's TLS ciphers recommendation](https://statics.tls.security.mozilla.org/server-side-tls-conf.json).
 
