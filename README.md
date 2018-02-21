@@ -113,8 +113,39 @@ file. The output format is controlled by the '-fmt' flag, and the output file is
 # Write output in json format to results.json
 $ gas -fmt=json -out=results.json *.go
 ```
+### Development
 
-### Generate TLS rule
+#### Release Build
+
+Gas can be released as follows:
+
+```bash
+# Prepare the build variables
+export VERSION=2.0.0
+export GIT_TAG=$(git describe --always --tags)
+export BUILD_DATE=$(date +%Y-%m-%d)
+
+# Perform a release build
+go build -ldflags "-X main.Version=${VERSION} -X main.GitTag=${GIT_TAG} -X main.BuildDate=${BUILD_DATE}" ./cmd/gas/
+```
+
+The build information is now displayed in the usage text.
+
+```
+gas -h
+
+GAS - Go AST Scanner
+
+Gas analyzes Go source code to look for common programming mistakes that
+can lead to security problems.
+
+VERSION: 2.0.0
+GIT TAG: 96489ff
+BUILD DATE: 2018-02-21
+
+```
+
+#### Generate TLS rule
 
 The configuration of TLS rule can be generated from [Mozilla's TLS ciphers recommendation](https://statics.tls.security.mozilla.org/server-side-tls-conf.json).
 
