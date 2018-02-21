@@ -127,8 +127,7 @@ export GIT_TAG=$(git describe --always --tags)
 export BUILD_DATE=$(date +%Y-%m-%d)
 
 # Perform a release build
-cd cmd/gas
-go build -ldflags "-X main.Version=${VERSION} -X main.GitTag=${GIT_TAG} -X main.BuildDate=${BUILD_DATE}" .
+go build -ldflags "-X main.Version=${VERSION} -X main.GitTag=${GIT_TAG} -X main.BuildDate=${BUILD_DATE}" ./cmd/gas/
 ```
 
 The build information is now displayed in the usage text.
