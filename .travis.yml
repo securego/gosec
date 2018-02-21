@@ -14,11 +14,5 @@ install:
   - go get -v -t ./...
   - export PATH=$PATH:$HOME/gopath/bin
 
-before_script:
-  - test -z "$(gofmt -s -l -w $(find . -type f -name '*.go' -not -path './vendor/*') | tee /dev/stderr)"
-  - test -z "$(golint . |  tee /dev/stderr)"
-  - go vet $(go list ./... | grep -v /vendor/)
-  - gas ./...
-
-script: ginkgo -r
+script: make test
 
