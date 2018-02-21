@@ -114,3 +114,21 @@ file. The output format is controlled by the '-fmt' flag, and the output file is
 $ gas -fmt=json -out=results.json *.go
 ```
 
+### Generate TLS rule
+
+The configuration of TLS rule can be generated from [Mozilla's TLS ciphers recommendation](https://statics.tls.security.mozilla.org/server-side-tls-conf.json).
+
+
+First you need to install the generator tool:
+
+```
+go get github.com/GoASTScanner/gas/cmd/tlsconfig/...
+```
+
+You can invoke now the `go generate` in the root of the project:
+
+```
+go generate ./...
+```
+
+This will generate the `rules/tls_config.go` file with will contain the current ciphers recommendation from Mozilla.
