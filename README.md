@@ -116,24 +116,31 @@ $ gas -fmt=json -out=results.json *.go
 ```
 ### Development
 
+#### Build
+
+
+```
+make
+```
+
+#### Tests
+
+```
+make tests
+```
+
 #### Release Build
 
 Gas can be released as follows:
 
 ```bash
-# Prepare the build variables
-export VERSION=2.0.0
-export GIT_TAG=$(git describe --always --tags)
-export BUILD_DATE=$(date +%Y-%m-%d)
-
-# Perform a release build
-go build -ldflags "-X main.Version=${VERSION} -X main.GitTag=${GIT_TAG} -X main.BuildDate=${BUILD_DATE}" ./cmd/gas/
+make release VERSION=2.0.0
 ```
 
-The build information is now displayed in the usage text.
+The released version of the tool is available in the `build` folder. The build information should be displayed in the usage text.
 
 ```
-gas -h
+./build/gas-2.0.0-linux-amd64 -h
 
 GAS - Go AST Scanner
 
@@ -144,6 +151,20 @@ VERSION: 2.0.0
 GIT TAG: 96489ff
 BUILD DATE: 2018-02-21
 
+```
+
+#### Docker image
+
+You can execute a release and build the docker image as follows:
+
+```
+make image VERSION=2.0.0
+```
+
+Now you can run the gas tool in a container against your local workspace:
+
+```
+docker run -it -v <YOUR LOCAL WORKSPACE>:/workspace gas /workspace
 ```
 
 #### Generate TLS rule
