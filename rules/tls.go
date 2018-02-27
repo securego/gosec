@@ -108,12 +108,15 @@ func (t *insecureConfigTLS) processTLSConfVal(n *ast.KeyValueExpr, c *gas.Contex
 }
 
 func (t *insecureConfigTLS) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
-	if complit, ok := n.(*ast.CompositeLit); ok && complit.Type != nil && c.Info.TypeOf(complit.Type).String() == t.requiredType {
-		for _, elt := range complit.Elts {
-			if kve, ok := elt.(*ast.KeyValueExpr); ok {
-				issue := t.processTLSConfVal(kve, c)
-				if issue != nil {
-					return issue, nil
+	if complit, ok := n.(*ast.CompositeLit); ok && complit.Type != nil {
+		actualType := c.Info.TypeOf(complit.Type)
+		if actualType != nil && actualType.String() == t.requiredType {
+			for _, elt := range complit.Elts {
+				if kve, ok := elt.(*ast.KeyValueExpr); ok {
+					issue := t.processTLSConfVal(kve, c)
+					if issue != nil {
+						return issue, nil
+					}
 				}
 			}
 		}
