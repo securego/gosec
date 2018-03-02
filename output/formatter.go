@@ -17,6 +17,7 @@ package output
 import (
 	"encoding/csv"
 	"encoding/json"
+	"encoding/xml"
 	htmlTemplate "html/template"
 	"io"
 	plainTemplate "text/template"
@@ -36,6 +37,9 @@ const (
 
 	// ReportCSV set the output format to csv
 	ReportCSV // CSV format
+
+	// ReportJUnitXML set the output format to junit xml
+	ReportJUnitXML // JUnit XML format
 )
 
 var text = `Results:
@@ -70,6 +74,8 @@ func CreateReport(w io.Writer, format string, issues []*gas.Issue, metrics *gas.
 		err = reportJSON(w, data)
 	case "csv":
 		err = reportCSV(w, data)
+	case "junit-xml":
+		err = reportJUnitXML(w, data)
 	case "html":
 		err = reportFromHTMLTemplate(w, html, data)
 	case "text":
@@ -109,6 +115,25 @@ func reportCSV(w io.Writer, data *reportInfo) error {
 			return err
 		}
 	}
+	return nil
+}
+
+func reportJUnitXML(w io.Writer, data *reportInfo) error {
+	groupedData := groupDataByRules(data)
+	junitXMLStruct := createJUnitXMLStruct(groupedData)
+
+	raw, err := xml.MarshalIndent(junitXMLStruct, "", "\t")
+	if err != nil {
+		return err
+	}
+
+	xmlHeader := []byte("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
+	raw = append(xmlHeader, raw...)
+	_, err = w.Write(raw)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

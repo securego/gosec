@@ -41,6 +41,7 @@ or to specify a set of rules to explicitly exclude using the '-exclude=' flag.
   - G103: Audit the use of unsafe block
   - G104: Audit errors not checked
   - G105: Audit the use of math/big.Int.Exp
+  - G106: Audit the use of ssh.InsecureIgnoreHostKey
   - G201: SQL query construction using format string
   - G202: SQL query construction using string concatenation
   - G203: Use of unescaped data in HTML templates
@@ -104,7 +105,7 @@ $ gas -nosec=true ./...
 
 ### Output formats
 
-Gas currently supports text, json and csv output formats. By default
+Gas currently supports text, json, csv and JUnit XML output formats. By default
 results will be reported to stdout, but can also be written to an output
 file. The output format is controlled by the '-fmt' flag, and the output file is controlled by the '-out' flag as follows:
 
@@ -113,3 +114,21 @@ file. The output format is controlled by the '-fmt' flag, and the output file is
 $ gas -fmt=json -out=results.json *.go
 ```
 
+### Generate TLS rule
+
+The configuration of TLS rule can be generated from [Mozilla's TLS ciphers recommendation](https://statics.tls.security.mozilla.org/server-side-tls-conf.json).
+
+
+First you need to install the generator tool:
+
+```
+go get github.com/GoASTScanner/gas/cmd/tlsconfig/...
+```
+
+You can invoke now the `go generate` in the root of the project:
+
+```
+go generate ./...
+```
+
+This will generate the `rules/tls_config.go` file with will contain the current ciphers recommendation from Mozilla.

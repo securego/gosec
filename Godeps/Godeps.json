@@ -1,8 +1,20 @@
 {
 	"ImportPath": "github.com/GoASTScanner/gas",
 	"GoVersion": "go1.9",
-	"GodepVersion": "v79",
+	"GodepVersion": "v80",
+	"Packages": [
+		"./..."
+	],
 	"Deps": [
+		{
+			"ImportPath": "github.com/kisielk/gotool",
+			"Rev": "0de1eaf82fa3f583ce21fde859f1e7e0c5e9b220"
+		},
+		{
+			"ImportPath": "github.com/mozilla/tls-observatory/constants",
+			"Comment": "1.2.32-17-g17e0ce4b",
+			"Rev": "17e0ce4bfc46eae3d57acf13a2d7c7517655d493"
+		},
 		{
 			"ImportPath": "github.com/nbutton23/zxcvbn-go",
 			"Rev": "a22cb81b2ecdde8b68e9ffb8824731cbf88e1de4"
@@ -188,6 +200,11 @@
 			"ImportPath": "github.com/onsi/gomega/types",
 			"Comment": "v1.2.0-2-gdcabb60",
 			"Rev": "dcabb60a477c2b6f456df65037cb6708210fbb02"
+		},
+		{
+			"ImportPath": "github.com/ryanuber/go-glob",
+			"Comment": "v0.1-4-g256dc44",
+			"Rev": "256dc444b735e061061cf46c809487313d5b0065"
 		},
 		{
 			"ImportPath": "golang.org/x/net/html",

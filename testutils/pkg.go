@@ -128,6 +128,7 @@ func (p *TestPackage) CreateContext(filename string) *gas.Context {
 // Close will delete the package and all files in that directory
 func (p *TestPackage) Close() {
 	if p.ondisk {
-		os.RemoveAll(p.Path)
+		err := os.RemoveAll(p.Path)
+		log.Println(err)
 	}
 }

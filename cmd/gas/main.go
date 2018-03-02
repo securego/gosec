@@ -59,7 +59,7 @@ var (
 	flagIgnoreNoSec = flag.Bool("nosec", false, "Ignores #nosec comments when set")
 
 	// format output
-	flagFormat = flag.String("fmt", "text", "Set output format. Valid options are: json, csv, html, or text")
+	flagFormat = flag.String("fmt", "text", "Set output format. Valid options are: json, csv, junit-xml, html, or text")
 
 	// output file
 	flagOutput = flag.String("out", "", "Set output file for results")
@@ -78,6 +78,9 @@ var (
 
 	// log to file or stderr
 	flagLogfile = flag.String("log", "", "Log messages to file rather than stderr")
+
+	// sort the issues by severity
+	flagSortIssues = flag.Bool("sort", true, "Sort issues by severity")
 
 	logger *log.Logger
 )
@@ -149,9 +152,15 @@ func saveOutput(filename, format string, issues []*gas.Issue, metrics *gas.Metri
 			return err
 		}
 		defer outfile.Close()
-		output.CreateReport(outfile, format, issues, metrics)
+		err = output.CreateReport(outfile, format, issues, metrics)
+		if err != nil {
+			return err
+		}
 	} else {
-		output.CreateReport(os.Stdout, format, issues, metrics)
+		err := output.CreateReport(os.Stdout, format, issues, metrics)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -166,7 +175,7 @@ func main() {
 
 	// Ensure at least one file was specified
 	if flag.NArg() == 0 {
-		fmt.Fprintf(os.Stderr, "\nError: FILE [FILE...] or './...' expected\n")
+		fmt.Fprintf(os.Stderr, "\nError: FILE [FILE...] or './...' expected\n") // #nosec
 		flag.Usage()
 		os.Exit(1)
 	}
@@ -225,13 +234,18 @@ func main() {
 		os.Exit(0)
 	}
 
+	// Sort the issue by severity
+	if *flagSortIssues {
+		sortIssues(issues)
+	}
+
 	// Create output report
 	if err := saveOutput(*flagOutput, *flagFormat, issues, metrics); err != nil {
 		logger.Fatal(err)
 	}
 
 	// Finialize logging
-	logWriter.Close()
+	logWriter.Close() // #nosec
 
 	// Do we have an issue? If so exit 1
 	if issuesFound {

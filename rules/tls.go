@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:generate tlsconfig
+
 package rules
 
 import (
@@ -106,86 +108,18 @@ func (t *insecureConfigTLS) processTLSConfVal(n *ast.KeyValueExpr, c *gas.Contex
 }
 
 func (t *insecureConfigTLS) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
-	if complit, ok := n.(*ast.CompositeLit); ok && complit.Type != nil && c.Info.TypeOf(complit.Type).String() == t.requiredType {
-		for _, elt := range complit.Elts {
-			if kve, ok := elt.(*ast.KeyValueExpr); ok {
-				issue := t.processTLSConfVal(kve, c)
-				if issue != nil {
-					return issue, nil
+	if complit, ok := n.(*ast.CompositeLit); ok && complit.Type != nil {
+		actualType := c.Info.TypeOf(complit.Type)
+		if actualType != nil && actualType.String() == t.requiredType {
+			for _, elt := range complit.Elts {
+				if kve, ok := elt.(*ast.KeyValueExpr); ok {
+					issue := t.processTLSConfVal(kve, c)
+					if issue != nil {
+						return issue, nil
+					}
 				}
 			}
 		}
 	}
 	return nil, nil
-}
-
-// NewModernTLSCheck see: https://wiki.mozilla.org/Security/Server_Side_TLS#Modern_compatibility
-func NewModernTLSCheck(conf gas.Config) (gas.Rule, []ast.Node) {
-	return &insecureConfigTLS{
-		requiredType: "crypto/tls.Config",
-		MinVersion:   0x0303, // TLS 1.2 only
-		MaxVersion:   0x0303,
-		goodCiphers: []string{
-			"TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
-			"TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",
-			"TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305",
-			"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
-			"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
-			"TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305",
-		},
-	}, []ast.Node{(*ast.CompositeLit)(nil)}
-}
-
-// NewIntermediateTLSCheck see: https://wiki.mozilla.org/Security/Server_Side_TLS#Intermediate_compatibility_.28default.29
-func NewIntermediateTLSCheck(conf gas.Config) (gas.Rule, []ast.Node) {
-	return &insecureConfigTLS{
-		requiredType: "crypto/tls.Config",
-		MinVersion:   0x0301, // TLS 1.2, 1.1, 1.0
-		MaxVersion:   0x0303,
-		goodCiphers: []string{
-			"TLS_RSA_WITH_AES_128_CBC_SHA",
-			"TLS_RSA_WITH_AES_256_CBC_SHA",
-			"TLS_RSA_WITH_AES_128_GCM_SHA256",
-			"TLS_RSA_WITH_AES_256_GCM_SHA384",
-			"TLS_ECDHE_ECDSA_WITH_RC4_128_SHA",
-			"TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA",
-			"TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA",
-			"TLS_ECDHE_RSA_WITH_RC4_128_SHA",
-			"TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA",
-			"TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA",
-			"TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA",
-			"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
-			"TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
-			"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
-			"TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",
-		},
-	}, []ast.Node{(*ast.CompositeLit)(nil)}
-}
-
-// NewCompatTLSCheck see: https://wiki.mozilla.org/Security/Server_Side_TLS#Old_compatibility_.28default.29
-func NewCompatTLSCheck(conf gas.Config) (gas.Rule, []ast.Node) {
-	return &insecureConfigTLS{
-		requiredType: "crypto/tls.Config",
-		MinVersion:   0x0301, // TLS 1.2, 1.1, 1.0
-		MaxVersion:   0x0303,
-		goodCiphers: []string{
-			"TLS_RSA_WITH_RC4_128_SHA",
-			"TLS_RSA_WITH_3DES_EDE_CBC_SHA",
-			"TLS_RSA_WITH_AES_128_CBC_SHA",
-			"TLS_RSA_WITH_AES_256_CBC_SHA",
-			"TLS_RSA_WITH_AES_128_GCM_SHA256",
-			"TLS_RSA_WITH_AES_256_GCM_SHA384",
-			"TLS_ECDHE_ECDSA_WITH_RC4_128_SHA",
-			"TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA",
-			"TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA",
-			"TLS_ECDHE_RSA_WITH_RC4_128_SHA",
-			"TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA",
-			"TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA",
-			"TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA",
-			"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
-			"TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
-			"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
-			"TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",
-		},
-	}, []ast.Node{(*ast.CompositeLit)(nil)}
 }

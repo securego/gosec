@@ -65,6 +65,10 @@ var _ = Describe("gas rules", func() {
 			runner("G105", testutils.SampleCodeG105)
 		})
 
+		It("should detect of ssh.InsecureIgnoreHostKey function", func() {
+			runner("G106", testutils.SampleCodeG106)
+		})
+
 		It("should detect sql injection via format strings", func() {
 			runner("G201", testutils.SampleCodeG201)
 		})
