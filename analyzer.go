@@ -165,7 +165,7 @@ func (gas *Analyzer) ignore(n ast.Node) ([]string, bool) {
 				matches := re.FindAllStringSubmatch(group.Text(), -1)
 
 				// Find the rule IDs to ignore.
-				ignores := make([]string, 0)
+				var ignores []string
 				for _, v := range matches {
 					ignores = append(ignores, v[1])
 				}
