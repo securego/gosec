@@ -97,6 +97,10 @@ var _ = Describe("gas rules", func() {
 			runner("G303", testutils.SampleCodeG303)
 		})
 
+		It("should detect file path provided as taint input", func() {
+			runner("G304", testutils.SampleCodeG304)
+		})
+
 		It("should detect weak crypto algorithms", func() {
 			runner("G401", testutils.SampleCodeG401)
 		})
