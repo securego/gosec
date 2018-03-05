@@ -23,6 +23,7 @@ import (
 	plainTemplate "text/template"
 
 	"github.com/GoASTScanner/gas"
+	"gopkg.in/yaml.v2"
 )
 
 // ReportFormat enumrates the output format for reported issues
@@ -72,6 +73,8 @@ func CreateReport(w io.Writer, format string, issues []*gas.Issue, metrics *gas.
 	switch format {
 	case "json":
 		err = reportJSON(w, data)
+	case "yaml":
+		err = reportYAML(w, data)
 	case "csv":
 		err = reportCSV(w, data)
 	case "junit-xml":
@@ -96,6 +99,15 @@ func reportJSON(w io.Writer, data *reportInfo) error {
 	if err != nil {
 		panic(err)
 	}
+	return err
+}
+
+func reportYAML(w io.Writer, data *reportInfo) error {
+	raw, err := yaml.Marshal(data)
+	if err != nil {
+		return err
+	}
+	_, err = w.Write(raw)
 	return err
 }
 
