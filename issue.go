@@ -97,6 +97,7 @@ func NewIssue(ctx *Context, node ast.Node, desc string, severity Score, confiden
 		line = fmt.Sprintf("%d-%d", start, end)
 	}
 
+	// #nosec
 	if file, err := os.Open(fobj.Name()); err == nil {
 		defer file.Close()
 		s := (int64)(fobj.Position(node.Pos()).Offset) // Go bug, should be int64

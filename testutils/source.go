@@ -459,6 +459,49 @@ func main() {
 	ioutil.WriteFile("/tmp/demo2", []byte("This is some data"), 0644)
 }`, 2}}
 
+	// SampleCodeG304 - potential file inclusion vulnerability
+	SampleCodeG304 = []CodeSample{{`
+package main
+import (
+"os"
+"io/ioutil"
+"log"
+)
+func main() {
+f := os.Getenv("tainted_file")
+body, err := ioutil.ReadFile(f)
+if err != nil {
+ log.Printf("Error: %v\n", err)
+}
+log.Print(f)
+
+}`, 1}, {`
+package main
+
+import (
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	http.HandleFunc("/bar", func(w http.ResponseWriter, r *http.Request) {
+		title := r.URL.Query().Get("title")
+		f, err := os.Open(title)
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+		}
+		body := make([]byte, 5)
+		n1, err := f.Read(body)
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+		}
+		fmt.Fprintf(w, "%s", body)
+	})
+	log.Fatal(http.ListenAndServe(":3000", nil))
+}`, 1}}
+
 	// SampleCodeG401 - Use of weak crypto MD5
 	SampleCodeG401 = []CodeSample{
 		{`
