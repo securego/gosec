@@ -135,7 +135,7 @@ var _ = Describe("Analyzer", func() {
 
 			nosecPackage := testutils.NewTestPackage()
 			defer nosecPackage.Close()
-			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() // #exclude !G401", 1)
+			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() // #nosec G401", 1)
 			nosecPackage.AddFile("md5.go", nosecSource)
 			nosecPackage.Build()
 
@@ -152,7 +152,7 @@ var _ = Describe("Analyzer", func() {
 
 			nosecPackage := testutils.NewTestPackage()
 			defer nosecPackage.Close()
-			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() // #exclude !G301", 1)
+			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() // #nosec G301", 1)
 			nosecPackage.AddFile("md5.go", nosecSource)
 			nosecPackage.Build()
 
@@ -169,7 +169,7 @@ var _ = Describe("Analyzer", func() {
 
 			nosecPackage := testutils.NewTestPackage()
 			defer nosecPackage.Close()
-			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() // #exclude !G301 !G401", 1)
+			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() // #nosec G301 G401", 1)
 			nosecPackage.AddFile("md5.go", nosecSource)
 			nosecPackage.Build()
 

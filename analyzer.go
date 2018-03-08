@@ -154,15 +154,15 @@ func (gas *Analyzer) ignore(n ast.Node) ([]string, bool) {
 		for _, group := range groups {
 			if strings.Contains(group.Text(), "#nosec") {
 				gas.stats.NumNosec++
-				return nil, true
-			}
-
-			if strings.Contains(group.Text(), "#exclude") {
-				gas.stats.NumNosec++
 
 				// Pull out the specific rules that are listed to be ignored.
-				re := regexp.MustCompile("!(G\\d{3})")
+				re := regexp.MustCompile("(G\\d{3})")
 				matches := re.FindAllStringSubmatch(group.Text(), -1)
+
+				// If no specific rules were given, ignore everything.
+				if matches == nil || len(matches) == 0 {
+					return nil, true
+				}
 
 				// Find the rule IDs to ignore.
 				var ignores []string
