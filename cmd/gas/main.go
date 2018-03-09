@@ -193,9 +193,12 @@ func cleanPaths(paths []string) []string {
 	projectRoot := filepath.FromSlash(fmt.Sprintf("%s/src/", gopath()))
 	var clean []string
 	for _, arg := range paths {
-		absPath, _ := filepath.Abs(arg)
-		if strings.HasPrefix(absPath, projectRoot) {
-			clean = append(clean, strings.TrimPrefix(absPath, projectRoot))
+		abspath, err := filepath.Abs(arg)
+        if err != nil {
+            abspath = arg
+        }
+		if strings.HasPrefix(abspath, projectRoot) {
+			clean = append(clean, strings.TrimPrefix(abspath, projectRoot))
 		} else {
 			clean = append(clean, arg)
 		}
