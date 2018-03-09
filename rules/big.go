@@ -26,6 +26,10 @@ type usingBigExp struct {
 	calls []string
 }
 
+func (r *usingBigExp) ID() string {
+	return r.MetaData.ID
+}
+
 func (r *usingBigExp) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err error) {
 	if _, matched := gas.MatchCallByType(n, c, r.pkg, r.calls...); matched {
 		return gas.NewIssue(c, n, r.What, r.Severity, r.Confidence), nil
@@ -34,11 +38,12 @@ func (r *usingBigExp) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err erro
 }
 
 // NewUsingBigExp detects issues with modulus == 0 for Bignum
-func NewUsingBigExp(conf gas.Config) (gas.Rule, []ast.Node) {
+func NewUsingBigExp(id string, conf gas.Config) (gas.Rule, []ast.Node) {
 	return &usingBigExp{
 		pkg:   "*math/big.Int",
 		calls: []string{"Exp"},
 		MetaData: gas.MetaData{
+			ID:         id,
 			What:       "Use of math/big.Int.Exp function should be audited for modulus == 0",
 			Severity:   gas.Low,
 			Confidence: gas.High,

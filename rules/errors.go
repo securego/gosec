@@ -26,6 +26,10 @@ type noErrorCheck struct {
 	whitelist gas.CallList
 }
 
+func (r *noErrorCheck) ID() string {
+	return r.MetaData.ID
+}
+
 func returnsError(callExpr *ast.CallExpr, ctx *gas.Context) int {
 	if tv := ctx.Info.TypeOf(callExpr); tv != nil {
 		switch t := tv.(type) {
@@ -71,8 +75,7 @@ func (r *noErrorCheck) Match(n ast.Node, ctx *gas.Context) (*gas.Issue, error) {
 }
 
 // NewNoErrorCheck detects if the returned error is unchecked
-func NewNoErrorCheck(conf gas.Config) (gas.Rule, []ast.Node) {
-
+func NewNoErrorCheck(id string, conf gas.Config) (gas.Rule, []ast.Node) {
 	// TODO(gm) Come up with sensible defaults here. Or flip it to use a
 	// black list instead.
 	whitelist := gas.NewCallList()
@@ -89,6 +92,7 @@ func NewNoErrorCheck(conf gas.Config) (gas.Rule, []ast.Node) {
 	}
 	return &noErrorCheck{
 		MetaData: gas.MetaData{
+			ID:         id,
 			Severity:   gas.Low,
 			Confidence: gas.High,
 			What:       "Errors unhandled.",

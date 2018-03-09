@@ -22,7 +22,12 @@ import (
 )
 
 type subprocess struct {
+	gas.MetaData
 	gas.CallList
+}
+
+func (r *subprocess) ID() string {
+	return r.MetaData.ID
 }
 
 // TODO(gm) The only real potential for command injection with a Go project
@@ -50,8 +55,8 @@ func (r *subprocess) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 }
 
 // NewSubproc detects cases where we are forking out to an external process
-func NewSubproc(conf gas.Config) (gas.Rule, []ast.Node) {
-	rule := &subprocess{gas.NewCallList()}
+func NewSubproc(id string, conf gas.Config) (gas.Rule, []ast.Node) {
+	rule := &subprocess{gas.MetaData{ID: id}, gas.NewCallList()}
 	rule.Add("os/exec", "Command")
 	rule.Add("syscall", "Exec")
 	return rule, []ast.Node{(*ast.CallExpr)(nil)}

@@ -25,6 +25,10 @@ type templateCheck struct {
 	calls gas.CallList
 }
 
+func (t *templateCheck) ID() string {
+	return t.MetaData.ID
+}
+
 func (t *templateCheck) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 	if node := t.calls.ContainsCallExpr(n, c); node != nil {
 		for _, arg := range node.Args {
@@ -38,7 +42,7 @@ func (t *templateCheck) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 
 // NewTemplateCheck constructs the template check rule. This rule is used to
 // find use of tempaltes where HTML/JS escaping is not being used
-func NewTemplateCheck(conf gas.Config) (gas.Rule, []ast.Node) {
+func NewTemplateCheck(id string, conf gas.Config) (gas.Rule, []ast.Node) {
 
 	calls := gas.NewCallList()
 	calls.Add("html/template", "HTML")
@@ -48,6 +52,7 @@ func NewTemplateCheck(conf gas.Config) (gas.Rule, []ast.Node) {
 	return &templateCheck{
 		calls: calls,
 		MetaData: gas.MetaData{
+			ID:         id,
 			Severity:   gas.Medium,
 			Confidence: gas.Low,
 			What:       "this method will not auto-escape HTML. Verify data is well formed.",

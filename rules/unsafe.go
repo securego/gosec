@@ -26,6 +26,10 @@ type usingUnsafe struct {
 	calls []string
 }
 
+func (r *usingUnsafe) ID() string {
+	return r.MetaData.ID
+}
+
 func (r *usingUnsafe) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err error) {
 	if _, matches := gas.MatchCallByPackage(n, c, r.pkg, r.calls...); matches {
 		return gas.NewIssue(c, n, r.What, r.Severity, r.Confidence), nil
@@ -35,11 +39,12 @@ func (r *usingUnsafe) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err erro
 
 // NewUsingUnsafe rule detects the use of the unsafe package. This is only
 // really useful for auditing purposes.
-func NewUsingUnsafe(conf gas.Config) (gas.Rule, []ast.Node) {
+func NewUsingUnsafe(id string, conf gas.Config) (gas.Rule, []ast.Node) {
 	return &usingUnsafe{
 		pkg:   "unsafe",
 		calls: []string{"Alignof", "Offsetof", "Sizeof", "Pointer"},
 		MetaData: gas.MetaData{
+			ID:         id,
 			What:       "Use of unsafe calls should be audited",
 			Severity:   gas.Low,
 			Confidence: gas.High,

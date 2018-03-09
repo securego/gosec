@@ -24,10 +24,15 @@ import (
 )
 
 type insecureConfigTLS struct {
+	gas.MetaData
 	MinVersion   int16
 	MaxVersion   int16
 	requiredType string
 	goodCiphers  []string
+}
+
+func (t *insecureConfigTLS) ID() string {
+	return t.MetaData.ID
 }
 
 func stringInSlice(a string, list []string) bool {

@@ -26,6 +26,10 @@ type weakRand struct {
 	packagePath string
 }
 
+func (w *weakRand) ID() string {
+	return w.MetaData.ID
+}
+
 func (w *weakRand) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 	for _, funcName := range w.funcNames {
 		if _, matched := gas.MatchCallByPackage(n, c, w.packagePath, funcName); matched {
@@ -37,11 +41,12 @@ func (w *weakRand) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 }
 
 // NewWeakRandCheck detects the use of random number generator that isn't cryptographically secure
-func NewWeakRandCheck(conf gas.Config) (gas.Rule, []ast.Node) {
+func NewWeakRandCheck(id string, conf gas.Config) (gas.Rule, []ast.Node) {
 	return &weakRand{
 		funcNames:   []string{"Read", "Int"},
 		packagePath: "math/rand",
 		MetaData: gas.MetaData{
+			ID:         id,
 			Severity:   gas.High,
 			Confidence: gas.Medium,
 			What:       "Use of weak random number generator (math/rand instead of crypto/rand)",

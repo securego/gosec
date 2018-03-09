@@ -15,6 +15,10 @@ type mockrule struct {
 	callback func(n ast.Node, ctx *gas.Context) bool
 }
 
+func (m *mockrule) ID() string {
+	return "MOCK"
+}
+
 func (m *mockrule) Match(n ast.Node, ctx *gas.Context) (*gas.Issue, error) {
 	if m.callback(n, ctx) {
 		return m.issue, nil
