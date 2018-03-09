@@ -108,6 +108,10 @@ func (gas *Analyzer) Process(packagePaths ...string) error {
 		if err != nil {
 			return err
 		}
+		if _, err := os.Stat(abspath); os.IsNotExist(err) {
+			gas.logger.Printf("Skipping: %s. Path doesn't exist.", abspath)
+			continue
+		}
 		gas.logger.Println("Searching directory:", abspath)
 
 		basePackage, err := build.Default.ImportDir(packagePath, build.ImportComment)
