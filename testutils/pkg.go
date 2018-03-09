@@ -129,6 +129,8 @@ func (p *TestPackage) CreateContext(filename string) *gas.Context {
 func (p *TestPackage) Close() {
 	if p.ondisk {
 		err := os.RemoveAll(p.Path)
-		log.Println(err)
+        if err != nil {
+            log.Fatal(err)
+        }
 	}
 }

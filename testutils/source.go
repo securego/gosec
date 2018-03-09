@@ -473,7 +473,7 @@ body, err := ioutil.ReadFile(f)
 if err != nil {
  log.Printf("Error: %v\n", err)
 }
-log.Print(f)
+log.Print(body)
 
 }`, 1}, {`
 package main
@@ -493,8 +493,7 @@ func main() {
 			fmt.Printf("Error: %v\n", err)
 		}
 		body := make([]byte, 5)
-		n1, err := f.Read(body)
-		if err != nil {
+		if _, err = f.Read(body); err != nil {
 			fmt.Printf("Error: %v\n", err)
 		}
 		fmt.Fprintf(w, "%s", body)
