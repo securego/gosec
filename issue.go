@@ -47,6 +47,7 @@ type Issue struct {
 // MetaData is embedded in all GAS rules. The Severity, Confidence and What message
 // will be passed tbhrough to reported issues.
 type MetaData struct {
+	ID         string
 	Severity   Score
 	Confidence Score
 	What       string
@@ -97,6 +98,7 @@ func NewIssue(ctx *Context, node ast.Node, desc string, severity Score, confiden
 		line = fmt.Sprintf("%d-%d", start, end)
 	}
 
+	// #nosec
 	if file, err := os.Open(fobj.Name()); err == nil {
 		defer file.Close()
 		s := (int64)(fobj.Position(node.Pos()).Offset) // Go bug, should be int64

@@ -16,7 +16,6 @@ package rules
 
 import (
 	"go/ast"
-	"go/token"
 	"regexp"
 	"strconv"
 
@@ -31,6 +30,10 @@ type credentials struct {
 	perCharThreshold float64
 	truncate         int
 	ignoreEntropy    bool
+}
+
+func (r *credentials) ID() string {
+	return r.MetaData.ID
 }
 
 func truncate(s string, n int) string {
@@ -53,8 +56,8 @@ func (r *credentials) Match(n ast.Node, ctx *gas.Context) (*gas.Issue, error) {
 	switch node := n.(type) {
 	case *ast.AssignStmt:
 		return r.matchAssign(node, ctx)
-	case *ast.GenDecl:
-		return r.matchGenDecl(node, ctx)
+	case *ast.ValueSpec:
+		return r.matchValueSpec(node, ctx)
 	}
 	return nil, nil
 }
@@ -76,23 +79,16 @@ func (r *credentials) matchAssign(assign *ast.AssignStmt, ctx *gas.Context) (*ga
 	return nil, nil
 }
 
-func (r *credentials) matchGenDecl(decl *ast.GenDecl, ctx *gas.Context) (*gas.Issue, error) {
-	if decl.Tok != token.CONST && decl.Tok != token.VAR {
-		return nil, nil
-	}
-	for _, spec := range decl.Specs {
-		if valueSpec, ok := spec.(*ast.ValueSpec); ok {
-			for index, ident := range valueSpec.Names {
-				if r.pattern.MatchString(ident.Name) && valueSpec.Values != nil {
-					// const foo, bar = "same value"
-					if len(valueSpec.Values) <= index {
-						index = len(valueSpec.Values) - 1
-					}
-					if val, err := gas.GetString(valueSpec.Values[index]); err == nil {
-						if r.ignoreEntropy || (!r.ignoreEntropy && r.isHighEntropyString(val)) {
-							return gas.NewIssue(ctx, valueSpec, r.What, r.Severity, r.Confidence), nil
-						}
-					}
+func (r *credentials) matchValueSpec(valueSpec *ast.ValueSpec, ctx *gas.Context) (*gas.Issue, error) {
+	for index, ident := range valueSpec.Names {
+		if r.pattern.MatchString(ident.Name) && valueSpec.Values != nil {
+			// const foo, bar = "same value"
+			if len(valueSpec.Values) <= index {
+				index = len(valueSpec.Values) - 1
+			}
+			if val, err := gas.GetString(valueSpec.Values[index]); err == nil {
+				if r.ignoreEntropy || (!r.ignoreEntropy && r.isHighEntropyString(val)) {
+					return gas.NewIssue(ctx, valueSpec, r.What, r.Severity, r.Confidence), nil
 				}
 			}
 		}
@@ -102,7 +98,7 @@ func (r *credentials) matchGenDecl(decl *ast.GenDecl, ctx *gas.Context) (*gas.Is
 
 // NewHardcodedCredentials attempts to find high entropy string constants being
 // assigned to variables that appear to be related to credentials.
-func NewHardcodedCredentials(conf gas.Config) (gas.Rule, []ast.Node) {
+func NewHardcodedCredentials(id string, conf gas.Config) (gas.Rule, []ast.Node) {
 	pattern := `(?i)passwd|pass|password|pwd|secret|token`
 	entropyThreshold := 80.0
 	perCharThreshold := 3.0
@@ -142,9 +138,10 @@ func NewHardcodedCredentials(conf gas.Config) (gas.Rule, []ast.Node) {
 		ignoreEntropy:    ignoreEntropy,
 		truncate:         truncateString,
 		MetaData: gas.MetaData{
+			ID:         id,
 			What:       "Potential hardcoded credentials",
 			Confidence: gas.Low,
 			Severity:   gas.High,
 		},
-	}, []ast.Node{(*ast.AssignStmt)(nil), (*ast.GenDecl)(nil)}
+	}, []ast.Node{(*ast.AssignStmt)(nil), (*ast.ValueSpec)(nil)}
 }

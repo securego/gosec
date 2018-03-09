@@ -29,6 +29,10 @@ type filePermissions struct {
 	calls []string
 }
 
+func (r *filePermissions) ID() string {
+	return r.MetaData.ID
+}
+
 func getConfiguredMode(conf map[string]interface{}, configKey string, defaultMode int64) int64 {
 	var mode = defaultMode
 	if value, ok := conf[configKey]; ok {
@@ -58,13 +62,14 @@ func (r *filePermissions) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) 
 
 // NewFilePerms creates a rule to detect file creation with a more permissive than configured
 // permission mask.
-func NewFilePerms(conf gas.Config) (gas.Rule, []ast.Node) {
+func NewFilePerms(id string, conf gas.Config) (gas.Rule, []ast.Node) {
 	mode := getConfiguredMode(conf, "G302", 0600)
 	return &filePermissions{
 		mode:  mode,
 		pkg:   "os",
 		calls: []string{"OpenFile", "Chmod"},
 		MetaData: gas.MetaData{
+			ID:         id,
 			Severity:   gas.Medium,
 			Confidence: gas.High,
 			What:       fmt.Sprintf("Expect file permissions to be %#o or less", mode),
@@ -74,13 +79,14 @@ func NewFilePerms(conf gas.Config) (gas.Rule, []ast.Node) {
 
 // NewMkdirPerms creates a rule to detect directory creation with more permissive than
 // configured permission mask.
-func NewMkdirPerms(conf gas.Config) (gas.Rule, []ast.Node) {
+func NewMkdirPerms(id string, conf gas.Config) (gas.Rule, []ast.Node) {
 	mode := getConfiguredMode(conf, "G301", 0750)
 	return &filePermissions{
 		mode:  mode,
 		pkg:   "os",
 		calls: []string{"Mkdir", "MkdirAll"},
 		MetaData: gas.MetaData{
+			ID:         id,
 			Severity:   gas.Medium,
 			Confidence: gas.High,
 			What:       fmt.Sprintf("Expect directory permissions to be %#o or less", mode),

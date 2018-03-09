@@ -49,6 +49,7 @@ or to specify a set of rules to explicitly exclude using the '-exclude=' flag.
   - G301: Poor file permissions used when creating a directory
   - G302: Poor file permisions used with chmod
   - G303: Creating tempfile using a predictable path
+  - G304: File path provided as taint input
   - G401: Detect the usage of DES, RC4, or MD5
   - G402: Look for bad TLS connection settings
   - G403: Ensure minimum RSA key length of 2048 bits

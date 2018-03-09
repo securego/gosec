@@ -21,43 +21,43 @@ import (
 	"github.com/GoASTScanner/gas"
 )
 
-type subprocess struct {
+type readfile struct {
 	gas.MetaData
 	gas.CallList
 }
 
-func (r *subprocess) ID() string {
+// ID returns the identifier for this rule
+func (r *readfile) ID() string {
 	return r.MetaData.ID
 }
 
-// TODO(gm) The only real potential for command injection with a Go project
-// is something like this:
-//
-// syscall.Exec("/bin/sh", []string{"-c", tainted})
-//
-// E.g. Input is correctly escaped but the execution context being used
-// is unsafe. For example:
-//
-// syscall.Exec("echo", "foobar" + tainted)
-func (r *subprocess) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
+// Match inspects AST nodes to determine if the match the methods `os.Open` or `ioutil.ReadFile`
+func (r *readfile) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 	if node := r.ContainsCallExpr(n, c); node != nil {
 		for _, arg := range node.Args {
 			if ident, ok := arg.(*ast.Ident); ok {
 				obj := c.Info.ObjectOf(ident)
 				if _, ok := obj.(*types.Var); ok && !gas.TryResolve(ident, c) {
-					return gas.NewIssue(c, n, "Subprocess launched with variable", gas.Medium, gas.High), nil
+					return gas.NewIssue(c, n, r.What, r.Severity, r.Confidence), nil
 				}
 			}
 		}
-		return gas.NewIssue(c, n, "Subprocess launching should be audited", gas.Low, gas.High), nil
 	}
 	return nil, nil
 }
 
-// NewSubproc detects cases where we are forking out to an external process
-func NewSubproc(id string, conf gas.Config) (gas.Rule, []ast.Node) {
-	rule := &subprocess{gas.MetaData{ID: id}, gas.NewCallList()}
-	rule.Add("os/exec", "Command")
-	rule.Add("syscall", "Exec")
+// NewReadFile detects cases where we read files
+func NewReadFile(id string, conf gas.Config) (gas.Rule, []ast.Node) {
+	rule := &readfile{
+		CallList: gas.NewCallList(),
+		MetaData: gas.MetaData{
+			ID:         id,
+			What:       "Potential file inclusion via variable",
+			Severity:   gas.Medium,
+			Confidence: gas.High,
+		},
+	}
+	rule.Add("io/ioutil", "ReadFile")
+	rule.Add("os", "Open")
 	return rule, []ast.Node{(*ast.CallExpr)(nil)}
 }

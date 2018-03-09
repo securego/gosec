@@ -28,7 +28,7 @@ var _ = Describe("Analyzer", func() {
 	Context("when processing a package", func() {
 
 		It("should return an error if the package contains no Go files", func() {
-			analyzer.LoadRules(rules.Generate().Builders()...)
+			analyzer.LoadRules(rules.Generate().Builders())
 			dir, err := ioutil.TempDir("", "empty")
 			defer os.RemoveAll(dir)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -38,7 +38,7 @@ var _ = Describe("Analyzer", func() {
 		})
 
 		It("should return an error if the package fails to build", func() {
-			analyzer.LoadRules(rules.Generate().Builders()...)
+			analyzer.LoadRules(rules.Generate().Builders())
 			pkg := testutils.NewTestPackage()
 			defer pkg.Close()
 			pkg.AddFile("wonky.go", `func main(){ println("forgot the package")}`)
@@ -51,7 +51,7 @@ var _ = Describe("Analyzer", func() {
 		})
 
 		It("should be able to analyze mulitple Go files", func() {
-			analyzer.LoadRules(rules.Generate().Builders()...)
+			analyzer.LoadRules(rules.Generate().Builders())
 			pkg := testutils.NewTestPackage()
 			defer pkg.Close()
 			pkg.AddFile("foo.go", `
@@ -72,7 +72,7 @@ var _ = Describe("Analyzer", func() {
 		})
 
 		It("should be able to analyze mulitple Go packages", func() {
-			analyzer.LoadRules(rules.Generate().Builders()...)
+			analyzer.LoadRules(rules.Generate().Builders())
 			pkg1 := testutils.NewTestPackage()
 			pkg2 := testutils.NewTestPackage()
 			defer pkg1.Close()
@@ -98,7 +98,7 @@ var _ = Describe("Analyzer", func() {
 			// Rule for MD5 weak crypto usage
 			sample := testutils.SampleCodeG401[0]
 			source := sample.Code
-			analyzer.LoadRules(rules.Generate(rules.NewRuleFilter(false, "G401")).Builders()...)
+			analyzer.LoadRules(rules.Generate(rules.NewRuleFilter(false, "G401")).Builders())
 
 			controlPackage := testutils.NewTestPackage()
 			defer controlPackage.Close()
@@ -114,11 +114,62 @@ var _ = Describe("Analyzer", func() {
 			// Rule for MD5 weak crypto usage
 			sample := testutils.SampleCodeG401[0]
 			source := sample.Code
-			analyzer.LoadRules(rules.Generate(rules.NewRuleFilter(false, "G401")).Builders()...)
+			analyzer.LoadRules(rules.Generate(rules.NewRuleFilter(false, "G401")).Builders())
 
 			nosecPackage := testutils.NewTestPackage()
 			defer nosecPackage.Close()
 			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() // #nosec", 1)
+			nosecPackage.AddFile("md5.go", nosecSource)
+			nosecPackage.Build()
+
+			analyzer.Process(nosecPackage.Path)
+			nosecIssues, _ := analyzer.Report()
+			Expect(nosecIssues).Should(BeEmpty())
+		})
+
+		It("should not report errors when an exclude comment is present for the correct rule", func() {
+			// Rule for MD5 weak crypto usage
+			sample := testutils.SampleCodeG401[0]
+			source := sample.Code
+			analyzer.LoadRules(rules.Generate(rules.NewRuleFilter(false, "G401")).Builders())
+
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() // #nosec G401", 1)
+			nosecPackage.AddFile("md5.go", nosecSource)
+			nosecPackage.Build()
+
+			analyzer.Process(nosecPackage.Path)
+			nosecIssues, _ := analyzer.Report()
+			Expect(nosecIssues).Should(BeEmpty())
+		})
+
+		It("should report errors when an exclude comment is present for a different rule", func() {
+			// Rule for MD5 weak crypto usage
+			sample := testutils.SampleCodeG401[0]
+			source := sample.Code
+			analyzer.LoadRules(rules.Generate(rules.NewRuleFilter(false, "G401")).Builders())
+
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() // #nosec G301", 1)
+			nosecPackage.AddFile("md5.go", nosecSource)
+			nosecPackage.Build()
+
+			analyzer.Process(nosecPackage.Path)
+			nosecIssues, _ := analyzer.Report()
+			Expect(nosecIssues).Should(HaveLen(sample.Errors))
+		})
+
+		It("should not report errors when an exclude comment is present for multiple rules, including the correct rule", func() {
+			// Rule for MD5 weak crypto usage
+			sample := testutils.SampleCodeG401[0]
+			source := sample.Code
+			analyzer.LoadRules(rules.Generate(rules.NewRuleFilter(false, "G401")).Builders())
+
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() // #nosec G301 G401", 1)
 			nosecPackage.AddFile("md5.go", nosecSource)
 			nosecPackage.Build()
 
@@ -138,7 +189,7 @@ var _ = Describe("Analyzer", func() {
 		nosecIgnoreConfig := gas.NewConfig()
 		nosecIgnoreConfig.SetGlobal("nosec", "true")
 		customAnalyzer := gas.NewAnalyzer(nosecIgnoreConfig, logger)
-		customAnalyzer.LoadRules(rules.Generate(rules.NewRuleFilter(false, "G401")).Builders()...)
+		customAnalyzer.LoadRules(rules.Generate(rules.NewRuleFilter(false, "G401")).Builders())
 
 		nosecPackage := testutils.NewTestPackage()
 		defer nosecPackage.Close()

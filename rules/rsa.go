@@ -27,6 +27,10 @@ type weakKeyStrength struct {
 	bits  int
 }
 
+func (w *weakKeyStrength) ID() string {
+	return w.MetaData.ID
+}
+
 func (w *weakKeyStrength) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 	if callExpr := w.calls.ContainsCallExpr(n, c); callExpr != nil {
 		if bits, err := gas.GetInt(callExpr.Args[1]); err == nil && bits < (int64)(w.bits) {
@@ -37,7 +41,7 @@ func (w *weakKeyStrength) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) 
 }
 
 // NewWeakKeyStrength builds a rule that detects RSA keys < 2048 bits
-func NewWeakKeyStrength(conf gas.Config) (gas.Rule, []ast.Node) {
+func NewWeakKeyStrength(id string, conf gas.Config) (gas.Rule, []ast.Node) {
 	calls := gas.NewCallList()
 	calls.Add("crypto/rsa", "GenerateKey")
 	bits := 2048
@@ -45,6 +49,7 @@ func NewWeakKeyStrength(conf gas.Config) (gas.Rule, []ast.Node) {
 		calls: calls,
 		bits:  bits,
 		MetaData: gas.MetaData{
+			ID:         id,
 			Severity:   gas.Medium,
 			Confidence: gas.High,
 			What:       fmt.Sprintf("RSA keys should be at least %d bits", bits),

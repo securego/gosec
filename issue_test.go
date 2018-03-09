@@ -78,7 +78,7 @@ var _ = Describe("Issue", func() {
 
 			// Use SQL rule to check binary expr
 			cfg := gas.NewConfig()
-			rule, _ := rules.NewSQLStrConcat(cfg)
+			rule, _ := rules.NewSQLStrConcat("TEST", cfg)
 			issue, err := rule.Match(target, ctx)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(issue).ShouldNot(BeNil())

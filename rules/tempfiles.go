@@ -27,6 +27,10 @@ type badTempFile struct {
 	args  *regexp.Regexp
 }
 
+func (t *badTempFile) ID() string {
+	return t.MetaData.ID
+}
+
 func (t *badTempFile) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err error) {
 	if node := t.calls.ContainsCallExpr(n, c); node != nil {
 		if arg, e := gas.GetString(node.Args[0]); t.args.MatchString(arg) && e == nil {
@@ -37,7 +41,7 @@ func (t *badTempFile) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err erro
 }
 
 // NewBadTempFile detects direct writes to predictable path in temporary directory
-func NewBadTempFile(conf gas.Config) (gas.Rule, []ast.Node) {
+func NewBadTempFile(id string, conf gas.Config) (gas.Rule, []ast.Node) {
 	calls := gas.NewCallList()
 	calls.Add("io/ioutil", "WriteFile")
 	calls.Add("os", "Create")
@@ -45,6 +49,7 @@ func NewBadTempFile(conf gas.Config) (gas.Rule, []ast.Node) {
 		calls: calls,
 		args:  regexp.MustCompile(`^/tmp/.*$|^/var/tmp/.*$`),
 		MetaData: gas.MetaData{
+			ID:         id,
 			Severity:   gas.Medium,
 			Confidence: gas.High,
 			What:       "File creation in shared tmp directory without using ioutil.Tempfile",

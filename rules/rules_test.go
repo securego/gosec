@@ -26,7 +26,7 @@ var _ = Describe("gas rules", func() {
 		config = gas.NewConfig()
 		analyzer = gas.NewAnalyzer(config, logger)
 		runner = func(rule string, samples []testutils.CodeSample) {
-			analyzer.LoadRules(rules.Generate(rules.NewRuleFilter(false, rule)).Builders()...)
+			analyzer.LoadRules(rules.Generate(rules.NewRuleFilter(false, rule)).Builders())
 			for n, sample := range samples {
 				analyzer.Reset()
 				pkg := testutils.NewTestPackage()
@@ -95,6 +95,10 @@ var _ = Describe("gas rules", func() {
 
 		It("should detect insecure temp file creation", func() {
 			runner("G303", testutils.SampleCodeG303)
+		})
+
+		It("should detect file path provided as taint input", func() {
+			runner("G304", testutils.SampleCodeG304)
 		})
 
 		It("should detect weak crypto algorithms", func() {
