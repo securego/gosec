@@ -34,7 +34,7 @@ func (t *badTempFile) ID() string {
 func (t *badTempFile) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err error) {
 	if node := t.calls.ContainsCallExpr(n, c); node != nil {
 		if arg, e := gas.GetString(node.Args[0]); t.args.MatchString(arg) && e == nil {
-			return gas.NewIssue(c, n, t.What, t.Severity, t.Confidence), nil
+			return gas.NewIssue(c, n, t.ID(), t.What, t.Severity, t.Confidence), nil
 		}
 	}
 	return nil, nil

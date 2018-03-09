@@ -37,7 +37,7 @@ var _ = Describe("Issue", func() {
 			ast.Walk(v, ctx.Root)
 			Expect(target).ShouldNot(BeNil())
 
-			issue := gas.NewIssue(ctx, target, "", gas.High, gas.High)
+			issue := gas.NewIssue(ctx, target, "TEST", "", gas.High, gas.High)
 			Expect(issue).ShouldNot(BeNil())
 			Expect(issue.Code).Should(MatchRegexp(`"bar"`))
 			Expect(issue.Line).Should(Equal("2"))

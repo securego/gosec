@@ -32,7 +32,7 @@ func (r *usesWeakCryptography) ID() string {
 func (r *usesWeakCryptography) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 	for pkg, funcs := range r.blacklist {
 		if _, matched := gas.MatchCallByPackage(n, c, pkg, funcs...); matched {
-			return gas.NewIssue(c, n, r.What, r.Severity, r.Confidence), nil
+			return gas.NewIssue(c, n, r.ID(), r.What, r.Severity, r.Confidence), nil
 		}
 	}
 	return nil, nil

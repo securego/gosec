@@ -59,7 +59,7 @@ func (r *noErrorCheck) Match(n ast.Node, ctx *gas.Context) (*gas.Issue, error) {
 					return nil, nil
 				}
 				if id, ok := stmt.Lhs[pos].(*ast.Ident); ok && id.Name == "_" {
-					return gas.NewIssue(ctx, n, r.What, r.Severity, r.Confidence), nil
+					return gas.NewIssue(ctx, n, r.ID(), r.What, r.Severity, r.Confidence), nil
 				}
 			}
 		}
@@ -67,7 +67,7 @@ func (r *noErrorCheck) Match(n ast.Node, ctx *gas.Context) (*gas.Issue, error) {
 		if callExpr, ok := stmt.X.(*ast.CallExpr); ok && r.whitelist.ContainsCallExpr(stmt.X, ctx) == nil {
 			pos := returnsError(callExpr, ctx)
 			if pos >= 0 {
-				return gas.NewIssue(ctx, n, r.What, r.Severity, r.Confidence), nil
+				return gas.NewIssue(ctx, n, r.ID(), r.What, r.Severity, r.Confidence), nil
 			}
 		}
 	}

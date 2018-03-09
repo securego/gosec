@@ -32,7 +32,7 @@ func (r *usingUnsafe) ID() string {
 
 func (r *usingUnsafe) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err error) {
 	if _, matches := gas.MatchCallByPackage(n, c, r.pkg, r.calls...); matches {
-		return gas.NewIssue(c, n, r.What, r.Severity, r.Confidence), nil
+		return gas.NewIssue(c, n, r.ID(), r.What, r.Severity, r.Confidence), nil
 	}
 	return nil, nil
 }

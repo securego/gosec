@@ -54,7 +54,7 @@ func (r *filePermissions) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) 
 	if callexpr, matched := gas.MatchCallByPackage(n, c, r.pkg, r.calls...); matched {
 		modeArg := callexpr.Args[len(callexpr.Args)-1]
 		if mode, err := gas.GetInt(modeArg); err == nil && mode > r.mode {
-			return gas.NewIssue(c, n, r.What, r.Severity, r.Confidence), nil
+			return gas.NewIssue(c, n, r.ID(), r.What, r.Severity, r.Confidence), nil
 		}
 	}
 	return nil, nil

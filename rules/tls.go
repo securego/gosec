@@ -51,7 +51,7 @@ func (t *insecureConfigTLS) processTLSCipherSuites(n ast.Node, c *gas.Context) *
 			if ident, ok := cipher.(*ast.SelectorExpr); ok {
 				if !stringInSlice(ident.Sel.Name, t.goodCiphers) {
 					err := fmt.Sprintf("TLS Bad Cipher Suite: %s", ident.Sel.Name)
-					return gas.NewIssue(c, ident, err, gas.High, gas.High)
+					return gas.NewIssue(c, ident, t.ID(), err, gas.High, gas.High)
 				}
 			}
 		}
@@ -66,39 +66,39 @@ func (t *insecureConfigTLS) processTLSConfVal(n *ast.KeyValueExpr, c *gas.Contex
 		case "InsecureSkipVerify":
 			if node, ok := n.Value.(*ast.Ident); ok {
 				if node.Name != "false" {
-					return gas.NewIssue(c, n, "TLS InsecureSkipVerify set true.", gas.High, gas.High)
+					return gas.NewIssue(c, n, t.ID(), "TLS InsecureSkipVerify set true.", gas.High, gas.High)
 				}
 			} else {
 				// TODO(tk): symbol tab look up to get the actual value
-				return gas.NewIssue(c, n, "TLS InsecureSkipVerify may be true.", gas.High, gas.Low)
+				return gas.NewIssue(c, n, t.ID(), "TLS InsecureSkipVerify may be true.", gas.High, gas.Low)
 			}
 
 		case "PreferServerCipherSuites":
 			if node, ok := n.Value.(*ast.Ident); ok {
 				if node.Name == "false" {
-					return gas.NewIssue(c, n, "TLS PreferServerCipherSuites set false.", gas.Medium, gas.High)
+					return gas.NewIssue(c, n, t.ID(), "TLS PreferServerCipherSuites set false.", gas.Medium, gas.High)
 				}
 			} else {
 				// TODO(tk): symbol tab look up to get the actual value
-				return gas.NewIssue(c, n, "TLS PreferServerCipherSuites may be false.", gas.Medium, gas.Low)
+				return gas.NewIssue(c, n, t.ID(), "TLS PreferServerCipherSuites may be false.", gas.Medium, gas.Low)
 			}
 
 		case "MinVersion":
 			if ival, ierr := gas.GetInt(n.Value); ierr == nil {
 				if (int16)(ival) < t.MinVersion {
-					return gas.NewIssue(c, n, "TLS MinVersion too low.", gas.High, gas.High)
+					return gas.NewIssue(c, n, t.ID(), "TLS MinVersion too low.", gas.High, gas.High)
 				}
 				// TODO(tk): symbol tab look up to get the actual value
-				return gas.NewIssue(c, n, "TLS MinVersion may be too low.", gas.High, gas.Low)
+				return gas.NewIssue(c, n, t.ID(), "TLS MinVersion may be too low.", gas.High, gas.Low)
 			}
 
 		case "MaxVersion":
 			if ival, ierr := gas.GetInt(n.Value); ierr == nil {
 				if (int16)(ival) < t.MaxVersion {
-					return gas.NewIssue(c, n, "TLS MaxVersion too low.", gas.High, gas.High)
+					return gas.NewIssue(c, n, t.ID(), "TLS MaxVersion too low.", gas.High, gas.High)
 				}
 				// TODO(tk): symbol tab look up to get the actual value
-				return gas.NewIssue(c, n, "TLS MaxVersion may be too low.", gas.High, gas.Low)
+				return gas.NewIssue(c, n, t.ID(), "TLS MaxVersion may be too low.", gas.High, gas.Low)
 			}
 
 		case "CipherSuites":

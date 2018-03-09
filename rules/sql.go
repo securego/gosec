@@ -72,7 +72,7 @@ func (s *sqlStrConcat) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 				if second, ok := node.Y.(*ast.Ident); ok && s.checkObject(second) {
 					return nil, nil
 				}
-				return gas.NewIssue(c, n, s.What, s.Severity, s.Confidence), nil
+				return gas.NewIssue(c, n, s.ID(), s.What, s.Severity, s.Confidence), nil
 			}
 		}
 	}
@@ -107,7 +107,7 @@ func (s *sqlStrFormat) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 	// TODO(gm) improve confidence if database/sql is being used
 	if node := s.calls.ContainsCallExpr(n, c); node != nil {
 		if arg, e := gas.GetString(node.Args[0]); s.MatchPatterns(arg) && e == nil {
-			return gas.NewIssue(c, n, s.What, s.Severity, s.Confidence), nil
+			return gas.NewIssue(c, n, s.ID(), s.What, s.Severity, s.Confidence), nil
 		}
 	}
 	return nil, nil
