@@ -194,9 +194,9 @@ func cleanPaths(paths []string) []string {
 	var clean []string
 	for _, arg := range paths {
 		abspath, err := filepath.Abs(arg)
-        if err != nil {
-            abspath = arg
-        }
+		if err != nil {
+			abspath = arg
+		}
 		if strings.HasPrefix(abspath, projectRoot) {
 			clean = append(clean, strings.TrimPrefix(abspath, projectRoot))
 		} else {
