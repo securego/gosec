@@ -26,7 +26,7 @@ var _ = Describe("gas rules", func() {
 		config = gas.NewConfig()
 		analyzer = gas.NewAnalyzer(config, logger)
 		runner = func(rule string, samples []testutils.CodeSample) {
-			analyzer.LoadRules(rules.Generate(rules.NewRuleFilter(false, rule)).Builders()...)
+			analyzer.LoadRules(rules.Generate(rules.NewRuleFilter(false, rule)).Builders())
 			for n, sample := range samples {
 				analyzer.Reset()
 				pkg := testutils.NewTestPackage()

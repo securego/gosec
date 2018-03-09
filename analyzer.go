@@ -25,6 +25,7 @@ import (
 	"os"
 	"path"
 	"reflect"
+	"regexp"
 	"strings"
 
 	"path/filepath"
@@ -43,6 +44,7 @@ type Context struct {
 	Root     *ast.File
 	Config   map[string]interface{}
 	Imports  *ImportTracker
+	Ignores  []map[string]bool
 }
 
 // Metrics used when reporting information about a scanning run.
@@ -87,9 +89,9 @@ func NewAnalyzer(conf Config, logger *log.Logger) *Analyzer {
 
 // LoadRules instantiates all the rules to be used when analyzing source
 // packages
-func (gas *Analyzer) LoadRules(ruleDefinitions ...RuleBuilder) {
-	for _, builder := range ruleDefinitions {
-		r, nodes := builder(gas.config)
+func (gas *Analyzer) LoadRules(ruleDefinitions map[string]RuleBuilder) {
+	for id, def := range ruleDefinitions {
+		r, nodes := def(id, gas.config)
 		gas.ruleset.Register(r, nodes...)
 	}
 }
@@ -147,41 +149,84 @@ func (gas *Analyzer) Process(packagePaths ...string) error {
 }
 
 // ignore a node (and sub-tree) if it is tagged with a "#nosec" comment
-func (gas *Analyzer) ignore(n ast.Node) bool {
+func (gas *Analyzer) ignore(n ast.Node) ([]string, bool) {
 	if groups, ok := gas.context.Comments[n]; ok && !gas.ignoreNosec {
 		for _, group := range groups {
 			if strings.Contains(group.Text(), "#nosec") {
 				gas.stats.NumNosec++
-				return true
+
+				// Pull out the specific rules that are listed to be ignored.
+				re := regexp.MustCompile("(G\\d{3})")
+				matches := re.FindAllStringSubmatch(group.Text(), -1)
+
+				// If no specific rules were given, ignore everything.
+				if matches == nil || len(matches) == 0 {
+					return nil, true
+				}
+
+				// Find the rule IDs to ignore.
+				var ignores []string
+				for _, v := range matches {
+					ignores = append(ignores, v[1])
+				}
+				return ignores, false
 			}
 		}
 	}
-	return false
+	return nil, false
 }
 
 // Visit runs the GAS visitor logic over an AST created by parsing go code.
 // Rule methods added with AddRule will be invoked as necessary.
 func (gas *Analyzer) Visit(n ast.Node) ast.Visitor {
-	if !gas.ignore(n) {
-
-		// Track aliased and initialization imports
-		gas.context.Imports.TrackImport(n)
-
-		for _, rule := range gas.ruleset.RegisteredFor(n) {
-			issue, err := rule.Match(n, gas.context)
-			if err != nil {
-				file, line := GetLocation(n, gas.context)
-				file = path.Base(file)
-				gas.logger.Printf("Rule error: %v => %s (%s:%d)\n", reflect.TypeOf(rule), err, file, line)
-			}
-			if issue != nil {
-				gas.issues = append(gas.issues, issue)
-				gas.stats.NumFound++
-			}
+	// If we've reached the end of this branch, pop off the ignores stack.
+	if n == nil {
+		if len(gas.context.Ignores) > 0 {
+			gas.context.Ignores = gas.context.Ignores[1:]
 		}
 		return gas
 	}
-	return nil
+
+	// Get any new rule exclusions.
+	ignoredRules, ignoreAll := gas.ignore(n)
+	if ignoreAll {
+		return nil
+	}
+
+	// Now create the union of exclusions.
+	ignores := make(map[string]bool, 0)
+	if len(gas.context.Ignores) > 0 {
+		for k, v := range gas.context.Ignores[0] {
+			ignores[k] = v
+		}
+	}
+
+	for _, v := range ignoredRules {
+		ignores[v] = true
+	}
+
+	// Push the new set onto the stack.
+	gas.context.Ignores = append([]map[string]bool{ignores}, gas.context.Ignores...)
+
+	// Track aliased and initialization imports
+	gas.context.Imports.TrackImport(n)
+
+	for _, rule := range gas.ruleset.RegisteredFor(n) {
+		if _, ok := ignores[rule.ID()]; ok {
+			continue
+		}
+		issue, err := rule.Match(n, gas.context)
+		if err != nil {
+			file, line := GetLocation(n, gas.context)
+			file = path.Base(file)
+			gas.logger.Printf("Rule error: %v => %s (%s:%d)\n", reflect.TypeOf(rule), err, file, line)
+		}
+		if issue != nil {
+			gas.issues = append(gas.issues, issue)
+			gas.stats.NumFound++
+		}
+	}
+	return gas
 }
 
 // Report returns the current issues discovered and the metrics about the scan

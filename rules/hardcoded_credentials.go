@@ -32,6 +32,10 @@ type credentials struct {
 	ignoreEntropy    bool
 }
 
+func (r *credentials) ID() string {
+	return r.MetaData.ID
+}
+
 func truncate(s string, n int) string {
 	if n > len(s) {
 		return s
@@ -94,7 +98,7 @@ func (r *credentials) matchValueSpec(valueSpec *ast.ValueSpec, ctx *gas.Context)
 
 // NewHardcodedCredentials attempts to find high entropy string constants being
 // assigned to variables that appear to be related to credentials.
-func NewHardcodedCredentials(conf gas.Config) (gas.Rule, []ast.Node) {
+func NewHardcodedCredentials(id string, conf gas.Config) (gas.Rule, []ast.Node) {
 	pattern := `(?i)passwd|pass|password|pwd|secret|token`
 	entropyThreshold := 80.0
 	perCharThreshold := 3.0
@@ -134,6 +138,7 @@ func NewHardcodedCredentials(conf gas.Config) (gas.Rule, []ast.Node) {
 		ignoreEntropy:    ignoreEntropy,
 		truncate:         truncateString,
 		MetaData: gas.MetaData{
+			ID:         id,
 			What:       "Potential hardcoded credentials",
 			Confidence: gas.Low,
 			Severity:   gas.High,
