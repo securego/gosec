@@ -19,7 +19,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/user"
+	"path/filepath"
 	"regexp"
+	"runtime"
 	"sort"
 	"strings"
 
@@ -166,6 +169,43 @@ func saveOutput(filename, format string, issues []*gas.Issue, metrics *gas.Metri
 	return nil
 }
 
+func getenv(key, userDefault string) string {
+	if val := os.Getenv(key); val != "" {
+		return val
+	}
+	return userDefault
+}
+
+func gopath() string {
+	defaultGoPath := runtime.GOROOT()
+	if u, err := user.Current(); err == nil {
+		defaultGoPath = filepath.Join(u.HomeDir, "go")
+	}
+	path := getenv("GOPATH", defaultGoPath)
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return path
+	}
+	return abs
+}
+
+func cleanPaths(paths []string) []string {
+	projectRoot := filepath.FromSlash(fmt.Sprintf("%s/src/", gopath()))
+	var clean []string
+	for _, arg := range paths {
+		cleanPath, err := filepath.Abs(arg)
+		if err != nil {
+			cleanPath = arg
+		}
+		if strings.HasPrefix(arg, projectRoot) {
+			clean = append(clean, strings.TrimPrefix(arg, projectRoot))
+		} else {
+			clean = append(clean, arg)
+		}
+	}
+	return clean
+}
+
 func main() {
 
 	// Setup usage description
@@ -213,13 +253,13 @@ func main() {
 
 	var packages []string
 	// Iterate over packages on the import paths
-	for _, pkg := range gotool.ImportPaths(flag.Args()) {
+	for _, pkg := range gotool.ImportPaths(cleanPaths(flag.Args())) {
 
 		// Skip vendor directory
 		if vendor.MatchString(pkg) {
 			continue
 		}
-		packages = append(packages, pkg)
+		packages = append(packages, filepath.Join(gopath(), "src", pkg))
 	}
 
 	if err := analyzer.Process(packages...); err != nil {
