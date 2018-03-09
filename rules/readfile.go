@@ -31,7 +31,6 @@ func (r *readfile) ID() string {
 	return r.MetaData.ID
 }
 
-
 // Match inspects AST nodes to determine if the match the methods `os.Open` or `ioutil.ReadFile`
 func (r *readfile) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 	if node := r.ContainsCallExpr(n, c); node != nil {
@@ -50,14 +49,14 @@ func (r *readfile) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 // NewReadFile detects cases where we read files
 func NewReadFile(id string, conf gas.Config) (gas.Rule, []ast.Node) {
 	rule := &readfile{
-        CallList: gas.NewCallList(),
+		CallList: gas.NewCallList(),
 		MetaData: gas.MetaData{
 			ID:         id,
 			What:       "Potential file inclusion via variable",
 			Severity:   gas.Medium,
 			Confidence: gas.High,
-        },
-    }
+		},
+	}
 	rule.Add("io/ioutil", "ReadFile")
 	rule.Add("os", "Open")
 	return rule, []ast.Node{(*ast.CallExpr)(nil)}
