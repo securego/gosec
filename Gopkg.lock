@@ -10,7 +10,7 @@
   branch = "master"
   name = "github.com/mozilla/tls-observatory"
   packages = ["constants"]
-  revision = "17e0ce4bfc46eae3d57acf13a2d7c7517655d493"
+  revision = "26cf7187f27c96815d0b4d4ad6da36c7161d4bf8"
 
 [[projects]]
   name = "github.com/nbutton23/zxcvbn-go"
@@ -129,6 +129,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "09e6c6df3fc3c7a7d0b5b96a7374a0e2ac9669c1d1f104dfad5ac9eb09c21ff1"
+  inputs-digest = "706e049cd8b8db8705af09e7a375a999d01373a409beadc850c80d64de9849fd"
   solver-name = "gps-cdcl"
   solver-version = 1
