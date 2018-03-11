@@ -32,9 +32,10 @@ var _ = Describe("gas rules", func() {
 				pkg := testutils.NewTestPackage()
 				defer pkg.Close()
 				pkg.AddFile(fmt.Sprintf("sample_%d.go", n), sample.Code)
-				pkg.Build()
-				e := analyzer.Process(pkg.Path)
-				Expect(e).ShouldNot(HaveOccurred())
+				err := pkg.Build()
+				Expect(err).ShouldNot(HaveOccurred())
+				err = analyzer.Process(pkg.Path)
+				Expect(err).ShouldNot(HaveOccurred())
 				issues, _ := analyzer.Report()
 				if len(issues) != sample.Errors {
 					fmt.Println(sample.Code)
