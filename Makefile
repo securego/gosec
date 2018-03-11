@@ -14,7 +14,7 @@ test: bootstrap
 	go vet $(go list ./... | grep -v /vendor/)
 	golint -set_exit_status $(shell go list ./... | grep -v vendor)
 	gas ./...
-	ginkgo -r
+	ginkgo -r -v
 bootstrap:
 	dep ensure
 build:
