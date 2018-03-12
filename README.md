@@ -114,8 +114,60 @@ file. The output format is controlled by the '-fmt' flag, and the output file is
 # Write output in json format to results.json
 $ gas -fmt=json -out=results.json *.go
 ```
+### Development
 
-### Generate TLS rule
+#### Build
+
+
+```
+make
+```
+
+#### Tests
+
+```
+make tests
+```
+
+#### Release Build
+
+Gas can be released as follows:
+
+```bash
+make release VERSION=2.0.0
+```
+
+The released version of the tool is available in the `build` folder. The build information should be displayed in the usage text.
+
+```
+./build/gas-2.0.0-linux-amd64 -h
+
+GAS - Go AST Scanner
+
+Gas analyzes Go source code to look for common programming mistakes that
+can lead to security problems.
+
+VERSION: 2.0.0
+GIT TAG: 96489ff
+BUILD DATE: 2018-02-21
+
+```
+
+#### Docker image
+
+You can execute a release and build the docker image as follows:
+
+```
+make image VERSION=2.0.0
+```
+
+Now you can run the gas tool in a container against your local workspace:
+
+```
+docker run -it -v <YOUR LOCAL WORKSPACE>:/workspace gas /workspace
+```
+
+#### Generate TLS rule
 
 The configuration of TLS rule can be generated from [Mozilla's TLS ciphers recommendation](https://statics.tls.security.mozilla.org/server-side-tls-conf.json).
 

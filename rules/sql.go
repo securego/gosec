@@ -28,12 +28,12 @@ type sqlStatement struct {
 	patterns []*regexp.Regexp
 }
 
-func (r *sqlStatement) ID() string {
-	return r.MetaData.ID
+func (s *sqlStatement) ID() string {
+	return s.MetaData.ID
 }
 
 // See if the string matches the patterns for the statement.
-func (s sqlStatement) MatchPatterns(str string) bool {
+func (s *sqlStatement) MatchPatterns(str string) bool {
 	for _, pattern := range s.patterns {
 		if !pattern.MatchString(str) {
 			return false
@@ -46,8 +46,8 @@ type sqlStrConcat struct {
 	sqlStatement
 }
 
-func (r *sqlStrConcat) ID() string {
-	return r.MetaData.ID
+func (s *sqlStrConcat) ID() string {
+	return s.MetaData.ID
 }
 
 // see if we can figure out what it is
