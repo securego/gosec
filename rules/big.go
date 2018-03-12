@@ -32,7 +32,7 @@ func (r *usingBigExp) ID() string {
 
 func (r *usingBigExp) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err error) {
 	if _, matched := gas.MatchCallByType(n, c, r.pkg, r.calls...); matched {
-		return gas.NewIssue(c, n, r.What, r.Severity, r.Confidence), nil
+		return gas.NewIssue(c, n, r.ID(), r.What, r.Severity, r.Confidence), nil
 	}
 	return nil, nil
 }

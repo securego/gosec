@@ -69,7 +69,7 @@ func (r *credentials) matchAssign(assign *ast.AssignStmt, ctx *gas.Context) (*ga
 				for _, e := range assign.Rhs {
 					if val, err := gas.GetString(e); err == nil {
 						if r.ignoreEntropy || (!r.ignoreEntropy && r.isHighEntropyString(val)) {
-							return gas.NewIssue(ctx, assign, r.What, r.Severity, r.Confidence), nil
+							return gas.NewIssue(ctx, assign, r.ID(), r.What, r.Severity, r.Confidence), nil
 						}
 					}
 				}
@@ -88,7 +88,7 @@ func (r *credentials) matchValueSpec(valueSpec *ast.ValueSpec, ctx *gas.Context)
 			}
 			if val, err := gas.GetString(valueSpec.Values[index]); err == nil {
 				if r.ignoreEntropy || (!r.ignoreEntropy && r.isHighEntropyString(val)) {
-					return gas.NewIssue(ctx, valueSpec, r.What, r.Severity, r.Confidence), nil
+					return gas.NewIssue(ctx, valueSpec, r.ID(), r.What, r.Severity, r.Confidence), nil
 				}
 			}
 		}

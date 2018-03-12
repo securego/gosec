@@ -34,7 +34,7 @@ func (w *weakKeyStrength) ID() string {
 func (w *weakKeyStrength) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 	if callExpr := w.calls.ContainsCallExpr(n, c); callExpr != nil {
 		if bits, err := gas.GetInt(callExpr.Args[1]); err == nil && bits < (int64)(w.bits) {
-			return gas.NewIssue(c, n, w.What, w.Severity, w.Confidence), nil
+			return gas.NewIssue(c, n, w.ID(), w.What, w.Severity, w.Confidence), nil
 		}
 	}
 	return nil, nil

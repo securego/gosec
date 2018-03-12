@@ -39,7 +39,7 @@ func (r *bindsToAllNetworkInterfaces) Match(n ast.Node, c *gas.Context) (*gas.Is
 	}
 	if arg, err := gas.GetString(callExpr.Args[1]); err == nil {
 		if r.pattern.MatchString(arg) {
-			return gas.NewIssue(c, n, r.What, r.Severity, r.Confidence), nil
+			return gas.NewIssue(c, n, r.ID(), r.What, r.Severity, r.Confidence), nil
 		}
 	}
 	return nil, nil

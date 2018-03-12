@@ -39,7 +39,7 @@ func (r *blacklistedImport) ID() string {
 func (r *blacklistedImport) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 	if node, ok := n.(*ast.ImportSpec); ok {
 		if description, ok := r.Blacklisted[unquote(node.Path.Value)]; ok {
-			return gas.NewIssue(c, node, description, r.Severity, r.Confidence), nil
+			return gas.NewIssue(c, node, r.ID(), description, r.Severity, r.Confidence), nil
 		}
 	}
 	return nil, nil

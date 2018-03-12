@@ -45,11 +45,11 @@ func (r *subprocess) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 			if ident, ok := arg.(*ast.Ident); ok {
 				obj := c.Info.ObjectOf(ident)
 				if _, ok := obj.(*types.Var); ok && !gas.TryResolve(ident, c) {
-					return gas.NewIssue(c, n, "Subprocess launched with variable", gas.Medium, gas.High), nil
+					return gas.NewIssue(c, n, r.ID(), "Subprocess launched with variable", gas.Medium, gas.High), nil
 				}
 			}
 		}
-		return gas.NewIssue(c, n, "Subprocess launching should be audited", gas.Low, gas.High), nil
+		return gas.NewIssue(c, n, r.ID(), "Subprocess launching should be audited", gas.Low, gas.High), nil
 	}
 	return nil, nil
 }

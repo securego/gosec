@@ -33,7 +33,7 @@ func (t *templateCheck) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 	if node := t.calls.ContainsCallExpr(n, c); node != nil {
 		for _, arg := range node.Args {
 			if _, ok := arg.(*ast.BasicLit); !ok { // basic lits are safe
-				return gas.NewIssue(c, n, t.What, t.Severity, t.Confidence), nil
+				return gas.NewIssue(c, n, t.ID(), t.What, t.Severity, t.Confidence), nil
 			}
 		}
 	}

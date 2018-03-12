@@ -38,7 +38,7 @@ func (r *readfile) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 			if ident, ok := arg.(*ast.Ident); ok {
 				obj := c.Info.ObjectOf(ident)
 				if _, ok := obj.(*types.Var); ok && !gas.TryResolve(ident, c) {
-					return gas.NewIssue(c, n, r.What, r.Severity, r.Confidence), nil
+					return gas.NewIssue(c, n, r.ID(), r.What, r.Severity, r.Confidence), nil
 				}
 			}
 		}

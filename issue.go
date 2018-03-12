@@ -38,6 +38,7 @@ const (
 type Issue struct {
 	Severity   Score  `json:"severity"`   // issue severity (how problematic it is)
 	Confidence Score  `json:"confidence"` // issue confidence (how sure we are we found it)
+	RuleID     string `json:"rule_id"`    // Human readable explanation
 	What       string `json:"details"`    // Human readable explanation
 	File       string `json:"file"`       // File name we found it in
 	Code       string `json:"code"`       // Impacted code line
@@ -87,7 +88,7 @@ func codeSnippet(file *os.File, start int64, end int64, n ast.Node) (string, err
 }
 
 // NewIssue creates a new Issue
-func NewIssue(ctx *Context, node ast.Node, desc string, severity Score, confidence Score) *Issue {
+func NewIssue(ctx *Context, node ast.Node, ruleID, desc string, severity Score, confidence Score) *Issue {
 	var code string
 	fobj := ctx.FileSet.File(node.Pos())
 	name := fobj.Name()
@@ -112,6 +113,7 @@ func NewIssue(ctx *Context, node ast.Node, desc string, severity Score, confiden
 	return &Issue{
 		File:       name,
 		Line:       line,
+		RuleID:     ruleID,
 		What:       desc,
 		Confidence: confidence,
 		Severity:   severity,

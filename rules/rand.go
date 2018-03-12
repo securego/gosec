@@ -33,7 +33,7 @@ func (w *weakRand) ID() string {
 func (w *weakRand) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 	for _, funcName := range w.funcNames {
 		if _, matched := gas.MatchCallByPackage(n, c, w.packagePath, funcName); matched {
-			return gas.NewIssue(c, n, w.What, w.Severity, w.Confidence), nil
+			return gas.NewIssue(c, n, w.ID(), w.What, w.Severity, w.Confidence), nil
 		}
 	}
 
