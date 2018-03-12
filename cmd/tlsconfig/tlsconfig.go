@@ -87,7 +87,7 @@ func getGoCipherConfig(name string, sstls ServerSideTLSJson) (goCipherConfigurat
 	for _, cipherName := range conf.Ciphersuites {
 		cipherSuite, ok := constants.CipherSuites[cipherName]
 		if !ok {
-			log.Printf("Warning: cannot map cipher '%s'\n", cipherName)
+			log.Printf("'%s' cipher is not available in crypto/tls package\n", cipherName)
 		}
 		if len(cipherSuite.IANAName) > 0 {
 			cipherConf.Ciphers = append(cipherConf.Ciphers, cipherSuite.IANAName)
