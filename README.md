@@ -116,8 +116,12 @@ $ gas -fmt=json -out=results.json *.go
 ```
 ### Development
 
-#### Build
+#### Prerequisites
 
+Install dep according to the instructions here: https://github.com/golang/dep
+Install the latest version of golint: https://github.com/golang/lint
+
+#### Build
 
 ```
 make
@@ -126,7 +130,7 @@ make
 #### Tests
 
 ```
-make tests
+make test
 ```
 
 #### Release Build
