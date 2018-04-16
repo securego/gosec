@@ -10,7 +10,7 @@
   branch = "master"
   name = "github.com/mozilla/tls-observatory"
   packages = ["constants"]
-  revision = "26cf7187f27c96815d0b4d4ad6da36c7161d4bf8"
+  revision = "8791a200eb40f8625a152bfb8336171305f5f35c"
 
 [[projects]]
   name = "github.com/nbutton23/zxcvbn-go"

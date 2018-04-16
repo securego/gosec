@@ -17,6 +17,8 @@ func NewModernTLSCheck(id string, conf gas.Config) (gas.Rule, []ast.Node) {
 		goodCiphers: []string{
 			"TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",
 			"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
+			"TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305",
+			"TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305",
 			"TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
 			"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
 			"TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384",
@@ -36,6 +38,8 @@ func NewIntermediateTLSCheck(id string, conf gas.Config) (gas.Rule, []ast.Node) 
 		MinVersion:   0x0301,
 		MaxVersion:   0x0303,
 		goodCiphers: []string{
+			"TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305",
+			"TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305",
 			"TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
 			"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
 			"TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",
@@ -77,6 +81,8 @@ func NewOldTLSCheck(id string, conf gas.Config) (gas.Rule, []ast.Node) {
 		MinVersion:   0x0300,
 		MaxVersion:   0x0303,
 		goodCiphers: []string{
+			"TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305",
+			"TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305",
 			"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
 			"TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
 			"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
