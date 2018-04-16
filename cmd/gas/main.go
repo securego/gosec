@@ -17,6 +17,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/user"
@@ -275,7 +276,12 @@ func main() {
 			log.Fatal(e)
 		}
 	}
-	logger = log.New(logWriter, "[gas] ", log.LstdFlags)
+
+	if *flagQuiet {
+		logger = log.New(ioutil.Discard, "", 0)
+	} else {
+		logger = log.New(logWriter, "[gas] ", log.LstdFlags)
+	}
 
 	// Load config
 	config, err := loadConfig(*flagConfig)
