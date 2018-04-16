@@ -19,7 +19,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/user"
+	"path/filepath"
 	"regexp"
+	"runtime"
 	"sort"
 	"strings"
 
@@ -171,6 +174,82 @@ func saveOutput(filename, format string, issues []*gas.Issue, metrics *gas.Metri
 	return nil
 }
 
+func getenv(key, userDefault string) string {
+	if val := os.Getenv(key); val != "" {
+		return val
+	}
+	return userDefault
+}
+
+func gopath() []string {
+	defaultGoPath := runtime.GOROOT()
+	if u, err := user.Current(); err == nil {
+		defaultGoPath = filepath.Join(u.HomeDir, "go")
+	}
+	path := getenv("GOPATH", defaultGoPath)
+	paths := strings.Split(path, string(os.PathListSeparator))
+	for idx, path := range paths {
+		if abs, err := filepath.Abs(path); err == nil {
+			paths[idx] = abs
+		}
+	}
+	return paths
+}
+
+func cleanPath(path string, gopaths []string) (string, error) {
+
+	cleanFailed := fmt.Errorf("%s is not within the $GOPATH and cannot be processed", path)
+	nonRecursivePath := strings.TrimSuffix(path, "/...")
+	// do not attempt to clean directs that are resolvable on gopath
+	if _, err := os.Stat(nonRecursivePath); err != nil && os.IsNotExist(err) {
+		log.Printf("directory %s doesn't exist, checking if is a package on $GOPATH", path)
+		for _, basedir := range gopaths {
+			dir := filepath.Join(basedir, "src", nonRecursivePath)
+			if st, err := os.Stat(dir); err == nil && st.IsDir() {
+				log.Printf("located %s in %s", path, dir)
+				return path, nil
+			}
+		}
+		return "", cleanFailed
+	}
+
+	// ensure we resolve package directory correctly based on $GOPATH
+	abspath, err := filepath.Abs(path)
+	if err != nil {
+		abspath = path
+	}
+	for _, base := range gopaths {
+		projectRoot := filepath.FromSlash(fmt.Sprintf("%s/src/", base))
+		if strings.HasPrefix(abspath, projectRoot) {
+			return strings.TrimPrefix(abspath, projectRoot), nil
+		}
+	}
+	return "", cleanFailed
+}
+
+func cleanPaths(paths []string) []string {
+	gopaths := gopath()
+	var clean []string
+	for _, path := range paths {
+		cleaned, err := cleanPath(path, gopaths)
+		if err != nil {
+			log.Fatal(err)
+		}
+		clean = append(clean, cleaned)
+	}
+	return clean
+}
+
+func resolvePackage(pkg string, searchPaths []string) string {
+	for _, basedir := range searchPaths {
+		dir := filepath.Join(basedir, "src", pkg)
+		if st, err := os.Stat(dir); err == nil && st.IsDir() {
+			return dir
+		}
+	}
+	return pkg
+}
+
 func main() {
 
 	// Setup usage description
@@ -218,13 +297,14 @@ func main() {
 
 	var packages []string
 	// Iterate over packages on the import paths
-	for _, pkg := range gotool.ImportPaths(flag.Args()) {
+	gopaths := gopath()
+	for _, pkg := range gotool.ImportPaths(cleanPaths(flag.Args())) {
 
 		// Skip vendor directory
 		if vendor.MatchString(pkg) {
 			continue
 		}
-		packages = append(packages, pkg)
+		packages = append(packages, resolvePackage(pkg, gopaths))
 	}
 
 	if err := analyzer.Process(packages...); err != nil {
