@@ -15,10 +15,11 @@ import (
 var _ = Describe("gas rules", func() {
 
 	var (
-		logger   *log.Logger
-		config   gas.Config
-		analyzer *gas.Analyzer
-		runner   func(string, []testutils.CodeSample)
+		logger    *log.Logger
+		config    gas.Config
+		analyzer  *gas.Analyzer
+		runner    func(string, []testutils.CodeSample)
+		buildTags []string
 	)
 
 	BeforeEach(func() {
@@ -34,7 +35,7 @@ var _ = Describe("gas rules", func() {
 				pkg.AddFile(fmt.Sprintf("sample_%d.go", n), sample.Code)
 				err := pkg.Build()
 				Expect(err).ShouldNot(HaveOccurred())
-				err = analyzer.Process(pkg.Path)
+				err = analyzer.Process(buildTags, pkg.Path)
 				Expect(err).ShouldNot(HaveOccurred())
 				issues, _ := analyzer.Report()
 				if len(issues) != sample.Errors {

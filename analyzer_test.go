@@ -17,8 +17,9 @@ import (
 var _ = Describe("Analyzer", func() {
 
 	var (
-		analyzer *gas.Analyzer
-		logger   *log.Logger
+		analyzer  *gas.Analyzer
+		logger    *log.Logger
+		buildTags []string
 	)
 	BeforeEach(func() {
 		logger, _ = testutils.NewLogger()
@@ -32,7 +33,7 @@ var _ = Describe("Analyzer", func() {
 			dir, err := ioutil.TempDir("", "empty")
 			defer os.RemoveAll(dir)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = analyzer.Process(dir)
+			err = analyzer.Process(buildTags, dir)
 			Expect(err).Should(HaveOccurred())
 			Expect(err.Error()).Should(MatchRegexp("no buildable Go source files"))
 		})
@@ -44,7 +45,7 @@ var _ = Describe("Analyzer", func() {
 			pkg.AddFile("wonky.go", `func main(){ println("forgot the package")}`)
 			pkg.Build()
 
-			err := analyzer.Process(pkg.Path)
+			err := analyzer.Process(buildTags, pkg.Path)
 			Expect(err).Should(HaveOccurred())
 			Expect(err.Error()).Should(MatchRegexp(`expected 'package'`))
 
@@ -65,7 +66,7 @@ var _ = Describe("Analyzer", func() {
 					println("package has two files!")
 				}`)
 			pkg.Build()
-			err := analyzer.Process(pkg.Path)
+			err := analyzer.Process(buildTags, pkg.Path)
 			Expect(err).ShouldNot(HaveOccurred())
 			_, metrics := analyzer.Report()
 			Expect(metrics.NumFiles).To(Equal(2))
@@ -87,7 +88,7 @@ var _ = Describe("Analyzer", func() {
 				}`)
 			pkg1.Build()
 			pkg2.Build()
-			err := analyzer.Process(pkg1.Path, pkg2.Path)
+			err := analyzer.Process(buildTags, pkg1.Path, pkg2.Path)
 			Expect(err).ShouldNot(HaveOccurred())
 			_, metrics := analyzer.Report()
 			Expect(metrics.NumFiles).To(Equal(2))
@@ -104,7 +105,7 @@ var _ = Describe("Analyzer", func() {
 			defer controlPackage.Close()
 			controlPackage.AddFile("md5.go", source)
 			controlPackage.Build()
-			analyzer.Process(controlPackage.Path)
+			analyzer.Process(buildTags, controlPackage.Path)
 			controlIssues, _ := analyzer.Report()
 			Expect(controlIssues).Should(HaveLen(sample.Errors))
 
@@ -122,7 +123,7 @@ var _ = Describe("Analyzer", func() {
 			nosecPackage.AddFile("md5.go", nosecSource)
 			nosecPackage.Build()
 
-			analyzer.Process(nosecPackage.Path)
+			analyzer.Process(buildTags, nosecPackage.Path)
 			nosecIssues, _ := analyzer.Report()
 			Expect(nosecIssues).Should(BeEmpty())
 		})
@@ -139,7 +140,7 @@ var _ = Describe("Analyzer", func() {
 			nosecPackage.AddFile("md5.go", nosecSource)
 			nosecPackage.Build()
 
-			analyzer.Process(nosecPackage.Path)
+			analyzer.Process(buildTags, nosecPackage.Path)
 			nosecIssues, _ := analyzer.Report()
 			Expect(nosecIssues).Should(BeEmpty())
 		})
@@ -156,7 +157,7 @@ var _ = Describe("Analyzer", func() {
 			nosecPackage.AddFile("md5.go", nosecSource)
 			nosecPackage.Build()
 
-			analyzer.Process(nosecPackage.Path)
+			analyzer.Process(buildTags, nosecPackage.Path)
 			nosecIssues, _ := analyzer.Report()
 			Expect(nosecIssues).Should(HaveLen(sample.Errors))
 		})
@@ -173,9 +174,22 @@ var _ = Describe("Analyzer", func() {
 			nosecPackage.AddFile("md5.go", nosecSource)
 			nosecPackage.Build()
 
-			analyzer.Process(nosecPackage.Path)
+			analyzer.Process(buildTags, nosecPackage.Path)
 			nosecIssues, _ := analyzer.Report()
 			Expect(nosecIssues).Should(BeEmpty())
+		})
+
+		It("should pass the build tags", func() {
+			sample := testutils.SampleCode601[0]
+			source := sample.Code
+			analyzer.LoadRules(rules.Generate().Builders())
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("tags.go", source)
+
+			buildTags = append(buildTags, "test")
+			err := analyzer.Process(buildTags, pkg.Path)
+			Expect(err).Should(HaveOccurred())
 		})
 	})
 
@@ -197,7 +211,7 @@ var _ = Describe("Analyzer", func() {
 		nosecPackage.AddFile("md5.go", nosecSource)
 		nosecPackage.Build()
 
-		customAnalyzer.Process(nosecPackage.Path)
+		customAnalyzer.Process(buildTags, nosecPackage.Path)
 		nosecIssues, _ := customAnalyzer.Report()
 		Expect(nosecIssues).Should(HaveLen(sample.Errors))
 
