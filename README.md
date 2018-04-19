@@ -103,6 +103,14 @@ can do the following:
 ```
 $ gas -nosec=true ./...
 ```
+#### Build tags
+
+Gas is able to pass your [Go build tags](https://golang.org/pkg/go/build/) to the analyzer.
+They can be provided as a comma separated list as follows:
+
+```
+$ gas -tag debug,ignore ./...
+```
 
 ### Output formats
 

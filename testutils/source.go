@@ -721,4 +721,12 @@ import (
 func main() {
 	cgi.Serve(http.FileServer(http.Dir("/usr/share/doc")))
 }`, 1}}
+	// SampleCode601 - Go build tags
+	SampleCode601 = []CodeSample{{`
+// +build test
+
+package main
+func main() {
+  fmt.Println("no package imported error")
+}`, 1}}
 )

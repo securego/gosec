@@ -90,6 +90,9 @@ var (
 	// sort the issues by severity
 	flagSortIssues = flag.Bool("sort", true, "Sort issues by severity")
 
+	// go build tags
+	flagBuildTags = flag.String("tags", "", "Comma separated list of build tags")
+
 	logger *log.Logger
 )
 
@@ -313,7 +316,11 @@ func main() {
 		packages = append(packages, resolvePackage(pkg, gopaths))
 	}
 
-	if err := analyzer.Process(packages...); err != nil {
+	var buildTags []string
+	if *flagBuildTags != "" {
+		buildTags = strings.Split(*flagBuildTags, ",")
+	}
+	if err := analyzer.Process(buildTags, packages...); err != nil {
 		logger.Fatal(err)
 	}
 

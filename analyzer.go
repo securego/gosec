@@ -97,9 +97,11 @@ func (gas *Analyzer) LoadRules(ruleDefinitions map[string]RuleBuilder) {
 }
 
 // Process kicks off the analysis process for a given package
-func (gas *Analyzer) Process(packagePaths ...string) error {
+func (gas *Analyzer) Process(buildTags []string, packagePaths ...string) error {
+	ctx := build.Default
+	ctx.BuildTags = append(ctx.BuildTags, buildTags...)
 	packageConfig := loader.Config{
-		Build:       &build.Default,
+		Build:       &ctx,
 		ParserMode:  parser.ParseComments,
 		AllowErrors: true,
 	}
