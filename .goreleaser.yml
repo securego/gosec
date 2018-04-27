@@ -1,0 +1,15 @@
+builds:
+  - main : ./cmd/gas/
+    binary: gas
+    goos:
+      - darwin
+      - linux
+      - windows
+    goarch:
+      - amd64
+    ldflags: -X main.Version={{.Version}} -X main.GitTag={{.Tag}} -X main.BuildDate={{.Date}}
+
+archive:
+  files:
+    - README.md
+    - LICENSE.txt
