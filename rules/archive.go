@@ -17,6 +17,7 @@ func (a *archive) ID() string {
 	return a.MetaData.ID
 }
 
+// Match inspects AST nodes to determine if the filepath.Joins uses any argument derived from type zip.File
 func (a *archive) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 	if node := a.calls.ContainsCallExpr(n, c); node != nil {
 		for _, arg := range node.Args {
@@ -24,7 +25,14 @@ func (a *archive) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 			if selector, ok := arg.(*ast.SelectorExpr); ok {
 				argType = c.Info.TypeOf(selector.X)
 			} else if ident, ok := arg.(*ast.Ident); ok {
-				argType = c.Info.TypeOf(ident)
+				if ident.Obj != nil && ident.Obj.Kind == ast.Var {
+					decl := ident.Obj.Decl
+					if assign, ok := decl.(*ast.AssignStmt); ok {
+						if selector, ok := assign.Rhs[0].(*ast.SelectorExpr); ok {
+							argType = c.Info.TypeOf(selector.X)
+						}
+					}
+				}
 			}
 
 			if argType != nil && argType.String() == a.argType {
