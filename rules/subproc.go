@@ -58,6 +58,7 @@ func (r *subprocess) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 func NewSubproc(id string, conf gas.Config) (gas.Rule, []ast.Node) {
 	rule := &subprocess{gas.MetaData{ID: id}, gas.NewCallList()}
 	rule.Add("os/exec", "Command")
+	rule.Add("os/exec", "CommandContext")
 	rule.Add("syscall", "Exec")
 	return rule, []ast.Node{(*ast.CallExpr)(nil)}
 }

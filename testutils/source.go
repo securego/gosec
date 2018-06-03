@@ -410,6 +410,20 @@ func main() {
 package main
 import (
 	"log"
+	"os/exec"
+	"context"
+)
+func main() {
+	err := exec.CommandContext(context.Background(), "sleep", "5").Run()
+ 	if err != nil {
+		log.Fatal(err)
+	}
+  	log.Printf("Command finished with error: %v", err)
+}
+}`, 1}, {`
+package main
+import (
+	"log"
 	"os"
 	"os/exec"
 )
