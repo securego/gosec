@@ -79,6 +79,7 @@ func Generate(filters ...RuleFilter) RuleList {
 		{"G302", "Poor file permisions used when creation file or using chmod", NewFilePerms},
 		{"G303", "Creating tempfile using a predictable path", NewBadTempFile},
 		{"G304", "File path provided as taint input", NewReadFile},
+		{"G305", "File path traversal when extracting zip archive", NewArchive},
 
 		// crypto
 		{"G401", "Detect the usage of DES, RC4, or MD5", NewUsesWeakCryptography},

@@ -103,6 +103,10 @@ var _ = Describe("gas rules", func() {
 			runner("G304", testutils.SampleCodeG304)
 		})
 
+		It("should detect file path traversal when extracting zip archive", func() {
+			runner("G305", testutils.SampleCodeG305)
+		})
+
 		It("should detect weak crypto algorithms", func() {
 			runner("G401", testutils.SampleCodeG401)
 		})
