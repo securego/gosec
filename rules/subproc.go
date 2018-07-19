@@ -18,12 +18,12 @@ import (
 	"go/ast"
 	"go/types"
 
-	"github.com/securego/gas"
+	"github.com/securego/gosec"
 )
 
 type subprocess struct {
-	gas.MetaData
-	gas.CallList
+	gosec.MetaData
+	gosec.CallList
 }
 
 func (r *subprocess) ID() string {
@@ -39,24 +39,24 @@ func (r *subprocess) ID() string {
 // is unsafe. For example:
 //
 // syscall.Exec("echo", "foobar" + tainted)
-func (r *subprocess) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
+func (r *subprocess) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error) {
 	if node := r.ContainsCallExpr(n, c); node != nil {
 		for _, arg := range node.Args {
 			if ident, ok := arg.(*ast.Ident); ok {
 				obj := c.Info.ObjectOf(ident)
-				if _, ok := obj.(*types.Var); ok && !gas.TryResolve(ident, c) {
-					return gas.NewIssue(c, n, r.ID(), "Subprocess launched with variable", gas.Medium, gas.High), nil
+				if _, ok := obj.(*types.Var); ok && !gosec.TryResolve(ident, c) {
+					return gosec.NewIssue(c, n, r.ID(), "Subprocess launched with variable", gosec.Medium, gosec.High), nil
 				}
 			}
 		}
-		return gas.NewIssue(c, n, r.ID(), "Subprocess launching should be audited", gas.Low, gas.High), nil
+		return gosec.NewIssue(c, n, r.ID(), "Subprocess launching should be audited", gosec.Low, gosec.High), nil
 	}
 	return nil, nil
 }
 
 // NewSubproc detects cases where we are forking out to an external process
-func NewSubproc(id string, conf gas.Config) (gas.Rule, []ast.Node) {
-	rule := &subprocess{gas.MetaData{ID: id}, gas.NewCallList()}
+func NewSubproc(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
+	rule := &subprocess{gosec.MetaData{ID: id}, gosec.NewCallList()}
 	rule.Add("os/exec", "Command")
 	rule.Add("syscall", "Exec")
 	return rule, []ast.Node{(*ast.CallExpr)(nil)}

@@ -17,11 +17,11 @@ package rules
 import (
 	"go/ast"
 
-	"github.com/securego/gas"
+	"github.com/securego/gosec"
 )
 
 type usingUnsafe struct {
-	gas.MetaData
+	gosec.MetaData
 	pkg   string
 	calls []string
 }
@@ -30,24 +30,24 @@ func (r *usingUnsafe) ID() string {
 	return r.MetaData.ID
 }
 
-func (r *usingUnsafe) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err error) {
-	if _, matches := gas.MatchCallByPackage(n, c, r.pkg, r.calls...); matches {
-		return gas.NewIssue(c, n, r.ID(), r.What, r.Severity, r.Confidence), nil
+func (r *usingUnsafe) Match(n ast.Node, c *gosec.Context) (gi *gosec.Issue, err error) {
+	if _, matches := gosec.MatchCallByPackage(n, c, r.pkg, r.calls...); matches {
+		return gosec.NewIssue(c, n, r.ID(), r.What, r.Severity, r.Confidence), nil
 	}
 	return nil, nil
 }
 
 // NewUsingUnsafe rule detects the use of the unsafe package. This is only
 // really useful for auditing purposes.
-func NewUsingUnsafe(id string, conf gas.Config) (gas.Rule, []ast.Node) {
+func NewUsingUnsafe(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 	return &usingUnsafe{
 		pkg:   "unsafe",
 		calls: []string{"Alignof", "Offsetof", "Sizeof", "Pointer"},
-		MetaData: gas.MetaData{
+		MetaData: gosec.MetaData{
 			ID:         id,
 			What:       "Use of unsafe calls should be audited",
-			Severity:   gas.Low,
-			Confidence: gas.High,
+			Severity:   gosec.Low,
+			Confidence: gosec.High,
 		},
 	}, []ast.Node{(*ast.CallExpr)(nil)}
 }

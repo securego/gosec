@@ -18,13 +18,13 @@ import (
 	"go/ast"
 	"regexp"
 
-	"github.com/securego/gas"
+	"github.com/securego/gosec"
 )
 
 // Looks for net.Listen("0.0.0.0") or net.Listen(":8080")
 type bindsToAllNetworkInterfaces struct {
-	gas.MetaData
-	calls   gas.CallList
+	gosec.MetaData
+	calls   gosec.CallList
 	pattern *regexp.Regexp
 }
 
@@ -32,14 +32,14 @@ func (r *bindsToAllNetworkInterfaces) ID() string {
 	return r.MetaData.ID
 }
 
-func (r *bindsToAllNetworkInterfaces) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
+func (r *bindsToAllNetworkInterfaces) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error) {
 	callExpr := r.calls.ContainsCallExpr(n, c)
 	if callExpr == nil {
 		return nil, nil
 	}
-	if arg, err := gas.GetString(callExpr.Args[1]); err == nil {
+	if arg, err := gosec.GetString(callExpr.Args[1]); err == nil {
 		if r.pattern.MatchString(arg) {
-			return gas.NewIssue(c, n, r.ID(), r.What, r.Severity, r.Confidence), nil
+			return gosec.NewIssue(c, n, r.ID(), r.What, r.Severity, r.Confidence), nil
 		}
 	}
 	return nil, nil
@@ -47,17 +47,17 @@ func (r *bindsToAllNetworkInterfaces) Match(n ast.Node, c *gas.Context) (*gas.Is
 
 // NewBindsToAllNetworkInterfaces detects socket connections that are setup to
 // listen on all network interfaces.
-func NewBindsToAllNetworkInterfaces(id string, conf gas.Config) (gas.Rule, []ast.Node) {
-	calls := gas.NewCallList()
+func NewBindsToAllNetworkInterfaces(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
+	calls := gosec.NewCallList()
 	calls.Add("net", "Listen")
 	calls.Add("crypto/tls", "Listen")
 	return &bindsToAllNetworkInterfaces{
 		calls:   calls,
 		pattern: regexp.MustCompile(`^(0.0.0.0|:).*$`),
-		MetaData: gas.MetaData{
+		MetaData: gosec.MetaData{
 			ID:         id,
-			Severity:   gas.Medium,
-			Confidence: gas.High,
+			Severity:   gosec.Medium,
+			Confidence: gosec.High,
 			What:       "Binds to all network interfaces",
 		},
 	}, []ast.Node{(*ast.CallExpr)(nil)}

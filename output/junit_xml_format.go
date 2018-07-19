@@ -5,7 +5,7 @@ import (
 	htmlLib "html"
 	"strconv"
 
-	"github.com/securego/gas"
+	"github.com/securego/gosec"
 )
 
 type junitXMLReport struct {
@@ -32,26 +32,26 @@ type failure struct {
 	Text    string   `xml:",innerxml"`
 }
 
-func generatePlaintext(issue *gas.Issue) string {
+func generatePlaintext(issue *gosec.Issue) string {
 	return "Results:\n" +
 		"[" + issue.File + ":" + issue.Line + "] - " +
 		issue.What + " (Confidence: " + strconv.Itoa(int(issue.Confidence)) +
 		", Severity: " + strconv.Itoa(int(issue.Severity)) + ")\n" + "> " + htmlLib.EscapeString(issue.Code)
 }
 
-func groupDataByRules(data *reportInfo) map[string][]*gas.Issue {
-	groupedData := make(map[string][]*gas.Issue)
+func groupDataByRules(data *reportInfo) map[string][]*gosec.Issue {
+	groupedData := make(map[string][]*gosec.Issue)
 	for _, issue := range data.Issues {
 		if _, ok := groupedData[issue.What]; ok {
 			groupedData[issue.What] = append(groupedData[issue.What], issue)
 		} else {
-			groupedData[issue.What] = []*gas.Issue{issue}
+			groupedData[issue.What] = []*gosec.Issue{issue}
 		}
 	}
 	return groupedData
 }
 
-func createJUnitXMLStruct(groupedData map[string][]*gas.Issue) junitXMLReport {
+func createJUnitXMLStruct(groupedData map[string][]*gosec.Issue) junitXMLReport {
 	var xmlReport junitXMLReport
 	for what, issues := range groupedData {
 		testsuite := testsuite{

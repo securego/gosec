@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package gas
+package gosec
 
 import (
 	"encoding/json"
@@ -34,7 +34,7 @@ const (
 	High
 )
 
-// Issue is returnd by a GAS rule if it discovers an issue with the scanned code.
+// Issue is returnd by a gosec rule if it discovers an issue with the scanned code.
 type Issue struct {
 	Severity   Score  `json:"severity"`   // issue severity (how problematic it is)
 	Confidence Score  `json:"confidence"` // issue confidence (how sure we are we found it)
@@ -45,7 +45,7 @@ type Issue struct {
 	Line       string `json:"line"`       // Line number in file
 }
 
-// MetaData is embedded in all GAS rules. The Severity, Confidence and What message
+// MetaData is embedded in all gosec rules. The Severity, Confidence and What message
 // will be passed tbhrough to reported issues.
 type MetaData struct {
 	ID         string

@@ -10,14 +10,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package gas
+package gosec
 
 import (
 	"go/ast"
 	"reflect"
 )
 
-// The Rule interface used by all rules supported by GAS.
+// The Rule interface used by all rules supported by gosec.
 type Rule interface {
 	ID() string
 	Match(ast.Node, *Context) (*Issue, error)
