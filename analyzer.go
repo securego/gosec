@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package gas holds the central scanning logic used by GAS
-package gas
+// Package gosec holds the central scanning logic used by gosec security scanner
+package gosec
 
 import (
 	"go/ast"
@@ -55,7 +55,7 @@ type Metrics struct {
 	NumFound int `json:"found"`
 }
 
-// Analyzer object is the main object of GAS. It has methods traverse an AST
+// Analyzer object is the main object of gosec. It has methods traverse an AST
 // and invoke the correct checking rules as on each node as required.
 type Analyzer struct {
 	ignoreNosec bool
@@ -74,7 +74,7 @@ func NewAnalyzer(conf Config, logger *log.Logger) *Analyzer {
 		ignoreNoSec = setting == "true" || setting == "enabled"
 	}
 	if logger == nil {
-		logger = log.New(os.Stderr, "[gas]", log.LstdFlags)
+		logger = log.New(os.Stderr, "[gosec]", log.LstdFlags)
 	}
 	return &Analyzer{
 		ignoreNosec: ignoreNoSec,
@@ -89,15 +89,15 @@ func NewAnalyzer(conf Config, logger *log.Logger) *Analyzer {
 
 // LoadRules instantiates all the rules to be used when analyzing source
 // packages
-func (gas *Analyzer) LoadRules(ruleDefinitions map[string]RuleBuilder) {
+func (gosec *Analyzer) LoadRules(ruleDefinitions map[string]RuleBuilder) {
 	for id, def := range ruleDefinitions {
-		r, nodes := def(id, gas.config)
-		gas.ruleset.Register(r, nodes...)
+		r, nodes := def(id, gosec.config)
+		gosec.ruleset.Register(r, nodes...)
 	}
 }
 
 // Process kicks off the analysis process for a given package
-func (gas *Analyzer) Process(buildTags []string, packagePaths ...string) error {
+func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error {
 	ctx := build.Default
 	ctx.BuildTags = append(ctx.BuildTags, buildTags...)
 	packageConfig := loader.Config{
@@ -111,10 +111,10 @@ func (gas *Analyzer) Process(buildTags []string, packagePaths ...string) error {
 			return err
 		}
 		if _, err := os.Stat(abspath); os.IsNotExist(err) {
-			gas.logger.Printf("Skipping: %s. Path doesn't exist.", abspath)
+			gosec.logger.Printf("Skipping: %s. Path doesn't exist.", abspath)
 			continue
 		}
-		gas.logger.Println("Searching directory:", abspath)
+		gosec.logger.Println("Searching directory:", abspath)
 
 		basePackage, err := build.Default.ImportDir(packagePath, build.ImportComment)
 		if err != nil {
@@ -135,31 +135,31 @@ func (gas *Analyzer) Process(buildTags []string, packagePaths ...string) error {
 	}
 
 	for _, pkg := range builtPackage.Created {
-		gas.logger.Println("Checking package:", pkg.String())
+		gosec.logger.Println("Checking package:", pkg.String())
 		for _, file := range pkg.Files {
-			gas.logger.Println("Checking file:", builtPackage.Fset.File(file.Pos()).Name())
-			gas.context.FileSet = builtPackage.Fset
-			gas.context.Config = gas.config
-			gas.context.Comments = ast.NewCommentMap(gas.context.FileSet, file, file.Comments)
-			gas.context.Root = file
-			gas.context.Info = &pkg.Info
-			gas.context.Pkg = pkg.Pkg
-			gas.context.Imports = NewImportTracker()
-			gas.context.Imports.TrackPackages(gas.context.Pkg.Imports()...)
-			ast.Walk(gas, file)
-			gas.stats.NumFiles++
-			gas.stats.NumLines += builtPackage.Fset.File(file.Pos()).LineCount()
+			gosec.logger.Println("Checking file:", builtPackage.Fset.File(file.Pos()).Name())
+			gosec.context.FileSet = builtPackage.Fset
+			gosec.context.Config = gosec.config
+			gosec.context.Comments = ast.NewCommentMap(gosec.context.FileSet, file, file.Comments)
+			gosec.context.Root = file
+			gosec.context.Info = &pkg.Info
+			gosec.context.Pkg = pkg.Pkg
+			gosec.context.Imports = NewImportTracker()
+			gosec.context.Imports.TrackPackages(gosec.context.Pkg.Imports()...)
+			ast.Walk(gosec, file)
+			gosec.stats.NumFiles++
+			gosec.stats.NumLines += builtPackage.Fset.File(file.Pos()).LineCount()
 		}
 	}
 	return nil
 }
 
 // ignore a node (and sub-tree) if it is tagged with a "#nosec" comment
-func (gas *Analyzer) ignore(n ast.Node) ([]string, bool) {
-	if groups, ok := gas.context.Comments[n]; ok && !gas.ignoreNosec {
+func (gosec *Analyzer) ignore(n ast.Node) ([]string, bool) {
+	if groups, ok := gosec.context.Comments[n]; ok && !gosec.ignoreNosec {
 		for _, group := range groups {
 			if strings.Contains(group.Text(), "#nosec") {
-				gas.stats.NumNosec++
+				gosec.stats.NumNosec++
 
 				// Pull out the specific rules that are listed to be ignored.
 				re := regexp.MustCompile("(G\\d{3})")
@@ -182,27 +182,27 @@ func (gas *Analyzer) ignore(n ast.Node) ([]string, bool) {
 	return nil, false
 }
 
-// Visit runs the GAS visitor logic over an AST created by parsing go code.
+// Visit runs the gosec visitor logic over an AST created by parsing go code.
 // Rule methods added with AddRule will be invoked as necessary.
-func (gas *Analyzer) Visit(n ast.Node) ast.Visitor {
+func (gosec *Analyzer) Visit(n ast.Node) ast.Visitor {
 	// If we've reached the end of this branch, pop off the ignores stack.
 	if n == nil {
-		if len(gas.context.Ignores) > 0 {
-			gas.context.Ignores = gas.context.Ignores[1:]
+		if len(gosec.context.Ignores) > 0 {
+			gosec.context.Ignores = gosec.context.Ignores[1:]
 		}
-		return gas
+		return gosec
 	}
 
 	// Get any new rule exclusions.
-	ignoredRules, ignoreAll := gas.ignore(n)
+	ignoredRules, ignoreAll := gosec.ignore(n)
 	if ignoreAll {
 		return nil
 	}
 
 	// Now create the union of exclusions.
 	ignores := make(map[string]bool, 0)
-	if len(gas.context.Ignores) > 0 {
-		for k, v := range gas.context.Ignores[0] {
+	if len(gosec.context.Ignores) > 0 {
+		for k, v := range gosec.context.Ignores[0] {
 			ignores[k] = v
 		}
 	}
@@ -212,37 +212,37 @@ func (gas *Analyzer) Visit(n ast.Node) ast.Visitor {
 	}
 
 	// Push the new set onto the stack.
-	gas.context.Ignores = append([]map[string]bool{ignores}, gas.context.Ignores...)
+	gosec.context.Ignores = append([]map[string]bool{ignores}, gosec.context.Ignores...)
 
 	// Track aliased and initialization imports
-	gas.context.Imports.TrackImport(n)
+	gosec.context.Imports.TrackImport(n)
 
-	for _, rule := range gas.ruleset.RegisteredFor(n) {
+	for _, rule := range gosec.ruleset.RegisteredFor(n) {
 		if _, ok := ignores[rule.ID()]; ok {
 			continue
 		}
-		issue, err := rule.Match(n, gas.context)
+		issue, err := rule.Match(n, gosec.context)
 		if err != nil {
-			file, line := GetLocation(n, gas.context)
+			file, line := GetLocation(n, gosec.context)
 			file = path.Base(file)
-			gas.logger.Printf("Rule error: %v => %s (%s:%d)\n", reflect.TypeOf(rule), err, file, line)
+			gosec.logger.Printf("Rule error: %v => %s (%s:%d)\n", reflect.TypeOf(rule), err, file, line)
 		}
 		if issue != nil {
-			gas.issues = append(gas.issues, issue)
-			gas.stats.NumFound++
+			gosec.issues = append(gosec.issues, issue)
+			gosec.stats.NumFound++
 		}
 	}
-	return gas
+	return gosec
 }
 
 // Report returns the current issues discovered and the metrics about the scan
-func (gas *Analyzer) Report() ([]*Issue, *Metrics) {
-	return gas.issues, gas.stats
+func (gosec *Analyzer) Report() ([]*Issue, *Metrics) {
+	return gosec.issues, gosec.stats
 }
 
 // Reset clears state such as context, issues and metrics from the configured analyzer
-func (gas *Analyzer) Reset() {
-	gas.context = &Context{}
-	gas.issues = make([]*Issue, 0, 16)
-	gas.stats = &Metrics{}
+func (gosec *Analyzer) Reset() {
+	gosec.context = &Context{}
+	gosec.issues = make([]*Issue, 0, 16)
+	gosec.stats = &Metrics{}
 }

@@ -17,11 +17,11 @@ package rules
 import (
 	"go/ast"
 
-	"github.com/securego/gas"
+	"github.com/securego/gosec"
 )
 
 type usingBigExp struct {
-	gas.MetaData
+	gosec.MetaData
 	pkg   string
 	calls []string
 }
@@ -30,23 +30,23 @@ func (r *usingBigExp) ID() string {
 	return r.MetaData.ID
 }
 
-func (r *usingBigExp) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err error) {
-	if _, matched := gas.MatchCallByType(n, c, r.pkg, r.calls...); matched {
-		return gas.NewIssue(c, n, r.ID(), r.What, r.Severity, r.Confidence), nil
+func (r *usingBigExp) Match(n ast.Node, c *gosec.Context) (gi *gosec.Issue, err error) {
+	if _, matched := gosec.MatchCallByType(n, c, r.pkg, r.calls...); matched {
+		return gosec.NewIssue(c, n, r.ID(), r.What, r.Severity, r.Confidence), nil
 	}
 	return nil, nil
 }
 
 // NewUsingBigExp detects issues with modulus == 0 for Bignum
-func NewUsingBigExp(id string, conf gas.Config) (gas.Rule, []ast.Node) {
+func NewUsingBigExp(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 	return &usingBigExp{
 		pkg:   "*math/big.Int",
 		calls: []string{"Exp"},
-		MetaData: gas.MetaData{
+		MetaData: gosec.MetaData{
 			ID:         id,
 			What:       "Use of math/big.Int.Exp function should be audited for modulus == 0",
-			Severity:   gas.Low,
-			Confidence: gas.High,
+			Severity:   gosec.Low,
+			Confidence: gosec.High,
 		},
 	}, []ast.Node{(*ast.CallExpr)(nil)}
 }

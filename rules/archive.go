@@ -4,12 +4,12 @@ import (
 	"go/ast"
 	"go/types"
 
-	"github.com/securego/gas"
+	"github.com/securego/gosec"
 )
 
 type archive struct {
-	gas.MetaData
-	calls   gas.CallList
+	gosec.MetaData
+	calls   gosec.CallList
 	argType string
 }
 
@@ -18,7 +18,7 @@ func (a *archive) ID() string {
 }
 
 // Match inspects AST nodes to determine if the filepath.Joins uses any argument derived from type zip.File
-func (a *archive) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
+func (a *archive) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error) {
 	if node := a.calls.ContainsCallExpr(n, c); node != nil {
 		for _, arg := range node.Args {
 			var argType types.Type
@@ -36,7 +36,7 @@ func (a *archive) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 			}
 
 			if argType != nil && argType.String() == a.argType {
-				return gas.NewIssue(c, n, a.ID(), a.What, a.Severity, a.Confidence), nil
+				return gosec.NewIssue(c, n, a.ID(), a.What, a.Severity, a.Confidence), nil
 			}
 		}
 	}
@@ -44,16 +44,16 @@ func (a *archive) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 }
 
 // NewArchive creates a new rule which detects the file traversal when extracting zip archives
-func NewArchive(id string, conf gas.Config) (gas.Rule, []ast.Node) {
-	calls := gas.NewCallList()
+func NewArchive(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
+	calls := gosec.NewCallList()
 	calls.Add("path/filepath", "Join")
 	return &archive{
 		calls:   calls,
 		argType: "*archive/zip.File",
-		MetaData: gas.MetaData{
+		MetaData: gosec.MetaData{
 			ID:         id,
-			Severity:   gas.Medium,
-			Confidence: gas.High,
+			Severity:   gosec.Medium,
+			Confidence: gosec.High,
 			What:       "File traversal when extracting zip archive",
 		},
 	}, []ast.Node{(*ast.CallExpr)(nil)}

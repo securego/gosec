@@ -1,20 +1,20 @@
-package gas_test
+package gosec_test
 
 import (
 	"go/ast"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/securego/gas"
-	"github.com/securego/gas/testutils"
+	"github.com/securego/gosec"
+	"github.com/securego/gosec/testutils"
 )
 
 var _ = Describe("call list", func() {
 	var (
-		calls gas.CallList
+		calls gosec.CallList
 	)
 	BeforeEach(func() {
-		calls = gas.NewCallList()
+		calls = gosec.NewCallList()
 	})
 
 	It("should not return any matches when empty", func() {
@@ -72,7 +72,7 @@ var _ = Describe("call list", func() {
 		matched := 0
 		v := testutils.NewMockVisitor()
 		v.Context = ctx
-		v.Callback = func(n ast.Node, ctx *gas.Context) bool {
+		v.Callback = func(n ast.Node, ctx *gosec.Context) bool {
 			if _, ok := n.(*ast.CallExpr); ok && calls.ContainsCallExpr(n, ctx) != nil {
 				matched++
 			}

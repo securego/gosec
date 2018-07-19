@@ -19,11 +19,11 @@ import (
 	"go/ast"
 	"strconv"
 
-	"github.com/securego/gas"
+	"github.com/securego/gosec"
 )
 
 type filePermissions struct {
-	gas.MetaData
+	gosec.MetaData
 	mode  int64
 	pkg   string
 	calls []string
@@ -50,11 +50,11 @@ func getConfiguredMode(conf map[string]interface{}, configKey string, defaultMod
 	return mode
 }
 
-func (r *filePermissions) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
-	if callexpr, matched := gas.MatchCallByPackage(n, c, r.pkg, r.calls...); matched {
+func (r *filePermissions) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error) {
+	if callexpr, matched := gosec.MatchCallByPackage(n, c, r.pkg, r.calls...); matched {
 		modeArg := callexpr.Args[len(callexpr.Args)-1]
-		if mode, err := gas.GetInt(modeArg); err == nil && mode > r.mode {
-			return gas.NewIssue(c, n, r.ID(), r.What, r.Severity, r.Confidence), nil
+		if mode, err := gosec.GetInt(modeArg); err == nil && mode > r.mode {
+			return gosec.NewIssue(c, n, r.ID(), r.What, r.Severity, r.Confidence), nil
 		}
 	}
 	return nil, nil
@@ -62,16 +62,16 @@ func (r *filePermissions) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) 
 
 // NewFilePerms creates a rule to detect file creation with a more permissive than configured
 // permission mask.
-func NewFilePerms(id string, conf gas.Config) (gas.Rule, []ast.Node) {
+func NewFilePerms(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 	mode := getConfiguredMode(conf, "G302", 0600)
 	return &filePermissions{
 		mode:  mode,
 		pkg:   "os",
 		calls: []string{"OpenFile", "Chmod"},
-		MetaData: gas.MetaData{
+		MetaData: gosec.MetaData{
 			ID:         id,
-			Severity:   gas.Medium,
-			Confidence: gas.High,
+			Severity:   gosec.Medium,
+			Confidence: gosec.High,
 			What:       fmt.Sprintf("Expect file permissions to be %#o or less", mode),
 		},
 	}, []ast.Node{(*ast.CallExpr)(nil)}
@@ -79,16 +79,16 @@ func NewFilePerms(id string, conf gas.Config) (gas.Rule, []ast.Node) {
 
 // NewMkdirPerms creates a rule to detect directory creation with more permissive than
 // configured permission mask.
-func NewMkdirPerms(id string, conf gas.Config) (gas.Rule, []ast.Node) {
+func NewMkdirPerms(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 	mode := getConfiguredMode(conf, "G301", 0750)
 	return &filePermissions{
 		mode:  mode,
 		pkg:   "os",
 		calls: []string{"Mkdir", "MkdirAll"},
-		MetaData: gas.MetaData{
+		MetaData: gosec.MetaData{
 			ID:         id,
-			Severity:   gas.Medium,
-			Confidence: gas.High,
+			Severity:   gosec.Medium,
+			Confidence: gosec.High,
 			What:       fmt.Sprintf("Expect directory permissions to be %#o or less", mode),
 		},
 	}, []ast.Node{(*ast.CallExpr)(nil)}

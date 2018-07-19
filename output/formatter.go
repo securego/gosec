@@ -22,7 +22,7 @@ import (
 	"io"
 	plainTemplate "text/template"
 
-	"github.com/securego/gas"
+	"github.com/securego/gosec"
 	"gopkg.in/yaml.v2"
 )
 
@@ -58,13 +58,13 @@ Summary:
 `
 
 type reportInfo struct {
-	Issues []*gas.Issue
-	Stats  *gas.Metrics
+	Issues []*gosec.Issue
+	Stats  *gosec.Metrics
 }
 
 // CreateReport generates a report based for the supplied issues and metrics given
 // the specified format. The formats currently accepted are: json, csv, html and text.
-func CreateReport(w io.Writer, format string, issues []*gas.Issue, metrics *gas.Metrics) error {
+func CreateReport(w io.Writer, format string, issues []*gosec.Issue, metrics *gosec.Metrics) error {
 	data := &reportInfo{
 		Issues: issues,
 		Stats:  metrics,
@@ -150,7 +150,7 @@ func reportJUnitXML(w io.Writer, data *reportInfo) error {
 }
 
 func reportFromPlaintextTemplate(w io.Writer, reportTemplate string, data *reportInfo) error {
-	t, e := plainTemplate.New("gas").Parse(reportTemplate)
+	t, e := plainTemplate.New("gosec").Parse(reportTemplate)
 	if e != nil {
 		return e
 	}
@@ -159,7 +159,7 @@ func reportFromPlaintextTemplate(w io.Writer, reportTemplate string, data *repor
 }
 
 func reportFromHTMLTemplate(w io.Writer, reportTemplate string, data *reportInfo) error {
-	t, e := htmlTemplate.New("gas").Parse(reportTemplate)
+	t, e := htmlTemplate.New("gosec").Parse(reportTemplate)
 	if e != nil {
 		return e
 	}
