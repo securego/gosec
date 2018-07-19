@@ -14,6 +14,8 @@ You may obtain a copy of the License [here](http://www.apache.org/licenses/LICEN
 
 [![Build Status](https://travis-ci.org/securego/gosec.svg?branch=master)](https://travis-ci.org/securego/gosec)
 [![GoDoc](https://godoc.org/github.com/securego/gosec?status.svg)](https://godoc.org/github.com/securego/gosec)
+![Slack](http://securego.herokuapp.com/badge.svg)](http://securego.herokuapp.com)
+
 
 ### Install
 
