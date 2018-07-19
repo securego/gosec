@@ -14,6 +14,8 @@ You may obtain a copy of the License [here](http://www.apache.org/licenses/LICEN
 
 [![Build Status](https://travis-ci.org/securego/gas.svg?branch=master)](https://travis-ci.org/securego/gas)
 [![GoDoc](https://godoc.org/github.com/securego/gas?status.svg)](https://godoc.org/github.com/securego/gas)
+[![Slack](http://securego.herokuapp.com/badge.svg)](http://securego.herokuapp.com/badge.svg)
+
 
 Gas is still in alpha and accepting feedback from early adopters. We do
 not consider it production ready at this time.
