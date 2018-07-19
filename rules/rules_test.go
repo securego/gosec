@@ -4,28 +4,27 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/securego/gas"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/securego/gas/rules"
-	"github.com/securego/gas/testutils"
+	"github.com/securego/gosec"
+	"github.com/securego/gosec/rules"
+	"github.com/securego/gosec/testutils"
 )
 
-var _ = Describe("gas rules", func() {
+var _ = Describe("gosec rules", func() {
 
 	var (
 		logger    *log.Logger
-		config    gas.Config
-		analyzer  *gas.Analyzer
+		config    gosec.Config
+		analyzer  *gosec.Analyzer
 		runner    func(string, []testutils.CodeSample)
 		buildTags []string
 	)
 
 	BeforeEach(func() {
 		logger, _ = testutils.NewLogger()
-		config = gas.NewConfig()
-		analyzer = gas.NewAnalyzer(config, logger)
+		config = gosec.NewConfig()
+		analyzer = gosec.NewAnalyzer(config, logger)
 		runner = func(rule string, samples []testutils.CodeSample) {
 			analyzer.LoadRules(rules.Generate(rules.NewRuleFilter(false, rule)).Builders())
 			for n, sample := range samples {

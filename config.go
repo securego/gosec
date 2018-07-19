@@ -1,4 +1,4 @@
-package gas
+package gosec
 
 import (
 	"bytes"
@@ -10,7 +10,7 @@ import (
 
 const (
 	// Globals are applicable to all rules and used for general
-	// configuration settings for gas.
+	// configuration settings for gosec.
 	Globals = "global"
 )
 

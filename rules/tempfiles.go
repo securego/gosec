@@ -18,12 +18,12 @@ import (
 	"go/ast"
 	"regexp"
 
-	"github.com/securego/gas"
+	"github.com/securego/gosec"
 )
 
 type badTempFile struct {
-	gas.MetaData
-	calls gas.CallList
+	gosec.MetaData
+	calls gosec.CallList
 	args  *regexp.Regexp
 }
 
@@ -31,27 +31,27 @@ func (t *badTempFile) ID() string {
 	return t.MetaData.ID
 }
 
-func (t *badTempFile) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err error) {
+func (t *badTempFile) Match(n ast.Node, c *gosec.Context) (gi *gosec.Issue, err error) {
 	if node := t.calls.ContainsCallExpr(n, c); node != nil {
-		if arg, e := gas.GetString(node.Args[0]); t.args.MatchString(arg) && e == nil {
-			return gas.NewIssue(c, n, t.ID(), t.What, t.Severity, t.Confidence), nil
+		if arg, e := gosec.GetString(node.Args[0]); t.args.MatchString(arg) && e == nil {
+			return gosec.NewIssue(c, n, t.ID(), t.What, t.Severity, t.Confidence), nil
 		}
 	}
 	return nil, nil
 }
 
 // NewBadTempFile detects direct writes to predictable path in temporary directory
-func NewBadTempFile(id string, conf gas.Config) (gas.Rule, []ast.Node) {
-	calls := gas.NewCallList()
+func NewBadTempFile(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
+	calls := gosec.NewCallList()
 	calls.Add("io/ioutil", "WriteFile")
 	calls.Add("os", "Create")
 	return &badTempFile{
 		calls: calls,
 		args:  regexp.MustCompile(`^/tmp/.*$|^/var/tmp/.*$`),
-		MetaData: gas.MetaData{
+		MetaData: gosec.MetaData{
 			ID:         id,
-			Severity:   gas.Medium,
-			Confidence: gas.High,
+			Severity:   gosec.Medium,
+			Confidence: gosec.High,
 			What:       "File creation in shared tmp directory without using ioutil.Tempfile",
 		},
 	}, []ast.Node{(*ast.CallExpr)(nil)}

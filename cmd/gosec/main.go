@@ -28,16 +28,16 @@ import (
 	"strings"
 
 	"github.com/kisielk/gotool"
-	"github.com/securego/gas"
-	"github.com/securego/gas/output"
-	"github.com/securego/gas/rules"
+	"github.com/securego/gosec"
+	"github.com/securego/gosec/output"
+	"github.com/securego/gosec/rules"
 )
 
 const (
 	usageText = `
-GAS - Go AST Scanner
+gosec - Golang security checker
 
-Gas analyzes Go source code to look for common programming mistakes that
+gosec analyzes Go source code to look for common programming mistakes that
 can lead to security problems.
 
 VERSION: %s
@@ -47,17 +47,17 @@ BUILD DATE: %s
 USAGE:
 
 	# Check a single package
-	$ gas $GOPATH/src/github.com/example/project
+	$ gosec $GOPATH/src/github.com/example/project
 
 	# Check all packages under the current directory and save results in
 	# json format.
-	$ gas -fmt=json -out=results.json ./...
+	$ gosec -fmt=json -out=results.json ./...
 
 	# Run a specific set of rules (by default all rules will be run):
-	$ gas -include=G101,G203,G401  ./...
+	$ gosec -include=G101,G203,G401  ./...
 
 	# Run all rules except the provided
-	$ gas -exclude=G101 $GOPATH/src/github.com/example/project/...
+	$ gosec -exclude=G101 $GOPATH/src/github.com/example/project/...
 
 `
 )
@@ -119,8 +119,8 @@ func usage() {
 	fmt.Fprint(os.Stderr, "\n")
 }
 
-func loadConfig(configFile string) (gas.Config, error) {
-	config := gas.NewConfig()
+func loadConfig(configFile string) (gosec.Config, error) {
+	config := gosec.NewConfig()
 	if configFile != "" {
 		// #nosec
 		file, err := os.Open(configFile)
@@ -158,7 +158,7 @@ func loadRules(include, exclude string) rules.RuleList {
 	return rules.Generate(filters...)
 }
 
-func saveOutput(filename, format string, issues []*gas.Issue, metrics *gas.Metrics) error {
+func saveOutput(filename, format string, issues []*gosec.Issue, metrics *gosec.Metrics) error {
 	if filename != "" {
 		outfile, err := os.Create(filename)
 		if err != nil {
@@ -283,7 +283,7 @@ func main() {
 	if *flagQuiet {
 		logger = log.New(ioutil.Discard, "", 0)
 	} else {
-		logger = log.New(logWriter, "[gas] ", log.LstdFlags)
+		logger = log.New(logWriter, "[gosec] ", log.LstdFlags)
 	}
 
 	// Load config
@@ -299,7 +299,7 @@ func main() {
 	}
 
 	// Create the analyzer
-	analyzer := gas.NewAnalyzer(config, logger)
+	analyzer := gosec.NewAnalyzer(config, logger)
 	analyzer.LoadRules(ruleDefinitions.Builders())
 
 	vendor := regexp.MustCompile(`[\\/]vendor([\\/]|$)`)

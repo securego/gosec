@@ -20,11 +20,11 @@ import (
 	"fmt"
 	"go/ast"
 
-	"github.com/securego/gas"
+	"github.com/securego/gosec"
 )
 
 type insecureConfigTLS struct {
-	gas.MetaData
+	gosec.MetaData
 	MinVersion   int16
 	MaxVersion   int16
 	requiredType string
@@ -44,14 +44,14 @@ func stringInSlice(a string, list []string) bool {
 	return false
 }
 
-func (t *insecureConfigTLS) processTLSCipherSuites(n ast.Node, c *gas.Context) *gas.Issue {
+func (t *insecureConfigTLS) processTLSCipherSuites(n ast.Node, c *gosec.Context) *gosec.Issue {
 
 	if ciphers, ok := n.(*ast.CompositeLit); ok {
 		for _, cipher := range ciphers.Elts {
 			if ident, ok := cipher.(*ast.SelectorExpr); ok {
 				if !stringInSlice(ident.Sel.Name, t.goodCiphers) {
 					err := fmt.Sprintf("TLS Bad Cipher Suite: %s", ident.Sel.Name)
-					return gas.NewIssue(c, ident, t.ID(), err, gas.High, gas.High)
+					return gosec.NewIssue(c, ident, t.ID(), err, gosec.High, gosec.High)
 				}
 			}
 		}
@@ -59,46 +59,46 @@ func (t *insecureConfigTLS) processTLSCipherSuites(n ast.Node, c *gas.Context) *
 	return nil
 }
 
-func (t *insecureConfigTLS) processTLSConfVal(n *ast.KeyValueExpr, c *gas.Context) *gas.Issue {
+func (t *insecureConfigTLS) processTLSConfVal(n *ast.KeyValueExpr, c *gosec.Context) *gosec.Issue {
 	if ident, ok := n.Key.(*ast.Ident); ok {
 		switch ident.Name {
 
 		case "InsecureSkipVerify":
 			if node, ok := n.Value.(*ast.Ident); ok {
 				if node.Name != "false" {
-					return gas.NewIssue(c, n, t.ID(), "TLS InsecureSkipVerify set true.", gas.High, gas.High)
+					return gosec.NewIssue(c, n, t.ID(), "TLS InsecureSkipVerify set true.", gosec.High, gosec.High)
 				}
 			} else {
 				// TODO(tk): symbol tab look up to get the actual value
-				return gas.NewIssue(c, n, t.ID(), "TLS InsecureSkipVerify may be true.", gas.High, gas.Low)
+				return gosec.NewIssue(c, n, t.ID(), "TLS InsecureSkipVerify may be true.", gosec.High, gosec.Low)
 			}
 
 		case "PreferServerCipherSuites":
 			if node, ok := n.Value.(*ast.Ident); ok {
 				if node.Name == "false" {
-					return gas.NewIssue(c, n, t.ID(), "TLS PreferServerCipherSuites set false.", gas.Medium, gas.High)
+					return gosec.NewIssue(c, n, t.ID(), "TLS PreferServerCipherSuites set false.", gosec.Medium, gosec.High)
 				}
 			} else {
 				// TODO(tk): symbol tab look up to get the actual value
-				return gas.NewIssue(c, n, t.ID(), "TLS PreferServerCipherSuites may be false.", gas.Medium, gas.Low)
+				return gosec.NewIssue(c, n, t.ID(), "TLS PreferServerCipherSuites may be false.", gosec.Medium, gosec.Low)
 			}
 
 		case "MinVersion":
-			if ival, ierr := gas.GetInt(n.Value); ierr == nil {
+			if ival, ierr := gosec.GetInt(n.Value); ierr == nil {
 				if (int16)(ival) < t.MinVersion {
-					return gas.NewIssue(c, n, t.ID(), "TLS MinVersion too low.", gas.High, gas.High)
+					return gosec.NewIssue(c, n, t.ID(), "TLS MinVersion too low.", gosec.High, gosec.High)
 				}
 				// TODO(tk): symbol tab look up to get the actual value
-				return gas.NewIssue(c, n, t.ID(), "TLS MinVersion may be too low.", gas.High, gas.Low)
+				return gosec.NewIssue(c, n, t.ID(), "TLS MinVersion may be too low.", gosec.High, gosec.Low)
 			}
 
 		case "MaxVersion":
-			if ival, ierr := gas.GetInt(n.Value); ierr == nil {
+			if ival, ierr := gosec.GetInt(n.Value); ierr == nil {
 				if (int16)(ival) < t.MaxVersion {
-					return gas.NewIssue(c, n, t.ID(), "TLS MaxVersion too low.", gas.High, gas.High)
+					return gosec.NewIssue(c, n, t.ID(), "TLS MaxVersion too low.", gosec.High, gosec.High)
 				}
 				// TODO(tk): symbol tab look up to get the actual value
-				return gas.NewIssue(c, n, t.ID(), "TLS MaxVersion may be too low.", gas.High, gas.Low)
+				return gosec.NewIssue(c, n, t.ID(), "TLS MaxVersion may be too low.", gosec.High, gosec.Low)
 			}
 
 		case "CipherSuites":
@@ -112,7 +112,7 @@ func (t *insecureConfigTLS) processTLSConfVal(n *ast.KeyValueExpr, c *gas.Contex
 	return nil
 }
 
-func (t *insecureConfigTLS) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
+func (t *insecureConfigTLS) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error) {
 	if complit, ok := n.(*ast.CompositeLit); ok && complit.Type != nil {
 		actualType := c.Info.TypeOf(complit.Type)
 		if actualType != nil && actualType.String() == t.requiredType {

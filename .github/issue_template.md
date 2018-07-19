@@ -2,7 +2,7 @@
 
 ### Steps to reproduce the behavior
 
-### Gas version
+### gosec version
 
 ### Go version (output of 'go version')
 

@@ -1,7 +1,7 @@
 GIT_TAG?= $(shell git describe --always --tags)
 BUILD_DATE = $(shell date +%Y-%m-%d)
-BIN = gas
-BUILD_CMD = go build -ldflags "-X main.Version=${VERSION} -X main.GitTag=${GIT_TAG} -X main.BuildDate=${BUILD_DATE}" -o build/$(BIN)-$(VERSION)-$${GOOS}-$${GOARCH} ./cmd/gas/ &
+BIN = gosec
+BUILD_CMD = go build -ldflags "-X main.Version=${VERSION} -X main.GitTag=${GIT_TAG} -X main.BuildDate=${BUILD_DATE}" -o build/$(BIN)-$(VERSION)-$${GOOS}-$${GOARCH} ./cmd/gosec/ &
 FMT_CMD = $(gofmt -s -l -w $(find . -type f -name '*.go' -not -path './vendor/*') | tee /dev/stderr)
 IMAGE_REPO = docker.io
 
@@ -13,12 +13,12 @@ test: bootstrap
 	test -z '$(FMT_CMD)'
 	go vet $(go list ./... | grep -v /vendor/)
 	golint -set_exit_status $(shell go list ./... | grep -v vendor)
-	gas ./...
+	gosec ./...
 	ginkgo -r -v
 bootstrap:
 	dep ensure
 build:
-	go build -o $(BIN) ./cmd/gas/
+	go build -o $(BIN) ./cmd/gosec/
 clean:
 	rm -rf build vendor
 	rm -f release image bootstrap $(BIN)

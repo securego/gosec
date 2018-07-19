@@ -1,4 +1,4 @@
-package gas_test
+package gosec_test
 
 import (
 	. "github.com/onsi/ginkgo"
@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestGas(t *testing.T) {
+func TestGosec(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Gas Suite")
+	RunSpecs(t, "gosec Suite")
 }

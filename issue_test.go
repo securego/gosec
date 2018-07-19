@@ -1,13 +1,13 @@
-package gas_test
+package gosec_test
 
 import (
 	"go/ast"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/securego/gas"
-	"github.com/securego/gas/rules"
-	"github.com/securego/gas/testutils"
+	"github.com/securego/gosec"
+	"github.com/securego/gosec/rules"
+	"github.com/securego/gosec/testutils"
 )
 
 var _ = Describe("Issue", func() {
@@ -26,7 +26,7 @@ var _ = Describe("Issue", func() {
 			pkg.AddFile("foo.go", source)
 			ctx := pkg.CreateContext("foo.go")
 			v := testutils.NewMockVisitor()
-			v.Callback = func(n ast.Node, ctx *gas.Context) bool {
+			v.Callback = func(n ast.Node, ctx *gosec.Context) bool {
 				if node, ok := n.(*ast.BasicLit); ok {
 					target = node
 					return false
@@ -37,7 +37,7 @@ var _ = Describe("Issue", func() {
 			ast.Walk(v, ctx.Root)
 			Expect(target).ShouldNot(BeNil())
 
-			issue := gas.NewIssue(ctx, target, "TEST", "", gas.High, gas.High)
+			issue := gosec.NewIssue(ctx, target, "TEST", "", gosec.High, gosec.High)
 			Expect(issue).ShouldNot(BeNil())
 			Expect(issue.Code).Should(MatchRegexp(`"bar"`))
 			Expect(issue.Line).Should(Equal("2"))
@@ -58,7 +58,7 @@ var _ = Describe("Issue", func() {
 			source := `package main
 			import "os"
 			func main(){`
-			source += "q := `SELECT * FROM table WHERE` + \n  os.Args[1] + `= ?` // nolint: gas\n"
+			source += "q := `SELECT * FROM table WHERE` + \n  os.Args[1] + `= ?` // nolint: gosec\n"
 			source += `println(q)}`
 
 			pkg := testutils.NewTestPackage()
@@ -66,7 +66,7 @@ var _ = Describe("Issue", func() {
 			pkg.AddFile("foo.go", source)
 			ctx := pkg.CreateContext("foo.go")
 			v := testutils.NewMockVisitor()
-			v.Callback = func(n ast.Node, ctx *gas.Context) bool {
+			v.Callback = func(n ast.Node, ctx *gosec.Context) bool {
 				if node, ok := n.(*ast.BinaryExpr); ok {
 					target = node
 				}
@@ -77,7 +77,7 @@ var _ = Describe("Issue", func() {
 			Expect(target).ShouldNot(BeNil())
 
 			// Use SQL rule to check binary expr
-			cfg := gas.NewConfig()
+			cfg := gosec.NewConfig()
 			rule, _ := rules.NewSQLStrConcat("TEST", cfg)
 			issue, err := rule.Match(target, ctx)
 			Expect(err).ShouldNot(HaveOccurred())
