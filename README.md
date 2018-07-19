@@ -1,6 +1,6 @@
 
 
-## GAS - Go AST Scanner
+## GAS - Go Application Security 
 
 Inspects source code for security problems by scanning the Go AST.
 
@@ -12,15 +12,15 @@ You may obtain a copy of the License [here](http://www.apache.org/licenses/LICEN
 
 ### Project status
 
-[![Build Status](https://travis-ci.org/GoASTScanner/gas.svg?branch=master)](https://travis-ci.org/GoASTScanner/gas)
-[![GoDoc](https://godoc.org/github.com/GoASTScanner/gas?status.svg)](https://godoc.org/github.com/GoASTScanner/gas)
+[![Build Status](https://travis-ci.org/securego/gas.svg?branch=master)](https://travis-ci.org/securego/gas)
+[![GoDoc](https://godoc.org/github.com/securego/gas?status.svg)](https://godoc.org/github.com/securego/gas)
 
 Gas is still in alpha and accepting feedback from early adopters. We do
 not consider it production ready at this time.
 
 ### Install
 
-`$ go get github.com/GoASTScanner/gas/cmd/gas/...`
+`$ go get github.com/securego/gas/cmd/gas/...`
 
 ### Usage
 
@@ -188,7 +188,7 @@ The configuration of TLS rule can be generated from [Mozilla's TLS ciphers recom
 First you need to install the generator tool:
 
 ```
-go get github.com/GoASTScanner/gas/cmd/tlsconfig/...
+go get github.com/securego/gas/cmd/tlsconfig/...
 ```
 
 You can invoke now the `go generate` in the root of the project:

@@ -3,7 +3,7 @@ package rules
 import (
 	"go/ast"
 
-	"github.com/GoASTScanner/gas"
+	"github.com/securego/gas"
 )
 
 type sshHostKey struct {

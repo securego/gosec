@@ -4,7 +4,7 @@ import (
 	"go/ast"
 	"go/types"
 
-	"github.com/GoASTScanner/gas"
+	"github.com/securego/gas"
 )
 
 type archive struct {

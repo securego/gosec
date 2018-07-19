@@ -18,7 +18,7 @@ import (
 	"go/ast"
 	"regexp"
 
-	"github.com/GoASTScanner/gas"
+	"github.com/securego/gas"
 )
 
 type sqlStatement struct {

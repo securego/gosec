@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"go/ast"
 
-	"github.com/GoASTScanner/gas"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/securego/gas"
 )
 
 type mockrule struct {

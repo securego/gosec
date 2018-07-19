@@ -22,7 +22,7 @@ import (
 	"io"
 	plainTemplate "text/template"
 
-	"github.com/GoASTScanner/gas"
+	"github.com/securego/gas"
 	"gopkg.in/yaml.v2"
 )
 

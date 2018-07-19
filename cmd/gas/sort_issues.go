@@ -3,7 +3,7 @@ package main
 import (
 	"sort"
 
-	"github.com/GoASTScanner/gas"
+	"github.com/securego/gas"
 )
 
 type sortBySeverity []*gas.Issue

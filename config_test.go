@@ -3,9 +3,9 @@ package gas_test
 import (
 	"bytes"
 
-	"github.com/GoASTScanner/gas"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/securego/gas"
 )
 
 var _ = Describe("Configuration", func() {
