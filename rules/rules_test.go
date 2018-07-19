@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/GoASTScanner/gas"
+	"github.com/securego/gas"
 
-	"github.com/GoASTScanner/gas/rules"
-	"github.com/GoASTScanner/gas/testutils"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/securego/gas/rules"
+	"github.com/securego/gas/testutils"
 )
 
 var _ = Describe("gas rules", func() {

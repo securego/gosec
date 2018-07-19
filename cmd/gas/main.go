@@ -27,10 +27,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/GoASTScanner/gas"
-	"github.com/GoASTScanner/gas/output"
-	"github.com/GoASTScanner/gas/rules"
 	"github.com/kisielk/gotool"
+	"github.com/securego/gas"
+	"github.com/securego/gas/output"
+	"github.com/securego/gas/rules"
 )
 
 const (

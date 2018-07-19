@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"go/ast"
 
-	"github.com/GoASTScanner/gas"
+	"github.com/securego/gas"
 )
 
 type weakKeyStrength struct {

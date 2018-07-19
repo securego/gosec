@@ -15,7 +15,7 @@
 package rules
 
 import (
-	"github.com/GoASTScanner/gas"
+	"github.com/securego/gas"
 )
 
 // RuleDefinition contains the description of a rule and a mechanism to

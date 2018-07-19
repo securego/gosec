@@ -19,8 +19,8 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/GoASTScanner/gas"
 	"github.com/nbutton23/zxcvbn-go"
+	"github.com/securego/gas"
 )
 
 type credentials struct {

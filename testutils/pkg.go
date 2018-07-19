@@ -10,7 +10,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/GoASTScanner/gas"
+	"github.com/securego/gas"
 	"golang.org/x/tools/go/loader"
 )
 
