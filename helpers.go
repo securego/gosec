@@ -15,11 +15,17 @@
 package gosec
 
 import (
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/token"
 	"go/types"
+	"os"
+	"os/user"
+	"path/filepath"
+	"runtime"
 	"strconv"
+	"strings"
 )
 
 // MatchCallByPackage ensures that the specified package is imported,
@@ -192,4 +198,61 @@ func GetImportPath(name string, ctx *Context) (string, bool) {
 func GetLocation(n ast.Node, ctx *Context) (string, int) {
 	fobj := ctx.FileSet.File(n.Pos())
 	return fobj.Name(), fobj.Line(n.Pos())
+}
+
+// Gopath returns all GOPATHs
+func Gopath() []string {
+	defaultGoPath := runtime.GOROOT()
+	if u, err := user.Current(); err == nil {
+		defaultGoPath = filepath.Join(u.HomeDir, "go")
+	}
+	path := Getenv("GOPATH", defaultGoPath)
+	paths := strings.Split(path, string(os.PathListSeparator))
+	for idx, path := range paths {
+		if abs, err := filepath.Abs(path); err == nil {
+			paths[idx] = abs
+		}
+	}
+	return paths
+}
+
+// Getenv returns the values of the environment variable, otherwise
+//returns the default if variable is not set
+func Getenv(key, userDefault string) string {
+	if val := os.Getenv(key); val != "" {
+		return val
+	}
+	return userDefault
+}
+
+// GetPkgRelativePath returns the Go relative relative path derived
+// form the given path
+func GetPkgRelativePath(path string) (string, error) {
+	abspath, err := filepath.Abs(path)
+	if err != nil {
+		abspath = path
+	}
+	if strings.HasSuffix(abspath, ".go") {
+		abspath = filepath.Dir(abspath)
+	}
+	for _, base := range Gopath() {
+		projectRoot := filepath.FromSlash(fmt.Sprintf("%s/src/", base))
+		if strings.HasPrefix(abspath, projectRoot) {
+			return strings.TrimPrefix(abspath, projectRoot), nil
+		}
+	}
+	return "", errors.New("no project relative path found")
+}
+
+// GetPkgAbsPath returns the Go package absolute path derived from
+// the given path
+func GetPkgAbsPath(pkgPath string) (string, error) {
+	absPath, err := filepath.Abs(pkgPath)
+	if err != nil {
+		return "", err
+	}
+	if _, err := os.Stat(absPath); os.IsNotExist(err) {
+		return "", errors.New("no project absolute path found")
+	}
+	return absPath, nil
 }
