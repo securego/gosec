@@ -28,8 +28,6 @@ import (
 	"regexp"
 	"strings"
 
-	"path/filepath"
-
 	"golang.org/x/tools/go/loader"
 )
 
@@ -106,11 +104,8 @@ func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error
 		AllowErrors: true,
 	}
 	for _, packagePath := range packagePaths {
-		abspath, err := filepath.Abs(packagePath)
+		abspath, err := GetPkgAbsPath(packagePath)
 		if err != nil {
-			return err
-		}
-		if _, err := os.Stat(abspath); os.IsNotExist(err) {
 			gosec.logger.Printf("Skipping: %s. Path doesn't exist.", abspath)
 			continue
 		}
