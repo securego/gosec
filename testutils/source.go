@@ -419,7 +419,6 @@ func main() {
 		log.Fatal(err)
 	}
   	log.Printf("Command finished with error: %v", err)
-}
 }`, 1}, {`
 package main
 import (
