@@ -58,6 +58,7 @@ func (r *subprocess) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error) {
 func NewSubproc(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 	rule := &subprocess{gosec.MetaData{ID: id}, gosec.NewCallList()}
 	rule.Add("os/exec", "Command")
+	rule.Add("os/exec", "CommandContext")
 	rule.Add("syscall", "Exec")
 	return rule, []ast.Node{(*ast.CallExpr)(nil)}
 }
