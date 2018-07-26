@@ -3,11 +3,11 @@ package rules
 import (
 	"go/ast"
 
-	"github.com/GoASTScanner/gas"
+	"github.com/securego/gosec"
 )
 
 type sshHostKey struct {
-	gas.MetaData
+	gosec.MetaData
 	pkg   string
 	calls []string
 }
@@ -16,23 +16,23 @@ func (r *sshHostKey) ID() string {
 	return r.MetaData.ID
 }
 
-func (r *sshHostKey) Match(n ast.Node, c *gas.Context) (gi *gas.Issue, err error) {
-	if _, matches := gas.MatchCallByPackage(n, c, r.pkg, r.calls...); matches {
-		return gas.NewIssue(c, n, r.ID(), r.What, r.Severity, r.Confidence), nil
+func (r *sshHostKey) Match(n ast.Node, c *gosec.Context) (gi *gosec.Issue, err error) {
+	if _, matches := gosec.MatchCallByPackage(n, c, r.pkg, r.calls...); matches {
+		return gosec.NewIssue(c, n, r.ID(), r.What, r.Severity, r.Confidence), nil
 	}
 	return nil, nil
 }
 
 // NewSSHHostKey rule detects the use of insecure ssh HostKeyCallback.
-func NewSSHHostKey(id string, conf gas.Config) (gas.Rule, []ast.Node) {
+func NewSSHHostKey(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 	return &sshHostKey{
 		pkg:   "golang.org/x/crypto/ssh",
 		calls: []string{"InsecureIgnoreHostKey"},
-		MetaData: gas.MetaData{
+		MetaData: gosec.MetaData{
 			ID:         id,
 			What:       "Use of ssh InsecureIgnoreHostKey should be audited",
-			Severity:   gas.Medium,
-			Confidence: gas.High,
+			Severity:   gosec.Medium,
+			Confidence: gosec.High,
 		},
 	}, []ast.Node{(*ast.CallExpr)(nil)}
 }

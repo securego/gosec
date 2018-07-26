@@ -1,25 +1,25 @@
-package gas_test
+package gosec_test
 
 import (
 	"fmt"
 	"go/ast"
 
-	"github.com/GoASTScanner/gas"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/securego/gosec"
 )
 
 type mockrule struct {
-	issue    *gas.Issue
+	issue    *gosec.Issue
 	err      error
-	callback func(n ast.Node, ctx *gas.Context) bool
+	callback func(n ast.Node, ctx *gosec.Context) bool
 }
 
 func (m *mockrule) ID() string {
 	return "MOCK"
 }
 
-func (m *mockrule) Match(n ast.Node, ctx *gas.Context) (*gas.Issue, error) {
+func (m *mockrule) Match(n ast.Node, ctx *gosec.Context) (*gosec.Issue, error) {
 	if m.callback(n, ctx) {
 		return m.issue, nil
 	}
@@ -31,29 +31,29 @@ var _ = Describe("Rule", func() {
 	Context("when using a ruleset", func() {
 
 		var (
-			ruleset        gas.RuleSet
-			dummyErrorRule gas.Rule
-			dummyIssueRule gas.Rule
+			ruleset        gosec.RuleSet
+			dummyErrorRule gosec.Rule
+			dummyIssueRule gosec.Rule
 		)
 
 		JustBeforeEach(func() {
-			ruleset = gas.NewRuleSet()
+			ruleset = gosec.NewRuleSet()
 			dummyErrorRule = &mockrule{
 				issue:    nil,
 				err:      fmt.Errorf("An unexpected error occurred"),
-				callback: func(n ast.Node, ctx *gas.Context) bool { return false },
+				callback: func(n ast.Node, ctx *gosec.Context) bool { return false },
 			}
 			dummyIssueRule = &mockrule{
-				issue: &gas.Issue{
-					Severity:   gas.High,
-					Confidence: gas.High,
+				issue: &gosec.Issue{
+					Severity:   gosec.High,
+					Confidence: gosec.High,
 					What:       `Some explanation of the thing`,
 					File:       "main.go",
 					Code:       `#include <stdio.h> int main(){ puts("hello world"); }`,
 					Line:       "42",
 				},
 				err:      nil,
-				callback: func(n ast.Node, ctx *gas.Context) bool { return true },
+				callback: func(n ast.Node, ctx *gosec.Context) bool { return true },
 			}
 		})
 		It("should be possible to register a rule for multiple ast.Node", func() {

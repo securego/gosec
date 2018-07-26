@@ -1,17 +1,17 @@
-package gas_test
+package gosec_test
 
 import (
 	"bytes"
 
-	"github.com/GoASTScanner/gas"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/securego/gosec"
 )
 
 var _ = Describe("Configuration", func() {
-	var configuration gas.Config
+	var configuration gosec.Config
 	BeforeEach(func() {
-		configuration = gas.NewConfig()
+		configuration = gosec.NewConfig()
 	})
 
 	Context("when loading from disk", func() {

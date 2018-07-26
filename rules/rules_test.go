@@ -4,28 +4,27 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/GoASTScanner/gas"
-
-	"github.com/GoASTScanner/gas/rules"
-	"github.com/GoASTScanner/gas/testutils"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/securego/gosec"
+	"github.com/securego/gosec/rules"
+	"github.com/securego/gosec/testutils"
 )
 
-var _ = Describe("gas rules", func() {
+var _ = Describe("gosec rules", func() {
 
 	var (
 		logger    *log.Logger
-		config    gas.Config
-		analyzer  *gas.Analyzer
+		config    gosec.Config
+		analyzer  *gosec.Analyzer
 		runner    func(string, []testutils.CodeSample)
 		buildTags []string
 	)
 
 	BeforeEach(func() {
 		logger, _ = testutils.NewLogger()
-		config = gas.NewConfig()
-		analyzer = gas.NewAnalyzer(config, logger)
+		config = gosec.NewConfig()
+		analyzer = gosec.NewAnalyzer(config, logger)
 		runner = func(rule string, samples []testutils.CodeSample) {
 			analyzer.LoadRules(rules.Generate(rules.NewRuleFilter(false, rule)).Builders())
 			for n, sample := range samples {
@@ -101,6 +100,10 @@ var _ = Describe("gas rules", func() {
 
 		It("should detect file path provided as taint input", func() {
 			runner("G304", testutils.SampleCodeG304)
+		})
+
+		It("should detect file path traversal when extracting zip archive", func() {
+			runner("G305", testutils.SampleCodeG305)
 		})
 
 		It("should detect weak crypto algorithms", func() {

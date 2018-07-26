@@ -10,7 +10,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/GoASTScanner/gas"
+	"github.com/securego/gosec"
 	"golang.org/x/tools/go/loader"
 )
 
@@ -33,7 +33,7 @@ type TestPackage struct {
 func NewTestPackage() *TestPackage {
 	// Files must exist in $GOPATH
 	sourceDir := path.Join(os.Getenv("GOPATH"), "src")
-	workingDir, err := ioutil.TempDir(sourceDir, "gas_test")
+	workingDir, err := ioutil.TempDir(sourceDir, "gosecs_test")
 	if err != nil {
 		return nil
 	}
@@ -97,7 +97,7 @@ func (p *TestPackage) Build() error {
 }
 
 // CreateContext builds a context out of supplied package context
-func (p *TestPackage) CreateContext(filename string) *gas.Context {
+func (p *TestPackage) CreateContext(filename string) *gosec.Context {
 	if err := p.Build(); err != nil {
 		log.Fatal(err)
 		return nil
@@ -109,13 +109,13 @@ func (p *TestPackage) CreateContext(filename string) *gas.Context {
 			strip := fmt.Sprintf("%s%c", p.Path, os.PathSeparator)
 			pkgFile = strings.TrimPrefix(pkgFile, strip)
 			if pkgFile == filename {
-				ctx := &gas.Context{
+				ctx := &gosec.Context{
 					FileSet: p.build.program.Fset,
 					Root:    file,
-					Config:  gas.NewConfig(),
+					Config:  gosec.NewConfig(),
 					Info:    &pkg.Info,
 					Pkg:     pkg.Pkg,
-					Imports: gas.NewImportTracker(),
+					Imports: gosec.NewImportTracker(),
 				}
 				ctx.Imports.TrackPackages(ctx.Pkg.Imports()...)
 				return ctx

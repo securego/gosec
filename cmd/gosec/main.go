@@ -20,24 +20,22 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"os/user"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"sort"
 	"strings"
 
-	"github.com/GoASTScanner/gas"
-	"github.com/GoASTScanner/gas/output"
-	"github.com/GoASTScanner/gas/rules"
 	"github.com/kisielk/gotool"
+	"github.com/securego/gosec"
+	"github.com/securego/gosec/output"
+	"github.com/securego/gosec/rules"
 )
 
 const (
 	usageText = `
-GAS - Go AST Scanner
+gosec - Golang security checker
 
-Gas analyzes Go source code to look for common programming mistakes that
+gosec analyzes Go source code to look for common programming mistakes that
 can lead to security problems.
 
 VERSION: %s
@@ -47,17 +45,17 @@ BUILD DATE: %s
 USAGE:
 
 	# Check a single package
-	$ gas $GOPATH/src/github.com/example/project
+	$ gosec $GOPATH/src/github.com/example/project
 
 	# Check all packages under the current directory and save results in
 	# json format.
-	$ gas -fmt=json -out=results.json ./...
+	$ gosec -fmt=json -out=results.json ./...
 
 	# Run a specific set of rules (by default all rules will be run):
-	$ gas -include=G101,G203,G401  ./...
+	$ gosec -include=G101,G203,G401  ./...
 
 	# Run all rules except the provided
-	$ gas -exclude=G101 $GOPATH/src/github.com/example/project/...
+	$ gosec -exclude=G101 $GOPATH/src/github.com/example/project/...
 
 `
 )
@@ -119,8 +117,8 @@ func usage() {
 	fmt.Fprint(os.Stderr, "\n")
 }
 
-func loadConfig(configFile string) (gas.Config, error) {
-	config := gas.NewConfig()
+func loadConfig(configFile string) (gosec.Config, error) {
+	config := gosec.NewConfig()
 	if configFile != "" {
 		// #nosec
 		file, err := os.Open(configFile)
@@ -158,7 +156,7 @@ func loadRules(include, exclude string) rules.RuleList {
 	return rules.Generate(filters...)
 }
 
-func saveOutput(filename, format string, issues []*gas.Issue, metrics *gas.Metrics) error {
+func saveOutput(filename, format string, issues []*gosec.Issue, metrics *gosec.Metrics) error {
 	if filename != "" {
 		outfile, err := os.Create(filename)
 		if err != nil {
@@ -178,36 +176,13 @@ func saveOutput(filename, format string, issues []*gas.Issue, metrics *gas.Metri
 	return nil
 }
 
-func getenv(key, userDefault string) string {
-	if val := os.Getenv(key); val != "" {
-		return val
-	}
-	return userDefault
-}
-
-func gopath() []string {
-	defaultGoPath := runtime.GOROOT()
-	if u, err := user.Current(); err == nil {
-		defaultGoPath = filepath.Join(u.HomeDir, "go")
-	}
-	path := getenv("GOPATH", defaultGoPath)
-	paths := strings.Split(path, string(os.PathListSeparator))
-	for idx, path := range paths {
-		if abs, err := filepath.Abs(path); err == nil {
-			paths[idx] = abs
-		}
-	}
-	return paths
-}
-
-func cleanPath(path string, gopaths []string) (string, error) {
-
+func cleanPath(path string) (string, error) {
 	cleanFailed := fmt.Errorf("%s is not within the $GOPATH and cannot be processed", path)
 	nonRecursivePath := strings.TrimSuffix(path, "/...")
 	// do not attempt to clean directs that are resolvable on gopath
 	if _, err := os.Stat(nonRecursivePath); err != nil && os.IsNotExist(err) {
 		log.Printf("directory %s doesn't exist, checking if is a package on $GOPATH", path)
-		for _, basedir := range gopaths {
+		for _, basedir := range gosec.Gopath() {
 			dir := filepath.Join(basedir, "src", nonRecursivePath)
 			if st, err := os.Stat(dir); err == nil && st.IsDir() {
 				log.Printf("located %s in %s", path, dir)
@@ -218,24 +193,17 @@ func cleanPath(path string, gopaths []string) (string, error) {
 	}
 
 	// ensure we resolve package directory correctly based on $GOPATH
-	abspath, err := filepath.Abs(path)
+	pkgPath, err := gosec.GetPkgRelativePath(path)
 	if err != nil {
-		abspath = path
+		return "", cleanFailed
 	}
-	for _, base := range gopaths {
-		projectRoot := filepath.FromSlash(fmt.Sprintf("%s/src/", base))
-		if strings.HasPrefix(abspath, projectRoot) {
-			return strings.TrimPrefix(abspath, projectRoot), nil
-		}
-	}
-	return "", cleanFailed
+	return pkgPath, nil
 }
 
 func cleanPaths(paths []string) []string {
-	gopaths := gopath()
 	var clean []string
 	for _, path := range paths {
-		cleaned, err := cleanPath(path, gopaths)
+		cleaned, err := cleanPath(path)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -283,7 +251,7 @@ func main() {
 	if *flagQuiet {
 		logger = log.New(ioutil.Discard, "", 0)
 	} else {
-		logger = log.New(logWriter, "[gas] ", log.LstdFlags)
+		logger = log.New(logWriter, "[gosec] ", log.LstdFlags)
 	}
 
 	// Load config
@@ -299,14 +267,14 @@ func main() {
 	}
 
 	// Create the analyzer
-	analyzer := gas.NewAnalyzer(config, logger)
+	analyzer := gosec.NewAnalyzer(config, logger)
 	analyzer.LoadRules(ruleDefinitions.Builders())
 
 	vendor := regexp.MustCompile(`[\\/]vendor([\\/]|$)`)
 
 	var packages []string
 	// Iterate over packages on the import paths
-	gopaths := gopath()
+	gopaths := gosec.Gopath()
 	for _, pkg := range gotool.ImportPaths(cleanPaths(flag.Args())) {
 
 		// Skip vendor directory

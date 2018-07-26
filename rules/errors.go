@@ -18,19 +18,19 @@ import (
 	"go/ast"
 	"go/types"
 
-	"github.com/GoASTScanner/gas"
+	"github.com/securego/gosec"
 )
 
 type noErrorCheck struct {
-	gas.MetaData
-	whitelist gas.CallList
+	gosec.MetaData
+	whitelist gosec.CallList
 }
 
 func (r *noErrorCheck) ID() string {
 	return r.MetaData.ID
 }
 
-func returnsError(callExpr *ast.CallExpr, ctx *gas.Context) int {
+func returnsError(callExpr *ast.CallExpr, ctx *gosec.Context) int {
 	if tv := ctx.Info.TypeOf(callExpr); tv != nil {
 		switch t := tv.(type) {
 		case *types.Tuple:
@@ -49,7 +49,7 @@ func returnsError(callExpr *ast.CallExpr, ctx *gas.Context) int {
 	return -1
 }
 
-func (r *noErrorCheck) Match(n ast.Node, ctx *gas.Context) (*gas.Issue, error) {
+func (r *noErrorCheck) Match(n ast.Node, ctx *gosec.Context) (*gosec.Issue, error) {
 	switch stmt := n.(type) {
 	case *ast.AssignStmt:
 		for _, expr := range stmt.Rhs {
@@ -59,7 +59,7 @@ func (r *noErrorCheck) Match(n ast.Node, ctx *gas.Context) (*gas.Issue, error) {
 					return nil, nil
 				}
 				if id, ok := stmt.Lhs[pos].(*ast.Ident); ok && id.Name == "_" {
-					return gas.NewIssue(ctx, n, r.ID(), r.What, r.Severity, r.Confidence), nil
+					return gosec.NewIssue(ctx, n, r.ID(), r.What, r.Severity, r.Confidence), nil
 				}
 			}
 		}
@@ -67,7 +67,7 @@ func (r *noErrorCheck) Match(n ast.Node, ctx *gas.Context) (*gas.Issue, error) {
 		if callExpr, ok := stmt.X.(*ast.CallExpr); ok && r.whitelist.ContainsCallExpr(stmt.X, ctx) == nil {
 			pos := returnsError(callExpr, ctx)
 			if pos >= 0 {
-				return gas.NewIssue(ctx, n, r.ID(), r.What, r.Severity, r.Confidence), nil
+				return gosec.NewIssue(ctx, n, r.ID(), r.What, r.Severity, r.Confidence), nil
 			}
 		}
 	}
@@ -75,10 +75,10 @@ func (r *noErrorCheck) Match(n ast.Node, ctx *gas.Context) (*gas.Issue, error) {
 }
 
 // NewNoErrorCheck detects if the returned error is unchecked
-func NewNoErrorCheck(id string, conf gas.Config) (gas.Rule, []ast.Node) {
+func NewNoErrorCheck(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 	// TODO(gm) Come up with sensible defaults here. Or flip it to use a
 	// black list instead.
-	whitelist := gas.NewCallList()
+	whitelist := gosec.NewCallList()
 	whitelist.AddAll("bytes.Buffer", "Write", "WriteByte", "WriteRune", "WriteString")
 	whitelist.AddAll("fmt", "Print", "Printf", "Println", "Fprint", "Fprintf", "Fprintln")
 	whitelist.Add("io.PipeWriter", "CloseWithError")
@@ -91,10 +91,10 @@ func NewNoErrorCheck(id string, conf gas.Config) (gas.Rule, []ast.Node) {
 		}
 	}
 	return &noErrorCheck{
-		MetaData: gas.MetaData{
+		MetaData: gosec.MetaData{
 			ID:         id,
-			Severity:   gas.Low,
-			Confidence: gas.High,
+			Severity:   gosec.Low,
+			Confidence: gosec.High,
 			What:       "Errors unhandled.",
 		},
 		whitelist: whitelist,

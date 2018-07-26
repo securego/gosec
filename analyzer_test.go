@@ -1,4 +1,4 @@
-package gas_test
+package gosec_test
 
 import (
 	"io/ioutil"
@@ -6,24 +6,24 @@ import (
 	"os"
 	"strings"
 
-	"github.com/GoASTScanner/gas"
-	"github.com/GoASTScanner/gas/rules"
+	"github.com/securego/gosec"
+	"github.com/securego/gosec/rules"
 
-	"github.com/GoASTScanner/gas/testutils"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/securego/gosec/testutils"
 )
 
 var _ = Describe("Analyzer", func() {
 
 	var (
-		analyzer  *gas.Analyzer
+		analyzer  *gosec.Analyzer
 		logger    *log.Logger
 		buildTags []string
 	)
 	BeforeEach(func() {
 		logger, _ = testutils.NewLogger()
-		analyzer = gas.NewAnalyzer(nil, logger)
+		analyzer = gosec.NewAnalyzer(nil, logger)
 	})
 
 	Context("when processing a package", func() {
@@ -200,9 +200,9 @@ var _ = Describe("Analyzer", func() {
 		source := sample.Code
 
 		// overwrite nosec option
-		nosecIgnoreConfig := gas.NewConfig()
+		nosecIgnoreConfig := gosec.NewConfig()
 		nosecIgnoreConfig.SetGlobal("nosec", "true")
-		customAnalyzer := gas.NewAnalyzer(nosecIgnoreConfig, logger)
+		customAnalyzer := gosec.NewAnalyzer(nosecIgnoreConfig, logger)
 		customAnalyzer.LoadRules(rules.Generate(rules.NewRuleFilter(false, "G401")).Builders())
 
 		nosecPackage := testutils.NewTestPackage()

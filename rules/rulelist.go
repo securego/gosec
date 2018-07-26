@@ -14,24 +14,22 @@
 
 package rules
 
-import (
-	"github.com/GoASTScanner/gas"
-)
+import "github.com/securego/gosec"
 
 // RuleDefinition contains the description of a rule and a mechanism to
 // create it.
 type RuleDefinition struct {
 	ID          string
 	Description string
-	Create      gas.RuleBuilder
+	Create      gosec.RuleBuilder
 }
 
 // RuleList is a mapping of rule ID's to rule definitions
 type RuleList map[string]RuleDefinition
 
 // Builders returns all the create methods for a given rule list
-func (rl RuleList) Builders() map[string]gas.RuleBuilder {
-	builders := make(map[string]gas.RuleBuilder)
+func (rl RuleList) Builders() map[string]gosec.RuleBuilder {
+	builders := make(map[string]gosec.RuleBuilder)
 	for _, def := range rl {
 		builders[def.ID] = def.Create
 	}
@@ -79,6 +77,7 @@ func Generate(filters ...RuleFilter) RuleList {
 		{"G302", "Poor file permisions used when creation file or using chmod", NewFilePerms},
 		{"G303", "Creating tempfile using a predictable path", NewBadTempFile},
 		{"G304", "File path provided as taint input", NewReadFile},
+		{"G305", "File path traversal when extracting zip archive", NewArchive},
 
 		// crypto
 		{"G401", "Detect the usage of DES, RC4, or MD5", NewUsesWeakCryptography},

@@ -18,12 +18,12 @@ import (
 	"go/ast"
 	"go/types"
 
-	"github.com/GoASTScanner/gas"
+	"github.com/securego/gosec"
 )
 
 type readfile struct {
-	gas.MetaData
-	gas.CallList
+	gosec.MetaData
+	gosec.CallList
 }
 
 // ID returns the identifier for this rule
@@ -32,13 +32,13 @@ func (r *readfile) ID() string {
 }
 
 // Match inspects AST nodes to determine if the match the methods `os.Open` or `ioutil.ReadFile`
-func (r *readfile) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
+func (r *readfile) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error) {
 	if node := r.ContainsCallExpr(n, c); node != nil {
 		for _, arg := range node.Args {
 			if ident, ok := arg.(*ast.Ident); ok {
 				obj := c.Info.ObjectOf(ident)
-				if _, ok := obj.(*types.Var); ok && !gas.TryResolve(ident, c) {
-					return gas.NewIssue(c, n, r.ID(), r.What, r.Severity, r.Confidence), nil
+				if _, ok := obj.(*types.Var); ok && !gosec.TryResolve(ident, c) {
+					return gosec.NewIssue(c, n, r.ID(), r.What, r.Severity, r.Confidence), nil
 				}
 			}
 		}
@@ -47,14 +47,14 @@ func (r *readfile) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
 }
 
 // NewReadFile detects cases where we read files
-func NewReadFile(id string, conf gas.Config) (gas.Rule, []ast.Node) {
+func NewReadFile(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 	rule := &readfile{
-		CallList: gas.NewCallList(),
-		MetaData: gas.MetaData{
+		CallList: gosec.NewCallList(),
+		MetaData: gosec.MetaData{
 			ID:         id,
 			What:       "Potential file inclusion via variable",
-			Severity:   gas.Medium,
-			Confidence: gas.High,
+			Severity:   gosec.Medium,
+			Confidence: gosec.High,
 		},
 	}
 	rule.Add("io/ioutil", "ReadFile")

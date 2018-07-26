@@ -18,12 +18,12 @@ import (
 	"fmt"
 	"go/ast"
 
-	"github.com/GoASTScanner/gas"
+	"github.com/securego/gosec"
 )
 
 type weakKeyStrength struct {
-	gas.MetaData
-	calls gas.CallList
+	gosec.MetaData
+	calls gosec.CallList
 	bits  int
 }
 
@@ -31,27 +31,27 @@ func (w *weakKeyStrength) ID() string {
 	return w.MetaData.ID
 }
 
-func (w *weakKeyStrength) Match(n ast.Node, c *gas.Context) (*gas.Issue, error) {
+func (w *weakKeyStrength) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error) {
 	if callExpr := w.calls.ContainsCallExpr(n, c); callExpr != nil {
-		if bits, err := gas.GetInt(callExpr.Args[1]); err == nil && bits < (int64)(w.bits) {
-			return gas.NewIssue(c, n, w.ID(), w.What, w.Severity, w.Confidence), nil
+		if bits, err := gosec.GetInt(callExpr.Args[1]); err == nil && bits < (int64)(w.bits) {
+			return gosec.NewIssue(c, n, w.ID(), w.What, w.Severity, w.Confidence), nil
 		}
 	}
 	return nil, nil
 }
 
 // NewWeakKeyStrength builds a rule that detects RSA keys < 2048 bits
-func NewWeakKeyStrength(id string, conf gas.Config) (gas.Rule, []ast.Node) {
-	calls := gas.NewCallList()
+func NewWeakKeyStrength(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
+	calls := gosec.NewCallList()
 	calls.Add("crypto/rsa", "GenerateKey")
 	bits := 2048
 	return &weakKeyStrength{
 		calls: calls,
 		bits:  bits,
-		MetaData: gas.MetaData{
+		MetaData: gosec.MetaData{
 			ID:         id,
-			Severity:   gas.Medium,
-			Confidence: gas.High,
+			Severity:   gosec.Medium,
+			Confidence: gosec.High,
 			What:       fmt.Sprintf("RSA keys should be at least %d bits", bits),
 		},
 	}, []ast.Node{(*ast.CallExpr)(nil)}

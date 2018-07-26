@@ -3,14 +3,14 @@ package testutils
 import (
 	"go/ast"
 
-	"github.com/GoASTScanner/gas"
+	"github.com/securego/gosec"
 )
 
 // MockVisitor is useful for stubbing out ast.Visitor with callback
 // and looking for specific conditions to exist.
 type MockVisitor struct {
-	Context  *gas.Context
-	Callback func(n ast.Node, ctx *gas.Context) bool
+	Context  *gosec.Context
+	Callback func(n ast.Node, ctx *gosec.Context) bool
 }
 
 // NewMockVisitor creates a new empty struct, the Context and

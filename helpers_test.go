@@ -1,4 +1,4 @@
-package gas_test
+package gosec_test
 
 import (
 	. "github.com/onsi/ginkgo"
