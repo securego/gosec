@@ -143,34 +143,35 @@ make test
 
 #### Release Build
 
-gosec can be released as follows:
+Make sure you have installed the [goreleaser](https://github.com/goreleaser/goreleaser) tool and then you can release gosec as follows:
+git tag 1.0.0
+export GITHUB_TOKEN=<YOUR GITHUB TOKEN>
+make release
 
-```bash
-make release VERSION=2.0.0
+The released version of the tool is available in the `dist` folder. The build information should be displayed in the usage text.
+
 ```
-
-The released version of the tool is available in the `build` folder. The build information should be displayed in the usage text.
-
-```
-./build/gosec-2.0.0-linux-amd64 -h
-
+./dist/darwin_amd64/gosec -h
 gosec  - Golang security checker
 
 gosec analyzes Go source code to look for common programming mistakes that
 can lead to security problems.
 
-VERSION: 2.0.0
-GIT TAG: 96489ff
-BUILD DATE: 2018-02-21
-
+VERSION: 1.0.0
+GIT TAG: 1.0.0
+BUILD DATE: 2018-04-27T12:41:38Z
 ```
+
+Note that all released archives are also uploaded to GitHub.
 
 #### Docker image
 
 You can execute a release and build the docker image as follows:
 
 ```
-make image VERSION=2.0.0
+git tag <VERSION>
+export GITHUB_TOKEN=<Your GitHub token>
+make image
 ```
 
 Now you can run the gosec tool in a container against your local workspace:
