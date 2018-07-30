@@ -10,7 +10,7 @@ type sortBySeverity []*gosec.Issue
 
 func (s sortBySeverity) Len() int { return len(s) }
 
-func (s sortBySeverity) Less(i, j int) bool { return s[i].Severity > s[i].Severity }
+func (s sortBySeverity) Less(i, j int) bool { return s[i].Severity > s[j].Severity }
 
 func (s sortBySeverity) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
 
