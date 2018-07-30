@@ -91,6 +91,8 @@ var (
 	// go build tags
 	flagBuildTags = flag.String("tags", "", "Comma separated list of build tags")
 
+	flagScanVendor = flag.Bool("vendor", false, "Scan the vendor folder")
+
 	logger *log.Logger
 )
 
@@ -278,8 +280,10 @@ func main() {
 	for _, pkg := range gotool.ImportPaths(cleanPaths(flag.Args())) {
 
 		// Skip vendor directory
-		if vendor.MatchString(pkg) {
-			continue
+		if !*flagScanVendor {
+			if vendor.MatchString(pkg) {
+				continue
+			}
 		}
 		packages = append(packages, resolvePackage(pkg, gopaths))
 	}
