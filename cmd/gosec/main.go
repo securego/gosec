@@ -95,7 +95,7 @@ var (
 	flagScanVendor = flag.Bool("vendor", false, "Scan the vendor folder")
 
 	// fail by severity
-	flagSeverity = flag.String("severity", "low", "Fail the build for issues with the given or higher severity. Valid options are: low, medium, high")
+	flagSeverity = flag.String("severity", "low", "Fail the scanning for issues with the given or higher severity. Valid options are: low, medium, high")
 
 	logger *log.Logger
 )
