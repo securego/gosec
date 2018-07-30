@@ -262,7 +262,7 @@ func main() {
 
 	// Load enabled rule definitions
 	ruleDefinitions := loadRules(*flagRulesInclude, *flagRulesExclude)
-	if len(ruleDefinitions) <= 0 {
+	if len(ruleDefinitions) == 0 {
 		logger.Fatal("cannot continue: no rules are configured.")
 	}
 
