@@ -91,7 +91,11 @@ var (
 	// go build tags
 	flagBuildTags = flag.String("tags", "", "Comma separated list of build tags")
 
+	// scan the vendor folder
 	flagScanVendor = flag.Bool("vendor", false, "Scan the vendor folder")
+
+	// fail by severity
+	flagSeverity = flag.String("severity", "low", "Fail the build for issues with the given or higher severity. Valid options are: low, medium, high")
 
 	logger *log.Logger
 )
@@ -224,6 +228,20 @@ func resolvePackage(pkg string, searchPaths []string) string {
 	return pkg
 }
 
+func convertToScore(severity string) (gosec.Score, error) {
+	severity = strings.ToLower(severity)
+	switch severity {
+	case "low":
+		return gosec.Low, nil
+	case "medium":
+		return gosec.Medium, nil
+	case "high":
+		return gosec.High, nil
+	default:
+		return gosec.Low, fmt.Errorf("provided severity '%s' not valid. Valid options: low, medium, high", severity)
+	}
+}
+
 func main() {
 
 	// Setup usage description
@@ -254,6 +272,11 @@ func main() {
 		logger = log.New(ioutil.Discard, "", 0)
 	} else {
 		logger = log.New(logWriter, "[gosec] ", log.LstdFlags)
+	}
+
+	failSeverity, err := convertToScore(*flagSeverity)
+	if err != nil {
+		logger.Fatal(err)
 	}
 
 	// Load config
@@ -299,15 +322,22 @@ func main() {
 	// Collect the results
 	issues, metrics := analyzer.Report()
 
-	issuesFound := len(issues) > 0
-	// Exit quietly if nothing was found
-	if !issuesFound && *flagQuiet {
-		os.Exit(0)
-	}
-
 	// Sort the issue by severity
 	if *flagSortIssues {
 		sortIssues(issues)
+	}
+
+	issuesFound := false
+	for _, issue := range issues {
+		if issue.Severity >= failSeverity {
+			issuesFound = true
+			break
+		}
+	}
+
+	// Exit quietly if nothing was found
+	if !issuesFound && *flagQuiet {
+		os.Exit(0)
 	}
 
 	// Create output report
