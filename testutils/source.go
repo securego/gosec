@@ -633,6 +633,31 @@ func main() {
 	fmt.Printf("%x", h.Sum(nil))
 }`, 1}}
 
+	// SampleCodeG401b - Use of weak crypto SHA1
+	SampleCodeG401b = []CodeSample{
+		{`
+package main
+import (
+	"crypto/sha1"
+	"fmt"
+	"io"
+	"log"
+	"os"
+)
+func main() {
+	f, err := os.Open("file.txt")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f.Close()
+
+	h := sha1.New()
+	if _, err := io.Copy(h, f); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("%x", h.Sum(nil))
+}`, 1}}
+
 	// SampleCodeG402 - TLS settings
 	SampleCodeG402 = []CodeSample{{`
 // InsecureSkipVerify
@@ -827,6 +852,20 @@ import (
  )
 func main() {
 	cgi.Serve(http.FileServer(http.Dir("/usr/share/doc")))
+}`, 1}}
+	// SampleCodeG505 - Blacklisted import SHA1
+	SampleCodeG505 = []CodeSample{
+		{`
+package main
+import (
+	"crypto/sha1"
+	"fmt"
+	"os"
+)
+func main() {
+	for _, arg := range os.Args {
+		fmt.Printf("%x - %s\n", sha1.Sum([]byte(arg)), arg)
+	}
 }`, 1}}
 	// SampleCode601 - Go build tags
 	SampleCode601 = []CodeSample{{`
