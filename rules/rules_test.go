@@ -6,6 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
 	"github.com/securego/gosec"
 	"github.com/securego/gosec/rules"
 	"github.com/securego/gosec/testutils"
@@ -110,6 +111,10 @@ var _ = Describe("gosec rules", func() {
 			runner("G401", testutils.SampleCodeG401)
 		})
 
+		It("should detect weak crypto algorithms", func() {
+			runner("G401", testutils.SampleCodeG401b)
+		})
+
 		It("should find insecure tls settings", func() {
 			runner("G402", testutils.SampleCodeG402)
 		})
@@ -136,6 +141,9 @@ var _ = Describe("gosec rules", func() {
 
 		It("should detect blacklisted imports - CGI (httpoxy)", func() {
 			runner("G504", testutils.SampleCodeG504)
+		})
+		It("should detect blacklisted imports - SHA1", func() {
+			runner("G505", testutils.SampleCodeG505)
 		})
 
 	})

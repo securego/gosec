@@ -85,3 +85,10 @@ func NewBlacklistedImportCGI(id string, conf gosec.Config) (gosec.Rule, []ast.No
 		"net/http/cgi": "Blacklisted import net/http/cgi: Go versions < 1.6.3 are vulnerable to Httpoxy attack: (CVE-2016-5386)",
 	})
 }
+
+// NewBlacklistedImportSHA1 fails if SHA1 is imported
+func NewBlacklistedImportSHA1(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
+	return NewBlacklistedImports(id, conf, map[string]string{
+		"crypto/sha1": "Blacklisted import crypto/sha1: weak cryptographic primitive",
+	})
+}

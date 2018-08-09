@@ -43,6 +43,7 @@ func NewUsesWeakCryptography(id string, conf gosec.Config) (gosec.Rule, []ast.No
 	calls := make(map[string][]string)
 	calls["crypto/des"] = []string{"NewCipher", "NewTripleDESCipher"}
 	calls["crypto/md5"] = []string{"New", "Sum"}
+	calls["crypto/sha1"] = []string{"New", "Sum"}
 	calls["crypto/rc4"] = []string{"NewCipher"}
 	rule := &usesWeakCryptography{
 		blacklist: calls,

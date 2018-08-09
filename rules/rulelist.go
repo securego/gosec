@@ -80,7 +80,7 @@ func Generate(filters ...RuleFilter) RuleList {
 		{"G305", "File path traversal when extracting zip archive", NewArchive},
 
 		// crypto
-		{"G401", "Detect the usage of DES, RC4, or MD5", NewUsesWeakCryptography},
+		{"G401", "Detect the usage of DES, RC4, MD5 or SHA1", NewUsesWeakCryptography},
 		{"G402", "Look for bad TLS connection settings", NewIntermediateTLSCheck},
 		{"G403", "Ensure minimum RSA key length of 2048 bits", NewWeakKeyStrength},
 		{"G404", "Insecure random number source (rand)", NewWeakRandCheck},
@@ -90,6 +90,7 @@ func Generate(filters ...RuleFilter) RuleList {
 		{"G502", "Import blacklist: crypto/des", NewBlacklistedImportDES},
 		{"G503", "Import blacklist: crypto/rc4", NewBlacklistedImportRC4},
 		{"G504", "Import blacklist: net/http/cgi", NewBlacklistedImportCGI},
+		{"G505", "Import blacklist: crypto/sha1", NewBlacklistedImportSHA1},
 	}
 
 	ruleMap := make(map[string]RuleDefinition)
