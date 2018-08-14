@@ -256,3 +256,28 @@ func GetPkgAbsPath(pkgPath string) (string, error) {
 	}
 	return absPath, nil
 }
+
+// ConcatString recusively concatanates strings from a binary expression
+func ConcatString(n *ast.BinaryExpr) (string, bool) {
+	var s string
+	// sub expressions are found in X object, Y object is always last BasicLit
+	if right_operand, ok := n.Y.(*ast.BasicLit); ok {
+		if str, err := GetString(right_operand); err == nil {
+			s = str + s
+		}
+	} else {
+		return "", false
+	}
+	if left_operand, ok := n.X.(*ast.BinaryExpr); ok {
+		if recursion, ok := ConcatString(left_operand); ok {
+			s = recursion + s
+		}
+	} else if left_operand, ok := n.X.(*ast.BasicLit); ok {
+		if str, err := GetString(left_operand); err == nil {
+			s = str + s
+		}
+	} else {
+		return "", false
+	}
+	return s, true
+}
