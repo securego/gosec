@@ -257,7 +257,7 @@ func GetPkgAbsPath(pkgPath string) (string, error) {
 	return absPath, nil
 }
 
-// ConcatString recusively concatanates strings from a binary expression
+// ConcatString recusively concatenates strings from a binary expression
 func ConcatString(n *ast.BinaryExpr) (string, bool) {
 	var s string
 	// sub expressions are found in X object, Y object is always last BasicLit
