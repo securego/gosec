@@ -107,9 +107,9 @@ func (s *sqlStrFormat) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error)
 	// TODO(gm) improve confidence if database/sql is being used
 	if node := s.calls.ContainsCallExpr(n, c); node != nil {
 		// concats callexpr arg strings together if needed before regex evaluation
-		if arg_expr, ok := node.Args[0].(*ast.BinaryExpr); ok {
-			if full_str, ok := gosec.ConcatString(arg_expr); ok {
-				if s.MatchPatterns(full_str) {
+		if argExpr, ok := node.Args[0].(*ast.BinaryExpr); ok {
+			if fullStr, ok := gosec.ConcatString(argExpr); ok {
+				if s.MatchPatterns(fullStr) {
 					return gosec.NewIssue(c, n, s.ID(), s.What, s.Severity, s.Confidence),
 						nil
 				}
