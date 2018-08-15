@@ -169,11 +169,9 @@ Note that all released archives are also uploaded to GitHub.
 
 #### Docker image
 
-You can execute a release and build the docker image as follows:
+You can build the docker image as follows:
 
 ```
-git tag <VERSION>
-export GITHUB_TOKEN=<Your GitHub token>
 make image
 ```
 
