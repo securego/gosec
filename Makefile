@@ -28,7 +28,7 @@ release: bootstrap
 	@echo "Releasing the gosec binary..."
 	goreleaser release
 
-image: release
+image: build
 	@echo "Building the Docker image..."
 	docker build -t $(IMAGE_REPO)/$(BIN):$(GIT_TAG) .
 	docker tag $(IMAGE_REPO)/$(BIN):$(GIT_TAG) $(IMAGE_REPO)/$(BIN):latest
