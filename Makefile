@@ -2,6 +2,8 @@ GIT_TAG?= $(shell git describe --always --tags)
 BIN = gosec
 FMT_CMD = $(gofmt -s -l -w $(find . -type f -name '*.go' -not -path './vendor/*') | tee /dev/stderr)
 IMAGE_REPO = docker.io
+BUILDFLAGS := ''
+CGO_ENABLED = 0
 
 default:
 	$(MAKE) bootstrap
@@ -27,8 +29,11 @@ clean:
 release: bootstrap
 	@echo "Releasing the gosec binary..."
 	goreleaser release
+ 
+build-linux:
+	CGO_ENABLED=$(CGO_ENABLED) GOOS=linux GOARCH=amd64 go build -ldflags $(BUILDFLAGS) -o $(BIN) ./cmd/gosec/
 
-image: build
+image: build-linux
 	@echo "Building the Docker image..."
 	docker build -t $(IMAGE_REPO)/$(BIN):$(GIT_TAG) .
 	docker tag $(IMAGE_REPO)/$(BIN):$(GIT_TAG) $(IMAGE_REPO)/$(BIN):latest
