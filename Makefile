@@ -1,7 +1,7 @@
 GIT_TAG?= $(shell git describe --always --tags)
 BIN = gosec
 FMT_CMD = $(gofmt -s -l -w $(find . -type f -name '*.go' -not -path './vendor/*') | tee /dev/stderr)
-IMAGE_REPO = docker.io
+IMAGE_REPO = securego
 BUILDFLAGS := ''
 CGO_ENABLED = 0
 
@@ -41,8 +41,7 @@ image: build-linux
 
 image-push: image
 	@echo "Pushing the Docker image..."
-
-docker push $(IMAGE_REPO)/$(BIN):$(GIT_TAG)
+	docker push $(IMAGE_REPO)/$(BIN):$(GIT_TAG)
 	docker push $(IMAGE_REPO)/$(BIN):latest
 
 .PHONY: test build clean release image image-push
