@@ -84,7 +84,7 @@ func NewSQLStrConcat(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 	return &sqlStrConcat{
 		sqlStatement: sqlStatement{
 			patterns: []*regexp.Regexp{
-				regexp.MustCompile(`(?i)(SELECT|DELETE|INSERT|UPDATE|INTO|FROM|WHERE) `),
+				regexp.MustCompile(`(?)(SELECT|DELETE|INSERT|UPDATE|INTO|FROM|WHERE) `),
 			},
 			MetaData: gosec.MetaData{
 				ID:         id,
@@ -129,7 +129,7 @@ func NewSQLStrFormat(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 		calls: gosec.NewCallList(),
 		sqlStatement: sqlStatement{
 			patterns: []*regexp.Regexp{
-				regexp.MustCompile("(?i)(SELECT|DELETE|INSERT|UPDATE|INTO|FROM|WHERE) "),
+				regexp.MustCompile("(?)(SELECT|DELETE|INSERT|UPDATE|INTO|FROM|WHERE) "),
 				regexp.MustCompile("%[^bdoxXfFp]"),
 			},
 			MetaData: gosec.MetaData{
