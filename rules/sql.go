@@ -98,16 +98,35 @@ func NewSQLStrConcat(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 
 type sqlStrFormat struct {
 	sqlStatement
-	calls gosec.CallList
+	calls   gosec.CallList
+	noIssue gosec.CallList
 }
 
 // Looks for "fmt.Sprintf("SELECT * FROM foo where '%s', userInput)"
 func (s *sqlStrFormat) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error) {
 
+	// argIndex changes the function argument which gets matched to the regex
+	argIndex := 0
+
 	// TODO(gm) improve confidence if database/sql is being used
 	if node := s.calls.ContainsCallExpr(n, c); node != nil {
+		// if the function is fmt.Fprintf, search for SQL statement in Args[1] instead
+		if sel, ok := node.Fun.(*ast.SelectorExpr); ok {
+			if sel.Sel.Name == "Fprintf" {
+				// if os.Stderr or os.Stdout is in Arg[0], mark as no issue
+				if arg, ok := node.Args[0].(*ast.SelectorExpr); ok {
+					if ident, ok := arg.X.(*ast.Ident); ok {
+						if s.noIssue.Contains(ident.Name, arg.Sel.Name) {
+							return nil, nil
+						}
+					}
+				}
+				// the function is Fprintf so set argIndex = 1
+				argIndex = 1
+			}
+		}
 		// concats callexpr arg strings together if needed before regex evaluation
-		if argExpr, ok := node.Args[0].(*ast.BinaryExpr); ok {
+		if argExpr, ok := node.Args[argIndex].(*ast.BinaryExpr); ok {
 			if fullStr, ok := gosec.ConcatString(argExpr); ok {
 				if s.MatchPatterns(fullStr) {
 					return gosec.NewIssue(c, n, s.ID(), s.What, s.Severity, s.Confidence),
@@ -116,7 +135,7 @@ func (s *sqlStrFormat) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error)
 			}
 		}
 
-		if arg, e := gosec.GetString(node.Args[0]); s.MatchPatterns(arg) && e == nil {
+		if arg, e := gosec.GetString(node.Args[argIndex]); s.MatchPatterns(arg) && e == nil {
 			return gosec.NewIssue(c, n, s.ID(), s.What, s.Severity, s.Confidence), nil
 		}
 	}
@@ -126,7 +145,8 @@ func (s *sqlStrFormat) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error)
 // NewSQLStrFormat looks for cases where we're building SQL query strings using format strings
 func NewSQLStrFormat(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 	rule := &sqlStrFormat{
-		calls: gosec.NewCallList(),
+		calls:   gosec.NewCallList(),
+		noIssue: gosec.NewCallList(),
 		sqlStatement: sqlStatement{
 			patterns: []*regexp.Regexp{
 				regexp.MustCompile("(?)(SELECT|DELETE|INSERT|UPDATE|INTO|FROM|WHERE) "),
@@ -140,6 +160,7 @@ func NewSQLStrFormat(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 			},
 		},
 	}
-	rule.calls.AddAll("fmt", "Sprint", "Sprintf", "Sprintln")
+	rule.calls.AddAll("fmt", "Sprint", "Sprintf", "Sprintln", "Fprintf")
+	rule.noIssue.AddAll("os", "Stdout", "Stderr")
 	return rule, []ast.Node{(*ast.CallExpr)(nil)}
 }
