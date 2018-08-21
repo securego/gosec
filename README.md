@@ -147,9 +147,12 @@ make test
 #### Release Build
 
 Make sure you have installed the [goreleaser](https://github.com/goreleaser/goreleaser) tool and then you can release gosec as follows:
+
+```
 git tag 1.0.0
 export GITHUB_TOKEN=<YOUR GITHUB TOKEN>
 make release
+```
 
 The released version of the tool is available in the `dist` folder. The build information should be displayed in the usage text.
 
@@ -175,10 +178,11 @@ You can build the docker image as follows:
 make image
 ```
 
-Now you can run the gosec tool in a container against your local workspace:
+You can run the `gosec` tool in a container against your local Go project. You just have to mount the project in the 
+`GOPATH` of the container:
 
 ```
-docker run -it -v <YOUR LOCAL WORKSPACE>:/workspace gosec /workspace
+docker run -it -v $GOPATH/src/<YOUR PROJECT PATH>:/go/src/<YOUR PORJECT PATH> securego/gosec /go/src/<YOUR PROJECT PATH>
 ```
 
 #### Generate TLS rule
