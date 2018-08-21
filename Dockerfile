@@ -1,4 +1,4 @@
-FROM golang:1.9.4-alpine3.7
+FROM golang:1.10.3-alpine3.8
 
 ENV BIN=gosec
 
