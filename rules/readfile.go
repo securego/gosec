@@ -15,10 +15,10 @@
 package rules
 
 import (
+	"fmt"
+	"github.com/securego/gosec"
 	"go/ast"
 	"go/types"
-
-	"github.com/securego/gosec"
 )
 
 type readfile struct {
@@ -32,32 +32,60 @@ func (r *readfile) ID() string {
 	return r.MetaData.ID
 }
 
+// isJoinFunc checks if there is a filepath.Join or other join function
+func (r *readfile) isJoinFunc(n ast.Node, c *gosec.Context) bool {
+	if call := r.pathJoin.ContainsCallExpr(n, c); call != nil {
+		fmt.Println("reached call expression")
+		for _, arg := range call.Args {
+			// edge case: check if one of the args is a BinaryExpr
+			if binExp, ok := arg.(*ast.BinaryExpr); ok {
+				fmt.Println("Reached second bin expr")
+				// iterate and resolve all found identites from the BinaryExpr
+				if _, ok := gosec.FindVarIdentities(binExp, c); ok {
+					fmt.Println("this is it!")
+					return true
+				}
+			}
+
+		// try and resolve identity
+		if ident, ok := arg.(*ast.Ident); ok {
+			obj := c.Info.ObjectOf(ident)
+			if _, ok := obj.(*types.Var); ok && !gosec.TryResolve(ident, c) {
+				return true
+			}
+		}
+	}
+}
+	return false
+}
+
 // Match inspects AST nodes to determine if the match the methods `os.Open` or `ioutil.ReadFile`
 func (r *readfile) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error) {
 	if node := r.ContainsCallExpr(n, c); node != nil {
 		for _, arg := range node.Args {
+			fmt.Println("Iterating through args")
 			// handles path joining functions in Arg
 			// eg. os.Open(filepath.Join("/tmp/", file))
-			if call := r.pathJoin.ContainsCallExpr(arg, c); call != nil {
-				return r.Match(call, c)
+			if callExpr, ok := arg.(*ast.CallExpr); ok {
+				fmt.Println("Its a call expression!")
+				if r.isJoinFunc(callExpr, c) {
+					return gosec.NewIssue(c, n, r.ID(), r.What, r.Severity, r.Confidence), nil
+				}
 			}
-
 			// handles binary string concatenation eg. ioutil.Readfile("/tmp/" + file + "/blob")
-			if binexp, ok := arg.(*ast.BinaryExpr); ok {
+			if binExp, ok := arg.(*ast.BinaryExpr); ok {
+				fmt.Println("its a binary expression!")
 				// iterate and resolve all found identites from the BinaryExpr
-				if idents, ok := gosec.FindIdentities(binexp); ok {
-					for _, ident := range idents {
-						obj := c.Info.ObjectOf(ident)
-						if _, ok := obj.(*types.Var); ok && !gosec.TryResolve(ident, c) {
-							return gosec.NewIssue(c, n, r.ID(), r.What, r.Severity, r.Confidence), nil
-						}
-					}
+				if _, ok := gosec.FindVarIdentities(binExp, c); ok {
+					return gosec.NewIssue(c, n, r.ID(), r.What, r.Severity, r.Confidence), nil
 				}
 			}
 
 			if ident, ok := arg.(*ast.Ident); ok {
+				fmt.Printf("hit ident")
 				obj := c.Info.ObjectOf(ident)
 				if _, ok := obj.(*types.Var); ok && !gosec.TryResolve(ident, c) {
+					fmt.Println("hit rule")
 					return gosec.NewIssue(c, n, r.ID(), r.What, r.Severity, r.Confidence), nil
 				}
 			}
@@ -78,8 +106,8 @@ func NewReadFile(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 			Confidence: gosec.High,
 		},
 	}
-	rule.pathJoin.Add("filepath", "Join")
-  rule.pathJoin.Add("path", "Join")
+	rule.pathJoin.Add("path/filepath", "Join")
+	rule.pathJoin.Add("path", "Join")
 	rule.Add("io/ioutil", "ReadFile")
 	rule.Add("os", "Open")
 	return rule, []ast.Node{(*ast.CallExpr)(nil)}
