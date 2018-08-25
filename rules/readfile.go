@@ -24,6 +24,7 @@ import (
 type readfile struct {
 	gosec.MetaData
 	gosec.CallList
+	pathJoin gosec.CallList
 }
 
 // ID returns the identifier for this rule
@@ -68,6 +69,7 @@ func (r *readfile) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error) {
 // NewReadFile detects cases where we read files
 func NewReadFile(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 	rule := &readfile{
+		pathJoin: gosec.NewCallList(),
 		CallList: gosec.NewCallList(),
 		MetaData: gosec.MetaData{
 			ID:         id,
@@ -76,6 +78,8 @@ func NewReadFile(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 			Confidence: gosec.High,
 		},
 	}
+	rule.pathJoin.Add("filepath", "Join")
+  rule.pathJoin.Add("path", "Join")
 	rule.Add("io/ioutil", "ReadFile")
 	rule.Add("os", "Open")
 	return rule, []ast.Node{(*ast.CallExpr)(nil)}
