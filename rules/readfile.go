@@ -69,7 +69,7 @@ func (r *readfile) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error) {
 			}
 			// handles binary string concatenation eg. ioutil.Readfile("/tmp/" + file + "/blob")
 			if binExp, ok := arg.(*ast.BinaryExpr); ok {
-				// iterate and resolve all found identites from the BinaryExpr
+				// resolve all found identites from the BinaryExpr
 				if _, ok := gosec.FindVarIdentities(binExp, c); ok {
 					return gosec.NewIssue(c, n, r.ID(), r.What, r.Severity, r.Confidence), nil
 				}
