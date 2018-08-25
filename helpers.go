@@ -297,7 +297,6 @@ func FindIdentities(n *ast.BinaryExpr) ([]*ast.Ident, bool) {
 	if len(identities) > 0 {
 		return identities, true
 		// if nil or error, return false
-	} else {
-		return nil, false
 	}
+		return nil, false
 }
