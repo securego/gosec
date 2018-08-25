@@ -15,10 +15,10 @@
 package rules
 
 import (
-	"fmt"
-	"github.com/securego/gosec"
 	"go/ast"
 	"go/types"
+
+	"github.com/securego/gosec"
 )
 
 type readfile struct {
@@ -35,14 +35,11 @@ func (r *readfile) ID() string {
 // isJoinFunc checks if there is a filepath.Join or other join function
 func (r *readfile) isJoinFunc(n ast.Node, c *gosec.Context) bool {
 	if call := r.pathJoin.ContainsCallExpr(n, c); call != nil {
-		fmt.Println("reached call expression")
 		for _, arg := range call.Args {
 			// edge case: check if one of the args is a BinaryExpr
 			if binExp, ok := arg.(*ast.BinaryExpr); ok {
-				fmt.Println("Reached second bin expr")
 				// iterate and resolve all found identites from the BinaryExpr
 				if _, ok := gosec.FindVarIdentities(binExp, c); ok {
-					fmt.Println("this is it!")
 					return true
 				}
 			}
@@ -63,18 +60,15 @@ func (r *readfile) isJoinFunc(n ast.Node, c *gosec.Context) bool {
 func (r *readfile) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error) {
 	if node := r.ContainsCallExpr(n, c); node != nil {
 		for _, arg := range node.Args {
-			fmt.Println("Iterating through args")
 			// handles path joining functions in Arg
 			// eg. os.Open(filepath.Join("/tmp/", file))
 			if callExpr, ok := arg.(*ast.CallExpr); ok {
-				fmt.Println("Its a call expression!")
 				if r.isJoinFunc(callExpr, c) {
 					return gosec.NewIssue(c, n, r.ID(), r.What, r.Severity, r.Confidence), nil
 				}
 			}
 			// handles binary string concatenation eg. ioutil.Readfile("/tmp/" + file + "/blob")
 			if binExp, ok := arg.(*ast.BinaryExpr); ok {
-				fmt.Println("its a binary expression!")
 				// iterate and resolve all found identites from the BinaryExpr
 				if _, ok := gosec.FindVarIdentities(binExp, c); ok {
 					return gosec.NewIssue(c, n, r.ID(), r.What, r.Severity, r.Confidence), nil
@@ -82,10 +76,8 @@ func (r *readfile) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error) {
 			}
 
 			if ident, ok := arg.(*ast.Ident); ok {
-				fmt.Printf("hit ident")
 				obj := c.Info.ObjectOf(ident)
 				if _, ok := obj.(*types.Var); ok && !gosec.TryResolve(ident, c) {
-					fmt.Println("hit rule")
 					return gosec.NewIssue(c, n, r.ID(), r.What, r.Severity, r.Confidence), nil
 				}
 			}
