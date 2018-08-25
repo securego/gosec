@@ -281,3 +281,23 @@ func ConcatString(n *ast.BinaryExpr) (string, bool) {
 	}
 	return s, true
 }
+
+// FindIdentities returns array of all identities in a given binary expression
+func FindIdentities(n *ast.BinaryExpr) ([]*ast.Ident, bool) {
+	identities := []*ast.Ident{}
+	// sub expressions are found in X object, Y object is always the last term
+	if rightOperand, ok := n.Y.(*ast.Ident); ok {
+		identities = append(identities, rightOperand)
+	}
+	if leftOperand, ok := n.X.(*ast.BinaryExpr); ok {
+		if leftIdentities, ok := FindIdentities(leftOperand); ok {
+			identities = append(identities, leftIdentities...)
+		}
+	}
+	if len(identities) > 0 {
+		return identities, true
+		// if nil or error, return false
+	} else {
+		return nil, false
+	}
+}

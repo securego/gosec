@@ -35,6 +35,25 @@ func (r *readfile) ID() string {
 func (r *readfile) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error) {
 	if node := r.ContainsCallExpr(n, c); node != nil {
 		for _, arg := range node.Args {
+			// handles path joining functions in Arg
+			// eg. os.Open(filepath.Join("/tmp/", file))
+			if call := r.pathJoin.ContainsCallExpr(arg, c); call != nil {
+				return r.Match(call, c)
+			}
+
+			// handles binary string concatenation eg. ioutil.Readfile("/tmp/" + file + "/blob")
+			if binexp, ok := arg.(*ast.BinaryExpr); ok {
+				// iterate and resolve all found identites from the BinaryExpr
+				if idents, ok := gosec.FindIdentities(binexp); ok {
+					for _, ident := range idents {
+						obj := c.Info.ObjectOf(ident)
+						if _, ok := obj.(*types.Var); ok && !gosec.TryResolve(ident, c) {
+							return gosec.NewIssue(c, n, r.ID(), r.What, r.Severity, r.Confidence), nil
+						}
+					}
+				}
+			}
+
 			if ident, ok := arg.(*ast.Ident); ok {
 				obj := c.Info.ObjectOf(ident)
 				if _, ok := obj.(*types.Var); ok && !gosec.TryResolve(ident, c) {
