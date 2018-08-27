@@ -500,7 +500,7 @@ import (
 
 func main() {
 	http.HandleFunc("/bar", func(w http.ResponseWriter, r *http.Request) {
-  	title := r.URL.Query().Get("title")
+  		title := r.URL.Query().Get("title")
 		f, err := os.Open(title)
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)
