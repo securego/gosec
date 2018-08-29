@@ -65,6 +65,7 @@ func Generate(filters ...RuleFilter) RuleList {
 		{"G104", "Audit errors not checked", NewNoErrorCheck},
 		{"G105", "Audit the use of big.Exp function", NewUsingBigExp},
 		{"G106", "Audit the use of ssh.InsecureIgnoreHostKey function", NewSSHHostKey},
+		{"G107", "Url provided to HTTP request as taint input", NewSSRFCheck},
 
 		// injection
 		{"G201", "SQL query construction using format string", NewSQLStrFormat},

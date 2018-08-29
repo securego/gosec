@@ -192,6 +192,29 @@ import (
 func main() {
         _ =  ssh.InsecureIgnoreHostKey()
 }`, 1}}
+
+	// SampleCodeG107 - SSRF via http requests with variable url
+	SampleCodeG107 = []CodeSample{{`
+package main
+import (
+        "net/http"
+	"io/ioutil"
+	"fmt"
+)
+func main() {
+	url := os.Getenv("tainted_url")
+	resp, err := http.Get(url)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("%s", body)
+}`, 1}}
+
 	// SampleCodeG201 - SQL injection via format string
 	SampleCodeG201 = []CodeSample{
 		{`
