@@ -41,12 +41,13 @@ or to specify a set of rules to explicitly exclude using the '-exclude=' flag.
   - G104: Audit errors not checked
   - G105: Audit the use of math/big.Int.Exp
   - G106: Audit the use of ssh.InsecureIgnoreHostKey
+  - G107: Url provided to HTTP request as taint input
   - G201: SQL query construction using format string
   - G202: SQL query construction using string concatenation
   - G203: Use of unescaped data in HTML templates
   - G204: Audit use of command execution
   - G301: Poor file permissions used when creating a directory
-  - G302: Poor file permisions used with chmod
+  - G302: Poor file permissions used with chmod
   - G303: Creating tempfile using a predictable path
   - G304: File path provided as taint input
   - G305: File traversal when extracting zip archive
@@ -79,7 +80,7 @@ that are not considered build artifacts by the compiler (so test files).
 As with all automated detection tools there will be cases of false positives. In cases where gosec reports a failure that has been manually verified as being safe it is possible to annotate the code with a '#nosec' comment.
 
 The annotation causes gosec to stop processing any further nodes within the
-AST so can apply to a whole block or more granularly to a single expression. 
+AST so can apply to a whole block or more granularly to a single expression.
 
 ```go
 
@@ -178,7 +179,7 @@ You can build the docker image as follows:
 make image
 ```
 
-You can run the `gosec` tool in a container against your local Go project. You just have to mount the project in the 
+You can run the `gosec` tool in a container against your local Go project. You just have to mount the project in the
 `GOPATH` of the container:
 
 ```
