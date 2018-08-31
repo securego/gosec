@@ -17,12 +17,11 @@ func (r *ssrf) ID() string {
 	return r.MetaData.ID
 }
 
-// ResolveVar tries to resolve the first argument of a callexpression
-// The first argument is the url,
+// ResolveVar tries to resolve the first argument of a call expression
+// The first argument is the url
 func (r *ssrf) ResolveVar(n *ast.CallExpr, c *gosec.Context) bool {
 	if len(n.Args) > 0 {
 		arg := n.Args[0]
-
 		if ident, ok := arg.(*ast.Ident); ok {
 			obj := c.Info.ObjectOf(ident)
 			if _, ok := obj.(*types.Var); ok && !gosec.TryResolve(ident, c) {
@@ -44,9 +43,8 @@ func (r *ssrf) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error) {
 	// Look at the last selector identity for methods matching net/http's
 	if node, ok := n.(*ast.CallExpr); ok {
 		if selExpr, ok := node.Fun.(*ast.SelectorExpr); ok {
-			// Pull last selector's identity name
+			// Pull last selector's identity name and compare to net/http methods
 			if r.Contains("net/http", selExpr.Sel.Name) {
-				// Try and resolve arguments
 				if r.ResolveVar(node, c) {
 					return gosec.NewIssue(c, n, r.ID(), r.What, r.Severity, r.Confidence), nil
 				}

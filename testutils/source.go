@@ -223,82 +223,82 @@ import (
 )
 const url = "http://127.0.0.1"
 func main() {
-	resp, err := http.Get(url)
-        if err != nil {
-                fmt.Println(err)
-        }
-        fmt.Println(resp.Status)
+  resp, err := http.Get(url)
+    if err != nil {
+      fmt.Println(err)
+    }
+      fmt.Println(resp.Status)
 }`, 0}, {`
 // Flag both normal and enhanced goresty GET requests
 package main
 import (
-	"gopkg.in/resty.v1"
+  "gopkg.in/resty.v1"
 	"fmt"
 	"log"
-	"net/http"
+  "net/http"
 )
 func main () {
 
-	http.HandleFunc("/httpbar", func(w http.ResponseWriter, r *http.Request) {
-		url1 := r.URL.Query().Get("openUrl")
+  http.HandleFunc("/httpbar", func(w http.ResponseWriter, r *http.Request) {
+	  url1 := r.URL.Query().Get("openUrl")
 		// short go resty request
-	 resp3, err3 := resty.R().Get(url1)
-	 if err3 != nil {
-					 fmt.Println(err3)
-	 }
+	  resp3, err3 := resty.R().Get(url1)
+	  if err3 != nil {
+		  fmt.Println(err3)
+	  }
 
-	 url2 := r.URL.Query().Get("authUrl")
-	 resp4, err4 := resty.R().
-     SetQueryParams(map[string]string{
-		   "page_no": "1",
-		   "limit": "20",
-		   "sort":"name",
-		   "order": "asc",
-		   "random": "10",
-     }).
-     SetHeader("Accept", "application/json").
-     SetAuthToken("notarealauthtoken").
-     Get(url2)
+  url2 := r.URL.Query().Get("authUrl")
+	  resp4, err4 := resty.R().
+      SetQueryParams(map[string]string{
+		    "page_no": "1",
+		    "limit": "20",
+		    "sort":"name",
+		    "order": "asc",
+		    "random": "10",
+      }).
+      SetHeader("Accept", "application/json").
+      SetAuthToken("notarealauthtoken").
+      Get(url2)
 
- if err4 != nil {
-					 fmt.Println("Error!", err4)
-	 }
-		fmt.Fprintf(w, "%s \n %s", resp3.StatusCode(), resp4.StatusCode())
-	})
-	log.Fatal(http.ListenAndServe(":3000", nil))
+  if err4 != nil {
+	  fmt.Println("Error!", err4)
+	}
+	  fmt.Fprintf(w, "%s \n %s", resp3.StatusCode(), resp4.StatusCode())
+  })
+  log.Fatal(http.ListenAndServe(":3000", nil))
 }`, 2}, {`
-	package main
+package main
 
-	import (
-		"net/http"
-		"fmt"
-		"os"
-		"strconv"
-	)
+import (
+  "net/http"
+  "fmt"
+  "os"
+  "strconv"
+)
 
-	type httpWrapper struct {
-		DesiredCode string
+type httpWrapper struct {
+	DesiredCode string
+}
+
+func (c *httpWrapper) Get(url string) (*http.Response, error) {
+	return http.Get(url)
+}
+
+func main() {
+	code := os.Getenv("STATUS_CODE")
+  var url = os.Getenv("URL")
+	client := httpWrapper{code}
+  resp1, err1 := client.Get(url)
+  if err1 != nil {
+    fmt.Println(err1)
+		  os.Exit(1)
+  }
+	if strconv.Itoa(resp1.StatusCode) == client.DesiredCode {
+    fmt.Println("True")
+	} else {
+		fmt.Println("False")
 	}
-
-	func (c *httpWrapper) Get(url string) (*http.Response, error) {
-		return http.Get(url)
-	}
-
-	func main() {
-		code := os.Getenv("STATUS_CODE")
-		var url = os.Getenv("URL")
-		client := httpWrapper{code}
-        resp1, err1 := client.Get(url)
-        if err1 != nil {
-                fmt.Println(err1)
-								os.Exit(1)
-        }
-				if strconv.Itoa(resp1.StatusCode) == client.DesiredCode {
-        fmt.Println("True")
-			} else {
-				fmt.Println("False")
-			}
-	}`, 2}}
+}`, 2}}
 	// SampleCodeG201 - SQL injection via format string
 	SampleCodeG201 = []CodeSample{
 		{`
