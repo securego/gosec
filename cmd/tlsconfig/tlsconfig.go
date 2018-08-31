@@ -62,7 +62,7 @@ type goTLSConfiguration struct {
 
 // getTLSConfFromURL retrieves the json containing the TLS configurations from the specified URL.
 func getTLSConfFromURL(url string) (*ServerSideTLSJson, error) {
-	r, err := http.Get(url)
+	r, err := http.Get(url) // #nosec G107
 	if err != nil {
 		return nil, err
 	}
