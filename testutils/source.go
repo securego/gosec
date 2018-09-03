@@ -229,44 +229,6 @@ func main() {
     	}
       	fmt.Println(resp.Status)
 }`, 0}, {`
-// Flag both normal and enhanced goresty GET requests
-package main
-import (
-	"gopkg.in/resty.v1"
-	"fmt"
-	"log"
-	"net/http"
-)
-func main () {
-
-	http.HandleFunc("/httpbar", func(w http.ResponseWriter, r *http.Request) {
-		url1 := r.URL.Query().Get("openUrl")
-		// short go resty request
-	  	resp3, err3 := resty.R().Get(url1)
-	  	if err3 != nil {
-			fmt.Println(err3)
-	  	}
-
-  	url2 := r.URL.Query().Get("authUrl")
-		resp4, err4 := resty.R().
-      	SetQueryParams(map[string]string{
-		"page_no": "1",
-		"limit": "20",
-		"sort":"name",
-		"order": "asc",
-		"random": "10",
-        }).
-      	SetHeader("Accept", "application/json").
-      	SetAuthToken("notarealauthtoken").
-      	Get(url2)
-
-	if err4 != nil {
-		fmt.Println("Error!", err4)
-	}
-	  	fmt.Fprintf(w, "%s \n %s", resp3.StatusCode(), resp4.StatusCode())
-  	})
-  	log.Fatal(http.ListenAndServe(":3000", nil))
-}`, 2}, {`
 package main
 
 import (
