@@ -40,17 +40,6 @@ func (r *ssrf) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error) {
 			return gosec.NewIssue(c, n, r.ID(), r.What, r.Severity, r.Confidence), nil
 		}
 	}
-	// Look at the last selector identity for methods matching net/http's
-	if node, ok := n.(*ast.CallExpr); ok {
-		if selExpr, ok := node.Fun.(*ast.SelectorExpr); ok {
-			// Pull last selector's identity name and compare to net/http methods
-			if r.Contains("net/http", selExpr.Sel.Name) {
-				if r.ResolveVar(node, c) {
-					return gosec.NewIssue(c, n, r.ID(), r.What, r.Severity, r.Confidence), nil
-				}
-			}
-		}
-	}
 	return nil, nil
 }
 

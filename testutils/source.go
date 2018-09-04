@@ -228,39 +228,7 @@ func main() {
 		fmt.Println(err)
     	}
       	fmt.Println(resp.Status)
-}`, 0}, {`
-package main
-
-import (
-	"net/http"
-	"fmt"
-	"os"
-	"strconv"
-)
-
-type httpWrapper struct {
-	DesiredCode string
-}
-
-func (c *httpWrapper) Get(url string) (*http.Response, error) {
-	return http.Get(url)
-}
-
-func main() {
-	code := os.Getenv("STATUS_CODE")
-	var url = os.Getenv("URL")
-	client := httpWrapper{code}
-	resp1, err1 := client.Get(url)
-	if err1 != nil {
-		fmt.Println(err1)
-		os.Exit(1)
-  	}
-	if strconv.Itoa(resp1.StatusCode) == client.DesiredCode {
-    		fmt.Println("True")
-	} else {
-		fmt.Println("False")
-	}
-}`, 2}}
+}`, 0}}
 	// SampleCodeG201 - SQL injection via format string
 	SampleCodeG201 = []CodeSample{
 		{`
