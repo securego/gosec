@@ -71,6 +71,10 @@ var _ = Describe("gosec rules", func() {
 			runner("G106", testutils.SampleCodeG106)
 		})
 
+		It("should detect ssrf via http requests with variable url", func() {
+			runner("G107", testutils.SampleCodeG107)
+		})
+
 		It("should detect sql injection via format strings", func() {
 			runner("G201", testutils.SampleCodeG201)
 		})
