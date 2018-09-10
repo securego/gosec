@@ -125,17 +125,22 @@ func (s *sqlStrFormat) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error)
 				argIndex = 1
 			}
 		}
+
+		var formatter string
+
 		// concats callexpr arg strings together if needed before regex evaluation
 		if argExpr, ok := node.Args[argIndex].(*ast.BinaryExpr); ok {
 			if fullStr, ok := gosec.ConcatString(argExpr); ok {
-				if s.MatchPatterns(fullStr) {
-					return gosec.NewIssue(c, n, s.ID(), s.What, s.Severity, s.Confidence),
-						nil
-				}
+				formatter = fullStr
 			}
+		} else if arg, e := gosec.GetString(node.Args[argIndex]); e == nil {
+			formatter = arg
+		}
+		if len(formatter) <= 0 {
+			return nil, nil
 		}
 
-		if arg, e := gosec.GetString(node.Args[argIndex]); s.MatchPatterns(arg) && e == nil {
+		if s.MatchPatterns(formatter) {
 			return gosec.NewIssue(c, n, s.ID(), s.What, s.Severity, s.Confidence), nil
 		}
 	}
