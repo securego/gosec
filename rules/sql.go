@@ -109,7 +109,7 @@ func (s *sqlStrFormat) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error)
 	argIndex := 0
 
 	// TODO(gm) improve confidence if database/sql is being used
-	if node := s.calls.ContainsCallExpr(n, c); node != nil {
+	if node := s.calls.ContainsCallExpr(n, c, false); node != nil {
 		// if the function is fmt.Fprintf, search for SQL statement in Args[1] instead
 		if sel, ok := node.Fun.(*ast.SelectorExpr); ok {
 			if sel.Sel.Name == "Fprintf" {
