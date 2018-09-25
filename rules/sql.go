@@ -51,11 +51,11 @@ func (s *sqlStrConcat) ID() string {
 }
 
 // see if we can figure out what it is
-func (s *sqlStrConcat) checkObject(n *ast.Ident) bool {
+func (s *sqlStrConcat) checkObject(n *ast.Ident, c *gosec.Context) bool {
 	if n.Obj != nil {
 		return n.Obj.Kind != ast.Var && n.Obj.Kind != ast.Fun
 	}
-	return false
+	return gosec.TryResolve(n, c)
 }
 
 // Look for "SELECT * FROM table WHERE " + " ' OR 1=1"
@@ -69,7 +69,7 @@ func (s *sqlStrConcat) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error)
 				if _, ok := node.Y.(*ast.BasicLit); ok {
 					return nil, nil // string cat OK
 				}
-				if second, ok := node.Y.(*ast.Ident); ok && s.checkObject(second) {
+				if second, ok := node.Y.(*ast.Ident); ok && s.checkObject(second, c) {
 					return nil, nil
 				}
 				return gosec.NewIssue(c, n, s.ID(), s.What, s.Severity, s.Confidence), nil
