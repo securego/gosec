@@ -4,6 +4,9 @@
 
 Inspects source code for security problems by scanning the Go AST.
 
+<img src="https://securego.io/img/gosec.png" width="320">
+
+
 ### License
 
 Licensed under the Apache License, Version 2.0 (the "License");
