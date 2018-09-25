@@ -1,8 +1,5 @@
 FROM golang:1.10.4-alpine3.8
 
-ENV BIN=gosec
+COPY gosec /usr/local/bin
 
-COPY $BIN /go/bin/$BIN
-COPY docker-entrypoint.sh /usr/local/bin
-
-ENTRYPOINT ["docker-entrypoint.sh"]
+ENTRYPOINT ["gosec"]
