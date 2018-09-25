@@ -98,8 +98,9 @@ func NewSQLStrConcat(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 
 type sqlStrFormat struct {
 	sqlStatement
-	calls   gosec.CallList
-	noIssue gosec.CallList
+	calls         gosec.CallList
+	noIssue       gosec.CallList
+	noIssueQuoted gosec.CallList
 }
 
 // Looks for "fmt.Sprintf("SELECT * FROM foo where '%s', userInput)"
@@ -109,7 +110,7 @@ func (s *sqlStrFormat) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error)
 	argIndex := 0
 
 	// TODO(gm) improve confidence if database/sql is being used
-	if node := s.calls.ContainsCallExpr(n, c); node != nil {
+	if node := s.calls.ContainsCallExpr(n, c, false); node != nil {
 		// if the function is fmt.Fprintf, search for SQL statement in Args[1] instead
 		if sel, ok := node.Fun.(*ast.SelectorExpr); ok {
 			if sel.Sel.Name == "Fprintf" {
@@ -125,17 +126,35 @@ func (s *sqlStrFormat) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error)
 				argIndex = 1
 			}
 		}
+
+		var formatter string
+
 		// concats callexpr arg strings together if needed before regex evaluation
 		if argExpr, ok := node.Args[argIndex].(*ast.BinaryExpr); ok {
 			if fullStr, ok := gosec.ConcatString(argExpr); ok {
-				if s.MatchPatterns(fullStr) {
-					return gosec.NewIssue(c, n, s.ID(), s.What, s.Severity, s.Confidence),
-						nil
-				}
+				formatter = fullStr
 			}
+		} else if arg, e := gosec.GetString(node.Args[argIndex]); e == nil {
+			formatter = arg
+		}
+		if len(formatter) <= 0 {
+			return nil, nil
 		}
 
-		if arg, e := gosec.GetString(node.Args[argIndex]); s.MatchPatterns(arg) && e == nil {
+		// If all formatter args are quoted, then the SQL construction is safe
+		if argIndex+1 < len(node.Args) {
+			allQuoted := true
+			for _, arg := range node.Args[argIndex+1:] {
+				if n := s.noIssueQuoted.ContainsCallExpr(arg, c, true); n == nil {
+					allQuoted = false
+					break
+				}
+			}
+			if allQuoted {
+				return nil, nil
+			}
+		}
+		if s.MatchPatterns(formatter) {
 			return gosec.NewIssue(c, n, s.ID(), s.What, s.Severity, s.Confidence), nil
 		}
 	}
@@ -145,8 +164,9 @@ func (s *sqlStrFormat) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error)
 // NewSQLStrFormat looks for cases where we're building SQL query strings using format strings
 func NewSQLStrFormat(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 	rule := &sqlStrFormat{
-		calls:   gosec.NewCallList(),
-		noIssue: gosec.NewCallList(),
+		calls:         gosec.NewCallList(),
+		noIssue:       gosec.NewCallList(),
+		noIssueQuoted: gosec.NewCallList(),
 		sqlStatement: sqlStatement{
 			patterns: []*regexp.Regexp{
 				regexp.MustCompile("(?)(SELECT|DELETE|INSERT|UPDATE|INTO|FROM|WHERE) "),
@@ -162,5 +182,6 @@ func NewSQLStrFormat(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 	}
 	rule.calls.AddAll("fmt", "Sprint", "Sprintf", "Sprintln", "Fprintf")
 	rule.noIssue.AddAll("os", "Stdout", "Stderr")
+	rule.noIssueQuoted.Add("github.com/lib/pq", "QuoteIdentifier")
 	return rule, []ast.Node{(*ast.CallExpr)(nil)}
 }
