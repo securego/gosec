@@ -55,7 +55,14 @@ func (s *sqlStrConcat) checkObject(n *ast.Ident, c *gosec.Context) bool {
 	if n.Obj != nil {
 		return n.Obj.Kind != ast.Var && n.Obj.Kind != ast.Fun
 	}
-	return gosec.TryResolve(n, c)
+	for _, file := range c.PkgFiles {
+		if node, ok := file.Scope.Objects[n.String()]; ok {
+			if node.Kind == ast.Con {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // Look for "SELECT * FROM table WHERE " + " ' OR 1=1"
