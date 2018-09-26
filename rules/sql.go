@@ -55,11 +55,11 @@ func (s *sqlStrConcat) checkObject(n *ast.Ident, c *gosec.Context) bool {
 	if n.Obj != nil {
 		return n.Obj.Kind != ast.Var && n.Obj.Kind != ast.Fun
 	}
+
+	// Try to resolve unresolved identifiers using other files in same package
 	for _, file := range c.PkgFiles {
 		if node, ok := file.Scope.Objects[n.String()]; ok {
-			if node.Kind == ast.Con {
-				return true
-			}
+			return node.Kind == ast.Con
 		}
 	}
 	return false
