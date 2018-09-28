@@ -53,7 +53,7 @@ func (r *noErrorCheck) Match(n ast.Node, ctx *gosec.Context) (*gosec.Issue, erro
 	switch stmt := n.(type) {
 	case *ast.AssignStmt:
 		for _, expr := range stmt.Rhs {
-			if callExpr, ok := expr.(*ast.CallExpr); ok && r.whitelist.ContainsCallExpr(expr, ctx) == nil {
+			if callExpr, ok := expr.(*ast.CallExpr); ok && r.whitelist.ContainsCallExpr(expr, ctx, false) == nil {
 				pos := returnsError(callExpr, ctx)
 				if pos < 0 || pos >= len(stmt.Lhs) {
 					return nil, nil
@@ -64,7 +64,7 @@ func (r *noErrorCheck) Match(n ast.Node, ctx *gosec.Context) (*gosec.Issue, erro
 			}
 		}
 	case *ast.ExprStmt:
-		if callExpr, ok := stmt.X.(*ast.CallExpr); ok && r.whitelist.ContainsCallExpr(stmt.X, ctx) == nil {
+		if callExpr, ok := stmt.X.(*ast.CallExpr); ok && r.whitelist.ContainsCallExpr(stmt.X, ctx, false) == nil {
 			pos := returnsError(callExpr, ctx)
 			if pos >= 0 {
 				return gosec.NewIssue(ctx, n, r.ID(), r.What, r.Severity, r.Confidence), nil

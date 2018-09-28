@@ -73,7 +73,7 @@ var _ = Describe("call list", func() {
 		v := testutils.NewMockVisitor()
 		v.Context = ctx
 		v.Callback = func(n ast.Node, ctx *gosec.Context) bool {
-			if _, ok := n.(*ast.CallExpr); ok && calls.ContainsCallExpr(n, ctx) != nil {
+			if _, ok := n.(*ast.CallExpr); ok && calls.ContainsCallExpr(n, ctx, false) != nil {
 				matched++
 			}
 			return true

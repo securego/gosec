@@ -4,6 +4,9 @@
 
 Inspects source code for security problems by scanning the Go AST.
 
+<img src="https://securego.io/img/gosec.png" width="320">
+
+
 ### License
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -183,7 +186,7 @@ You can run the `gosec` tool in a container against your local Go project. You j
 `GOPATH` of the container:
 
 ```
-docker run -it -v $GOPATH/src/<YOUR PROJECT PATH>:/go/src/<YOUR PROJECT PATH> securego/gosec /go/src/<YOUR PROJECT PATH>
+docker run -it -v $GOPATH/src/<YOUR PROJECT PATH>:/go/src/<YOUR PROJECT PATH> securego/gosec ./...
 ```
 
 #### Generate TLS rule

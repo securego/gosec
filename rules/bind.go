@@ -33,7 +33,7 @@ func (r *bindsToAllNetworkInterfaces) ID() string {
 }
 
 func (r *bindsToAllNetworkInterfaces) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error) {
-	callExpr := r.calls.ContainsCallExpr(n, c)
+	callExpr := r.calls.ContainsCallExpr(n, c, false)
 	if callExpr == nil {
 		return nil, nil
 	}
