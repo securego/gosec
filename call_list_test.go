@@ -61,7 +61,7 @@ var _ = Describe("call list", func() {
 		// Create file to be scanned
 		pkg := testutils.NewTestPackage()
 		defer pkg.Close()
-		pkg.AddFile("md5.go", testutils.SampleCodeG401[0].Code)
+		pkg.AddFile("md5.go", testutils.SampleCodeG401[0].Code[0])
 
 		ctx := pkg.CreateContext("md5.go")
 

@@ -98,7 +98,7 @@ var _ = Describe("Analyzer", func() {
 
 			// Rule for MD5 weak crypto usage
 			sample := testutils.SampleCodeG401[0]
-			source := sample.Code
+			source := sample.Code[0]
 			analyzer.LoadRules(rules.Generate(rules.NewRuleFilter(false, "G401")).Builders())
 
 			controlPackage := testutils.NewTestPackage()
@@ -114,7 +114,7 @@ var _ = Describe("Analyzer", func() {
 		It("should not report errors when a nosec comment is present", func() {
 			// Rule for MD5 weak crypto usage
 			sample := testutils.SampleCodeG401[0]
-			source := sample.Code
+			source := sample.Code[0]
 			analyzer.LoadRules(rules.Generate(rules.NewRuleFilter(false, "G401")).Builders())
 
 			nosecPackage := testutils.NewTestPackage()
@@ -131,7 +131,7 @@ var _ = Describe("Analyzer", func() {
 		It("should not report errors when an exclude comment is present for the correct rule", func() {
 			// Rule for MD5 weak crypto usage
 			sample := testutils.SampleCodeG401[0]
-			source := sample.Code
+			source := sample.Code[0]
 			analyzer.LoadRules(rules.Generate(rules.NewRuleFilter(false, "G401")).Builders())
 
 			nosecPackage := testutils.NewTestPackage()
@@ -148,7 +148,7 @@ var _ = Describe("Analyzer", func() {
 		It("should report errors when an exclude comment is present for a different rule", func() {
 			// Rule for MD5 weak crypto usage
 			sample := testutils.SampleCodeG401[0]
-			source := sample.Code
+			source := sample.Code[0]
 			analyzer.LoadRules(rules.Generate(rules.NewRuleFilter(false, "G401")).Builders())
 
 			nosecPackage := testutils.NewTestPackage()
@@ -165,7 +165,7 @@ var _ = Describe("Analyzer", func() {
 		It("should not report errors when an exclude comment is present for multiple rules, including the correct rule", func() {
 			// Rule for MD5 weak crypto usage
 			sample := testutils.SampleCodeG401[0]
-			source := sample.Code
+			source := sample.Code[0]
 			analyzer.LoadRules(rules.Generate(rules.NewRuleFilter(false, "G401")).Builders())
 
 			nosecPackage := testutils.NewTestPackage()
@@ -181,7 +181,7 @@ var _ = Describe("Analyzer", func() {
 
 		It("should pass the build tags", func() {
 			sample := testutils.SampleCode601[0]
-			source := sample.Code
+			source := sample.Code[0]
 			analyzer.LoadRules(rules.Generate().Builders())
 			pkg := testutils.NewTestPackage()
 			defer pkg.Close()
@@ -197,7 +197,7 @@ var _ = Describe("Analyzer", func() {
 
 		// Rule for MD5 weak crypto usage
 		sample := testutils.SampleCodeG401[0]
-		source := sample.Code
+		source := sample.Code[0]
 
 		// overwrite nosec option
 		nosecIgnoreConfig := gosec.NewConfig()

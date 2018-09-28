@@ -28,25 +28,13 @@ var _ = Describe("gosec rules", func() {
 		analyzer = gosec.NewAnalyzer(config, logger)
 		runner = func(rule string, samples []testutils.CodeSample) {
 			analyzer.LoadRules(rules.Generate(rules.NewRuleFilter(false, rule)).Builders())
-
-			supportingFiles := []string{}
-			for _, sample := range samples {
-				if sample.SupportingCode {
-					supportingFiles = append(supportingFiles, sample.Code)
-				}
-			}
-
 			for n, sample := range samples {
-				if sample.SupportingCode {
-					continue
-				}
 				analyzer.Reset()
 				pkg := testutils.NewTestPackage()
 				defer pkg.Close()
-				for n, supportingCode := range supportingFiles {
-					pkg.AddFile(fmt.Sprintf("supporting_sample_%d.go", n), supportingCode)
+				for i, code := range sample.Code {
+					pkg.AddFile(fmt.Sprintf("sample_%d_%d.go", n, i), code)
 				}
-				pkg.AddFile(fmt.Sprintf("sample_%d.go", n), sample.Code)
 				err := pkg.Build()
 				Expect(err).ShouldNot(HaveOccurred())
 				err = analyzer.Process(buildTags, pkg.Path)
