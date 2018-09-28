@@ -39,6 +39,7 @@ type Context struct {
 	Comments ast.CommentMap
 	Info     *types.Info
 	Pkg      *types.Package
+	PkgFiles []*ast.File
 	Root     *ast.File
 	Config   map[string]interface{}
 	Imports  *ImportTracker
@@ -139,6 +140,7 @@ func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error
 			gosec.context.Root = file
 			gosec.context.Info = &pkg.Info
 			gosec.context.Pkg = pkg.Pkg
+			gosec.context.PkgFiles = pkg.Files
 			gosec.context.Imports = NewImportTracker()
 			gosec.context.Imports.TrackPackages(gosec.context.Pkg.Imports()...)
 			ast.Walk(gosec, file)

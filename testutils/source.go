@@ -1,9 +1,13 @@
 package testutils
 
 // CodeSample encapsulates a snippet of source code that compiles, and how many errors should be detected
+// Setting SupportingCode to true means that that snippet will not be scanned against
+// the rules, but will be added to the same package with the other snippets.
+// See SampleCodeG202 for an example.
 type CodeSample struct {
-	Code   string
-	Errors int
+	Code           string
+	Errors         int
+	SupportingCode bool
 }
 
 var (
@@ -15,7 +19,7 @@ func main() {
 	username := "admin"
 	password := "f62e5bcda4fae4f82370da0c6f20697b8f8447ef"
 	fmt.Println("Doing something with: ", username, password)
-}`, 1}, {`
+}`, 1, false}, {`
 // Entropy check should not report this error by default
 package main
 import "fmt"
@@ -23,21 +27,21 @@ func main() {
 	username := "admin"
 	password := "secret"
 	fmt.Println("Doing something with: ", username, password)
-}`, 0}, {`
+}`, 0, false}, {`
 package main
 import "fmt"
 var password = "f62e5bcda4fae4f82370da0c6f20697b8f8447ef"
 func main() {
 	username := "admin"
 	fmt.Println("Doing something with: ", username, password)
-}`, 1}, {`
+}`, 1, false}, {`
 package main
 import "fmt"
 const password = "f62e5bcda4fae4f82370da0c6f20697b8f8447ef"
 func main() {
 	username := "admin"
 	fmt.Println("Doing something with: ", username, password)
-}`, 1}, {`
+}`, 1, false}, {`
 package main
 import "fmt"
 const (
@@ -46,12 +50,12 @@ const (
 )
 func main() {
 	fmt.Println("Doing something with: ", username, password)
-}`, 1}, {`
+}`, 1, false}, {`
 package main
 var password string
 func init() {
 	password = "f62e5bcda4fae4f82370da0c6f20697b8f8447ef"
-}`, 1}, {`
+}`, 1, false}, {`
 package main
 const (
 	ATNStateSomethingElse = 1
@@ -59,14 +63,14 @@ const (
 )
 func main() {
 	println(ATNStateTokenStart)
-}`, 0}, {`
+}`, 0, false}, {`
 package main
 const (
 	ATNStateTokenStart = "f62e5bcda4fae4f82370da0c6f20697b8f8447ef"
 )
 func main() {
 	println(ATNStateTokenStart)
-}`, 1}}
+}`, 1, false}}
 
 	// SampleCodeG102 code snippets for network binding
 	SampleCodeG102 = []CodeSample{
@@ -83,7 +87,7 @@ func main() {
 		log.Fatal(err)
 	}
 	defer l.Close()
-}`, 1},
+}`, 1, false},
 
 		// Bind to all networks implicitly (default if host omitted)
 		{`
@@ -98,7 +102,7 @@ func main() {
 		log.Fatal(err)
 	}
 	defer l.Close()
-}`, 1},
+}`, 1, false},
 	}
 	// SampleCodeG103 find instances of unsafe blocks for auditing purposes
 	SampleCodeG103 = []CodeSample{
@@ -120,7 +124,7 @@ func main() {
    	addressHolder := uintptr(unsafe.Pointer(intPtr)) + unsafe.Sizeof(intArray[0])
    	intPtr = (*int)(unsafe.Pointer(addressHolder))
    	fmt.Printf("\nintPtr=%p, *intPtr=%d.\n\n", intPtr, *intPtr)
-}`, 3}}
+}`, 3, false}}
 
 	// SampleCodeG104 finds errors that aren't being handled
 	SampleCodeG104 = []CodeSample{
@@ -133,7 +137,7 @@ func test() (int,error) {
 func main() {
 	v, _ := test()
 	fmt.Println(v)
-}`, 1}, {`
+}`, 1, false}, {`
 package main
 import (
 	"io/ioutil"
@@ -155,7 +159,7 @@ func main() {
 	a()
 	b()
 	c()
-}`, 3}, {`
+}`, 3, false}, {`
 package main
 import "fmt"
 func test() error {
@@ -164,7 +168,7 @@ func test() error {
 func main() {
 	e := test()
 	fmt.Println(e)
-}`, 0}}
+}`, 0, false}}
 
 	// SampleCodeG105 - bignum overflow
 	SampleCodeG105 = []CodeSample{{`
@@ -181,7 +185,7 @@ func main() {
    	m := new(big.Int)
     m = m.SetUint64(0)
     z = z.Exp(x, y, m)
-}`, 1}}
+}`, 1, false}}
 
 	// SampleCodeG106 - ssh InsecureIgnoreHostKey
 	SampleCodeG106 = []CodeSample{{`
@@ -191,7 +195,7 @@ import (
 )
 func main() {
         _ =  ssh.InsecureIgnoreHostKey()
-}`, 1}}
+}`, 1, false}}
 
 	// SampleCodeG107 - SSRF via http requests with variable url
 	SampleCodeG107 = []CodeSample{{`
@@ -214,7 +218,7 @@ func main() {
     		panic(err)
   	}
   	fmt.Printf("%s", body)
-}`, 1}, {`
+}`, 1, false}, {`
 package main
 
 import (
@@ -228,7 +232,7 @@ func main() {
 		fmt.Println(err)
     	}
       	fmt.Println(resp.Status)
-}`, 0}}
+}`, 0, false}}
 	// SampleCodeG201 - SQL injection via format string
 	SampleCodeG201 = []CodeSample{
 		{`
@@ -252,7 +256,7 @@ func main(){
 		panic(err)
 	}
 	defer rows.Close()
-}`, 1}, {`
+}`, 1, false}, {`
 // Format string false positive, safe string spec.
 package main
 import (
@@ -273,7 +277,7 @@ func main(){
 		panic(err)
 	}
 	defer rows.Close()
-}`, 0}, {
+}`, 0, false}, {
 			`
 // Format string false positive
 package main
@@ -292,7 +296,7 @@ func main(){
 				panic(err)
 		}
 		defer rows.Close()
-}`, 0}, {`
+}`, 0, false}, {`
 // Format string false positive, quoted formatter argument.
 package main
 import (
@@ -313,7 +317,7 @@ func main(){
 		panic(err)
 	}
 	defer rows.Close()
-}`, 0}}
+}`, 0, false}}
 
 	// SampleCodeG202 - SQL query string building via string concatenation
 	SampleCodeG202 = []CodeSample{
@@ -334,7 +338,7 @@ func main(){
 		panic(err)
 	}
 	defer rows.Close()
-}`, 1}, {`
+}`, 1, false}, {`
 // false positive
 package main
 import (
@@ -344,15 +348,15 @@ import (
 var staticQuery = "SELECT * FROM foo WHERE age < "
 func main(){
 	db, err := sql.Open("sqlite3", ":memory:")
-    if err != nil {
+	if err != nil {
 		panic(err)
 	}
 	rows, err := db.Query(staticQuery + "32")
 	if err != nil {
 		panic(err)
 	}
-    defer rows.Close()
-}`, 0}, {`
+	defer rows.Close()
+}`, 0, false}, {`
 package main
 import (
 		"database/sql"
@@ -371,7 +375,29 @@ func main(){
 		}
 		defer rows.Close()
 }
-`, 0}}
+`, 0, false}, {`
+package main
+const gender = "M"
+`, 0, true}, {`
+package main
+import (
+		"database/sql"
+		//_ "github.com/mattn/go-sqlite3"
+)
+const age = "32"
+var staticQuery = "SELECT * FROM foo WHERE age < "
+func main(){
+		db, err := sql.Open("sqlite3", ":memory:")
+		if err != nil {
+				panic(err)
+		}
+		rows, err := db.Query("SELECT * FROM foo WHERE gender = " + gender)
+		if err != nil {
+				panic(err)
+		}
+		defer rows.Close()
+}
+`, 0, false}}
 
 	// SampleCodeG203 - Template checks
 	SampleCodeG203 = []CodeSample{
@@ -391,7 +417,7 @@ func main() {
 		"Body":     template.HTML("<script>alert(1)</script>"),
 	}
 	t.Execute(os.Stdout, v)
-}`, 0}, {
+}`, 0, false}, {
 			`
 // Using a variable to initialize could potentially be dangerous. Under the
 // current model this will likely produce some false positives.
@@ -409,7 +435,7 @@ func main() {
 		"Body":     template.HTML(a),
 	}
 	t.Execute(os.Stdout, v)
-}`, 1}, {
+}`, 1, false}, {
 			`
 package main
 import (
@@ -425,7 +451,7 @@ func main() {
 		"Body":     template.JS(a),
 	}
 	t.Execute(os.Stdout, v)
-}`, 1}, {
+}`, 1, false}, {
 			`
 package main
 import (
@@ -441,7 +467,7 @@ func main() {
 		"Body":     template.URL(a),
 	}
 	t.Execute(os.Stdout, v)
-}`, 1}}
+}`, 1, false}}
 
 	// SampleCodeG204 - Subprocess auditing
 	SampleCodeG204 = []CodeSample{{`
@@ -449,7 +475,7 @@ package main
 import "syscall"
 func main() {
 	syscall.Exec("/bin/cat", []string{ "/etc/passwd" }, nil)
-}`, 1}, {`
+}`, 1, false}, {`
 package main
 import (
 	"log"
@@ -464,7 +490,7 @@ func main() {
 	log.Printf("Waiting for command to finish...")
   	err = cmd.Wait()
   	log.Printf("Command finished with error: %v", err)
-}`, 1}, {`
+}`, 1, false}, {`
 package main
 import (
 	"log"
@@ -477,7 +503,7 @@ func main() {
 		log.Fatal(err)
 	}
   	log.Printf("Command finished with error: %v", err)
-}`, 1}, {`
+}`, 1, false}, {`
 package main
 import (
 	"log"
@@ -494,7 +520,7 @@ func main() {
 	log.Printf("Waiting for command to finish...")
 	err = cmd.Wait()
 	log.Printf("Command finished with error: %v", err)
-}`, 1}}
+}`, 1, false}}
 
 	// SampleCodeG301 - mkdir permission check
 	SampleCodeG301 = []CodeSample{{`
@@ -504,7 +530,7 @@ func main() {
 	os.Mkdir("/tmp/mydir", 0777)
 	os.Mkdir("/tmp/mydir", 0600)
 	os.MkdirAll("/tmp/mydir/mysubidr", 0775)
-}`, 2}}
+}`, 2, false}}
 
 	// SampleCodeG302 - file create / chmod permissions check
 	SampleCodeG302 = []CodeSample{{`
@@ -515,7 +541,7 @@ func main() {
 	os.Chmod("/tmp/someotherfile", 0600)
 	os.OpenFile("/tmp/thing", os.O_CREATE|os.O_WRONLY, 0666)
 	os.OpenFile("/tmp/thing", os.O_CREATE|os.O_WRONLY, 0600)
-}`, 2}}
+}`, 2, false}}
 
 	// SampleCodeG303 - bad tempfile permissions & hardcoded shared path
 	SampleCodeG303 = []CodeSample{{`
@@ -528,7 +554,7 @@ func main() {
 	file1, _ := os.Create("/tmp/demo1")
 	defer file1.Close()
 	ioutil.WriteFile("/tmp/demo2", []byte("This is some data"), 0644)
-}`, 2}}
+}`, 2, false}}
 
 	// SampleCodeG304 - potential file inclusion vulnerability
 	SampleCodeG304 = []CodeSample{{`
@@ -546,7 +572,7 @@ if err != nil {
 }
 log.Print(body)
 
-}`, 1}, {`
+}`, 1, false}, {`
 package main
 
 import (
@@ -570,7 +596,7 @@ func main() {
 		fmt.Fprintf(w, "%s", body)
 	})
 	log.Fatal(http.ListenAndServe(":3000", nil))
-}`, 1}, {`
+}`, 1, false}, {`
 package main
 
 import (
@@ -586,7 +612,7 @@ import (
 		log.Printf("Error: %v\n", err)
 	  }
 		log.Print(body)
- }`, 1}, {`
+ }`, 1, false}, {`
  package main
 
  import (
@@ -610,7 +636,7 @@ func main() {
 		fmt.Printf("Error: %v\n", err)
 	}
   fmt.Println(string(contents))
-}`, 1}, {`
+}`, 1, false}, {`
 package main
 
 import (
@@ -629,7 +655,7 @@ func main() {
 		log.Printf("Error: %v\n", err)
 	}
 	log.Print(body)
-}`, 1}}
+}`, 1, false}}
 
 	// SampleCodeG305 - File path traversal when extracting zip archives
 	SampleCodeG305 = []CodeSample{{`
@@ -677,7 +703,7 @@ func unzip(archive, target string) error {
 	}
 
 	return nil
-}`, 1}, {`
+}`, 1, false}, {`
 package unzip
 
 import (
@@ -723,7 +749,7 @@ func unzip(archive, target string) error {
 	}
 
 	return nil
-}`, 1}}
+}`, 1, false}}
 
 	// SampleCodeG401 - Use of weak crypto MD5
 	SampleCodeG401 = []CodeSample{
@@ -748,7 +774,7 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("%x", h.Sum(nil))
-}`, 1}}
+}`, 1, false}}
 
 	// SampleCodeG401b - Use of weak crypto SHA1
 	SampleCodeG401b = []CodeSample{
@@ -773,7 +799,7 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("%x", h.Sum(nil))
-}`, 1}}
+}`, 1, false}}
 
 	// SampleCodeG402 - TLS settings
 	SampleCodeG402 = []CodeSample{{`
@@ -794,7 +820,7 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
-}`, 1}, {
+}`, 1, false}, {
 		`
 // Insecure minimum version
 package main
@@ -812,7 +838,7 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
-}`, 1}, {`
+}`, 1, false}, {`
 // Insecure max version
 package main
 import (
@@ -830,7 +856,7 @@ func main() {
 		fmt.Println(err)
 	}
 }
-`, 1}, {
+`, 1, false}, {
 		`
 // Insecure ciphersuite selection
 package main
@@ -851,7 +877,7 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
-}`, 1}}
+}`, 1, false}}
 
 	// SampleCodeG403 - weak key strength
 	SampleCodeG403 = []CodeSample{
@@ -869,7 +895,7 @@ func main() {
 		fmt.Println(err)
 	}
 	fmt.Println(pvk)
-}`, 1}}
+}`, 1, false}}
 
 	// SampleCodeG404 - weak random number
 	SampleCodeG404 = []CodeSample{
@@ -879,13 +905,13 @@ import "crypto/rand"
 func main() {
 	good, _ := rand.Read(nil)
 	println(good)
-}`, 0}, {`
+}`, 0, false}, {`
 package main
 import "math/rand"
 func main() {
 	bad := rand.Int()
 	println(bad)
-}`, 1}, {`
+}`, 1, false}, {`
 package main
 import (
 	"crypto/rand"
@@ -896,7 +922,7 @@ func main() {
 	println(good)
 	i := mrand.Int31()
 	println(i)
-}`, 0}}
+}`, 0, false}}
 
 	// SampleCodeG501 - Blacklisted import MD5
 	SampleCodeG501 = []CodeSample{
@@ -911,7 +937,7 @@ func main() {
 	for _, arg := range os.Args {
 		fmt.Printf("%x - %s\n", md5.Sum([]byte(arg)), arg)
 	}
-}`, 1}}
+}`, 1, false}}
 
 	// SampleCodeG502 - Blacklisted import DES
 	SampleCodeG502 = []CodeSample{
@@ -939,7 +965,7 @@ func main() {
 	stream := cipher.NewCFBEncrypter(block, iv)
 	stream.XORKeyStream(ciphertext[des.BlockSize:], plaintext)
 	fmt.Println("Secret message is: %s", hex.EncodeToString(ciphertext))
-}`, 1}}
+}`, 1, false}}
 
 	// SampleCodeG503 - Blacklisted import RC4
 	SampleCodeG503 = []CodeSample{{`
@@ -958,7 +984,7 @@ func main() {
 	ciphertext := make([]byte, len(plaintext))
 	cipher.XORKeyStream(ciphertext, plaintext)
 	fmt.Println("Secret message is: %s", hex.EncodeToString(ciphertext))
-}`, 1}}
+}`, 1, false}}
 
 	// SampleCodeG504 - Blacklisted import CGI
 	SampleCodeG504 = []CodeSample{{`
@@ -969,7 +995,7 @@ import (
  )
 func main() {
 	cgi.Serve(http.FileServer(http.Dir("/usr/share/doc")))
-}`, 1}}
+}`, 1, false}}
 	// SampleCodeG505 - Blacklisted import SHA1
 	SampleCodeG505 = []CodeSample{
 		{`
@@ -983,7 +1009,7 @@ func main() {
 	for _, arg := range os.Args {
 		fmt.Printf("%x - %s\n", sha1.Sum([]byte(arg)), arg)
 	}
-}`, 1}}
+}`, 1, false}}
 	// SampleCode601 - Go build tags
 	SampleCode601 = []CodeSample{{`
 // +build test
@@ -991,5 +1017,5 @@ func main() {
 package main
 func main() {
   fmt.Println("no package imported error")
-}`, 1}}
+}`, 1, false}}
 )
