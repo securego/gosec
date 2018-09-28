@@ -296,7 +296,7 @@ func main(){
 				panic(err)
 		}
 		defer rows.Close()
-}`, 0}, {`
+}`, 0, false}, {`
 // Format string false positive, quoted formatter argument.
 package main
 import (
@@ -317,7 +317,7 @@ func main(){
 		panic(err)
 	}
 	defer rows.Close()
-}`, 0}}
+}`, 0, false}}
 
 	// SampleCodeG202 - SQL query string building via string concatenation
 	SampleCodeG202 = []CodeSample{
