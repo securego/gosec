@@ -62,7 +62,7 @@ const html = `
           level = "is-warning";
         }
         return (
-          <div className={ "tag " + level }>
+          <div className="tag { level }">
             { this.props.label }: { this.props.level }
           </div>
         );
@@ -100,8 +100,8 @@ const html = `
       render: function() {
         return (
           <p className="help">
-            Scanned { this.props.data.metrics.files.toLocaleString() } files
-            with { this.props.data.metrics.lines.toLocaleString() } lines of code.
+            Scanned { this.props.data.Stats.files.toLocaleString() } files
+            with { this.props.data.Stats.lines.toLocaleString() } lines of code.
           </p>
         );
       }
@@ -109,7 +109,7 @@ const html = `
     
     var Issues = React.createClass({
       render: function() {
-        if (this.props.data.metrics.files === 0) {
+        if (this.props.data.Stats.files === 0) {
           return (
             <div className="notification">
               No source files found. Do you even Go?
@@ -117,7 +117,7 @@ const html = `
           );
         }
     
-        if (this.props.data.issues.length === 0) {
+        if (this.props.data.Issues.length === 0) {
           return (
             <div>
               <div className="notification">
@@ -128,7 +128,7 @@ const html = `
           );
         }
     
-        var issues = this.props.data.issues
+        var issues = this.props.data.Issues
           .filter(function(issue) {
             return this.props.severity.includes(issue.severity);
           }.bind(this))
@@ -151,7 +151,7 @@ const html = `
             <div>
               <div className="notification">
                 No issues matched given filters
-                (of total { this.props.data.issues.length } issues).
+                (of total { this.props.data.Issues.length } issues).
               </div>
               <Stats data={ this.props.data } />
             </div>
@@ -182,31 +182,32 @@ const html = `
         var highDisabled = !this.props.available.includes("HIGH");
         var mediumDisabled = !this.props.available.includes("MEDIUM");
         var lowDisabled = !this.props.available.includes("LOW");
-     
+        var on = "", off = "disabled";
+        var HIGH = "HIGH", MEDIUM = "MEDIUM", LOW = "LOW";
         return (
           <span>
-            <label className={"label checkbox " + (highDisabled ? "disabled" : "") }>
+            <label className="label checkbox { (highDisabled ? off : on )}">
               <input
                 type="checkbox"
-                checked={ this.props.selected.includes("HIGH") }
+                checked={ this.props.selected.includes(HIGH) }
                 disabled={ highDisabled }
-                onChange={ this.handleChange("HIGH") }/>
+                onChange={ this.handleChange(HIGH) }/>
               High
             </label>
-            <label className={"label checkbox " + (mediumDisabled ? "disabled" : "") }>
+            <label className="label checkbox {( mediumDisabled ? off : on )}">
               <input
                 type="checkbox"
-                checked={ this.props.selected.includes("MEDIUM") }
+                checked={ this.props.selected.includes(MEDIUM) }
                 disabled={ mediumDisabled }
-                onChange={ this.handleChange("MEDIUM") }/>
+                onChange={ this.handleChange(MEDIUM) }/>
               Medium
             </label>
-            <label className={"label checkbox " + (lowDisabled ? "disabled" : "") }>
+            <label className="label checkbox {( lowDisabled ? off : on )}">
               <input
                 type="checkbox"
-                checked={ this.props.selected.includes("LOW") }
+                checked={ this.props.selected.includes(LOW) }
                 disabled={ lowDisabled }
-                onChange={ this.handleChange("LOW") }/>
+                onChange={ this.handleChange(LOW) }/>
               Low
             </label>
           </span>
@@ -231,13 +232,13 @@ const html = `
       render: function() {
         var issueTypes = this.props.allIssueTypes
           .map(function(it) {
+            var matches = this.props.issueType == it
             return (
-              <option value={ it } selected={ this.props.issueType == it }>
+              <option value={ it } selected={ matches }>
                 { it }
               </option>
             );
           }.bind(this));
-    
         return (
           <nav className="panel">
             <div className="panel-heading">
@@ -282,7 +283,6 @@ const html = `
         );
       }
     });
-    
     var IssueBrowser = React.createClass({
       getInitialState: function() {
         return {};
@@ -291,11 +291,11 @@ const html = `
         this.updateIssues(this.props.data);
       },
       handleSeverity: function(val) {
-        this.updateIssueTypes(this.props.data.issues, val, this.state.confidence);
+        this.updateIssueTypes(this.props.data.Issues, val, this.state.confidence);
         this.setState({severity: val});
       },
       handleConfidence: function(val) {
-        this.updateIssueTypes(this.props.data.issues, this.state.severity, val);
+        this.updateIssueTypes(this.props.data.Issues, this.state.severity, val);
         this.setState({confidence: val});
       },
       handleIssueType: function(val) {
@@ -306,8 +306,7 @@ const html = `
           this.setState({data: data});
           return;
         }
-    
-        var allSeverities = data.issues
+        var allSeverities = data.Issues
           .map(function(issue) {
             return issue.severity
           })
@@ -315,8 +314,7 @@ const html = `
           .filter(function(item, pos, ary) {
             return !pos || item != ary[pos - 1];
           });
-    
-        var allConfidences = data.issues
+        var allConfidences = data.Issues
           .map(function(issue) {
             return issue.confidence
           })
@@ -324,12 +322,9 @@ const html = `
           .filter(function(item, pos, ary) {
             return !pos || item != ary[pos - 1];
           });
-    
         var selectedSeverities = allSeverities;
         var selectedConfidences = allConfidences;
-    
-        this.updateIssueTypes(data.issues, selectedSeverities, selectedConfidences);
-    
+        this.updateIssueTypes(data.Issues, selectedSeverities, selectedConfidences);
         this.setState({
           data: data,
           severity: selectedSeverities,
@@ -358,7 +353,7 @@ const html = `
         if (this.state.issueType && !allTypes.includes(this.state.issueType)) {
           this.setState({issueType: null});
         }
-    
+        
         this.setState({allIssueTypes: allTypes});
       },
       render: function() {
@@ -391,7 +386,7 @@ const html = `
         );
       }
     });
-    
+
     ReactDOM.render(
       <IssueBrowser data={ data } />,
       document.getElementById("content")
