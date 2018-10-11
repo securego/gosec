@@ -51,7 +51,7 @@ var _ = Describe("Analyzer", func() {
 
 		})
 
-		It("should be able to analyze mulitple Go files", func() {
+		It("should be able to analyze multiple Go files", func() {
 			analyzer.LoadRules(rules.Generate().Builders())
 			pkg := testutils.NewTestPackage()
 			defer pkg.Close()
@@ -72,7 +72,7 @@ var _ = Describe("Analyzer", func() {
 			Expect(metrics.NumFiles).To(Equal(2))
 		})
 
-		It("should be able to analyze mulitple Go packages", func() {
+		It("should be able to analyze multiple Go packages", func() {
 			analyzer.LoadRules(rules.Generate().Builders())
 			pkg1 := testutils.NewTestPackage()
 			pkg2 := testutils.NewTestPackage()

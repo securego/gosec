@@ -345,7 +345,7 @@ func main() {
 		logger.Fatal(err)
 	}
 
-	// Finialize logging
+	// Finalize logging
 	logWriter.Close() // #nosec
 
 	// Do we have an issue? If so exit 1

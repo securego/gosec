@@ -166,7 +166,7 @@ func GetCallInfo(n ast.Node, ctx *Context) (string, string, error) {
 }
 
 // GetImportedName returns the name used for the package within the
-// code. It will resolve aliases and ignores initalization only imports.
+// code. It will resolve aliases and ignores initialization only imports.
 func GetImportedName(path string, ctx *Context) (string, bool) {
 	importName, imported := ctx.Imports.Imported[path]
 	if !imported {
@@ -183,7 +183,7 @@ func GetImportedName(path string, ctx *Context) (string, bool) {
 	return importName, true
 }
 
-// GetImportPath resolves the full import path of an identifer based on
+// GetImportPath resolves the full import path of an identifier based on
 // the imports in the current context.
 func GetImportPath(name string, ctx *Context) (string, bool) {
 	for path := range ctx.Imports.Imported {
@@ -257,7 +257,7 @@ func GetPkgAbsPath(pkgPath string) (string, error) {
 	return absPath, nil
 }
 
-// ConcatString recusively concatenates strings from a binary expression
+// ConcatString recursively concatenates strings from a binary expression
 func ConcatString(n *ast.BinaryExpr) (string, bool) {
 	var s string
 	// sub expressions are found in X object, Y object is always last BasicLit

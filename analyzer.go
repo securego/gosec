@@ -33,7 +33,7 @@ import (
 
 // The Context is populated with data parsed from the source code as it is scanned.
 // It is passed through to all rule functions as they are called. Rules may use
-// this data in conjunction withe the encoutered AST node.
+// this data in conjunction withe the encountered AST node.
 type Context struct {
 	FileSet  *token.FileSet
 	Comments ast.CommentMap
@@ -66,7 +66,7 @@ type Analyzer struct {
 	stats       *Metrics
 }
 
-// NewAnalyzer builds a new anaylzer.
+// NewAnalyzer builds a new analyzer.
 func NewAnalyzer(conf Config, logger *log.Logger) *Analyzer {
 	ignoreNoSec := false
 	if setting, err := conf.GetGlobal("nosec"); err == nil {
