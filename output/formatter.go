@@ -26,7 +26,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// ReportFormat enumrates the output format for reported issues
+// ReportFormat enumerates the output format for reported issues
 type ReportFormat int
 
 const (

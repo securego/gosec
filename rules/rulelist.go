@@ -75,7 +75,7 @@ func Generate(filters ...RuleFilter) RuleList {
 
 		// filesystem
 		{"G301", "Poor file permissions used when creating a directory", NewMkdirPerms},
-		{"G302", "Poor file permisions used when creation file or using chmod", NewFilePerms},
+		{"G302", "Poor file permissions used when creation file or using chmod", NewFilePerms},
 		{"G303", "Creating tempfile using a predictable path", NewBadTempFile},
 		{"G304", "File path provided as taint input", NewReadFile},
 		{"G305", "File path traversal when extracting zip archive", NewArchive},

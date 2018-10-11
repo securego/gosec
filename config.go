@@ -78,7 +78,7 @@ func (c Config) GetGlobal(option string) (string, error) {
 
 }
 
-// SetGlobal associates a value with a global configuration ooption
+// SetGlobal associates a value with a global configuration option
 func (c Config) SetGlobal(option, value string) {
 	if globals, ok := c[Globals]; ok {
 		if settings, ok := globals.(map[string]string); ok {

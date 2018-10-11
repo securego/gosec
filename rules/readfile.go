@@ -38,7 +38,7 @@ func (r *readfile) isJoinFunc(n ast.Node, c *gosec.Context) bool {
 		for _, arg := range call.Args {
 			// edge case: check if one of the args is a BinaryExpr
 			if binExp, ok := arg.(*ast.BinaryExpr); ok {
-				// iterate and resolve all found identites from the BinaryExpr
+				// iterate and resolve all found identities from the BinaryExpr
 				if _, ok := gosec.FindVarIdentities(binExp, c); ok {
 					return true
 				}
@@ -69,7 +69,7 @@ func (r *readfile) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error) {
 			}
 			// handles binary string concatenation eg. ioutil.Readfile("/tmp/" + file + "/blob")
 			if binExp, ok := arg.(*ast.BinaryExpr); ok {
-				// resolve all found identites from the BinaryExpr
+				// resolve all found identities from the BinaryExpr
 				if _, ok := gosec.FindVarIdentities(binExp, c); ok {
 					return gosec.NewIssue(c, n, r.ID(), r.What, r.Severity, r.Confidence), nil
 				}

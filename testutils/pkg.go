@@ -29,7 +29,7 @@ type TestPackage struct {
 }
 
 // NewTestPackage will create a new and empty package. Must call Close() to cleanup
-// auxilary files
+// auxiliary files
 func NewTestPackage() *TestPackage {
 	// Files must exist in $GOPATH
 	sourceDir := path.Join(os.Getenv("GOPATH"), "src")
