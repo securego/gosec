@@ -81,6 +81,7 @@ func NewNoErrorCheck(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 	whitelist := gosec.NewCallList()
 	whitelist.AddAll("bytes.Buffer", "Write", "WriteByte", "WriteRune", "WriteString")
 	whitelist.AddAll("fmt", "Print", "Printf", "Println", "Fprint", "Fprintf", "Fprintln")
+	whitelist.AddAll("strings.Builder", "Write", "WriteByte", "WriteRune", "WriteString")
 	whitelist.Add("io.PipeWriter", "CloseWithError")
 
 	if configured, ok := conf["G104"]; ok {
