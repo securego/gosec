@@ -164,6 +164,12 @@ func test() error {
 func main() {
 	e := test()
 	fmt.Println(e)
+}`}, 0}, {[]string{`
+package main
+import "strings"
+func main() {
+	var buf strings.Builder
+	buf.WriteString("test string")
 }`}, 0}}
 
 	// SampleCodeG105 - bignum overflow
