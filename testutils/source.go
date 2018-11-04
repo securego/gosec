@@ -309,6 +309,14 @@ func main(){
 		panic(err)
 	}
 	defer rows.Close()
+}`}, 0}, {[]string{`
+package main
+import (
+	"fmt"
+)
+
+func main(){
+	fmt.Sprintln()
 }`}, 0}}
 
 	// SampleCodeG202 - SQL query string building via string concatenation

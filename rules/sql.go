@@ -134,6 +134,11 @@ func (s *sqlStrFormat) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error)
 			}
 		}
 
+		// no formatter
+		if len(node.Args) == 0 {
+			return nil, nil
+		}
+
 		var formatter string
 
 		// concats callexpr arg strings together if needed before regex evaluation
