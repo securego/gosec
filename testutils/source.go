@@ -169,7 +169,10 @@ package main
 import "strings"
 func main() {
 	var buf strings.Builder
-	buf.WriteString("test string")
+	_, err := buf.WriteString("test string")
+	if err != nil {
+		panic(err)
+	}
 }`}, 0}}
 
 	// SampleCodeG105 - bignum overflow
