@@ -165,6 +165,8 @@ func main() {
 	e := test()
 	fmt.Println(e)
 }`}, 0}, {[]string{`
+// +build go1.10
+
 package main
 import "strings"
 func main() {
@@ -173,7 +175,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-}`}, 0}}
+}`, `
+package main
+func dummy(){}
+`}, 0}}
 
 	// SampleCodeG105 - bignum overflow
 	SampleCodeG105 = []CodeSample{{[]string{`
