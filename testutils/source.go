@@ -99,6 +99,42 @@ func main() {
 	}
 	defer l.Close()
 }`}, 1},
+		// Bind to all networks indirectly through a parsing function
+		{[]string{`
+package main
+import (
+	"log"
+   	"net"
+)
+func parseListenAddr(listenAddr string) (network string, addr string) {
+	return "", ""
+}
+func main() {
+	addr := ":2000"
+	l, err := net.Listen(parseListenAddr(addr))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer l.Close()
+}`}, 1},
+		// Bind to all networks indirectly through a parsing function
+		{[]string{`
+package main
+import (
+	"log"
+   	"net"
+)
+const addr = ":2000"
+func parseListenAddr(listenAddr string) (network string, addr string) {
+	return "", ""
+}
+func main() {
+	l, err := net.Listen(parseListenAddr(addr))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer l.Close()
+}`}, 1},
 	}
 	// SampleCodeG103 find instances of unsafe blocks for auditing purposes
 	SampleCodeG103 = []CodeSample{

@@ -37,9 +37,21 @@ func (r *bindsToAllNetworkInterfaces) Match(n ast.Node, c *gosec.Context) (*gose
 	if callExpr == nil {
 		return nil, nil
 	}
-	if arg, err := gosec.GetString(callExpr.Args[1]); err == nil {
-		if r.pattern.MatchString(arg) {
-			return gosec.NewIssue(c, n, r.ID(), r.What, r.Severity, r.Confidence), nil
+	if len(callExpr.Args) > 1 {
+		arg := callExpr.Args[1]
+		if bl, ok := arg.(*ast.BasicLit); ok {
+			if arg, err := gosec.GetString(bl); err == nil {
+				if r.pattern.MatchString(arg) {
+					return gosec.NewIssue(c, n, r.ID(), r.What, r.Severity, r.Confidence), nil
+				}
+			}
+		}
+	} else if len(callExpr.Args) > 0 {
+		values := gosec.GetCallStringArgsValues(callExpr.Args[0], c)
+		for _, value := range values {
+			if r.pattern.MatchString(value) {
+				return gosec.NewIssue(c, n, r.ID(), r.What, r.Severity, r.Confidence), nil
+			}
 		}
 	}
 	return nil, nil
