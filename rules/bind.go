@@ -45,6 +45,13 @@ func (r *bindsToAllNetworkInterfaces) Match(n ast.Node, c *gosec.Context) (*gose
 					return gosec.NewIssue(c, n, r.ID(), r.What, r.Severity, r.Confidence), nil
 				}
 			}
+		} else if ident, ok := arg.(*ast.Ident); ok {
+			values := gosec.GetIdentStringValues(ident)
+			for _, value := range values {
+				if r.pattern.MatchString(value) {
+					return gosec.NewIssue(c, n, r.ID(), r.What, r.Severity, r.Confidence), nil
+				}
+			}
 		}
 	} else if len(callExpr.Args) > 0 {
 		values := gosec.GetCallStringArgsValues(callExpr.Args[0], c)

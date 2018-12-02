@@ -165,7 +165,7 @@ func GetCallInfo(n ast.Node, ctx *Context) (string, string, error) {
 	return "", "", fmt.Errorf("unable to determine call info")
 }
 
-// GetCallStringArgsValues returns the  values of strings arguments if they can be resolved
+// GetCallStringArgsValues returns the values of strings arguments if they can be resolved
 func GetCallStringArgsValues(n ast.Node, ctx *Context) []string {
 	values := []string{}
 	switch node := n.(type) {
@@ -178,28 +178,35 @@ func GetCallStringArgsValues(n ast.Node, ctx *Context) []string {
 					values = append(values, value)
 				}
 			case *ast.Ident:
-				obj := param.Obj
-				if obj != nil {
-					switch decl := obj.Decl.(type) {
-					case *ast.ValueSpec:
-						for _, v := range decl.Values {
-							value, err := GetString(v)
-							if err == nil {
-								values = append(values, value)
-							}
-						}
-					case *ast.AssignStmt:
-						for _, v := range decl.Rhs {
-							value, err := GetString(v)
-							if err == nil {
-								values = append(values, value)
-							}
-						}
-					}
+				values = append(values, GetIdentStringValues(param)...)
+			}
+		}
+	}
+	return values
+}
 
+// GetIdentStringValues return the string values of an Ident if they can be resolved
+func GetIdentStringValues(ident *ast.Ident) []string {
+	values := []string{}
+	obj := ident.Obj
+	if obj != nil {
+		switch decl := obj.Decl.(type) {
+		case *ast.ValueSpec:
+			for _, v := range decl.Values {
+				value, err := GetString(v)
+				if err == nil {
+					values = append(values, value)
+				}
+			}
+		case *ast.AssignStmt:
+			for _, v := range decl.Rhs {
+				value, err := GetString(v)
+				if err == nil {
+					values = append(values, value)
 				}
 			}
 		}
+
 	}
 	return values
 }
