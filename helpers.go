@@ -165,6 +165,45 @@ func GetCallInfo(n ast.Node, ctx *Context) (string, string, error) {
 	return "", "", fmt.Errorf("unable to determine call info")
 }
 
+// GetCallStringArgsValues returns the  values of strings arguments if they can be resolved
+func GetCallStringArgsValues(n ast.Node, ctx *Context) []string {
+	values := []string{}
+	switch node := n.(type) {
+	case *ast.CallExpr:
+		for _, arg := range node.Args {
+			switch param := arg.(type) {
+			case *ast.BasicLit:
+				value, err := GetString(param)
+				if err == nil {
+					values = append(values, value)
+				}
+			case *ast.Ident:
+				obj := param.Obj
+				if obj != nil {
+					switch decl := obj.Decl.(type) {
+					case *ast.ValueSpec:
+						for _, v := range decl.Values {
+							value, err := GetString(v)
+							if err == nil {
+								values = append(values, value)
+							}
+						}
+					case *ast.AssignStmt:
+						for _, v := range decl.Rhs {
+							value, err := GetString(v)
+							if err == nil {
+								values = append(values, value)
+							}
+						}
+					}
+
+				}
+			}
+		}
+	}
+	return values
+}
+
 // GetImportedName returns the name used for the package within the
 // code. It will resolve aliases and ignores initialization only imports.
 func GetImportedName(path string, ctx *Context) (string, bool) {
