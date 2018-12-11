@@ -19,6 +19,9 @@ test: bootstrap
 	gosec ./...
 	ginkgo -r -v
 
+test-coverage:
+	go test -race -coverprofile=coverage.txt -covermode=atomic
+
 build:
 	go build -o $(BIN) ./cmd/gosec/
 
