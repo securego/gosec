@@ -41,7 +41,7 @@ type Context struct {
 	Pkg      *types.Package
 	PkgFiles []*ast.File
 	Root     *ast.File
-	Config   map[string]interface{}
+	Config   Config
 	Imports  *ImportTracker
 	Ignores  []map[string]bool
 }
@@ -69,8 +69,8 @@ type Analyzer struct {
 // NewAnalyzer builds a new analyzer.
 func NewAnalyzer(conf Config, logger *log.Logger) *Analyzer {
 	ignoreNoSec := false
-	if setting, err := conf.GetGlobal("nosec"); err == nil {
-		ignoreNoSec = setting == "true" || setting == "enabled"
+	if enabled, err := conf.IsGlobalEnabled(Nosec); err == nil {
+		ignoreNoSec = enabled
 	}
 	if logger == nil {
 		logger = log.New(os.Stderr, "[gosec]", log.LstdFlags)

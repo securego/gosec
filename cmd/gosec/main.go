@@ -137,7 +137,7 @@ func loadConfig(configFile string) (gosec.Config, error) {
 		}
 	}
 	if *flagIgnoreNoSec {
-		config.SetGlobal("nosec", "true")
+		config.SetGlobal(gosec.Nosec, "true")
 	}
 	return config, nil
 }

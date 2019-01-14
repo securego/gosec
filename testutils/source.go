@@ -231,6 +231,63 @@ package main
 func dummy(){}
 `}, 0}}
 
+	// SampleCodeG104Audit finds errors that aren't being handled in audit mode
+	SampleCodeG104Audit = []CodeSample{
+		{[]string{`
+package main
+import "fmt"
+func test() (int,error) {
+	return 0, nil
+}
+func main() {
+	v, _ := test()
+	fmt.Println(v)
+}`}, 1}, {[]string{`
+package main
+import (
+	"io/ioutil"
+	"os"
+	"fmt"
+)
+func a() error {
+	return fmt.Errorf("This is an error")
+}
+func b() {
+	fmt.Println("b")
+	ioutil.WriteFile("foo.txt", []byte("bar"), os.ModeExclusive)
+}
+func c() string {
+	return fmt.Sprintf("This isn't anything")
+}
+func main() {
+	_ = a()
+	a()
+	b()
+	c()
+}`}, 3}, {[]string{`
+package main
+import "fmt"
+func test() error {
+	return nil
+}
+func main() {
+	e := test()
+	fmt.Println(e)
+}`}, 0}, {[]string{`
+// +build go1.10
+
+package main
+import "strings"
+func main() {
+	var buf strings.Builder
+	_, err := buf.WriteString("test string")
+	if err != nil {
+		panic(err)
+	}
+}`, `
+package main
+func dummy(){}
+`}, 0}}
 	// SampleCodeG105 - bignum overflow
 	SampleCodeG105 = []CodeSample{{[]string{`
 package main
