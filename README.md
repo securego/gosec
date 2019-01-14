@@ -101,7 +101,7 @@ A number of global settings can be provided in a configuration file as follows:
 ```
 
 - `nosec`: this setting will overwrite all `#nosec` directives defined throughout the code base
-- `audit`: runs is audit mode which enables addition checks that for normal code analysis might be too nosy
+- `audit`: runs in audit mode which enables addition checks that for normal code analysis might be too nosy
 
 ```bash
 # Run with a global configuration file
