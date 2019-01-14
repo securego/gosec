@@ -87,6 +87,27 @@ $ gosec -include=G101,G203,G401 ./...
 $ gosec -exclude=G303 ./...
 ```
 
+### Configuration
+
+A number of global settings can be provided in a configuration file as follows:
+
+```JSON
+{
+    "global": {
+        "nosec": "enabled",
+        "audit": "enabled",
+    }
+}
+```
+
+- `nosec`: this setting will overwrite all `#nosec` directives defined throughout the code base
+- `audit`: runs is audit mode which enables addition checks that for normal code analysis might be too nosy
+
+```bash
+# Run with a global configuration file
+$ goesc -config config.json
+```
+
 ### Excluding files
 
 gosec will ignore dependencies in your vendor directory any files
