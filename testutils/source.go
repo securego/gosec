@@ -184,7 +184,7 @@ func test() (int,error) {
 func main() {
 	v, _ := test()
 	fmt.Println(v)
-}`}, 1}, {[]string{`
+}`}, 0}, {[]string{`
 package main
 import (
 	"io/ioutil"
@@ -206,7 +206,7 @@ func main() {
 	a()
 	b()
 	c()
-}`}, 3}, {[]string{`
+}`}, 2}, {[]string{`
 package main
 import "fmt"
 func test() error {
