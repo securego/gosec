@@ -12,13 +12,18 @@ import (
 	"github.com/securego/gosec/testutils"
 )
 
+type option struct {
+	name  gosec.GlobalOption
+	value string
+}
+
 var _ = Describe("gosec rules", func() {
 
 	var (
 		logger    *log.Logger
 		config    gosec.Config
 		analyzer  *gosec.Analyzer
-		runner    func(string, []testutils.CodeSample)
+		runner    func(string, []testutils.CodeSample, ...option)
 		buildTags []string
 	)
 
@@ -26,7 +31,10 @@ var _ = Describe("gosec rules", func() {
 		logger, _ = testutils.NewLogger()
 		config = gosec.NewConfig()
 		analyzer = gosec.NewAnalyzer(config, logger)
-		runner = func(rule string, samples []testutils.CodeSample) {
+		runner = func(rule string, samples []testutils.CodeSample, options ...option) {
+			for _, o := range options {
+				config.SetGlobal(o.name, o.value)
+			}
 			analyzer.LoadRules(rules.Generate(rules.NewRuleFilter(false, rule)).Builders())
 			for n, sample := range samples {
 				analyzer.Reset()
@@ -61,8 +69,12 @@ var _ = Describe("gosec rules", func() {
 			runner("G103", testutils.SampleCodeG103)
 		})
 
-		It("should errors not being checked", func() {
+		It("should detect errors not being checked", func() {
 			runner("G104", testutils.SampleCodeG104)
+		})
+
+		It("should detect errors not being checked in audit mode", func() {
+			runner("G104", testutils.SampleCodeG104Audit, option{name: gosec.Audit, value: "enabled"})
 		})
 
 		It("should detect of big.Exp function", func() {

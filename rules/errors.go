@@ -51,6 +51,21 @@ func returnsError(callExpr *ast.CallExpr, ctx *gosec.Context) int {
 
 func (r *noErrorCheck) Match(n ast.Node, ctx *gosec.Context) (*gosec.Issue, error) {
 	switch stmt := n.(type) {
+	case *ast.AssignStmt:
+		cfg := ctx.Config
+		if enabled, err := cfg.IsGlobalEnabled(gosec.Audit); err == nil && enabled {
+			for _, expr := range stmt.Rhs {
+				if callExpr, ok := expr.(*ast.CallExpr); ok && r.whitelist.ContainsCallExpr(expr, ctx, false) == nil {
+					pos := returnsError(callExpr, ctx)
+					if pos < 0 || pos >= len(stmt.Lhs) {
+						return nil, nil
+					}
+					if id, ok := stmt.Lhs[pos].(*ast.Ident); ok && id.Name == "_" {
+						return gosec.NewIssue(ctx, n, r.ID(), r.What, r.Severity, r.Confidence), nil
+					}
+				}
+			}
+		}
 	case *ast.ExprStmt:
 		if callExpr, ok := stmt.X.(*ast.CallExpr); ok && r.whitelist.ContainsCallExpr(stmt.X, ctx, false) == nil {
 			pos := returnsError(callExpr, ctx)

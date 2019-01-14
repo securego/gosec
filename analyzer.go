@@ -41,7 +41,7 @@ type Context struct {
 	Pkg      *types.Package
 	PkgFiles []*ast.File
 	Root     *ast.File
-	Config   map[string]interface{}
+	Config   Config
 	Imports  *ImportTracker
 	Ignores  []map[string]bool
 }
