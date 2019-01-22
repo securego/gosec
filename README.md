@@ -95,7 +95,7 @@ A number of global settings can be provided in a configuration file as follows:
 {
     "global": {
         "nosec": "enabled",
-        "audit": "enabled",
+        "audit": "enabled"
     }
 }
 ```
@@ -105,7 +105,7 @@ A number of global settings can be provided in a configuration file as follows:
 
 ```bash
 # Run with a global configuration file
-$ goesc -config config.json
+$ goesc -conf config.json .
 ```
 
 ### Excluding files
