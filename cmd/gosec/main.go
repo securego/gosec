@@ -97,6 +97,9 @@ var (
 	// fail by severity
 	flagSeverity = flag.String("severity", "low", "Fail the scanning for issues with the given or higher severity. Valid options are: low, medium, high")
 
+	// do not fail
+	flagNoFail = flag.Bool("no-fail", false, "Do not fail the scanning, even if issues were found")
+
 	logger *log.Logger
 )
 
@@ -348,8 +351,8 @@ func main() {
 	// Finalize logging
 	logWriter.Close() // #nosec
 
-	// Do we have an issue? If so exit 1
-	if issuesFound {
+	// Do we have an issue? If so exit 1 unless NoFail is set
+	if issuesFound && !*flagNoFail {
 		os.Exit(1)
 	}
 }
