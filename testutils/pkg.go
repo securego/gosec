@@ -31,8 +31,14 @@ type TestPackage struct {
 // NewTestPackage will create a new and empty package. Must call Close() to cleanup
 // auxiliary files
 func NewTestPackage() *TestPackage {
+	goPath := os.Getenv("GOPATH")
+	// if user did not set GOPATH, set to the default
+	if goPath == "" {
+		goPath = build.Default.GOPATH
+	}
+
 	// Files must exist in $GOPATH
-	sourceDir := path.Join(os.Getenv("GOPATH"), "src")
+	sourceDir := path.Join(goPath, "src")
 	workingDir, err := ioutil.TempDir(sourceDir, "gosecs_test")
 	if err != nil {
 		return nil
