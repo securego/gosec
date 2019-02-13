@@ -15,7 +15,11 @@ You may obtain a copy of the License [here](http://www.apache.org/licenses/LICEN
 
 [![Build Status](https://travis-ci.org/securego/gosec.svg?branch=master)](https://travis-ci.org/securego/gosec)
 [![Coverage Status](https://codecov.io/gh/securego/gosec/branch/master/graph/badge.svg)](https://codecov.io/gh/securego/gosec)
+[![GoReport](https://goreportcard.com/badge/github.com/securego/gosec)](https://goreportcard.com/badge/github.com/securego/gosec)
 [![GoDoc](https://godoc.org/github.com/securego/gosec?status.svg)](https://godoc.org/github.com/securego/gosec)
+[![Docs](https://readthedocs.org/projects/docs/badge/?version=latest)](https://securego.io/)
+[![Downloads](https://img.shields.io/github/downloads/securego/gosec/total.svg)](https://github.com/securego/gosec/releases)
+[![Docker Pulls](https://img.shields.io/docker/pulls/securego/gosec.svg)](https://hub.docker.com/r/securego/gosec/tags)
 [![Slack](http://securego.herokuapp.com/badge.svg)](http://securego.herokuapp.com)
 
 ## Install
