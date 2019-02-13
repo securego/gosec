@@ -323,9 +323,14 @@ import (
 	"io/ioutil"
 	"fmt"
 	"os"
+	"bufio"
 )
 func main() {
-	url := os.Getenv("tainted_url")
+	in := bufio.NewReader(os.Stdin)
+	url, err := in.ReadString('\n')
+	if err != nil {
+		panic(err)
+	}
 	resp, err := http.Get(url)
 	if err != nil {
 		panic(err)
