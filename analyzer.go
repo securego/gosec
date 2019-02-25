@@ -64,7 +64,7 @@ type Analyzer struct {
 	logger      *log.Logger
 	issues      []*Issue
 	stats       *Metrics
-	errors      map[string][]Error
+	errors      map[string][]Error // keys are file paths; values are the golang errors in those files
 }
 
 // NewAnalyzer builds a new analyzer.
