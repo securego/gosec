@@ -68,7 +68,7 @@ var _ = Describe("Analyzer", func() {
 			pkg.Build()
 			err := analyzer.Process(buildTags, pkg.Path)
 			Expect(err).ShouldNot(HaveOccurred())
-			_, metrics := analyzer.Report()
+			_, metrics, _ := analyzer.Report()
 			Expect(metrics.NumFiles).To(Equal(2))
 		})
 
@@ -90,7 +90,7 @@ var _ = Describe("Analyzer", func() {
 			pkg2.Build()
 			err := analyzer.Process(buildTags, pkg1.Path, pkg2.Path)
 			Expect(err).ShouldNot(HaveOccurred())
-			_, metrics := analyzer.Report()
+			_, metrics, _ := analyzer.Report()
 			Expect(metrics.NumFiles).To(Equal(2))
 		})
 
@@ -106,7 +106,7 @@ var _ = Describe("Analyzer", func() {
 			controlPackage.AddFile("md5.go", source)
 			controlPackage.Build()
 			analyzer.Process(buildTags, controlPackage.Path)
-			controlIssues, _ := analyzer.Report()
+			controlIssues, _, _ := analyzer.Report()
 			Expect(controlIssues).Should(HaveLen(sample.Errors))
 
 		})
@@ -124,7 +124,7 @@ var _ = Describe("Analyzer", func() {
 			nosecPackage.Build()
 
 			analyzer.Process(buildTags, nosecPackage.Path)
-			nosecIssues, _ := analyzer.Report()
+			nosecIssues, _, _ := analyzer.Report()
 			Expect(nosecIssues).Should(BeEmpty())
 		})
 
@@ -141,7 +141,7 @@ var _ = Describe("Analyzer", func() {
 			nosecPackage.Build()
 
 			analyzer.Process(buildTags, nosecPackage.Path)
-			nosecIssues, _ := analyzer.Report()
+			nosecIssues, _, _ := analyzer.Report()
 			Expect(nosecIssues).Should(BeEmpty())
 		})
 
@@ -158,7 +158,7 @@ var _ = Describe("Analyzer", func() {
 			nosecPackage.Build()
 
 			analyzer.Process(buildTags, nosecPackage.Path)
-			nosecIssues, _ := analyzer.Report()
+			nosecIssues, _, _ := analyzer.Report()
 			Expect(nosecIssues).Should(HaveLen(sample.Errors))
 		})
 
@@ -175,7 +175,7 @@ var _ = Describe("Analyzer", func() {
 			nosecPackage.Build()
 
 			analyzer.Process(buildTags, nosecPackage.Path)
-			nosecIssues, _ := analyzer.Report()
+			nosecIssues, _, _ := analyzer.Report()
 			Expect(nosecIssues).Should(BeEmpty())
 		})
 
@@ -212,7 +212,7 @@ var _ = Describe("Analyzer", func() {
 		nosecPackage.Build()
 
 		customAnalyzer.Process(buildTags, nosecPackage.Path)
-		nosecIssues, _ := customAnalyzer.Report()
+		nosecIssues, _, _ := customAnalyzer.Report()
 		Expect(nosecIssues).Should(HaveLen(sample.Errors))
 
 	})
