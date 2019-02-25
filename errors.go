@@ -6,13 +6,13 @@ import (
 
 // Error is used when there are golang errors while parsing the AST
 type Error struct {
-	Line   string `json:"line"`
-	Column string `json:"column"`
+	Line   int    `json:"line"`
+	Column int    `json:"column"`
 	Err    string `json:"error"`
 }
 
 // NewError creates Error object
-func NewError(line, column, err string) *Error {
+func NewError(line, column int, err string) *Error {
 	return &Error{
 		Line:   line,
 		Column: column,

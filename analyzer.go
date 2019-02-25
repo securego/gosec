@@ -26,6 +26,7 @@ import (
 	"path"
 	"reflect"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"golang.org/x/tools/go/loader"
@@ -139,8 +140,16 @@ func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error
 				// at index 1 is the line; index 2 is for column
 				// at index 3 is the actual error
 				infoErr := strings.Split(packErr.Error(), ":")
-				newErr := NewError(infoErr[1], infoErr[2], strings.TrimSpace(infoErr[3]))
 				filePath := infoErr[0]
+				line, err := strconv.Atoi(infoErr[1])
+				if err != nil {
+					return err
+				}
+				column, err := strconv.Atoi(infoErr[2])
+				if err != nil {
+					return err
+				}
+				newErr := NewError(line, column, strings.TrimSpace(infoErr[3]))
 
 				if errSlice, ok := gosec.errors[filePath]; ok {
 					gosec.errors[filePath] = append(errSlice, *newErr)

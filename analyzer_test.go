@@ -111,6 +111,31 @@ var _ = Describe("Analyzer", func() {
 
 		})
 
+		It("should report for Golang errors and invalid files", func() {
+			analyzer.LoadRules(rules.Generate().Builders())
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("foo.go", `
+				package main
+				func main()
+				}`)
+			pkg.Build()
+			err := analyzer.Process(buildTags, pkg.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			_, _, golangErrors := analyzer.Report()
+			keys := make([]string, len(golangErrors))
+			i := 0
+			for key := range golangErrors {
+				keys[i] = key
+				i++
+			}
+			fileErr := golangErrors[keys[0]]
+			Expect(len(fileErr)).To(Equal(1))
+			Expect(fileErr[0].Line).To(Equal(4))
+			Expect(fileErr[0].Column).To(Equal(5))
+			Expect(fileErr[0].Err).Should(MatchRegexp(`expected declaration, found '}'`))
+		})
+
 		It("should not report errors when a nosec comment is present", func() {
 			// Rule for MD5 weak crypto usage
 			sample := testutils.SampleCodeG401[0]
