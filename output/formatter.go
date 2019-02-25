@@ -47,7 +47,7 @@ var text = `Results:
 {{range $filePath,$fileErrors := .Errors}}
 Golang errors in file: [{{ $filePath }}]:
 {{range $index, $error := $fileErrors}}
-  > [line{{$error.Line}} : column{{$error.Column}}] - {{$error.Err}}
+  > [line {{$error.Line}} : column {{$error.Column}}] - {{$error.Err}}
 {{end}}
 {{end}}
 {{ range $index, $issue := .Issues }}
