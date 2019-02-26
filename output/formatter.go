@@ -44,6 +44,12 @@ const (
 )
 
 var text = `Results:
+{{range $filePath,$fileErrors := .Errors}}
+Golang errors in file: [{{ $filePath }}]:
+{{range $index, $error := $fileErrors}}
+  > [line {{$error.Line}} : column {{$error.Column}}] - {{$error.Err}}
+{{end}}
+{{end}}
 {{ range $index, $issue := .Issues }}
 [{{ $issue.File }}:{{ $issue.Line }}] - {{ $issue.RuleID }}: {{ $issue.What }} (Confidence: {{ $issue.Confidence}}, Severity: {{ $issue.Severity }})
   > {{ $issue.Code }}
@@ -58,14 +64,16 @@ Summary:
 `
 
 type reportInfo struct {
+	Errors map[string][]gosec.Error `json:"Golang errors"`
 	Issues []*gosec.Issue
 	Stats  *gosec.Metrics
 }
 
 // CreateReport generates a report based for the supplied issues and metrics given
 // the specified format. The formats currently accepted are: json, csv, html and text.
-func CreateReport(w io.Writer, format string, issues []*gosec.Issue, metrics *gosec.Metrics) error {
+func CreateReport(w io.Writer, format string, issues []*gosec.Issue, metrics *gosec.Metrics, errors map[string][]gosec.Error) error {
 	data := &reportInfo{
+		Errors: errors,
 		Issues: issues,
 		Stats:  metrics,
 	}

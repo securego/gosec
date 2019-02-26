@@ -68,7 +68,7 @@ var _ = Describe("Analyzer", func() {
 			pkg.Build()
 			err := analyzer.Process(buildTags, pkg.Path)
 			Expect(err).ShouldNot(HaveOccurred())
-			_, metrics := analyzer.Report()
+			_, metrics, _ := analyzer.Report()
 			Expect(metrics.NumFiles).To(Equal(2))
 		})
 
@@ -90,7 +90,7 @@ var _ = Describe("Analyzer", func() {
 			pkg2.Build()
 			err := analyzer.Process(buildTags, pkg1.Path, pkg2.Path)
 			Expect(err).ShouldNot(HaveOccurred())
-			_, metrics := analyzer.Report()
+			_, metrics, _ := analyzer.Report()
 			Expect(metrics.NumFiles).To(Equal(2))
 		})
 
@@ -106,9 +106,34 @@ var _ = Describe("Analyzer", func() {
 			controlPackage.AddFile("md5.go", source)
 			controlPackage.Build()
 			analyzer.Process(buildTags, controlPackage.Path)
-			controlIssues, _ := analyzer.Report()
+			controlIssues, _, _ := analyzer.Report()
 			Expect(controlIssues).Should(HaveLen(sample.Errors))
 
+		})
+
+		It("should report for Golang errors and invalid files", func() {
+			analyzer.LoadRules(rules.Generate().Builders())
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("foo.go", `
+				package main
+				func main()
+				}`)
+			pkg.Build()
+			err := analyzer.Process(buildTags, pkg.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			_, _, golangErrors := analyzer.Report()
+			keys := make([]string, len(golangErrors))
+			i := 0
+			for key := range golangErrors {
+				keys[i] = key
+				i++
+			}
+			fileErr := golangErrors[keys[0]]
+			Expect(len(fileErr)).To(Equal(1))
+			Expect(fileErr[0].Line).To(Equal(4))
+			Expect(fileErr[0].Column).To(Equal(5))
+			Expect(fileErr[0].Err).Should(MatchRegexp(`expected declaration, found '}'`))
 		})
 
 		It("should not report errors when a nosec comment is present", func() {
@@ -124,7 +149,7 @@ var _ = Describe("Analyzer", func() {
 			nosecPackage.Build()
 
 			analyzer.Process(buildTags, nosecPackage.Path)
-			nosecIssues, _ := analyzer.Report()
+			nosecIssues, _, _ := analyzer.Report()
 			Expect(nosecIssues).Should(BeEmpty())
 		})
 
@@ -141,7 +166,7 @@ var _ = Describe("Analyzer", func() {
 			nosecPackage.Build()
 
 			analyzer.Process(buildTags, nosecPackage.Path)
-			nosecIssues, _ := analyzer.Report()
+			nosecIssues, _, _ := analyzer.Report()
 			Expect(nosecIssues).Should(BeEmpty())
 		})
 
@@ -158,7 +183,7 @@ var _ = Describe("Analyzer", func() {
 			nosecPackage.Build()
 
 			analyzer.Process(buildTags, nosecPackage.Path)
-			nosecIssues, _ := analyzer.Report()
+			nosecIssues, _, _ := analyzer.Report()
 			Expect(nosecIssues).Should(HaveLen(sample.Errors))
 		})
 
@@ -175,7 +200,7 @@ var _ = Describe("Analyzer", func() {
 			nosecPackage.Build()
 
 			analyzer.Process(buildTags, nosecPackage.Path)
-			nosecIssues, _ := analyzer.Report()
+			nosecIssues, _, _ := analyzer.Report()
 			Expect(nosecIssues).Should(BeEmpty())
 		})
 
@@ -212,7 +237,7 @@ var _ = Describe("Analyzer", func() {
 		nosecPackage.Build()
 
 		customAnalyzer.Process(buildTags, nosecPackage.Path)
-		nosecIssues, _ := customAnalyzer.Report()
+		nosecIssues, _, _ := customAnalyzer.Report()
 		Expect(nosecIssues).Should(HaveLen(sample.Errors))
 
 	})

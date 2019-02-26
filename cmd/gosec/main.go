@@ -165,19 +165,19 @@ func loadRules(include, exclude string) rules.RuleList {
 	return rules.Generate(filters...)
 }
 
-func saveOutput(filename, format string, issues []*gosec.Issue, metrics *gosec.Metrics) error {
+func saveOutput(filename, format string, issues []*gosec.Issue, metrics *gosec.Metrics, errors map[string][]gosec.Error) error {
 	if filename != "" {
 		outfile, err := os.Create(filename)
 		if err != nil {
 			return err
 		}
 		defer outfile.Close()
-		err = output.CreateReport(outfile, format, issues, metrics)
+		err = output.CreateReport(outfile, format, issues, metrics, errors)
 		if err != nil {
 			return err
 		}
 	} else {
-		err := output.CreateReport(os.Stdout, format, issues, metrics)
+		err := output.CreateReport(os.Stdout, format, issues, metrics, errors)
 		if err != nil {
 			return err
 		}
@@ -323,7 +323,7 @@ func main() {
 	}
 
 	// Collect the results
-	issues, metrics := analyzer.Report()
+	issues, metrics, errors := analyzer.Report()
 
 	// Sort the issue by severity
 	if *flagSortIssues {
@@ -344,7 +344,7 @@ func main() {
 	}
 
 	// Create output report
-	if err := saveOutput(*flagOutput, *flagFormat, issues, metrics); err != nil {
+	if err := saveOutput(*flagOutput, *flagFormat, issues, metrics, errors); err != nil {
 		logger.Fatal(err)
 	}
 
@@ -352,7 +352,7 @@ func main() {
 	logWriter.Close() // #nosec
 
 	// Do we have an issue? If so exit 1 unless NoFail is set
-	if issuesFound && !*flagNoFail {
+	if issuesFound && !*flagNoFail || len(errors) != 0 {
 		os.Exit(1)
 	}
 }

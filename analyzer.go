@@ -26,6 +26,7 @@ import (
 	"path"
 	"reflect"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"golang.org/x/tools/go/loader"
@@ -64,6 +65,7 @@ type Analyzer struct {
 	logger      *log.Logger
 	issues      []*Issue
 	stats       *Metrics
+	errors      map[string][]Error // keys are file paths; values are the golang errors in those files
 }
 
 // NewAnalyzer builds a new analyzer.
@@ -83,6 +85,7 @@ func NewAnalyzer(conf Config, logger *log.Logger) *Analyzer {
 		logger:      logger,
 		issues:      make([]*Issue, 0, 16),
 		stats:       &Metrics{},
+		errors:      make(map[string][]Error),
 	}
 }
 
@@ -129,6 +132,35 @@ func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error
 	if err != nil {
 		return err
 	}
+	for _, packageInfo := range builtPackage.AllPackages {
+		if len(packageInfo.Errors) != 0 {
+			for _, packErr := range packageInfo.Errors {
+				// infoErr contains information about the error
+				// at index 0 is the file path
+				// at index 1 is the line; index 2 is for column
+				// at index 3 is the actual error
+				infoErr := strings.Split(packErr.Error(), ":")
+				filePath := infoErr[0]
+				line, err := strconv.Atoi(infoErr[1])
+				if err != nil {
+					return err
+				}
+				column, err := strconv.Atoi(infoErr[2])
+				if err != nil {
+					return err
+				}
+				newErr := NewError(line, column, strings.TrimSpace(infoErr[3]))
+
+				if errSlice, ok := gosec.errors[filePath]; ok {
+					gosec.errors[filePath] = append(errSlice, *newErr)
+				} else {
+					errSlice = make([]Error, 0)
+					gosec.errors[filePath] = append(errSlice, *newErr)
+				}
+			}
+		}
+	}
+	sortErrors(gosec.errors) // sorts errors by line and column in the file
 
 	for _, pkg := range builtPackage.Created {
 		gosec.logger.Println("Checking package:", pkg.String())
@@ -233,8 +265,8 @@ func (gosec *Analyzer) Visit(n ast.Node) ast.Visitor {
 }
 
 // Report returns the current issues discovered and the metrics about the scan
-func (gosec *Analyzer) Report() ([]*Issue, *Metrics) {
-	return gosec.issues, gosec.stats
+func (gosec *Analyzer) Report() ([]*Issue, *Metrics, map[string][]Error) {
+	return gosec.issues, gosec.stats, gosec.errors
 }
 
 // Reset clears state such as context, issues and metrics from the configured analyzer
