@@ -109,7 +109,7 @@ A number of global settings can be provided in a configuration file as follows:
 
 ```bash
 # Run with a global configuration file
-$ goesc -conf config.json .
+$ gosec -conf config.json .
 ```
 
 ### Excluding files
