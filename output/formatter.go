@@ -112,8 +112,8 @@ func reportSonarqube(rootPath string, w io.Writer, data *reportInfo) error {
 			endLine, _ = strconv.Atoi(lines[1])
 		}
 		s := sonarIssue{
-			EngineId: "gosec",
-			RuleId:   issue.RuleID,
+			EngineID: "gosec",
+			RuleID:   issue.RuleID,
 			PrimaryLocation: location{
 				Message:   issue.What,
 				FilePath:  strings.Replace(issue.File, rootPath+"/", "", 1),
