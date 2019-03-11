@@ -22,6 +22,10 @@ type sonarIssue struct {
 	SecondaryLocations []location `json:"secondaryLocations,omitempty"`
 }
 
+type sonarIssues struct {
+	SonarIssues []sonarIssue `json:"issues"`
+}
+
 func getSonarSeverity(s string) string {
 	switch s {
 	case "LOW":
