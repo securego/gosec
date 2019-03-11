@@ -102,7 +102,7 @@ func CreateReport(w io.Writer, format, rootPath string, issues []*gosec.Issue, m
 }
 
 func reportSonarqube(rootPath string, w io.Writer, data *reportInfo) error {
-	var sonarIssues []sonarIssue
+	var si sonarIssues
 	for _, issue := range data.Issues {
 		lines := strings.Split(issue.Line, "-")
 
@@ -123,9 +123,9 @@ func reportSonarqube(rootPath string, w io.Writer, data *reportInfo) error {
 			Severity:      getSonarSeverity(issue.Severity.String()),
 			EffortMinutes: 5,
 		}
-		sonarIssues = append(sonarIssues, s)
+		si.SonarIssues = append(si.SonarIssues, s)
 	}
-	raw, err := json.MarshalIndent(sonarIssues, "", "\t")
+	raw, err := json.MarshalIndent(si, "", "\t")
 	if err != nil {
 		panic(err)
 	}
