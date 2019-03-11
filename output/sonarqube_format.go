@@ -13,8 +13,8 @@ type location struct {
 }
 
 type sonarIssue struct {
-	EngineId           string     `json:"engineId"`
-	RuleId             string     `json:"ruleId"`
+	EngineID           string     `json:"engineId"`
+	RuleID             string     `json:"ruleId"`
 	PrimaryLocation    location   `json:"primaryLocation"`
 	Type               string     `json:"type"`
 	Severity           string     `json:"severity"`
