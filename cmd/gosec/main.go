@@ -65,7 +65,7 @@ var (
 	flagIgnoreNoSec = flag.Bool("nosec", false, "Ignores #nosec comments when set")
 
 	// format output
-	flagFormat = flag.String("fmt", "text", "Set output format. Valid options are: json, yaml, csv, junit-xml, html, or text")
+	flagFormat = flag.String("fmt", "text", "Set output format. Valid options are: json, yaml, csv, junit-xml, html, sonarqube, or text")
 
 	// output file
 	flagOutput = flag.String("out", "", "Set output file for results")
@@ -165,19 +165,19 @@ func loadRules(include, exclude string) rules.RuleList {
 	return rules.Generate(filters...)
 }
 
-func saveOutput(filename, format string, issues []*gosec.Issue, metrics *gosec.Metrics, errors map[string][]gosec.Error) error {
+func saveOutput(filename, format, rootPath string, issues []*gosec.Issue, metrics *gosec.Metrics, errors map[string][]gosec.Error) error {
 	if filename != "" {
 		outfile, err := os.Create(filename)
 		if err != nil {
 			return err
 		}
 		defer outfile.Close()
-		err = output.CreateReport(outfile, format, issues, metrics, errors)
+		err = output.CreateReport(outfile, format, rootPath, issues, metrics, errors)
 		if err != nil {
 			return err
 		}
 	} else {
-		err := output.CreateReport(os.Stdout, format, issues, metrics, errors)
+		err := output.CreateReport(os.Stdout, format, rootPath, issues, metrics, errors)
 		if err != nil {
 			return err
 		}
@@ -318,6 +318,7 @@ func main() {
 	if *flagBuildTags != "" {
 		buildTags = strings.Split(*flagBuildTags, ",")
 	}
+
 	if err := analyzer.Process(buildTags, packages...); err != nil {
 		logger.Fatal(err)
 	}
@@ -342,9 +343,9 @@ func main() {
 	if !issuesFound && *flagQuiet {
 		os.Exit(0)
 	}
-
+	rootPath := packages[0]
 	// Create output report
-	if err := saveOutput(*flagOutput, *flagFormat, issues, metrics, errors); err != nil {
+	if err := saveOutput(*flagOutput, *flagFormat, rootPath, issues, metrics, errors); err != nil {
 		logger.Fatal(err)
 	}
 
