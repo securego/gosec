@@ -20,6 +20,8 @@ import (
 	"encoding/xml"
 	htmlTemplate "html/template"
 	"io"
+	"strconv"
+	"strings"
 	plainTemplate "text/template"
 
 	"github.com/securego/gosec"
@@ -71,7 +73,7 @@ type reportInfo struct {
 
 // CreateReport generates a report based for the supplied issues and metrics given
 // the specified format. The formats currently accepted are: json, csv, html and text.
-func CreateReport(w io.Writer, format string, issues []*gosec.Issue, metrics *gosec.Metrics, errors map[string][]gosec.Error) error {
+func CreateReport(w io.Writer, format, rootPath string, issues []*gosec.Issue, metrics *gosec.Metrics, errors map[string][]gosec.Error) error {
 	data := &reportInfo{
 		Errors: errors,
 		Issues: issues,
@@ -91,8 +93,46 @@ func CreateReport(w io.Writer, format string, issues []*gosec.Issue, metrics *go
 		err = reportFromHTMLTemplate(w, html, data)
 	case "text":
 		err = reportFromPlaintextTemplate(w, text, data)
+	case "sonarqube":
+		err = reportSonarqube(rootPath, w, data)
 	default:
 		err = reportFromPlaintextTemplate(w, text, data)
+	}
+	return err
+}
+
+func reportSonarqube(rootPath string, w io.Writer, data *reportInfo) error {
+	var sonarIssues []sonarIssue
+	for _, issue := range data.Issues {
+		lines := strings.Split(issue.Line, "-")
+
+		startLine, _ := strconv.Atoi(lines[0])
+		endLine := startLine
+		if len(lines) > 1 {
+			endLine, _ = strconv.Atoi(lines[1])
+		}
+		s := sonarIssue{
+			EngineId: "gosec",
+			RuleId:   issue.RuleID,
+			PrimaryLocation: location{
+				Message:   issue.What,
+				FilePath:  strings.Replace(issue.File, rootPath+"/", "", 1),
+				TextRange: textRange{StartLine: startLine, EndLine: endLine},
+			},
+			Type:          "VULNERABILITY",
+			Severity:      getSonarSeverity(issue.Severity.String()),
+			EffortMinutes: 5,
+		}
+		sonarIssues = append(sonarIssues, s)
+	}
+	raw, err := json.MarshalIndent(sonarIssues, "", "\t")
+	if err != nil {
+		panic(err)
+	}
+
+	_, err = w.Write(raw)
+	if err != nil {
+		panic(err)
 	}
 	return err
 }
