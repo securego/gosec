@@ -161,7 +161,7 @@ gosec -tag debug,ignore ./...
 
 ### Output formats
 
-gosec currently supports text, json, yaml, csv and JUnit XML output formats. By default
+gosec currently supports text, json, yaml, csv, sonarqube and JUnit XML output formats. By default
 results will be reported to stdout, but can also be written to an output
 file. The output format is controlled by the '-fmt' flag, and the output file is controlled by the '-out' flag as follows:
 
