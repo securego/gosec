@@ -43,6 +43,9 @@ const (
 
 	// ReportJUnitXML set the output format to junit xml
 	ReportJUnitXML // JUnit XML format
+
+	//Sonarqube effort to fix
+	SonarqubeEffortMinutes = 5
 )
 
 var text = `Results:
@@ -121,7 +124,7 @@ func reportSonarqube(rootPath string, w io.Writer, data *reportInfo) error {
 			},
 			Type:          "VULNERABILITY",
 			Severity:      getSonarSeverity(issue.Severity.String()),
-			EffortMinutes: 5,
+			EffortMinutes: SonarqubeEffortMinutes,
 		}
 		si.SonarIssues = append(si.SonarIssues, s)
 	}
