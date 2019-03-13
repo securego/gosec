@@ -130,26 +130,19 @@ func reportSonarqube(rootPath string, w io.Writer, data *reportInfo) error {
 	}
 	raw, err := json.MarshalIndent(si, "", "\t")
 	if err != nil {
-		panic(err)
+		return err
 	}
-
 	_, err = w.Write(raw)
-	if err != nil {
-		panic(err)
-	}
 	return err
 }
 
 func reportJSON(w io.Writer, data *reportInfo) error {
 	raw, err := json.MarshalIndent(data, "", "\t")
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	_, err = w.Write(raw)
-	if err != nil {
-		panic(err)
-	}
 	return err
 }
 
