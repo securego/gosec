@@ -44,7 +44,7 @@ const (
 	// ReportJUnitXML set the output format to junit xml
 	ReportJUnitXML // JUnit XML format
 
-	//Sonarqube effort to fix
+	//SonarqubeEffortMinutes effort to fix in minutes
 	SonarqubeEffortMinutes = 5
 )
 
