@@ -352,7 +352,7 @@ func main() {
 	logWriter.Close() // #nosec
 
 	// Do we have an issue? If so exit 1 unless NoFail is set
-	if issuesFound && !*flagNoFail || len(errors) != 0 {
+	if (issuesFound || len(errors) != 0) && !*flagNoFail {
 		os.Exit(1)
 	}
 }
