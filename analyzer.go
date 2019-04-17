@@ -16,9 +16,9 @@
 package gosec
 
 import (
+	"errors"
 	"go/ast"
 	"go/build"
-	"go/parser"
 	"go/token"
 	"go/types"
 	"log"
@@ -26,10 +26,10 @@ import (
 	"path"
 	"reflect"
 	"regexp"
-	"strconv"
+
 	"strings"
 
-	"golang.org/x/tools/go/loader"
+	"golang.org/x/tools/go/packages"
 )
 
 // The Context is populated with data parsed from the source code as it is scanned.
@@ -102,83 +102,39 @@ func (gosec *Analyzer) LoadRules(ruleDefinitions map[string]RuleBuilder) {
 func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error {
 	ctx := build.Default
 	ctx.BuildTags = append(ctx.BuildTags, buildTags...)
-	packageConfig := loader.Config{
-		Build:       &ctx,
-		ParserMode:  parser.ParseComments,
-		AllowErrors: true,
-	}
-	for _, packagePath := range packagePaths {
-		abspath, err := GetPkgAbsPath(packagePath)
-		if err != nil {
-			gosec.logger.Printf("Skipping: %s. Path doesn't exist.", abspath)
-			continue
-		}
-		gosec.logger.Println("Searching directory:", abspath)
-
-		basePackage, err := build.Default.ImportDir(packagePath, build.ImportComment)
-		if err != nil {
-			return err
-		}
-
-		var packageFiles []string
-		for _, filename := range basePackage.GoFiles {
-			packageFiles = append(packageFiles, path.Join(packagePath, filename))
-		}
-
-		packageConfig.CreateFromFilenames(basePackage.Name, packageFiles...)
+	conf := &packages.Config{
+		Mode:  packages.LoadSyntax,
+		Tests: false,
 	}
 
-	builtPackage, err := packageConfig.Load()
+	pkgs, err := packages.Load(conf, packagePaths...)
 	if err != nil {
 		return err
 	}
-	for _, packageInfo := range builtPackage.AllPackages {
-		if len(packageInfo.Errors) != 0 {
-			for _, packErr := range packageInfo.Errors {
-				// infoErr contains information about the error
-				// at index 0 is the file path
-				// at index 1 is the line; index 2 is for column
-				// at index 3 is the actual error
-				infoErr := strings.Split(packErr.Error(), ":")
-				filePath := infoErr[0]
-				line, err := strconv.Atoi(infoErr[1])
-				if err != nil {
-					return err
-				}
-				column, err := strconv.Atoi(infoErr[2])
-				if err != nil {
-					return err
-				}
-				newErr := NewError(line, column, strings.TrimSpace(infoErr[3]))
 
-				if errSlice, ok := gosec.errors[filePath]; ok {
-					gosec.errors[filePath] = append(errSlice, *newErr)
-				} else {
-					errSlice = make([]Error, 0)
-					gosec.errors[filePath] = append(errSlice, *newErr)
-				}
-			}
-		}
-	}
 	sortErrors(gosec.errors) // sorts errors by line and column in the file
 
-	for _, pkg := range builtPackage.Created {
+	for _, pkg := range pkgs {
 		gosec.logger.Println("Checking package:", pkg.String())
-		for _, file := range pkg.Files {
-			gosec.logger.Println("Checking file:", builtPackage.Fset.File(file.Pos()).Name())
-			gosec.context.FileSet = builtPackage.Fset
+		for _, file := range pkg.Syntax {
+			gosec.logger.Println("Checking file:", pkg.Fset.File(file.Pos()).Name())
+			gosec.context.FileSet = pkg.Fset
 			gosec.context.Config = gosec.config
 			gosec.context.Comments = ast.NewCommentMap(gosec.context.FileSet, file, file.Comments)
 			gosec.context.Root = file
-			gosec.context.Info = &pkg.Info
-			gosec.context.Pkg = pkg.Pkg
-			gosec.context.PkgFiles = pkg.Files
+			gosec.context.Info = pkg.TypesInfo
+			gosec.context.Pkg = pkg.Types
+			gosec.context.PkgFiles = pkg.Syntax
 			gosec.context.Imports = NewImportTracker()
 			gosec.context.Imports.TrackPackages(gosec.context.Pkg.Imports()...)
 			ast.Walk(gosec, file)
 			gosec.stats.NumFiles++
-			gosec.stats.NumLines += builtPackage.Fset.File(file.Pos()).LineCount()
+			gosec.stats.NumLines += pkg.Fset.File(file.Pos()).LineCount()
 		}
+	}
+
+	if gosec.stats.NumFiles == 0 {
+		return errors.New("no buildable Go source files")
 	}
 	return nil
 }
