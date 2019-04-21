@@ -104,7 +104,7 @@ func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error
 	ctx.BuildTags = append(ctx.BuildTags, buildTags...)
 	conf := &packages.Config{
 		Mode:  packages.LoadSyntax,
-		Tests: false,
+		Tests: true,
 	}
 
 	pkgs := []*packages.Package{}
