@@ -40,14 +40,12 @@ var _ = Describe("gosec rules", func() {
 				analyzer.Reset()
 				pkg := testutils.NewTestPackage()
 				defer pkg.Close()
-				files := []string{}
 				for i, code := range sample.Code {
 					pkg.AddFile(fmt.Sprintf("sample_%d_%d.go", n, i), code)
-					files = append(files, pkg.Path+fmt.Sprintf("/sample_%d_%d.go", n, i))
 				}
 				err := pkg.Build()
 				Expect(err).ShouldNot(HaveOccurred())
-				err = analyzer.Process(buildTags, files...)
+				err = analyzer.Process(buildTags, pkg.Path)
 				Expect(err).ShouldNot(HaveOccurred())
 				issues, _, _ := analyzer.Report()
 				if len(issues) != sample.Errors {

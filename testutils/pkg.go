@@ -36,7 +36,6 @@ func NewTestPackage() *TestPackage {
 		goPath = build.Default.GOPATH
 	}
 
-	// Files must exist in $GOPATH
 	workingDir, err := ioutil.TempDir("", "gosecs_test")
 	if err != nil {
 		return nil

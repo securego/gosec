@@ -16,7 +16,6 @@
 package gosec
 
 import (
-	"errors"
 	"go/ast"
 	"go/build"
 	"go/token"
@@ -26,6 +25,7 @@ import (
 	"path"
 	"reflect"
 	"regexp"
+	"strconv"
 
 	"strings"
 
@@ -107,9 +107,60 @@ func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error
 		Tests: false,
 	}
 
-	pkgs, err := packages.Load(conf, packagePaths...)
-	if err != nil {
-		return err
+	pkgs := []*packages.Package{}
+	for _, packagePath := range packagePaths {
+		abspath, err := GetPkgAbsPath(packagePath)
+		if err != nil {
+			gosec.logger.Printf("Skipping: %s. Path doesn't exist.", abspath)
+			continue
+		}
+		gosec.logger.Println("Searching directory:", abspath)
+
+		basePackage, err := build.Default.ImportDir(packagePath, build.ImportComment)
+		if err != nil {
+			return err
+		}
+
+		var packageFiles []string
+		for _, filename := range basePackage.GoFiles {
+			packageFiles = append(packageFiles, path.Join(packagePath, filename))
+		}
+
+		_pkgs, err := packages.Load(conf, packageFiles...)
+		if err != nil {
+			return err
+		}
+		pkgs = append(pkgs, _pkgs...)
+	}
+
+
+	for _, packageInfo := range pkgs {
+		if len(packageInfo.Errors) != 0 {
+			for _, packErr := range packageInfo.Errors {
+				// infoErr contains information about the error
+				// at index 0 is the file path
+				// at index 1 is the line; index 2 is for column
+				// at index 3 is the actual error
+				infoErr := strings.Split(packErr.Error(), ":")
+				filePath := infoErr[0]
+				line, err := strconv.Atoi(infoErr[1])
+				if err != nil {
+					return err
+				}
+				column, err := strconv.Atoi(infoErr[2])
+				if err != nil {
+					return err
+				}
+				newErr := NewError(line, column, strings.TrimSpace(infoErr[3]))
+
+				if errSlice, ok := gosec.errors[filePath]; ok {
+					gosec.errors[filePath] = append(errSlice, *newErr)
+				} else {
+					errSlice = make([]Error, 0)
+					gosec.errors[filePath] = append(errSlice, *newErr)
+				}
+			}
+		}
 	}
 
 	sortErrors(gosec.errors) // sorts errors by line and column in the file
@@ -133,9 +184,6 @@ func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error
 		}
 	}
 
-	if gosec.stats.NumFiles == 0 {
-		return errors.New("no buildable Go source files")
-	}
 	return nil
 }
 
