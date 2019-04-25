@@ -23,6 +23,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -356,4 +357,33 @@ func FindVarIdentities(n *ast.BinaryExpr, c *Context) ([]*ast.Ident, bool) {
 	}
 	// if nil or error, return false
 	return nil, false
+}
+
+// PackagePaths returns a slice with all packages path at given root directory
+func PackagePaths(root string, exclude *regexp.Regexp) ([]string, error) {
+	if strings.HasSuffix(root, "...") {
+		root = root[0 : len(root)-3]
+	} else {
+		return []string{root}, nil
+	}
+	paths := map[string]bool{}
+	err := filepath.Walk(root, func(path string, f os.FileInfo, err error) error {
+		if filepath.Ext(path) == ".go" {
+			path = filepath.Dir(path)
+			if exclude != nil && exclude.MatchString(path) {
+				return nil
+			}
+			paths[path] = true
+		}
+		return nil
+	})
+	if err != nil {
+		return []string{}, err
+	}
+
+	result := []string{}
+	for path := range paths {
+		result = append(result, path)
+	}
+	return result, nil
 }

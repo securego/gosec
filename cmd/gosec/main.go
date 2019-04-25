@@ -24,7 +24,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/kisielk/gotool"
 	"github.com/securego/gosec"
 	"github.com/securego/gosec/output"
 	"github.com/securego/gosec/rules"
@@ -147,19 +146,19 @@ func loadConfig(configFile string) (gosec.Config, error) {
 func loadRules(include, exclude string) rules.RuleList {
 	var filters []rules.RuleFilter
 	if include != "" {
-		logger.Printf("including rules: %s", include)
+		logger.Printf("Including rules: %s", include)
 		including := strings.Split(include, ",")
 		filters = append(filters, rules.NewRuleFilter(false, including...))
 	} else {
-		logger.Println("including rules: default")
+		logger.Println("Including rules: default")
 	}
 
 	if exclude != "" {
-		logger.Printf("excluding rules: %s", exclude)
+		logger.Printf("Excluding rules: %s", exclude)
 		excluding := strings.Split(exclude, ",")
 		filters = append(filters, rules.NewRuleFilter(true, excluding...))
 	} else {
-		logger.Println("excluding rules: default")
+		logger.Println("Excluding rules: default")
 	}
 	return rules.Generate(filters...)
 }
@@ -244,7 +243,7 @@ func main() {
 	// Load enabled rule definitions
 	ruleDefinitions := loadRules(*flagRulesInclude, *flagRulesExclude)
 	if len(ruleDefinitions) == 0 {
-		logger.Fatal("cannot continue: no rules are configured.")
+		logger.Fatal("No rules are configured")
 	}
 
 	// Create the analyzer
@@ -253,15 +252,15 @@ func main() {
 
 	vendor := regexp.MustCompile(`[\\/]vendor([\\/]|$)`)
 	var packages []string
-	// Iterate over packages on the import paths
-	for _, pkg := range gotool.ImportPaths(flag.Args()) {
-		// Skip vendor directory
-		if !*flagScanVendor {
-			if vendor.MatchString(pkg) {
-				continue
-			}
+	for _, path := range flag.Args() {
+		pcks, err := gosec.PackagePaths(path, vendor)
+		if err != nil {
+			logger.Fatal(err)
 		}
-		packages = append(packages, pkg)
+		packages = append(packages, pcks...)
+	}
+	if len(packages) == 0 {
+		logger.Fatal("No packages found")
 	}
 
 	var buildTags []string

@@ -3,7 +3,6 @@ module github.com/securego/gosec
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/golang/protobuf v1.3.1 // indirect
-	github.com/kisielk/gotool v1.0.0
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/lib/pq v1.1.0 // indirect
 	github.com/mozilla/tls-observatory v0.0.0-20190404164649-a3c1b6cfecfd
