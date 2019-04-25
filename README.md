@@ -227,11 +227,11 @@ You can build the docker image as follows:
 make image
 ```
 
-You can run the `gosec` tool in a container against your local Go project. You just have to mount the project in the
-`GOPATH` of the container:
+You can run the `gosec` tool in a container against your local Go project. You just have to mount the project 
+into a volume as follow:
 
 ```bash
-docker run -it -v $GOPATH/src/<YOUR PROJECT PATH>:/go/src/<YOUR PROJECT PATH> securego/gosec /go/src/<YOUR PROJECT PATH>/...
+docker run -it -v <YOUR PROJECT PATH>/<PROJECT>:/<PROJECT> securego/gosec /<PROJECT>/...
 ```
 
 ### Generate TLS rule
