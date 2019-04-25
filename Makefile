@@ -8,11 +8,11 @@ CGO_ENABLED = 0
 default:
 	$(MAKE) build
 
-test: 
+test: build
 	test -z '$(FMT_CMD)'
 	go vet $(go list ./... | grep -v /vendor/)
 	golint -set_exit_status $(shell go list ./... | grep -v vendor)
-	gosec ./...
+	./$(BIN) ./...
 	ginkgo -r -v
 
 test-coverage:
