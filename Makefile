@@ -6,13 +6,9 @@ BUILDFLAGS := ''
 CGO_ENABLED = 0
 
 default:
-	$(MAKE) bootstrap
 	$(MAKE) build
 
-bootstrap:
-	dep ensure
-
-test: bootstrap
+test: 
 	test -z '$(FMT_CMD)'
 	go vet $(go list ./... | grep -v /vendor/)
 	golint -set_exit_status $(shell go list ./... | grep -v vendor)
@@ -27,9 +23,9 @@ build:
 
 clean:
 	rm -rf build vendor dist
-	rm -f release image bootstrap $(BIN)
+	rm -f release image $(BIN)
 
-release: bootstrap
+release: 
 	@echo "Releasing the gosec binary..."
 	goreleaser release
  
