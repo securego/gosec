@@ -250,7 +250,10 @@ func main() {
 	analyzer := gosec.NewAnalyzer(config, logger)
 	analyzer.LoadRules(ruleDefinitions.Builders())
 
-	vendor := regexp.MustCompile(`[\\/]vendor([\\/]|$)`)
+	var vendor *regexp.Regexp
+	if !*flagScanVendor {
+		vendor = regexp.MustCompile(`([\\/])?vendor([\\/])?`)
+	}
 	var packages []string
 	for _, path := range flag.Args() {
 		pcks, err := gosec.PackagePaths(path, vendor)
