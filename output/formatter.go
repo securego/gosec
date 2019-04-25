@@ -109,10 +109,16 @@ func reportSonarqube(rootPath string, w io.Writer, data *reportInfo) error {
 	for _, issue := range data.Issues {
 		lines := strings.Split(issue.Line, "-")
 
-		startLine, _ := strconv.Atoi(lines[0])
+		startLine, err := strconv.Atoi(lines[0])
+		if err != nil {
+			return err
+		}
 		endLine := startLine
 		if len(lines) > 1 {
-			endLine, _ = strconv.Atoi(lines[1])
+			endLine, err = strconv.Atoi(lines[1])
+			if err != nil {
+				return err
+			}
 		}
 		s := sonarIssue{
 			EngineID: "gosec",
