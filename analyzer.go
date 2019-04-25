@@ -18,7 +18,6 @@ package gosec
 import (
 	"go/ast"
 	"go/build"
-	"go/parser"
 	"go/token"
 	"go/types"
 	"log"
@@ -27,9 +26,10 @@ import (
 	"reflect"
 	"regexp"
 	"strconv"
+
 	"strings"
 
-	"golang.org/x/tools/go/loader"
+	"golang.org/x/tools/go/packages"
 )
 
 // The Context is populated with data parsed from the source code as it is scanned.
@@ -102,11 +102,12 @@ func (gosec *Analyzer) LoadRules(ruleDefinitions map[string]RuleBuilder) {
 func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error {
 	ctx := build.Default
 	ctx.BuildTags = append(ctx.BuildTags, buildTags...)
-	packageConfig := loader.Config{
-		Build:       &ctx,
-		ParserMode:  parser.ParseComments,
-		AllowErrors: true,
+	conf := &packages.Config{
+		Mode:  packages.LoadSyntax,
+		Tests: true,
 	}
+
+	pkgs := []*packages.Package{}
 	for _, packagePath := range packagePaths {
 		abspath, err := GetPkgAbsPath(packagePath)
 		if err != nil {
@@ -125,14 +126,15 @@ func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error
 			packageFiles = append(packageFiles, path.Join(packagePath, filename))
 		}
 
-		packageConfig.CreateFromFilenames(basePackage.Name, packageFiles...)
+		_pkgs, err := packages.Load(conf, packageFiles...)
+		if err != nil {
+			return err
+		}
+		pkgs = append(pkgs, _pkgs...)
 	}
 
-	builtPackage, err := packageConfig.Load()
-	if err != nil {
-		return err
-	}
-	for _, packageInfo := range builtPackage.AllPackages {
+
+	for _, packageInfo := range pkgs {
 		if len(packageInfo.Errors) != 0 {
 			for _, packErr := range packageInfo.Errors {
 				// infoErr contains information about the error
@@ -160,26 +162,28 @@ func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error
 			}
 		}
 	}
+
 	sortErrors(gosec.errors) // sorts errors by line and column in the file
 
-	for _, pkg := range builtPackage.Created {
+	for _, pkg := range pkgs {
 		gosec.logger.Println("Checking package:", pkg.String())
-		for _, file := range pkg.Files {
-			gosec.logger.Println("Checking file:", builtPackage.Fset.File(file.Pos()).Name())
-			gosec.context.FileSet = builtPackage.Fset
+		for _, file := range pkg.Syntax {
+			gosec.logger.Println("Checking file:", pkg.Fset.File(file.Pos()).Name())
+			gosec.context.FileSet = pkg.Fset
 			gosec.context.Config = gosec.config
 			gosec.context.Comments = ast.NewCommentMap(gosec.context.FileSet, file, file.Comments)
 			gosec.context.Root = file
-			gosec.context.Info = &pkg.Info
-			gosec.context.Pkg = pkg.Pkg
-			gosec.context.PkgFiles = pkg.Files
+			gosec.context.Info = pkg.TypesInfo
+			gosec.context.Pkg = pkg.Types
+			gosec.context.PkgFiles = pkg.Syntax
 			gosec.context.Imports = NewImportTracker()
 			gosec.context.Imports.TrackPackages(gosec.context.Pkg.Imports()...)
 			ast.Walk(gosec, file)
 			gosec.stats.NumFiles++
-			gosec.stats.NumLines += builtPackage.Fset.File(file.Pos()).LineCount()
+			gosec.stats.NumLines += pkg.Fset.File(file.Pos()).LineCount()
 		}
 	}
+
 	return nil
 }
 

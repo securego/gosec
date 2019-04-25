@@ -1,9 +1,8 @@
 language: go
 
 go:
-  - "1.9.x"
-  - "1.10.x"
   - "1.11.x"
+  - "1.12.x"
   - tip
 
 install:
@@ -16,6 +15,7 @@ install:
   - go get -u github.com/securego/gosec/cmd/gosec/...
   - go get -v -t ./...
   - export PATH=$PATH:$HOME/gopath/bin
+  - export GO111MODULE=on
 
 script: make test
 
