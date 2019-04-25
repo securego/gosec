@@ -114,7 +114,7 @@ func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error
 			gosec.logger.Printf("Skipping: %s. Path doesn't exist.", abspath)
 			continue
 		}
-		gosec.logger.Println("Searching directory:", abspath)
+		gosec.logger.Println("Import directory:", abspath)
 
 		basePackage, err := build.Default.ImportDir(packagePath, build.ImportComment)
 		if err != nil {
@@ -132,7 +132,6 @@ func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error
 		}
 		pkgs = append(pkgs, _pkgs...)
 	}
-
 
 	for _, packageInfo := range pkgs {
 		if len(packageInfo.Errors) != 0 {
@@ -166,7 +165,7 @@ func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error
 	sortErrors(gosec.errors) // sorts errors by line and column in the file
 
 	for _, pkg := range pkgs {
-		gosec.logger.Println("Checking package:", pkg.String())
+		gosec.logger.Println("Checking package:", pkg.Name)
 		for _, file := range pkg.Syntax {
 			gosec.logger.Println("Checking file:", pkg.Fset.File(file.Pos()).Name())
 			gosec.context.FileSet = pkg.Fset
