@@ -20,7 +20,6 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -185,52 +184,6 @@ func saveOutput(filename, format, rootPath string, issues []*gosec.Issue, metric
 	return nil
 }
 
-func cleanPath(path string) (string, error) {
-	cleanFailed := fmt.Errorf("%s is not within the $GOPATH and cannot be processed", path)
-	nonRecursivePath := strings.TrimSuffix(path, "/...")
-	// do not attempt to clean directs that are resolvable on gopath
-	if _, err := os.Stat(nonRecursivePath); err != nil && os.IsNotExist(err) {
-		log.Printf("directory %s doesn't exist, checking if is a package on $GOPATH", path)
-		for _, basedir := range gosec.Gopath() {
-			dir := filepath.Join(basedir, "src", nonRecursivePath)
-			if st, err := os.Stat(dir); err == nil && st.IsDir() {
-				log.Printf("located %s in %s", path, dir)
-				return path, nil
-			}
-		}
-		return "", cleanFailed
-	}
-
-	// ensure we resolve package directory correctly based on $GOPATH
-	pkgPath, err := gosec.GetPkgRelativePath(path)
-	if err != nil {
-		return "", cleanFailed
-	}
-	return pkgPath, nil
-}
-
-func cleanPaths(paths []string) []string {
-	var clean []string
-	for _, path := range paths {
-		cleaned, err := cleanPath(path)
-		if err != nil {
-			log.Fatal(err)
-		}
-		clean = append(clean, cleaned)
-	}
-	return clean
-}
-
-func resolvePackage(pkg string, searchPaths []string) string {
-	for _, basedir := range searchPaths {
-		dir := filepath.Join(basedir, "src", pkg)
-		if st, err := os.Stat(dir); err == nil && st.IsDir() {
-			return dir
-		}
-	}
-	return pkg
-}
-
 func convertToScore(severity string) (gosec.Score, error) {
 	severity = strings.ToLower(severity)
 	switch severity {
@@ -299,19 +252,16 @@ func main() {
 	analyzer.LoadRules(ruleDefinitions.Builders())
 
 	vendor := regexp.MustCompile(`[\\/]vendor([\\/]|$)`)
-
 	var packages []string
 	// Iterate over packages on the import paths
-	gopaths := gosec.Gopath()
-	for _, pkg := range gotool.ImportPaths(cleanPaths(flag.Args())) {
-
+	for _, pkg := range gotool.ImportPaths(flag.Args()) {
 		// Skip vendor directory
 		if !*flagScanVendor {
 			if vendor.MatchString(pkg) {
 				continue
 			}
 		}
-		packages = append(packages, resolvePackage(pkg, gopaths))
+		packages = append(packages, pkg)
 	}
 
 	var buildTags []string
@@ -343,6 +293,7 @@ func main() {
 	if !issuesFound && *flagQuiet {
 		os.Exit(0)
 	}
+
 	rootPath := packages[0]
 	// Create output report
 	if err := saveOutput(*flagOutput, *flagFormat, rootPath, issues, metrics, errors); err != nil {
