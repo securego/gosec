@@ -126,13 +126,14 @@ func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error
 			packageFiles = append(packageFiles, path.Join(packagePath, filename))
 		}
 
-		_pkgs, err := packages.Load(conf, packageFiles...)
-		if err != nil {
-			return err
+		if len(packageFiles) > 0 {
+			_pkgs, err := packages.Load(conf, packageFiles...)
+			if err != nil {
+				return err
+			}
+			pkgs = append(pkgs, _pkgs...)
 		}
-		pkgs = append(pkgs, _pkgs...)
 	}
-
 
 	for _, packageInfo := range pkgs {
 		if len(packageInfo.Errors) != 0 {
