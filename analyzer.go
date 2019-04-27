@@ -100,89 +100,104 @@ func (gosec *Analyzer) LoadRules(ruleDefinitions map[string]RuleBuilder) {
 
 // Process kicks off the analysis process for a given package
 func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error {
-	ctx := build.Default
-	ctx.BuildTags = append(ctx.BuildTags, buildTags...)
-	conf := &packages.Config{
-		Mode:  packages.LoadSyntax,
-		Tests: true,
-	}
-
-	pkgs := []*packages.Package{}
-	for _, packagePath := range packagePaths {
-		abspath, err := GetPkgAbsPath(packagePath)
-		if err != nil {
-			gosec.logger.Printf("Skipping: %s. Path doesn't exist.", abspath)
-			continue
-		}
-		gosec.logger.Println("Import directory:", abspath)
-
-		basePackage, err := build.Default.ImportDir(packagePath, build.ImportComment)
+	config := gosec.pkgConfig(buildTags)
+	for _, pkgPath := range packagePaths {
+		pkgs, err := gosec.load(pkgPath, config)
 		if err != nil {
 			return err
 		}
-
-		var packageFiles []string
-		for _, filename := range basePackage.GoFiles {
-			packageFiles = append(packageFiles, path.Join(packagePath, filename))
-		}
-
-		_pkgs, err := packages.Load(conf, packageFiles...)
-		if err != nil {
-			return err
-		}
-		pkgs = append(pkgs, _pkgs...)
-	}
-
-	for _, packageInfo := range pkgs {
-		if len(packageInfo.Errors) != 0 {
-			for _, packErr := range packageInfo.Errors {
-				// infoErr contains information about the error
-				// at index 0 is the file path
-				// at index 1 is the line; index 2 is for column
-				// at index 3 is the actual error
-				infoErr := strings.Split(packErr.Error(), ":")
-				filePath := infoErr[0]
-				line, err := strconv.Atoi(infoErr[1])
-				if err != nil {
-					return err
-				}
-				column, err := strconv.Atoi(infoErr[2])
-				if err != nil {
-					return err
-				}
-				newErr := NewError(line, column, strings.TrimSpace(infoErr[3]))
-
-				if errSlice, ok := gosec.errors[filePath]; ok {
-					gosec.errors[filePath] = append(errSlice, *newErr)
-				} else {
-					errSlice = make([]Error, 0)
-					gosec.errors[filePath] = append(errSlice, *newErr)
-				}
+		for _, pkg := range pkgs {
+			err := gosec.parseErrors(pkg)
+			if err != nil {
+				return err
 			}
+			gosec.check(pkg)
 		}
 	}
+	sortErrors(gosec.errors)
+	return nil
+}
 
-	sortErrors(gosec.errors) // sorts errors by line and column in the file
+func (gosec *Analyzer) pkgConfig(buildTags []string) *packages.Config {
+	tagsFlag := "-tags=" + strings.Join(buildTags, " ")
+	return &packages.Config{
+		Mode:       packages.LoadSyntax,
+		BuildFlags: []string{tagsFlag},
+		Tests:      true,
+	}
+}
 
-	for _, pkg := range pkgs {
-		gosec.logger.Println("Checking package:", pkg.Name)
-		for _, file := range pkg.Syntax {
-			gosec.logger.Println("Checking file:", pkg.Fset.File(file.Pos()).Name())
-			gosec.context.FileSet = pkg.Fset
-			gosec.context.Config = gosec.config
-			gosec.context.Comments = ast.NewCommentMap(gosec.context.FileSet, file, file.Comments)
-			gosec.context.Root = file
-			gosec.context.Info = pkg.TypesInfo
-			gosec.context.Pkg = pkg.Types
-			gosec.context.PkgFiles = pkg.Syntax
-			gosec.context.Imports = NewImportTracker()
-			gosec.context.Imports.TrackPackages(gosec.context.Pkg.Imports()...)
-			ast.Walk(gosec, file)
-			gosec.stats.NumFiles++
-			gosec.stats.NumLines += pkg.Fset.File(file.Pos()).LineCount()
-		}
+func (gosec *Analyzer) load(pkgPath string, conf *packages.Config) ([]*packages.Package, error) {
+	abspath, err := GetPkgAbsPath(pkgPath)
+	if err != nil {
+		gosec.logger.Printf("Skipping: %s. Path doesn't exist.", abspath)
+		return []*packages.Package{}, nil
 	}
 
+	gosec.logger.Println("Import directory:", abspath)
+	basePackage, err := build.Default.ImportDir(pkgPath, build.ImportComment)
+	if err != nil {
+		return []*packages.Package{}, err
+	}
+
+	var packageFiles []string
+	for _, filename := range basePackage.GoFiles {
+		packageFiles = append(packageFiles, path.Join(pkgPath, filename))
+	}
+
+	pkgs, err := packages.Load(conf, packageFiles...)
+	if err != nil {
+		return []*packages.Package{}, err
+	}
+	return pkgs, nil
+}
+
+func (gosec *Analyzer) check(pkg *packages.Package) {
+	gosec.logger.Println("Checking package:", pkg.Name)
+	for _, file := range pkg.Syntax {
+		gosec.logger.Println("Checking file:", pkg.Fset.File(file.Pos()).Name())
+		gosec.context.FileSet = pkg.Fset
+		gosec.context.Config = gosec.config
+		gosec.context.Comments = ast.NewCommentMap(gosec.context.FileSet, file, file.Comments)
+		gosec.context.Root = file
+		gosec.context.Info = pkg.TypesInfo
+		gosec.context.Pkg = pkg.Types
+		gosec.context.PkgFiles = pkg.Syntax
+		gosec.context.Imports = NewImportTracker()
+		gosec.context.Imports.TrackPackages(gosec.context.Pkg.Imports()...)
+		ast.Walk(gosec, file)
+		gosec.stats.NumFiles++
+		gosec.stats.NumLines += pkg.Fset.File(file.Pos()).LineCount()
+	}
+}
+
+func (gosec *Analyzer) parseErrors(pkg *packages.Package) error {
+	if len(pkg.Errors) == 0 {
+		return nil
+	}
+	for _, pkgErr := range pkg.Errors {
+		// infoErr contains information about the error
+		// at index 0 is the file path
+		// at index 1 is the line; index 2 is for column
+		// at index 3 is the actual error
+		infoErr := strings.Split(pkgErr.Error(), ":")
+		filePath := infoErr[0]
+		line, err := strconv.Atoi(infoErr[1])
+		if err != nil {
+			return err
+		}
+		column, err := strconv.Atoi(infoErr[2])
+		if err != nil {
+			return err
+		}
+		newErr := NewError(line, column, strings.TrimSpace(infoErr[3]))
+		if errSlice, ok := gosec.errors[filePath]; ok {
+			gosec.errors[filePath] = append(errSlice, *newErr)
+		} else {
+			errSlice = make([]Error, 0)
+			gosec.errors[filePath] = append(errSlice, *newErr)
+		}
+	}
 	return nil
 }
 
