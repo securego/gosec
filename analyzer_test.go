@@ -219,7 +219,6 @@ var _ = Describe("Analyzer", func() {
 	})
 
 	It("should be possible to overwrite nosec comments, and report issues", func() {
-
 		// Rule for MD5 weak crypto usage
 		sample := testutils.SampleCodeG401[0]
 		source := sample.Code[0]
