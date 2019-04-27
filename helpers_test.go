@@ -20,7 +20,7 @@ var _ = Describe("Helpers", func() {
 			_, err = ioutil.TempFile(dir, "test*.go")
 			Expect(err).ShouldNot(HaveOccurred())
 		})
-		JustAfterEach(func() {
+		AfterEach(func() {
 			err := os.RemoveAll(dir)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
