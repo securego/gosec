@@ -25,12 +25,13 @@ var _ = Describe("gosec rules", func() {
 		analyzer  *gosec.Analyzer
 		runner    func(string, []testutils.CodeSample, ...option)
 		buildTags []string
+		tests     bool
 	)
 
 	BeforeEach(func() {
 		logger, _ = testutils.NewLogger()
 		config = gosec.NewConfig()
-		analyzer = gosec.NewAnalyzer(config, logger)
+		analyzer = gosec.NewAnalyzer(config, tests, logger)
 		runner = func(rule string, samples []testutils.CodeSample, options ...option) {
 			for _, o := range options {
 				config.SetGlobal(o.name, o.value)

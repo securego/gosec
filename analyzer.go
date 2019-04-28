@@ -66,10 +66,11 @@ type Analyzer struct {
 	issues      []*Issue
 	stats       *Metrics
 	errors      map[string][]Error // keys are file paths; values are the golang errors in those files
+	tests       bool
 }
 
 // NewAnalyzer builds a new analyzer.
-func NewAnalyzer(conf Config, logger *log.Logger) *Analyzer {
+func NewAnalyzer(conf Config, tests bool, logger *log.Logger) *Analyzer {
 	ignoreNoSec := false
 	if enabled, err := conf.IsGlobalEnabled(Nosec); err == nil {
 		ignoreNoSec = enabled
@@ -86,6 +87,7 @@ func NewAnalyzer(conf Config, logger *log.Logger) *Analyzer {
 		issues:      make([]*Issue, 0, 16),
 		stats:       &Metrics{},
 		errors:      make(map[string][]Error),
+		tests:       tests,
 	}
 }
 
@@ -123,7 +125,7 @@ func (gosec *Analyzer) pkgConfig(buildTags []string) *packages.Config {
 	return &packages.Config{
 		Mode:       packages.LoadSyntax,
 		BuildFlags: []string{tagsFlag},
-		Tests:      true,
+		Tests:      gosec.tests,
 	}
 }
 
@@ -143,6 +145,15 @@ func (gosec *Analyzer) load(pkgPath string, conf *packages.Config) ([]*packages.
 	var packageFiles []string
 	for _, filename := range basePackage.GoFiles {
 		packageFiles = append(packageFiles, path.Join(pkgPath, filename))
+	}
+
+	if gosec.tests {
+		testsFiles := []string{}
+		testsFiles = append(testsFiles, basePackage.TestGoFiles...)
+		testsFiles = append(testsFiles, basePackage.XTestGoFiles...)
+		for _, filename := range testsFiles {
+			packageFiles = append(packageFiles, path.Join(pkgPath, filename))
+		}
 	}
 
 	pkgs, err := packages.Load(conf, packageFiles...)

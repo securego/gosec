@@ -20,10 +20,11 @@ var _ = Describe("Analyzer", func() {
 		analyzer  *gosec.Analyzer
 		logger    *log.Logger
 		buildTags []string
+		tests     bool
 	)
 	BeforeEach(func() {
 		logger, _ = testutils.NewLogger()
-		analyzer = gosec.NewAnalyzer(nil, logger)
+		analyzer = gosec.NewAnalyzer(nil, tests, logger)
 	})
 
 	Context("when processing a package", func() {
@@ -226,7 +227,7 @@ var _ = Describe("Analyzer", func() {
 		// overwrite nosec option
 		nosecIgnoreConfig := gosec.NewConfig()
 		nosecIgnoreConfig.SetGlobal(gosec.Nosec, "true")
-		customAnalyzer := gosec.NewAnalyzer(nosecIgnoreConfig, logger)
+		customAnalyzer := gosec.NewAnalyzer(nosecIgnoreConfig, tests, logger)
 		customAnalyzer.LoadRules(rules.Generate(rules.NewRuleFilter(false, "G401")).Builders())
 
 		nosecPackage := testutils.NewTestPackage()

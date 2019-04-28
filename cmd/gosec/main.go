@@ -98,12 +98,14 @@ var (
 	// do not fail
 	flagNoFail = flag.Bool("no-fail", false, "Do not fail the scanning, even if issues were found")
 
+	// scan tests files
+	flagScanTests = flag.Bool("tests", false, "Scan tests files")
+
 	logger *log.Logger
 )
 
 // #nosec
 func usage() {
-
 	usageText := fmt.Sprintf(usageText, Version, GitTag, BuildDate)
 	fmt.Fprintln(os.Stderr, usageText)
 	fmt.Fprint(os.Stderr, "OPTIONS:\n\n")
@@ -198,7 +200,6 @@ func convertToScore(severity string) (gosec.Score, error) {
 }
 
 func main() {
-
 	// Setup usage description
 	flag.Usage = usage
 
@@ -247,7 +248,7 @@ func main() {
 	}
 
 	// Create the analyzer
-	analyzer := gosec.NewAnalyzer(config, logger)
+	analyzer := gosec.NewAnalyzer(config, *flagScanTests, logger)
 	analyzer.LoadRules(ruleDefinitions.Builders())
 
 	var vendor *regexp.Regexp
