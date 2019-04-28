@@ -44,9 +44,9 @@ var _ = Describe("Analyzer", func() {
 			pkg := testutils.NewTestPackage()
 			defer pkg.Close()
 			pkg.AddFile("wonky.go", `func main(){ println("forgot the package")}`)
-			pkg.Build()
-
-			err := analyzer.Process(buildTags, pkg.Path)
+			err := pkg.Build()
+			Expect(err).Should(HaveOccurred())
+			err = analyzer.Process(buildTags, pkg.Path)
 			Expect(err).Should(HaveOccurred())
 			Expect(err.Error()).Should(MatchRegexp(`expected 'package'`))
 
@@ -66,8 +66,9 @@ var _ = Describe("Analyzer", func() {
 				func bar(){
 					println("package has two files!")
 				}`)
-			pkg.Build()
-			err := analyzer.Process(buildTags, pkg.Path)
+			err := pkg.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, pkg.Path)
 			Expect(err).ShouldNot(HaveOccurred())
 			_, metrics, _ := analyzer.Report()
 			Expect(metrics.NumFiles).To(Equal(2))
@@ -87,9 +88,11 @@ var _ = Describe("Analyzer", func() {
 				package main
 				func bar(){
 				}`)
-			pkg1.Build()
-			pkg2.Build()
-			err := analyzer.Process(buildTags, pkg1.Path, pkg2.Path)
+			err := pkg1.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = pkg2.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, pkg1.Path, pkg2.Path)
 			Expect(err).ShouldNot(HaveOccurred())
 			_, metrics, _ := analyzer.Report()
 			Expect(metrics.NumFiles).To(Equal(2))
@@ -105,8 +108,10 @@ var _ = Describe("Analyzer", func() {
 			controlPackage := testutils.NewTestPackage()
 			defer controlPackage.Close()
 			controlPackage.AddFile("md5.go", source)
-			controlPackage.Build()
-			analyzer.Process(buildTags, controlPackage.Path)
+			err := controlPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, controlPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
 			controlIssues, _, _ := analyzer.Report()
 			Expect(controlIssues).Should(HaveLen(sample.Errors))
 
@@ -120,8 +125,9 @@ var _ = Describe("Analyzer", func() {
 				package main
 				func main()
 				}`)
-			pkg.Build()
-			err := analyzer.Process(buildTags, pkg.Path)
+			err := pkg.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, pkg.Path)
 			Expect(err).ShouldNot(HaveOccurred())
 			_, _, golangErrors := analyzer.Report()
 			keys := make([]string, len(golangErrors))
@@ -147,9 +153,10 @@ var _ = Describe("Analyzer", func() {
 			defer nosecPackage.Close()
 			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() // #nosec", 1)
 			nosecPackage.AddFile("md5.go", nosecSource)
-			nosecPackage.Build()
-
-			analyzer.Process(buildTags, nosecPackage.Path)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
 			nosecIssues, _, _ := analyzer.Report()
 			Expect(nosecIssues).Should(BeEmpty())
 		})
@@ -164,9 +171,10 @@ var _ = Describe("Analyzer", func() {
 			defer nosecPackage.Close()
 			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() // #nosec G401", 1)
 			nosecPackage.AddFile("md5.go", nosecSource)
-			nosecPackage.Build()
-
-			analyzer.Process(buildTags, nosecPackage.Path)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
 			nosecIssues, _, _ := analyzer.Report()
 			Expect(nosecIssues).Should(BeEmpty())
 		})
@@ -181,9 +189,10 @@ var _ = Describe("Analyzer", func() {
 			defer nosecPackage.Close()
 			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() // #nosec G301", 1)
 			nosecPackage.AddFile("md5.go", nosecSource)
-			nosecPackage.Build()
-
-			analyzer.Process(buildTags, nosecPackage.Path)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
 			nosecIssues, _, _ := analyzer.Report()
 			Expect(nosecIssues).Should(HaveLen(sample.Errors))
 		})
@@ -198,9 +207,12 @@ var _ = Describe("Analyzer", func() {
 			defer nosecPackage.Close()
 			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() // #nosec G301 G401", 1)
 			nosecPackage.AddFile("md5.go", nosecSource)
-			nosecPackage.Build()
-
-			analyzer.Process(buildTags, nosecPackage.Path)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
 			nosecIssues, _, _ := analyzer.Report()
 			Expect(nosecIssues).Should(BeEmpty())
 		})
@@ -212,7 +224,6 @@ var _ = Describe("Analyzer", func() {
 			pkg := testutils.NewTestPackage()
 			defer pkg.Close()
 			pkg.AddFile("tags.go", source)
-
 			buildTags = append(buildTags, "test")
 			err := analyzer.Process(buildTags, pkg.Path)
 			Expect(err).Should(HaveOccurred())
@@ -234,11 +245,34 @@ var _ = Describe("Analyzer", func() {
 		defer nosecPackage.Close()
 		nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() // #nosec", 1)
 		nosecPackage.AddFile("md5.go", nosecSource)
-		nosecPackage.Build()
-
-		customAnalyzer.Process(buildTags, nosecPackage.Path)
+		err := nosecPackage.Build()
+		Expect(err).ShouldNot(HaveOccurred())
+		err = customAnalyzer.Process(buildTags, nosecPackage.Path)
+		Expect(err).ShouldNot(HaveOccurred())
 		nosecIssues, _, _ := customAnalyzer.Report()
 		Expect(nosecIssues).Should(HaveLen(sample.Errors))
 
+	})
+
+	It("should be able to analyze Go test package", func() {
+		customAnalyzer := gosec.NewAnalyzer(nil, true, logger)
+		customAnalyzer.LoadRules(rules.Generate().Builders())
+		pkg := testutils.NewTestPackage()
+		defer pkg.Close()
+		pkg.AddFile("foo.go", `
+			package foo
+			func foo(){
+			}`)
+		pkg.AddFile("foo_test.go", `
+			package foo_test
+			import "testing"
+			func TestFoo(t *testing.T){
+			}`)
+		err := pkg.Build()
+		Expect(err).ShouldNot(HaveOccurred())
+		err = customAnalyzer.Process(buildTags, pkg.Path)
+		Expect(err).ShouldNot(HaveOccurred())
+		_, metrics, _ := customAnalyzer.Report()
+		Expect(metrics.NumFiles).To(Equal(3))
 	})
 })
