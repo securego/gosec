@@ -114,8 +114,11 @@ $ gosec -conf config.json .
 
 ### Excluding files
 
-gosec will ignore dependencies in your vendor directory any files
-that are not considered build artifacts by the compiler (so test files).
+gosec will ignore tests files and any dependencies in your vendor directory. The scanning of these artifacts can be enabled with the following flags:
+
+```bash
+gosec -tests -vendor ./...
+```
 
 ### Annotating code
 
