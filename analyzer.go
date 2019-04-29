@@ -175,7 +175,7 @@ func (gosec *Analyzer) check(pkg *packages.Package) {
 		gosec.context.Pkg = pkg.Types
 		gosec.context.PkgFiles = pkg.Syntax
 		gosec.context.Imports = NewImportTracker()
-		gosec.context.Imports.TrackPackages(gosec.context.Pkg.Imports()...)
+		gosec.context.Imports.TrackFile(file)
 		ast.Walk(gosec, file)
 		gosec.stats.NumFiles++
 		gosec.stats.NumLines += pkg.Fset.File(file.Pos()).LineCount()
