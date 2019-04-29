@@ -9,7 +9,7 @@ import (
 	"github.com/securego/gosec/testutils"
 )
 
-var _ = Describe("call list", func() {
+var _ = Describe("Call List", func() {
 	var (
 		calls gosec.CallList
 	)
