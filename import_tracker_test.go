@@ -50,28 +50,5 @@ var _ = Describe("Import Tracker", func() {
 			tracker.TrackFile(files[0])
 			Expect(tracker.Imported).Should(Equal(map[string]string{"fmt": "fmt"}))
 		})
-		It("should not parse the init imports from file", func() {
-			tracker := gosec.NewImportTracker()
-			pkg := testutils.NewTestPackage()
-			defer pkg.Close()
-			pkg.AddFile("foo.go", `
-				package foo
-				import  (
-				  "fmt"
-				  _ "os"
-				)
-				func foo() {
-				  fmt.Println()
-				}
-			`)
-			err := pkg.Build()
-			Expect(err).ShouldNot(HaveOccurred())
-			pkgs := pkg.Pkgs()
-			Expect(pkgs).Should(HaveLen(1))
-			files := pkgs[0].Syntax
-			Expect(files).Should(HaveLen(1))
-			tracker.TrackFile(files[1])
-			Expect(tracker.Imported).Should(Equal(map[string]string{"fmt": "fmt"}))
-		})
 	})
 })
