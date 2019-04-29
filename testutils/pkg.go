@@ -90,7 +90,6 @@ func (p *TestPackage) Build() error {
 		Tests: false,
 	}
 	pkgs, err := packages.Load(conf, packageFiles...)
-
 	if err != nil {
 		return err
 	}
@@ -139,4 +138,12 @@ func (p *TestPackage) Close() {
 			log.Fatal(err)
 		}
 	}
+}
+
+// Pkgs returns the current built packages
+func (p *TestPackage) Pkgs() []*packages.Package {
+	if p.build != nil {
+		return p.build.pkgs
+	}
+	return []*packages.Package{}
 }
