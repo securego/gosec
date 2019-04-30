@@ -1135,7 +1135,7 @@ func main() {
 }`}, 1}}
 	// SampleCode601 - Go build tags
 	SampleCode601 = []CodeSample{{[]string{`
-// +build test
+// +build tag
 
 package main
 func main() {

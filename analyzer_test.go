@@ -1,6 +1,7 @@
 package gosec_test
 
 import (
+	"errors"
 	"io/ioutil"
 	"log"
 	"os"
@@ -30,17 +31,18 @@ var _ = Describe("Analyzer", func() {
 
 	Context("when processing a package", func() {
 
-		It("should return an error if the package contains no Go files", func() {
+		It("should not report an error if the package contains no Go files", func() {
 			analyzer.LoadRules(rules.Generate().Builders())
 			dir, err := ioutil.TempDir("", "empty")
 			defer os.RemoveAll(dir)
 			Expect(err).ShouldNot(HaveOccurred())
 			err = analyzer.Process(buildTags, dir)
-			Expect(err).Should(HaveOccurred())
-			Expect(err.Error()).Should(MatchRegexp("no buildable Go source files"))
+			Expect(err).ShouldNot(HaveOccurred())
+			_, _, errors := analyzer.Report()
+			Expect(len(errors)).To(Equal(0))
 		})
 
-		It("should return an error if the package fails to build", func() {
+		It("should report an error if the package fails to build", func() {
 			analyzer.LoadRules(rules.Generate().Builders())
 			pkg := testutils.NewTestPackage()
 			defer pkg.Close()
@@ -48,9 +50,12 @@ var _ = Describe("Analyzer", func() {
 			err := pkg.Build()
 			Expect(err).Should(HaveOccurred())
 			err = analyzer.Process(buildTags, pkg.Path)
-			Expect(err).Should(HaveOccurred())
-			Expect(err.Error()).Should(MatchRegexp(`expected 'package'`))
-
+			Expect(err).ShouldNot(HaveOccurred())
+			_, _, errors := analyzer.Report()
+			Expect(len(errors)).To(Equal(1))
+			for _, ferr := range errors {
+				Expect(len(ferr)).To(Equal(1))
+			}
 		})
 
 		It("should be able to analyze multiple Go files", func() {
@@ -216,9 +221,9 @@ var _ = Describe("Analyzer", func() {
 			pkg := testutils.NewTestPackage()
 			defer pkg.Close()
 			pkg.AddFile("tags.go", source)
-			buildTags = append(buildTags, "test")
-			err := analyzer.Process(buildTags, pkg.Path)
-			Expect(err).Should(HaveOccurred())
+			tags := []string{"tag"}
+			err := analyzer.Process(tags, pkg.Path)
+			Expect(err).ShouldNot(HaveOccurred())
 		})
 
 		It("should process an empty package with test file", func() {
@@ -234,14 +239,6 @@ var _ = Describe("Analyzer", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			err = analyzer.Process(buildTags, pkg.Path)
 			Expect(err).ShouldNot(HaveOccurred())
-		})
-
-		It("should report an error when the package is empty", func() {
-			analyzer.LoadRules(rules.Generate().Builders())
-			pkg := testutils.NewTestPackage()
-			defer pkg.Close()
-			err := analyzer.Process(buildTags, pkg.Path)
-			Expect(err).Should(HaveOccurred())
 		})
 
 		It("should be possible to overwrite nosec comments, and report issues", func() {
@@ -413,6 +410,33 @@ var _ = Describe("Analyzer", func() {
 				Expect(ferr[1].Line).To(Equal(3))
 				Expect(ferr[1].Column).To(Equal(4))
 				Expect(ferr[1].Err).Should(MatchRegexp(`error2`))
+			}
+		})
+	})
+
+	Context("when appending errors", func() {
+		It("should skip error for non-buildable packages", func() {
+			analyzer.AppendError("test", errors.New(`loading file from package "pkg/test": no buildable Go source files in pkg/test`))
+			_, _, errors := analyzer.Report()
+			Expect(len(errors)).To(Equal(0))
+		})
+
+		It("should add a new error", func() {
+			pkg := &packages.Package{
+				Errors: []packages.Error{
+					packages.Error{
+						Pos: "file:1:2",
+						Msg: "build error",
+					},
+				},
+			}
+			err := analyzer.ParseErrors(pkg)
+			Expect(err).ShouldNot(HaveOccurred())
+			analyzer.AppendError("file", errors.New("file build error"))
+			_, _, errors := analyzer.Report()
+			Expect(len(errors)).To(Equal(1))
+			for _, ferr := range errors {
+				Expect(len(ferr)).To(Equal(2))
 			}
 		})
 	})
