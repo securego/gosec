@@ -199,7 +199,7 @@ func (gosec *Analyzer) parseErrors(pkg *packages.Package) error {
 		var err error
 		var line, column int
 		var errorMsg string
-		if len(infoErr) == 3 {
+		if len(infoErr) == 4 {
 			if line, err = strconv.Atoi(infoErr[1]); err != nil {
 				return fmt.Errorf("parsing line: %v", err)
 			}
@@ -207,8 +207,10 @@ func (gosec *Analyzer) parseErrors(pkg *packages.Package) error {
 				return fmt.Errorf("parsing column: %v", err)
 			}
 			errorMsg = strings.TrimSpace(infoErr[3])
-		} else {
+		} else if len(infoErr) > 1 {
 			errorMsg = strings.TrimSpace(infoErr[1])
+		} else {
+			return fmt.Errorf("cannot parse error %q", infoErr)
 		}
 		newErr := NewError(line, column, errorMsg)
 		if errSlice, ok := gosec.errors[filePath]; ok {
