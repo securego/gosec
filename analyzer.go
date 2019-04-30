@@ -107,7 +107,7 @@ func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error
 	for _, pkgPath := range packagePaths {
 		pkgs, err := gosec.load(pkgPath, config)
 		if err != nil {
-			return fmt.Errorf("loading pkg dir %q: %v", pkgPath, err)
+			gosec.AppendError(pkgPath, err)
 		}
 		for _, pkg := range pkgs {
 			if pkg.Name != "" {
@@ -124,10 +124,14 @@ func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error
 }
 
 func (gosec *Analyzer) pkgConfig(buildTags []string) *packages.Config {
-	tagsFlag := "-tags=" + strings.Join(buildTags, " ")
+	flags := []string{}
+	if len(buildTags) > 0 {
+		tagsFlag := "-tags=" + strings.Join(buildTags, " ")
+		flags = append(flags, tagsFlag)
+	}
 	return &packages.Config{
 		Mode:       packages.LoadSyntax,
-		BuildFlags: []string{tagsFlag},
+		BuildFlags: flags,
 		Tests:      gosec.tests,
 	}
 }
@@ -142,7 +146,7 @@ func (gosec *Analyzer) load(pkgPath string, conf *packages.Config) ([]*packages.
 	gosec.logger.Println("Import directory:", abspath)
 	basePackage, err := build.Default.ImportDir(pkgPath, build.ImportComment)
 	if err != nil {
-		return []*packages.Package{}, err
+		return []*packages.Package{}, fmt.Errorf("importing dir %q: %v", pkgPath, err)
 	}
 
 	var packageFiles []string
@@ -161,7 +165,7 @@ func (gosec *Analyzer) load(pkgPath string, conf *packages.Config) ([]*packages.
 
 	pkgs, err := packages.Load(conf, packageFiles...)
 	if err != nil {
-		return []*packages.Package{}, err
+		return []*packages.Package{}, fmt.Errorf("loading files from package %q: %v", pkgPath, err)
 	}
 	return pkgs, nil
 }
@@ -216,6 +220,22 @@ func (gosec *Analyzer) ParseErrors(pkg *packages.Package) error {
 		}
 	}
 	return nil
+}
+
+// AppendError appends an error to the file errors
+func (gosec *Analyzer) AppendError(file string, err error) {
+	// Do not report the error for empty packages (e.g. files excluded from build with a tag
+	r := regexp.MustCompile(`no buildable Go source files in`)
+	if r.MatchString(err.Error()) {
+		return
+	}
+	errors := []Error{}
+	if ferrs, ok := gosec.errors[file]; ok {
+		errors = ferrs
+	}
+	ferr := NewError(0, 0, err.Error())
+	errors = append(errors, *ferr)
+	gosec.errors[file] = errors
 }
 
 // ignore a node (and sub-tree) if it is tagged with a "#nosec" comment
