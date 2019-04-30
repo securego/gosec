@@ -8,6 +8,7 @@ import (
 
 	"github.com/securego/gosec"
 	"github.com/securego/gosec/rules"
+	"golang.org/x/tools/go/packages"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -234,6 +235,7 @@ var _ = Describe("Analyzer", func() {
 			err = analyzer.Process(buildTags, pkg.Path)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
+
 		It("should report an error when the package is empty", func() {
 			analyzer.LoadRules(rules.Generate().Builders())
 			pkg := testutils.NewTestPackage()
@@ -241,51 +243,177 @@ var _ = Describe("Analyzer", func() {
 			err := analyzer.Process(buildTags, pkg.Path)
 			Expect(err).Should(HaveOccurred())
 		})
-	})
 
-	It("should be possible to overwrite nosec comments, and report issues", func() {
-		// Rule for MD5 weak crypto usage
-		sample := testutils.SampleCodeG401[0]
-		source := sample.Code[0]
+		It("should be possible to overwrite nosec comments, and report issues", func() {
+			// Rule for MD5 weak crypto usage
+			sample := testutils.SampleCodeG401[0]
+			source := sample.Code[0]
 
-		// overwrite nosec option
-		nosecIgnoreConfig := gosec.NewConfig()
-		nosecIgnoreConfig.SetGlobal(gosec.Nosec, "true")
-		customAnalyzer := gosec.NewAnalyzer(nosecIgnoreConfig, tests, logger)
-		customAnalyzer.LoadRules(rules.Generate(rules.NewRuleFilter(false, "G401")).Builders())
+			// overwrite nosec option
+			nosecIgnoreConfig := gosec.NewConfig()
+			nosecIgnoreConfig.SetGlobal(gosec.Nosec, "true")
+			customAnalyzer := gosec.NewAnalyzer(nosecIgnoreConfig, tests, logger)
+			customAnalyzer.LoadRules(rules.Generate(rules.NewRuleFilter(false, "G401")).Builders())
 
-		nosecPackage := testutils.NewTestPackage()
-		defer nosecPackage.Close()
-		nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() // #nosec", 1)
-		nosecPackage.AddFile("md5.go", nosecSource)
-		err := nosecPackage.Build()
-		Expect(err).ShouldNot(HaveOccurred())
-		err = customAnalyzer.Process(buildTags, nosecPackage.Path)
-		Expect(err).ShouldNot(HaveOccurred())
-		nosecIssues, _, _ := customAnalyzer.Report()
-		Expect(nosecIssues).Should(HaveLen(sample.Errors))
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() // #nosec", 1)
+			nosecPackage.AddFile("md5.go", nosecSource)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = customAnalyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			nosecIssues, _, _ := customAnalyzer.Report()
+			Expect(nosecIssues).Should(HaveLen(sample.Errors))
 
-	})
+		})
 
-	It("should be able to analyze Go test package", func() {
-		customAnalyzer := gosec.NewAnalyzer(nil, true, logger)
-		customAnalyzer.LoadRules(rules.Generate().Builders())
-		pkg := testutils.NewTestPackage()
-		defer pkg.Close()
-		pkg.AddFile("foo.go", `
+		It("should be able to analyze Go test package", func() {
+			customAnalyzer := gosec.NewAnalyzer(nil, true, logger)
+			customAnalyzer.LoadRules(rules.Generate().Builders())
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("foo.go", `
 			package foo
 			func foo(){
 			}`)
-		pkg.AddFile("foo_test.go", `
+			pkg.AddFile("foo_test.go", `
 			package foo_test
 			import "testing"
 			func TestFoo(t *testing.T){
 			}`)
-		err := pkg.Build()
-		Expect(err).ShouldNot(HaveOccurred())
-		err = customAnalyzer.Process(buildTags, pkg.Path)
-		Expect(err).ShouldNot(HaveOccurred())
-		_, metrics, _ := customAnalyzer.Report()
-		Expect(metrics.NumFiles).To(Equal(3))
+			err := pkg.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = customAnalyzer.Process(buildTags, pkg.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			_, metrics, _ := customAnalyzer.Report()
+			Expect(metrics.NumFiles).To(Equal(3))
+		})
+	})
+
+	Context("when parsing errors from a package", func() {
+
+		It("should return no error when the error list is empty", func() {
+			pkg := &packages.Package{}
+			err := analyzer.ParseErrors(pkg)
+			Expect(err).ShouldNot(HaveOccurred())
+		})
+
+		It("should properly parse the errors", func() {
+			pkg := &packages.Package{
+				Errors: []packages.Error{
+					packages.Error{
+						Pos: "file:1:2",
+						Msg: "build error",
+					},
+				},
+			}
+			err := analyzer.ParseErrors(pkg)
+			Expect(err).ShouldNot(HaveOccurred())
+			_, _, errors := analyzer.Report()
+			Expect(len(errors)).To(Equal(1))
+			for _, ferr := range errors {
+				Expect(len(ferr)).To(Equal(1))
+				Expect(ferr[0].Line).To(Equal(1))
+				Expect(ferr[0].Column).To(Equal(2))
+				Expect(ferr[0].Err).Should(MatchRegexp(`build error`))
+			}
+		})
+
+		It("should properly parse the errors without line and column", func() {
+			pkg := &packages.Package{
+				Errors: []packages.Error{
+					packages.Error{
+						Pos: "file",
+						Msg: "build error",
+					},
+				},
+			}
+			err := analyzer.ParseErrors(pkg)
+			Expect(err).ShouldNot(HaveOccurred())
+			_, _, errors := analyzer.Report()
+			Expect(len(errors)).To(Equal(1))
+			for _, ferr := range errors {
+				Expect(len(ferr)).To(Equal(1))
+				Expect(ferr[0].Line).To(Equal(0))
+				Expect(ferr[0].Column).To(Equal(0))
+				Expect(ferr[0].Err).Should(MatchRegexp(`build error`))
+			}
+		})
+
+		It("should properly parse the errors without column", func() {
+			pkg := &packages.Package{
+				Errors: []packages.Error{
+					packages.Error{
+						Pos: "file",
+						Msg: "build error",
+					},
+				},
+			}
+			err := analyzer.ParseErrors(pkg)
+			Expect(err).ShouldNot(HaveOccurred())
+			_, _, errors := analyzer.Report()
+			Expect(len(errors)).To(Equal(1))
+			for _, ferr := range errors {
+				Expect(len(ferr)).To(Equal(1))
+				Expect(ferr[0].Line).To(Equal(0))
+				Expect(ferr[0].Column).To(Equal(0))
+				Expect(ferr[0].Err).Should(MatchRegexp(`build error`))
+			}
+		})
+
+		It("should return error when line cannot be parsed", func() {
+			pkg := &packages.Package{
+				Errors: []packages.Error{
+					packages.Error{
+						Pos: "file:line",
+						Msg: "build error",
+					},
+				},
+			}
+			err := analyzer.ParseErrors(pkg)
+			Expect(err).Should(HaveOccurred())
+		})
+
+		It("should return error when column cannot be parsed", func() {
+			pkg := &packages.Package{
+				Errors: []packages.Error{
+					packages.Error{
+						Pos: "file:1:column",
+						Msg: "build error",
+					},
+				},
+			}
+			err := analyzer.ParseErrors(pkg)
+			Expect(err).Should(HaveOccurred())
+		})
+
+		It("should append  error to the same file", func() {
+			pkg := &packages.Package{
+				Errors: []packages.Error{
+					packages.Error{
+						Pos: "file:1:2",
+						Msg: "error1",
+					},
+					packages.Error{
+						Pos: "file:3:4",
+						Msg: "error2",
+					},
+				},
+			}
+			err := analyzer.ParseErrors(pkg)
+			Expect(err).ShouldNot(HaveOccurred())
+			_, _, errors := analyzer.Report()
+			Expect(len(errors)).To(Equal(1))
+			for _, ferr := range errors {
+				Expect(len(ferr)).To(Equal(2))
+				Expect(ferr[0].Line).To(Equal(1))
+				Expect(ferr[0].Column).To(Equal(2))
+				Expect(ferr[0].Err).Should(MatchRegexp(`error1`))
+				Expect(ferr[1].Line).To(Equal(3))
+				Expect(ferr[1].Column).To(Equal(4))
+				Expect(ferr[1].Err).Should(MatchRegexp(`error2`))
+			}
+		})
 	})
 })
