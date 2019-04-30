@@ -228,6 +228,21 @@ var _ = Describe("Analyzer", func() {
 			err := analyzer.Process(buildTags, pkg.Path)
 			Expect(err).Should(HaveOccurred())
 		})
+
+		It("should process an empty package", func() {
+			analyzer.LoadRules(rules.Generate().Builders())
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("foo_test.go", `
+                package tests
+			    import "testing"
+			    func TestFoo(t *testing.T){
+			    }`)
+			err := pkg.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, pkg.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+		})
 	})
 
 	It("should be possible to overwrite nosec comments, and report issues", func() {
