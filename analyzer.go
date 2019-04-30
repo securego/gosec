@@ -224,7 +224,7 @@ func (gosec *Analyzer) ParseErrors(pkg *packages.Package) error {
 
 // AppendError appends an error to the file errors
 func (gosec *Analyzer) AppendError(file string, err error) {
-	// Do not report the error for empty packages (e.g. files excluded from build with a tag
+	// Do not report the error for empty packages (e.g. files excluded from build with a tag)
 	r := regexp.MustCompile(`no buildable Go source files in`)
 	if r.MatchString(err.Error()) {
 		return
