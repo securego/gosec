@@ -111,7 +111,7 @@ func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error
 		}
 		for _, pkg := range pkgs {
 			if pkg.Name != "" {
-				err := gosec.parseErrors(pkg)
+				err := gosec.ParseErrors(pkg)
 				if err != nil {
 					return fmt.Errorf("parsing errors in pkg %q: %v", pkg.Name, err)
 				}
@@ -185,39 +185,34 @@ func (gosec *Analyzer) check(pkg *packages.Package) {
 	}
 }
 
-func (gosec *Analyzer) parseErrors(pkg *packages.Package) error {
+// ParseErrors parses the errors from given package
+func (gosec *Analyzer) ParseErrors(pkg *packages.Package) error {
 	if len(pkg.Errors) == 0 {
 		return nil
 	}
 	for _, pkgErr := range pkg.Errors {
-		// infoErr contains information about the error
-		// at index 0 is the file path
-		// at index 1 is the line; index 2 is for column
-		// at index 3 is the actual error
-		infoErr := strings.Split(pkgErr.Error(), ":")
-		filePath := infoErr[0]
+		parts := strings.Split(pkgErr.Pos, ":")
+		file := parts[0]
 		var err error
-		var line, column int
-		var errorMsg string
-		if len(infoErr) > 3 {
-			if line, err = strconv.Atoi(infoErr[1]); err != nil {
+		var line int
+		if len(parts) > 1 {
+			if line, err = strconv.Atoi(parts[1]); err != nil {
 				return fmt.Errorf("parsing line: %v", err)
 			}
-			if column, err = strconv.Atoi(infoErr[2]); err != nil {
+		}
+		var column int
+		if len(parts) > 2 {
+			if column, err = strconv.Atoi(parts[2]); err != nil {
 				return fmt.Errorf("parsing column: %v", err)
 			}
-			errorMsg = strings.TrimSpace(infoErr[3])
-		} else if len(infoErr) > 1 {
-			errorMsg = strings.TrimSpace(infoErr[1])
-		} else {
-			return fmt.Errorf("cannot parse error %q", infoErr)
 		}
-		newErr := NewError(line, column, errorMsg)
-		if errSlice, ok := gosec.errors[filePath]; ok {
-			gosec.errors[filePath] = append(errSlice, *newErr)
+		msg := strings.TrimSpace(pkgErr.Msg)
+		newErr := NewError(line, column, msg)
+		if errSlice, ok := gosec.errors[file]; ok {
+			gosec.errors[file] = append(errSlice, *newErr)
 		} else {
 			errSlice = []Error{}
-			gosec.errors[filePath] = append(errSlice, *newErr)
+			gosec.errors[file] = append(errSlice, *newErr)
 		}
 	}
 	return nil
