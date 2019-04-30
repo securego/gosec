@@ -22,7 +22,6 @@ func NewError(line, column int, err string) *Error {
 
 // sortErros sorts the golang erros by line
 func sortErrors(allErrors map[string][]Error) {
-
 	for _, errors := range allErrors {
 		sort.Slice(errors, func(i, j int) bool {
 			if errors[i].Line == errors[j].Line {

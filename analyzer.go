@@ -16,6 +16,7 @@
 package gosec
 
 import (
+	"fmt"
 	"go/ast"
 	"go/build"
 	"go/token"
@@ -106,14 +107,16 @@ func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error
 	for _, pkgPath := range packagePaths {
 		pkgs, err := gosec.load(pkgPath, config)
 		if err != nil {
-			return err
+			return fmt.Errorf("loading pkg dir %q: %v", pkgPath, err)
 		}
 		for _, pkg := range pkgs {
-			err := gosec.parseErrors(pkg)
-			if err != nil {
-				return err
+			if pkg.Name != "" {
+				err := gosec.parseErrors(pkg)
+				if err != nil {
+					return fmt.Errorf("parsing errors in pkg %q: %v", pkg.Name, err)
+				}
+				gosec.check(pkg)
 			}
-			gosec.check(pkg)
 		}
 	}
 	sortErrors(gosec.errors)
@@ -193,19 +196,25 @@ func (gosec *Analyzer) parseErrors(pkg *packages.Package) error {
 		// at index 3 is the actual error
 		infoErr := strings.Split(pkgErr.Error(), ":")
 		filePath := infoErr[0]
-		line, err := strconv.Atoi(infoErr[1])
-		if err != nil {
-			return err
+		var err error
+		var line, column int
+		var errorMsg string
+		if len(infoErr) == 3 {
+			if line, err = strconv.Atoi(infoErr[1]); err != nil {
+				return fmt.Errorf("parsing line: %v", err)
+			}
+			if column, err = strconv.Atoi(infoErr[2]); err != nil {
+				return fmt.Errorf("parsing column: %v", err)
+			}
+			errorMsg = strings.TrimSpace(infoErr[3])
+		} else {
+			errorMsg = strings.TrimSpace(infoErr[1])
 		}
-		column, err := strconv.Atoi(infoErr[2])
-		if err != nil {
-			return err
-		}
-		newErr := NewError(line, column, strings.TrimSpace(infoErr[3]))
+		newErr := NewError(line, column, errorMsg)
 		if errSlice, ok := gosec.errors[filePath]; ok {
 			gosec.errors[filePath] = append(errSlice, *newErr)
 		} else {
-			errSlice = make([]Error, 0)
+			errSlice = []Error{}
 			gosec.errors[filePath] = append(errSlice, *newErr)
 		}
 	}
