@@ -99,8 +99,6 @@ var _ = Describe("Analyzer", func() {
 		})
 
 		It("should find errors when nosec is not in use", func() {
-
-			// Rule for MD5 weak crypto usage
 			sample := testutils.SampleCodeG401[0]
 			source := sample.Code[0]
 			analyzer.LoadRules(rules.Generate(rules.NewRuleFilter(false, "G401")).Builders())
@@ -117,7 +115,7 @@ var _ = Describe("Analyzer", func() {
 
 		})
 
-		It("should report for Golang errors and invalid files", func() {
+		It("should report Go build errors and invalid files", func() {
 			analyzer.LoadRules(rules.Generate().Builders())
 			pkg := testutils.NewTestPackage()
 			defer pkg.Close()
@@ -129,22 +127,17 @@ var _ = Describe("Analyzer", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			err = analyzer.Process(buildTags, pkg.Path)
 			Expect(err).ShouldNot(HaveOccurred())
-			_, _, golangErrors := analyzer.Report()
-			keys := make([]string, len(golangErrors))
-			i := 0
-			for key := range golangErrors {
-				keys[i] = key
-				i++
+			_, _, errors := analyzer.Report()
+			Expect(len(errors)).To(Equal(1))
+			for _, ferr := range errors {
+				Expect(len(ferr)).To(Equal(1))
+				Expect(ferr[0].Line).To(Equal(4))
+				Expect(ferr[0].Column).To(Equal(5))
+				Expect(ferr[0].Err).Should(MatchRegexp(`expected declaration, found '}'`))
 			}
-			fileErr := golangErrors[keys[0]]
-			Expect(len(fileErr)).To(Equal(1))
-			Expect(fileErr[0].Line).To(Equal(4))
-			Expect(fileErr[0].Column).To(Equal(5))
-			Expect(fileErr[0].Err).Should(MatchRegexp(`expected declaration, found '}'`))
 		})
 
 		It("should not report errors when a nosec comment is present", func() {
-			// Rule for MD5 weak crypto usage
 			sample := testutils.SampleCodeG401[0]
 			source := sample.Code[0]
 			analyzer.LoadRules(rules.Generate(rules.NewRuleFilter(false, "G401")).Builders())
@@ -180,7 +173,6 @@ var _ = Describe("Analyzer", func() {
 		})
 
 		It("should report errors when an exclude comment is present for a different rule", func() {
-			// Rule for MD5 weak crypto usage
 			sample := testutils.SampleCodeG401[0]
 			source := sample.Code[0]
 			analyzer.LoadRules(rules.Generate(rules.NewRuleFilter(false, "G401")).Builders())
@@ -198,7 +190,6 @@ var _ = Describe("Analyzer", func() {
 		})
 
 		It("should not report errors when an exclude comment is present for multiple rules, including the correct rule", func() {
-			// Rule for MD5 weak crypto usage
 			sample := testutils.SampleCodeG401[0]
 			source := sample.Code[0]
 			analyzer.LoadRules(rules.Generate(rules.NewRuleFilter(false, "G401")).Builders())
