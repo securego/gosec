@@ -231,7 +231,7 @@ var _ = Describe("Analyzer", func() {
 			pkg := testutils.NewTestPackage()
 			defer pkg.Close()
 			pkg.AddFile("foo_test.go", `
-                package tests
+				package tests
 			    import "testing"
 			    func TestFoo(t *testing.T){
 			    }`)
@@ -271,14 +271,14 @@ var _ = Describe("Analyzer", func() {
 			pkg := testutils.NewTestPackage()
 			defer pkg.Close()
 			pkg.AddFile("foo.go", `
-			package foo
-			func foo(){
-			}`)
+				package foo
+				func foo(){
+				}`)
 			pkg.AddFile("foo_test.go", `
-			package foo_test
-			import "testing"
-			func TestFoo(t *testing.T){
-			}`)
+				package foo_test
+				import "testing"
+				func TestFoo(t *testing.T){
+				}`)
 			err := pkg.Build()
 			Expect(err).ShouldNot(HaveOccurred())
 			err = customAnalyzer.Process(buildTags, pkg.Path)
