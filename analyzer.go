@@ -231,11 +231,11 @@ func (gosec *Analyzer) ignore(n ast.Node) ([]string, bool) {
 				gosec.stats.NumNosec++
 
 				// Pull out the specific rules that are listed to be ignored.
-				re := regexp.MustCompile("(G\\d{3})")
+				re := regexp.MustCompile(`(G\d{3})`)
 				matches := re.FindAllStringSubmatch(group.Text(), -1)
 
 				// If no specific rules were given, ignore everything.
-				if matches == nil || len(matches) == 0 {
+				if len(matches) == 0 {
 					return nil, true
 				}
 
@@ -269,7 +269,7 @@ func (gosec *Analyzer) Visit(n ast.Node) ast.Visitor {
 	}
 
 	// Now create the union of exclusions.
-	ignores := make(map[string]bool, 0)
+	ignores := map[string]bool{}
 	if len(gosec.context.Ignores) > 0 {
 		for k, v := range gosec.context.Ignores[0] {
 			ignores[k] = v
