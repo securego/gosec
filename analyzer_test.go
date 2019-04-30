@@ -229,7 +229,7 @@ var _ = Describe("Analyzer", func() {
 			Expect(err).Should(HaveOccurred())
 		})
 
-		It("should process an empty package", func() {
+		It("should process an empty package with test file", func() {
 			analyzer.LoadRules(rules.Generate().Builders())
 			pkg := testutils.NewTestPackage()
 			defer pkg.Close()
@@ -242,6 +242,13 @@ var _ = Describe("Analyzer", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			err = analyzer.Process(buildTags, pkg.Path)
 			Expect(err).ShouldNot(HaveOccurred())
+		})
+		It("should report an error when the package is empty", func() {
+			analyzer.LoadRules(rules.Generate().Builders())
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			err := analyzer.Process(buildTags, pkg.Path)
+			Expect(err).Should(HaveOccurred())
 		})
 	})
 
