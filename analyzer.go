@@ -199,7 +199,7 @@ func (gosec *Analyzer) parseErrors(pkg *packages.Package) error {
 		var err error
 		var line, column int
 		var errorMsg string
-		if len(infoErr) == 4 {
+		if len(infoErr) > 3 {
 			if line, err = strconv.Atoi(infoErr[1]); err != nil {
 				return fmt.Errorf("parsing line: %v", err)
 			}
