@@ -41,7 +41,9 @@ gosec --help
 
 ### Local Installation
 
-`$ go get github.com/securego/gosec/cmd/gosec
+```bash
+go get github.com/securego/gosec/cmd/gosec
+```
 
 ## Usage
 
