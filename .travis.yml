@@ -6,12 +6,8 @@ go:
   - tip
 
 install:
-  - go get -u golang.org/x/lint/golint
-  - go get -u github.com/onsi/ginkgo/ginkgo
-  - go get -u github.com/onsi/gomega
   - go get -u golang.org/x/crypto/ssh
   - go get -u github.com/lib/pq
-  - go get -v -t ./...
   - export PATH=$PATH:$HOME/gopath/bin
   - export GO111MODULE=on
 
