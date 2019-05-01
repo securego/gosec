@@ -11,6 +11,7 @@ default:
 	$(MAKE) build
 
 test: build fmt lint sec
+	$(GO_NOMOD) get -u github.com/onsi/ginkgo/ginkgo
 	ginkgo -r -v
 
 fmt:
