@@ -18,16 +18,12 @@ fmt:
 	@FORMATTED=`$(GO) fmt ./...`
 	@([[ ! -z "$(FORMATTED)" ]] && printf "Fixed unformatted files:\n$(FORMATTED)") || true
 
-
-lint: $(GOLINT)
+lint: 
 	@echo "LINTING"
-	$(GOLINT) -set_exit_status ./... 
+	$(GO_NOMOD) get -u golang.org/x/lint/golint
+	golint -set_exit_status ./... 
 	@echo "VETTING"
 	$(GO) vet ./... 
-
-GOLINT := $(GOPATH)/bin/golint
-$(GOLINT):
-	$(GO_NOMOD) get -u golang.org/x/lint/golint
 
 sec: 
 	@echo "SECURITY SCANNING"
