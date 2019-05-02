@@ -41,7 +41,9 @@ gosec --help
 
 ### Local Installation
 
-`$ go get github.com/securego/gosec/cmd/gosec
+```bash
+go get github.com/securego/gosec/cmd/gosec
+```
 
 ## Usage
 
@@ -174,15 +176,6 @@ $ gosec -fmt=json -out=results.json *.go
 ```
 
 ## Development
-
-### Prerequisites
-
-Install dep according to the instructions here: https://github.com/golang/dep
-Install the latest version of golint:
-
-```bash
-go get -u golang.org/x/lint/golint
-```
 
 ### Build
 

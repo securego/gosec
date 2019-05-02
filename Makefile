@@ -4,16 +4,31 @@ FMT_CMD = $(gofmt -s -l -w $(find . -type f -name '*.go' -not -path './vendor/*'
 IMAGE_REPO = securego
 BUILDFLAGS := '-w -s'
 CGO_ENABLED = 0
+GO := GO111MODULE=on go
+GO_NOMOD :=GO111MODULE=off go
 
 default:
 	$(MAKE) build
 
-test: build
-	test -z '$(FMT_CMD)'
-	go vet $(go list ./... | grep -v /vendor/)
-	golint -set_exit_status $(shell go list ./... | grep -v vendor)
-	./$(BIN) ./...
+test: build fmt lint sec
+	$(GO_NOMOD) get -u github.com/onsi/ginkgo/ginkgo
 	ginkgo -r -v
+
+fmt:
+	@echo "FORMATTING"
+	@FORMATTED=`$(GO) fmt ./...`
+	@([[ ! -z "$(FORMATTED)" ]] && printf "Fixed unformatted files:\n$(FORMATTED)") || true
+
+lint: 
+	@echo "LINTING"
+	$(GO_NOMOD) get -u golang.org/x/lint/golint
+	golint -set_exit_status ./... 
+	@echo "VETTING"
+	$(GO) vet ./... 
+
+sec: 
+	@echo "SECURITY SCANNING"
+	./$(BIN) ./...
 
 test-coverage:
 	go test -race -coverprofile=coverage.txt -covermode=atomic
