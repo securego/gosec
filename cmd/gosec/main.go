@@ -95,6 +95,9 @@ var (
 	// fail by severity
 	flagSeverity = flag.String("severity", "low", "Fail the scanning for issues with the given or higher severity. Valid options are: low, medium, high")
 
+	// fail by confidence
+	flagConfidence = flag.String("confidence", "low", "Fail the scanning for issues with the given or higher confidence. Valid options are: low, medium, high")
+
 	// do not fail
 	flagNoFail = flag.Bool("no-fail", false, "Do not fail the scanning, even if issues were found")
 
@@ -199,6 +202,26 @@ func convertToScore(severity string) (gosec.Score, error) {
 	}
 }
 
+func filterIssuesBySeverity(issues []*gosec.Issue, severity gosec.Score) []*gosec.Issue {
+	result := []*gosec.Issue{}
+	for _, issue := range issues {
+		if issue.Severity >= severity {
+			result = append(result, issue)
+		}
+	}
+	return result
+}
+
+func filterIssuesByConfidence(issues []*gosec.Issue, confidence gosec.Score) []*gosec.Issue {
+	result := []*gosec.Issue{}
+	for _, issue := range issues {
+		if issue.Confidence >= confidence {
+			result = append(result, issue)
+		}
+	}
+	return result
+}
+
 func main() {
 	// Setup usage description
 	flag.Usage = usage
@@ -232,10 +255,15 @@ func main() {
 
 	failSeverity, err := convertToScore(*flagSeverity)
 	if err != nil {
-		logger.Fatal(err)
+		logger.Fatalf("Invalid severity value: %v", err)
 	}
 
-	// Load config
+	failConfidence, err := convertToScore(*flagConfidence)
+	if err != nil {
+		logger.Fatalf("Invalid confidence value: %v", err)
+	}
+
+	// Load the analyzer configuration
 	config, err := loadConfig(*flagConfig)
 	if err != nil {
 		logger.Fatal(err)
@@ -284,16 +312,12 @@ func main() {
 		sortIssues(issues)
 	}
 
-	issuesFound := false
-	for _, issue := range issues {
-		if issue.Severity >= failSeverity {
-			issuesFound = true
-			break
-		}
-	}
+	// Filter the issues by severity and confidence
+	issues = filterIssuesBySeverity(issues, failSeverity)
+	issues = filterIssuesByConfidence(issues, failConfidence)
 
 	// Exit quietly if nothing was found
-	if !issuesFound && *flagQuiet {
+	if len(issues) == 0 && *flagQuiet {
 		os.Exit(0)
 	}
 
@@ -307,7 +331,7 @@ func main() {
 	logWriter.Close() // #nosec
 
 	// Do we have an issue? If so exit 1 unless NoFail is set
-	if (issuesFound || len(errors) != 0) && !*flagNoFail {
+	if (len(issues) > 0 || len(errors) > 0) && !*flagNoFail {
 		os.Exit(1)
 	}
 }
