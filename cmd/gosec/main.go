@@ -93,10 +93,10 @@ var (
 	flagScanVendor = flag.Bool("vendor", false, "Scan the vendor folder")
 
 	// fail by severity
-	flagSeverity = flag.String("severity", "low", "Fail the scanning for issues with the given or higher severity. Valid options are: low, medium, high")
+	flagSeverity = flag.String("severity", "low", "Filter out the issues with a lower severity than the given value. Valid options are: low, medium, high")
 
 	// fail by confidence
-	flagConfidence = flag.String("confidence", "low", "Fail the scanning for issues with the given or higher confidence. Valid options are: low, medium, high")
+	flagConfidence = flag.String("confidence", "low", "Filter out the issues with a lower confidence than the given value. Valid options are: low, medium, high")
 
 	// do not fail
 	flagNoFail = flag.Bool("no-fail", false, "Do not fail the scanning, even if issues were found")
