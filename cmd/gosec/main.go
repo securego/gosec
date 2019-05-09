@@ -202,20 +202,10 @@ func convertToScore(severity string) (gosec.Score, error) {
 	}
 }
 
-func filterIssuesBySeverity(issues []*gosec.Issue, severity gosec.Score) []*gosec.Issue {
+func filterIssues(issues []*gosec.Issue, severity gosec.Score, confidence gosec.Score) []*gosec.Issue {
 	result := []*gosec.Issue{}
 	for _, issue := range issues {
-		if issue.Severity >= severity {
-			result = append(result, issue)
-		}
-	}
-	return result
-}
-
-func filterIssuesByConfidence(issues []*gosec.Issue, confidence gosec.Score) []*gosec.Issue {
-	result := []*gosec.Issue{}
-	for _, issue := range issues {
-		if issue.Confidence >= confidence {
+		if issue.Severity >= severity && issue.Confidence >= confidence {
 			result = append(result, issue)
 		}
 	}
@@ -313,8 +303,7 @@ func main() {
 	}
 
 	// Filter the issues by severity and confidence
-	issues = filterIssuesBySeverity(issues, failSeverity)
-	issues = filterIssuesByConfidence(issues, failConfidence)
+	issues = filterIssues(issues, failSeverity, failConfidence)
 
 	// Exit quietly if nothing was found
 	if len(issues) == 0 && *flagQuiet {
