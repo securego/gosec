@@ -104,6 +104,9 @@ var (
 	// scan tests files
 	flagScanTests = flag.Bool("tests", false, "Scan tests files")
 
+	// print version and quit with exit code 0
+	flagVersion = flag.Bool("version", false, "Print version and quit with exit code 0")
+
 	logger *log.Logger
 )
 
@@ -218,6 +221,11 @@ func main() {
 
 	// Parse command line arguments
 	flag.Parse()
+
+	if *flagVersion {
+		fmt.Printf("Version: %s\nGit tag: %s\nBuild date: %s\n", Version, GitTag, BuildDate)
+		os.Exit(0)
+	}
 
 	// Ensure at least one file was specified
 	if flag.NArg() == 0 {
