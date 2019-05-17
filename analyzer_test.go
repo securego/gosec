@@ -277,14 +277,18 @@ var _ = Describe("Analyzer", func() {
 			pkg.AddFile("foo_test.go", `
 				package foo_test
 				import "testing"
+				func test() error {
+				  return nil
+				}
 				func TestFoo(t *testing.T){
+					test()
 				}`)
 			err := pkg.Build()
 			Expect(err).ShouldNot(HaveOccurred())
 			err = customAnalyzer.Process(buildTags, pkg.Path)
 			Expect(err).ShouldNot(HaveOccurred())
-			_, metrics, _ := customAnalyzer.Report()
-			Expect(metrics.NumFiles).To(Equal(3))
+			issues, _, _ := customAnalyzer.Report()
+			Expect(issues).Should(HaveLen(1))
 		})
 	})
 
