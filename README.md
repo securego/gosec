@@ -1,4 +1,3 @@
-
 # gosec - Golang Security Checker
 
 Inspects source code for security problems by scanning the Go AST.
@@ -11,6 +10,9 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License [here](http://www.apache.org/licenses/LICENSE-2.0).
 
+
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fsecurego%2Fgosec.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fsecurego%2Fgosec?ref=badge_large)
+
 ## Project status
 
 [![Build Status](https://travis-ci.org/securego/gosec.svg?branch=master)](https://travis-ci.org/securego/gosec)
@@ -21,6 +23,7 @@ You may obtain a copy of the License [here](http://www.apache.org/licenses/LICEN
 [![Downloads](https://img.shields.io/github/downloads/securego/gosec/total.svg)](https://github.com/securego/gosec/releases)
 [![Docker Pulls](https://img.shields.io/docker/pulls/securego/gosec.svg)](https://hub.docker.com/r/securego/gosec/tags)
 [![Slack](http://securego.herokuapp.com/badge.svg)](http://securego.herokuapp.com)
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fsecurego%2Fgosec.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fsecurego%2Fgosec?ref=badge_shield)
 
 ## Install
 
