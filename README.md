@@ -36,6 +36,14 @@ curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | s
 # In alpine linux (as it does not come with curl by default)
 wget -O - -q https://raw.githubusercontent.com/securego/gosec/master/install.sh | sh -s vX.Y.Z
 
+# If you want to use the checksums provided on the "Releases" page
+# then you will have to download a tar.gz file for your operating system instead of a binary file
+wget https://github.com/securego/gosec/releases/download/vX.Y.Z/gosec_vX.Y.Z_OS.tar.gz
+
+# The file will be in the current folder where you run the command 
+# and you can check the checksum like this
+echo "<check sum from the check sum file>  gosec_vX.Y.Z_OS.tar.gz" | sha256sum -c -
+
 gosec --help
 ```
 
