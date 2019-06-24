@@ -318,7 +318,11 @@ func main() {
 		os.Exit(0)
 	}
 
-	rootPath := packages[0]
+	rootPath, err := gosec.RootPath(flag.Args()[0])
+	if err != nil {
+		logger.Fatalf("Failed to get the root path of the project: %s", err)
+	}
+
 	// Create output report
 	if err := saveOutput(*flagOutput, *flagFormat, rootPath, issues, metrics, errors); err != nil {
 		logger.Fatal(err)

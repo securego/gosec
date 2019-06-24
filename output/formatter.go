@@ -105,19 +105,32 @@ func CreateReport(w io.Writer, format, rootPath string, issues []*gosec.Issue, m
 }
 
 func reportSonarqube(rootPath string, w io.Writer, data *reportInfo) error {
+	si, err := convertToSonarIssues(rootPath, data)
+	if err != nil {
+		return err
+	}
+	raw, err := json.MarshalIndent(si, "", "\t")
+	if err != nil {
+		return err
+	}
+	_, err = w.Write(raw)
+	return err
+}
+
+func convertToSonarIssues(rootPath string, data *reportInfo) (sonarIssues, error) {
 	var si sonarIssues
 	for _, issue := range data.Issues {
 		lines := strings.Split(issue.Line, "-")
 
 		startLine, err := strconv.Atoi(lines[0])
 		if err != nil {
-			return err
+			return si, err
 		}
 		endLine := startLine
 		if len(lines) > 1 {
 			endLine, err = strconv.Atoi(lines[1])
 			if err != nil {
-				return err
+				return si, err
 			}
 		}
 		s := sonarIssue{
@@ -134,12 +147,7 @@ func reportSonarqube(rootPath string, w io.Writer, data *reportInfo) error {
 		}
 		si.SonarIssues = append(si.SonarIssues, s)
 	}
-	raw, err := json.MarshalIndent(si, "", "\t")
-	if err != nil {
-		return err
-	}
-	_, err = w.Write(raw)
-	return err
+	return si, nil
 }
 
 func reportJSON(w io.Writer, data *reportInfo) error {
