@@ -171,19 +171,27 @@ func loadRules(include, exclude string) rules.RuleList {
 	return rules.Generate(filters...)
 }
 
-func saveOutput(filename, format, rootPath string, issues []*gosec.Issue, metrics *gosec.Metrics, errors map[string][]gosec.Error) error {
+func saveOutput(filename, format string, paths []string, issues []*gosec.Issue, metrics *gosec.Metrics, errors map[string][]gosec.Error) error {
+	rootPaths := []string{}
+	for _, path := range paths {
+		rootPath, err := gosec.RootPath(path)
+		if err != nil {
+			return fmt.Errorf("failed to get the root path of the projects: %s", err)
+		}
+		rootPaths = append(rootPaths, rootPath)
+	}
 	if filename != "" {
 		outfile, err := os.Create(filename)
 		if err != nil {
 			return err
 		}
 		defer outfile.Close()
-		err = output.CreateReport(outfile, format, rootPath, issues, metrics, errors)
+		err = output.CreateReport(outfile, format, rootPaths, issues, metrics, errors)
 		if err != nil {
 			return err
 		}
 	} else {
-		err := output.CreateReport(os.Stdout, format, rootPath, issues, metrics, errors)
+		err := output.CreateReport(os.Stdout, format, rootPaths, issues, metrics, errors)
 		if err != nil {
 			return err
 		}
@@ -318,13 +326,8 @@ func main() {
 		os.Exit(0)
 	}
 
-	rootPath, err := gosec.RootPath(flag.Args()[0])
-	if err != nil {
-		logger.Fatalf("Failed to get the root path of the project: %s", err)
-	}
-
 	// Create output report
-	if err := saveOutput(*flagOutput, *flagFormat, rootPath, issues, metrics, errors); err != nil {
+	if err := saveOutput(*flagOutput, *flagFormat, flag.Args(), issues, metrics, errors); err != nil {
 		logger.Fatal(err)
 	}
 
