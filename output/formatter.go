@@ -76,7 +76,7 @@ type reportInfo struct {
 
 // CreateReport generates a report based for the supplied issues and metrics given
 // the specified format. The formats currently accepted are: json, csv, html and text.
-func CreateReport(w io.Writer, format, rootPath string, issues []*gosec.Issue, metrics *gosec.Metrics, errors map[string][]gosec.Error) error {
+func CreateReport(w io.Writer, format string, rootPaths []string, issues []*gosec.Issue, metrics *gosec.Metrics, errors map[string][]gosec.Error) error {
 	data := &reportInfo{
 		Errors: errors,
 		Issues: issues,
@@ -97,35 +97,58 @@ func CreateReport(w io.Writer, format, rootPath string, issues []*gosec.Issue, m
 	case "text":
 		err = reportFromPlaintextTemplate(w, text, data)
 	case "sonarqube":
-		err = reportSonarqube(rootPath, w, data)
+		err = reportSonarqube(rootPaths, w, data)
 	default:
 		err = reportFromPlaintextTemplate(w, text, data)
 	}
 	return err
 }
 
-func reportSonarqube(rootPath string, w io.Writer, data *reportInfo) error {
+func reportSonarqube(rootPaths []string, w io.Writer, data *reportInfo) error {
+	si, err := convertToSonarIssues(rootPaths, data)
+	if err != nil {
+		return err
+	}
+	raw, err := json.MarshalIndent(si, "", "\t")
+	if err != nil {
+		return err
+	}
+	_, err = w.Write(raw)
+	return err
+}
+
+func convertToSonarIssues(rootPaths []string, data *reportInfo) (sonarIssues, error) {
 	var si sonarIssues
 	for _, issue := range data.Issues {
-		lines := strings.Split(issue.Line, "-")
+		var sonarFilePath string
+		for _, rootPath := range rootPaths {
+			if strings.HasPrefix(issue.File, rootPath) {
+				sonarFilePath = strings.Replace(issue.File, rootPath+"/", "", 1)
+			}
+		}
+		if sonarFilePath == "" {
+			continue
+		}
 
+		lines := strings.Split(issue.Line, "-")
 		startLine, err := strconv.Atoi(lines[0])
 		if err != nil {
-			return err
+			return si, err
 		}
 		endLine := startLine
 		if len(lines) > 1 {
 			endLine, err = strconv.Atoi(lines[1])
 			if err != nil {
-				return err
+				return si, err
 			}
 		}
+
 		s := sonarIssue{
 			EngineID: "gosec",
 			RuleID:   issue.RuleID,
 			PrimaryLocation: location{
 				Message:   issue.What,
-				FilePath:  strings.Replace(issue.File, rootPath+"/", "", 1),
+				FilePath:  sonarFilePath,
 				TextRange: textRange{StartLine: startLine, EndLine: endLine},
 			},
 			Type:          "VULNERABILITY",
@@ -134,12 +157,7 @@ func reportSonarqube(rootPath string, w io.Writer, data *reportInfo) error {
 		}
 		si.SonarIssues = append(si.SonarIssues, s)
 	}
-	raw, err := json.MarshalIndent(si, "", "\t")
-	if err != nil {
-		return err
-	}
-	_, err = w.Write(raw)
-	return err
+	return si, nil
 }
 
 func reportJSON(w io.Writer, data *reportInfo) error {

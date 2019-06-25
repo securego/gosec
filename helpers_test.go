@@ -3,6 +3,7 @@ package gosec_test
 import (
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"regexp"
 
 	. "github.com/onsi/ginkgo"
@@ -51,6 +52,25 @@ var _ = Describe("Helpers", func() {
 			paths, err := gosec.PackagePaths(nested+"/...", nil)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(paths).Should(BeEmpty())
+		})
+	})
+
+	Context("when getting the root path", func() {
+		It("should return the absolute path from relative path", func() {
+			base := "test"
+			cwd, err := os.Getwd()
+			Expect(err).ShouldNot(HaveOccurred())
+			root, err := gosec.RootPath(base)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(root).Should(Equal(filepath.Join(cwd, base)))
+		})
+		It("should retrun the absolute path from ellipsis path", func() {
+			base := "test"
+			cwd, err := os.Getwd()
+			Expect(err).ShouldNot(HaveOccurred())
+			root, err := gosec.RootPath(filepath.Join(base, "..."))
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(root).Should(Equal(filepath.Join(cwd, base)))
 		})
 	})
 })

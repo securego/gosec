@@ -387,3 +387,11 @@ func PackagePaths(root string, exclude *regexp.Regexp) ([]string, error) {
 	}
 	return result, nil
 }
+
+// RootPath returns the absolute root path of a scan
+func RootPath(root string) (string, error) {
+	if strings.HasSuffix(root, "...") {
+		root = root[0 : len(root)-3]
+	}
+	return filepath.Abs(root)
+}
