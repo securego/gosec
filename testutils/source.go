@@ -232,7 +232,20 @@ func main() {
 }`, `
 package main
 func dummy(){}
-`}, 0, gosec.NewConfig()}}
+`}, 0, gosec.NewConfig()}, {[]string{`
+package main
+import (
+	"io/ioutil"
+	"os"
+	"fmt"
+)
+func a() {
+	fmt.Println("a")
+	ioutil.WriteFile("foo.txt", []byte("bar"), os.ModeExclusive)
+}
+func main() {
+	a()
+}`}, 0, gosec.Config{"G104": map[string]interface{}{"io/ioutil": []interface{}{"WriteFile"}}}}}
 
 	// SampleCodeG104Audit finds errors that aren't being handled in audit mode
 	SampleCodeG104Audit = []CodeSample{
