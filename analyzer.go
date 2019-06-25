@@ -334,4 +334,5 @@ func (gosec *Analyzer) Reset() {
 	gosec.context = &Context{}
 	gosec.issues = make([]*Issue, 0, 16)
 	gosec.stats = &Metrics{}
+	gosec.ruleset = NewRuleSet()
 }
