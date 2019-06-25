@@ -97,6 +97,11 @@ func (gosec *Analyzer) SetConfig(conf Config) {
 	gosec.config = conf
 }
 
+// Config returns the current configuration
+func (gosec *Analyzer) Config() Config {
+	return gosec.config
+}
+
 // LoadRules instantiates all the rules to be used when analyzing source
 // packages
 func (gosec *Analyzer) LoadRules(ruleDefinitions map[string]RuleBuilder) {
