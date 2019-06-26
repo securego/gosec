@@ -92,6 +92,16 @@ func NewAnalyzer(conf Config, tests bool, logger *log.Logger) *Analyzer {
 	}
 }
 
+// SetConfig upates the analyzer configuration
+func (gosec *Analyzer) SetConfig(conf Config) {
+	gosec.config = conf
+}
+
+// Config returns the current configuration
+func (gosec *Analyzer) Config() Config {
+	return gosec.config
+}
+
 // LoadRules instantiates all the rules to be used when analyzing source
 // packages
 func (gosec *Analyzer) LoadRules(ruleDefinitions map[string]RuleBuilder) {
@@ -329,4 +339,5 @@ func (gosec *Analyzer) Reset() {
 	gosec.context = &Context{}
 	gosec.issues = make([]*Issue, 0, 16)
 	gosec.stats = &Metrics{}
+	gosec.ruleset = NewRuleSet()
 }

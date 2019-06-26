@@ -121,6 +121,16 @@ A number of global settings can be provided in a configuration file as follows:
 # Run with a global configuration file
 $ gosec -conf config.json .
 ```
+Also some rules accept configuration. For instance on rule `G104`, it is possible to define packages along with a list 
+of functions which will be skipped when auditing the not checked errors:
+
+```JSON
+{
+    "G104": {
+        "io/ioutil": ["WriteFile"]
+    }
+}
+```
 
 ### Excluding files
 

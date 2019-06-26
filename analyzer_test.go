@@ -416,6 +416,22 @@ var _ = Describe("Analyzer", func() {
 				Expect(ferr[1].Err).Should(MatchRegexp(`error2`))
 			}
 		})
+
+		It("should set the config", func() {
+			config := gosec.NewConfig()
+			config["test"] = "test"
+			analyzer.SetConfig(config)
+			found := analyzer.Config()
+			Expect(config).To(Equal(found))
+		})
+
+		It("should reset the analyzer", func() {
+			analyzer.Reset()
+			issues, metrics, errors := analyzer.Report()
+			Expect(issues).To(BeEmpty())
+			Expect(*metrics).To(Equal(gosec.Metrics{}))
+			Expect(errors).To(BeEmpty())
+		})
 	})
 
 	Context("when appending errors", func() {

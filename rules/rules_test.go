@@ -12,18 +12,13 @@ import (
 	"github.com/securego/gosec/testutils"
 )
 
-type option struct {
-	name  gosec.GlobalOption
-	value string
-}
-
 var _ = Describe("gosec rules", func() {
 
 	var (
 		logger    *log.Logger
 		config    gosec.Config
 		analyzer  *gosec.Analyzer
-		runner    func(string, []testutils.CodeSample, ...option)
+		runner    func(string, []testutils.CodeSample)
 		buildTags []string
 		tests     bool
 	)
@@ -32,13 +27,11 @@ var _ = Describe("gosec rules", func() {
 		logger, _ = testutils.NewLogger()
 		config = gosec.NewConfig()
 		analyzer = gosec.NewAnalyzer(config, tests, logger)
-		runner = func(rule string, samples []testutils.CodeSample, options ...option) {
-			for _, o := range options {
-				config.SetGlobal(o.name, o.value)
-			}
-			analyzer.LoadRules(rules.Generate(rules.NewRuleFilter(false, rule)).Builders())
+		runner = func(rule string, samples []testutils.CodeSample) {
 			for n, sample := range samples {
 				analyzer.Reset()
+				analyzer.SetConfig(sample.Config)
+				analyzer.LoadRules(rules.Generate(rules.NewRuleFilter(false, rule)).Builders())
 				pkg := testutils.NewTestPackage()
 				defer pkg.Close()
 				for i, code := range sample.Code {
@@ -75,7 +68,7 @@ var _ = Describe("gosec rules", func() {
 		})
 
 		It("should detect errors not being checked in audit mode", func() {
-			runner("G104", testutils.SampleCodeG104Audit, option{name: gosec.Audit, value: "enabled"})
+			runner("G104", testutils.SampleCodeG104Audit)
 		})
 
 		It("should detect of big.Exp function", func() {
