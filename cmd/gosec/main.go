@@ -320,6 +320,9 @@ func main() {
 
 	// Filter the issues by severity and confidence
 	issues = filterIssues(issues, failSeverity, failConfidence)
+	if metrics.NumFound != len(issues) {
+		metrics.NumFound = len(issues)
+	}
 
 	// Exit quietly if nothing was found
 	if len(issues) == 0 && *flagQuiet {
