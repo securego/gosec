@@ -117,8 +117,8 @@ func reportSonarqube(rootPaths []string, w io.Writer, data *reportInfo) error {
 	return err
 }
 
-func convertToSonarIssues(rootPaths []string, data *reportInfo) (sonarIssues, error) {
-	var si sonarIssues
+func convertToSonarIssues(rootPaths []string, data *reportInfo) (*sonarIssues, error) {
+	si := &sonarIssues{[]sonarIssue{}}
 	for _, issue := range data.Issues {
 		var sonarFilePath string
 		for _, rootPath := range rootPaths {
