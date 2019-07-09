@@ -32,7 +32,7 @@ var _ = Describe("Formatter", func() {
 					NumFound: 0,
 				},
 			}
-			want := sonarIssues{
+			want := &sonarIssues{
 				SonarIssues: []sonarIssue{
 					{
 						EngineID: "gosec",
@@ -56,7 +56,7 @@ var _ = Describe("Formatter", func() {
 
 			issues, err := convertToSonarIssues([]string{rootPath}, data)
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(issues).To(Equal(want))
+			Expect(*issues).To(Equal(*want))
 		})
 
 		It("it should parse the report info with files in subfolders", func() {
@@ -80,7 +80,7 @@ var _ = Describe("Formatter", func() {
 					NumFound: 0,
 				},
 			}
-			want := sonarIssues{
+			want := &sonarIssues{
 				SonarIssues: []sonarIssue{
 					{
 						EngineID: "gosec",
@@ -104,7 +104,7 @@ var _ = Describe("Formatter", func() {
 
 			issues, err := convertToSonarIssues([]string{rootPath}, data)
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(issues).To(Equal(want))
+			Expect(*issues).To(Equal(*want))
 		})
 		It("it should not parse the report info for files from other projects", func() {
 			data := &reportInfo{
@@ -128,7 +128,7 @@ var _ = Describe("Formatter", func() {
 				},
 			}
 			want := sonarIssues{
-				SonarIssues: nil,
+				SonarIssues: [],
 			}
 
 			rootPath := "/home/src/project2"
@@ -168,7 +168,7 @@ var _ = Describe("Formatter", func() {
 					NumFound: 0,
 				},
 			}
-			want := sonarIssues{
+			want := &sonarIssues{
 				SonarIssues: []sonarIssue{
 					{
 						EngineID: "gosec",
@@ -207,7 +207,7 @@ var _ = Describe("Formatter", func() {
 
 			issues, err := convertToSonarIssues(rootPaths, data)
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(issues).To(Equal(want))
+			Expect(*issues).To(Equal(*want))
 		})
 	})
 })
