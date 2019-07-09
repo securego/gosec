@@ -127,7 +127,7 @@ var _ = Describe("Formatter", func() {
 					NumFound: 0,
 				},
 			}
-			want := sonarIssues{
+			want := &sonarIssues{
 				SonarIssues: []sonarIssue{},
 			}
 
