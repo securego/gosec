@@ -128,14 +128,14 @@ var _ = Describe("Formatter", func() {
 				},
 			}
 			want := sonarIssues{
-				SonarIssues: [],
+				SonarIssues: []sonarIssue{},
 			}
 
 			rootPath := "/home/src/project2"
 
 			issues, err := convertToSonarIssues([]string{rootPath}, data)
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(issues).To(Equal(want))
+			Expect(*issues).To(Equal(*want))
 		})
 
 		It("it should parse the report info for multiple projects projects", func() {
