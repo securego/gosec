@@ -65,6 +65,9 @@ var (
 	// format output
 	flagFormat = flag.String("fmt", "text", "Set output format. Valid options are: json, yaml, csv, junit-xml, html, sonarqube, or text")
 
+	// #nosec alternative tag
+	flagAlternativeNoSec = flag.String("nosec-tag", "", "Set an alternative string for #nosec. Some examples: #dontanalyze, #falsepositive")
+
 	// output file
 	flagOutput = flag.String("out", "", "Set output file for results")
 
@@ -147,6 +150,9 @@ func loadConfig(configFile string) (gosec.Config, error) {
 	}
 	if *flagIgnoreNoSec {
 		config.SetGlobal(gosec.Nosec, "true")
+	}
+	if *flagAlternativeNoSec != "" {
+		config.SetGlobal(gosec.NoSecAlternative, *flagAlternativeNoSec)
 	}
 	return config, nil
 }
