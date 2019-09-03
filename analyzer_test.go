@@ -265,6 +265,54 @@ var _ = Describe("Analyzer", func() {
 
 		})
 
+		It("should be possible to change the default #nosec directive to another one", func() {
+			// Rule for MD5 weak crypto usage
+			sample := testutils.SampleCodeG401[0]
+			source := sample.Code[0]
+
+			// overwrite nosec option
+			nosecIgnoreConfig := gosec.NewConfig()
+			nosecIgnoreConfig.SetGlobal(gosec.NoSecAlternative, "#falsePositive")
+			customAnalyzer := gosec.NewAnalyzer(nosecIgnoreConfig, tests, logger)
+			customAnalyzer.LoadRules(rules.Generate(rules.NewRuleFilter(false, "G401")).Builders())
+
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() // #falsePositive", 1)
+			nosecPackage.AddFile("md5.go", nosecSource)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = customAnalyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			nosecIssues, _, _ := customAnalyzer.Report()
+			Expect(nosecIssues).Should(HaveLen(0))
+
+		})
+
+		It("should not ignore vulnerabilities", func() {
+			// Rule for MD5 weak crypto usage
+			sample := testutils.SampleCodeG401[0]
+			source := sample.Code[0]
+
+			// overwrite nosec option
+			nosecIgnoreConfig := gosec.NewConfig()
+			nosecIgnoreConfig.SetGlobal(gosec.NoSecAlternative, "#falsePositive")
+			customAnalyzer := gosec.NewAnalyzer(nosecIgnoreConfig, tests, logger)
+			customAnalyzer.LoadRules(rules.Generate(rules.NewRuleFilter(false, "G401")).Builders())
+
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() // #nosec", 1)
+			nosecPackage.AddFile("md5.go", nosecSource)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = customAnalyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			nosecIssues, _, _ := customAnalyzer.Report()
+			Expect(nosecIssues).Should(HaveLen(sample.Errors))
+
+		})
+
 		It("should be able to analyze Go test package", func() {
 			customAnalyzer := gosec.NewAnalyzer(nil, true, logger)
 			customAnalyzer.LoadRules(rules.Generate().Builders())
