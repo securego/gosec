@@ -43,7 +43,7 @@ var _ = Describe("Helpers", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			exclude, err := regexp.Compile(`([\\/])?vendor([\\/])?`)
 			Expect(err).ShouldNot(HaveOccurred())
-			paths, err := gosec.PackagePaths(dir+"/...", exclude)
+			paths, err := gosec.PackagePaths(dir+"/...", []*regexp.Regexp{exclude})
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(paths).Should(Equal([]string{dir}))
 		})
@@ -71,6 +71,24 @@ var _ = Describe("Helpers", func() {
 			root, err := gosec.RootPath(filepath.Join(base, "..."))
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(root).Should(Equal(filepath.Join(cwd, base)))
+		})
+	})
+
+	Context("when excluding the dirs", func() {
+		It("should create a proper regexp", func() {
+			r := gosec.ExcludedDirsRegExp([]string{"test"})
+			Expect(len(r)).Should(Equal(1))
+			match := r[0].MatchString("/home/go/src/project/test/pkg")
+			Expect(match).Should(BeTrue())
+			match = r[0].MatchString("/home/go/src/project/vendor/pkg")
+			Expect(match).Should(BeFalse())
+		})
+
+		It("should create no regexp when dir list is empty", func() {
+			r := gosec.ExcludedDirsRegExp(nil)
+			Expect(len(r)).Should(Equal(0))
+			r = gosec.ExcludedDirsRegExp([]string{})
+			Expect(len(r)).Should(Equal(0))
 		})
 	})
 })

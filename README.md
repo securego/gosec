@@ -137,13 +137,21 @@ of functions which will be skipped when auditing the not checked errors:
 gosec will fetch automatically the dependencies of the code which is being analyzed when go modules are turned on (e.g.` GO111MODULE=on`). If this is not the case,
 the dependencies need to be explicitly downloaded by running the `go get -d` command before the scan.
 
+### Excluding test files and folders
 
-### Excluding files
+gosec will ignore test files across all packages and any dependencies in your vendor directory. 
 
-gosec will ignore tests files and any dependencies in your vendor directory. The scanning of these artifacts can be enabled with the following flags:
+The scanning of test files can be enabled with the following flag:
 
 ```bash
-gosec -tests -vendor ./...
+
+gosec -tests ./...
+```
+
+Also additional folders can be excluded as follows:
+
+```bash
+ gosec -exclude-dir=rules -exclude-dir=cmd ./...
 ```
 
 ### Annotating code

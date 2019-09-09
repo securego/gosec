@@ -360,7 +360,7 @@ func FindVarIdentities(n *ast.BinaryExpr, c *Context) ([]*ast.Ident, bool) {
 }
 
 // PackagePaths returns a slice with all packages path at given root directory
-func PackagePaths(root string, exclude *regexp.Regexp) ([]string, error) {
+func PackagePaths(root string, excludes []*regexp.Regexp) ([]string, error) {
 	if strings.HasSuffix(root, "...") {
 		root = root[0 : len(root)-3]
 	} else {
@@ -370,7 +370,7 @@ func PackagePaths(root string, exclude *regexp.Regexp) ([]string, error) {
 	err := filepath.Walk(root, func(path string, f os.FileInfo, err error) error {
 		if filepath.Ext(path) == ".go" {
 			path = filepath.Dir(path)
-			if exclude != nil && exclude.MatchString(path) {
+			if isExcluded(path, excludes) {
 				return nil
 			}
 			paths[path] = true
@@ -386,6 +386,30 @@ func PackagePaths(root string, exclude *regexp.Regexp) ([]string, error) {
 		result = append(result, path)
 	}
 	return result, nil
+}
+
+// isExcluded checks if a string matches any of the exclusion regexps
+func isExcluded(str string, excludes []*regexp.Regexp) bool {
+	if excludes == nil {
+		return false
+	}
+	for _, exclude := range excludes {
+		if exclude != nil && exclude.MatchString(str) {
+			return true
+		}
+	}
+	return false
+}
+
+// ExcludedDirsRegExp builds the regexps for a list of excluded dirs provided as strings
+func ExcludedDirsRegExp(excludedDirs []string) []*regexp.Regexp {
+	var exps []*regexp.Regexp
+	for _, excludedDir := range excludedDirs {
+		str := fmt.Sprintf(`([\\/])?%s([\\/])?`, excludedDir)
+		r := regexp.MustCompile(str)
+		exps = append(exps, r)
+	}
+	return exps
 }
 
 // RootPath returns the absolute root path of a scan
