@@ -71,16 +71,12 @@ var _ = Describe("gosec rules", func() {
 			runner("G104", testutils.SampleCodeG104Audit)
 		})
 
-		It("should detect of big.Exp function", func() {
+		It("should detect of ssh.InsecureIgnoreHostKey function", func() {
 			runner("G105", testutils.SampleCodeG105)
 		})
 
-		It("should detect of ssh.InsecureIgnoreHostKey function", func() {
-			runner("G106", testutils.SampleCodeG106)
-		})
-
 		It("should detect ssrf via http requests with variable url", func() {
-			runner("G107", testutils.SampleCodeG107)
+			runner("G106", testutils.SampleCodeG106)
 		})
 
 		It("should detect sql injection via format strings", func() {
