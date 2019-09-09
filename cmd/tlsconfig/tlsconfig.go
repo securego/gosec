@@ -35,7 +35,7 @@ type ServerSideTLSJson struct {
 // Configuration represents configurations levels declared by the Mozilla server-side-tls
 // see https://wiki.mozilla.org/Security/Server_Side_TLS
 type Configuration struct {
-	OpenSSLCiphersuites   string   `json:"openssl_ciphersuites"`
+	OpenSSLCiphersuites   []string `json:"openssl_ciphersuites"`
 	Ciphersuites          []string `json:"ciphersuites"`
 	TLSVersions           []string `json:"tls_versions"`
 	TLSCurves             []string `json:"tls_curves"`
@@ -47,6 +47,9 @@ type Configuration struct {
 	ECDHParamSize         float64  `json:"ecdh_param_size"`
 	HstsMinAge            float64  `json:"hsts_min_age"`
 	OldestClients         []string `json:"oldest_clients"`
+	OCSPStample           bool     `json:"ocsp_staple"`
+	ServerPreferedOrder   bool     `json:"server_preferred_order"`
+	MaxCertLifespan       float64  `json:"maximum_certificate_lifespan"`
 }
 
 type goCipherConfiguration struct {
@@ -108,6 +111,8 @@ func mapTLSVersions(tlsVersions []string) []int {
 	var versions []int
 	for _, tlsVersion := range tlsVersions {
 		switch tlsVersion {
+		case "TLSv1.3":
+			versions = append(versions, tls.VersionTLS13)
 		case "TLSv1.2":
 			versions = append(versions, tls.VersionTLS12)
 		case "TLSv1.1":
