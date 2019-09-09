@@ -36,7 +36,7 @@ type ServerSideTLSJson struct {
 // see https://wiki.mozilla.org/Security/Server_Side_TLS
 type Configuration struct {
 	OpenSSLCiphersuites   []string `json:"openssl_ciphersuites"`
-	Ciphersuites          []string `json:"ciphersuites"`
+	OpenSSLCiphers        []string `json:"openssl_ciphers"`
 	TLSVersions           []string `json:"tls_versions"`
 	TLSCurves             []string `json:"tls_curves"`
 	CertificateTypes      []string `json:"certificate_types"`
@@ -87,7 +87,10 @@ func getGoCipherConfig(name string, sstls ServerSideTLSJson) (goCipherConfigurat
 		return cipherConf, fmt.Errorf("TLS configuration '%s' not found", name)
 	}
 
-	for _, cipherName := range conf.Ciphersuites {
+	// These ciphers are already defined in IANA format
+	cipherConf.Ciphers = append(cipherConf.Ciphers, conf.OpenSSLCiphersuites...)
+
+	for _, cipherName := range conf.OpenSSLCiphers {
 		cipherSuite, ok := constants.CipherSuites[cipherName]
 		if !ok {
 			log.Printf("'%s' cipher is not available in crypto/tls package\n", cipherName)
