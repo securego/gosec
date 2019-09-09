@@ -60,10 +60,6 @@ paths, and produce reports in different formats. By default all rules will be
 run against the supplied input files. To recursively scan from the current
 directory you can supply './...' as the input argument.
 
-### Selecting rules
-
-By default gosec will run all rules against the supplied file paths. It is however possible to select a subset of rules to run via the '-include=' flag,
-or to specify a set of rules to explicitly exclude using the '-exclude=' flag.
 
 ### Available rules
 
@@ -71,7 +67,6 @@ or to specify a set of rules to explicitly exclude using the '-exclude=' flag.
 - G102: Bind to all interfaces
 - G103: Audit the use of unsafe block
 - G104: Audit errors not checked
-- G105: Audit the use of math/big.Int.Exp
 - G106: Audit the use of ssh.InsecureIgnoreHostKey
 - G107: Url provided to HTTP request as taint input
 - G201: SQL query construction using format string
@@ -92,6 +87,15 @@ or to specify a set of rules to explicitly exclude using the '-exclude=' flag.
 - G503: Import blacklist: crypto/rc4
 - G504: Import blacklist: net/http/cgi
 - G505: Import blacklist: crypto/sha1
+
+### Retired rules
+
+- G105: Audit the use of math/big.Int.Exp - [CVE is fixed](https://github.com/golang/go/issues/15184)
+
+### Selecting rules
+
+By default gosec will run all rules against the supplied file paths. It is however possible to select a subset of rules to run via the '-include=' flag,
+or to specify a set of rules to explicitly exclude using the '-exclude=' flag.
 
 ```bash
 # Run a specific set of rules
