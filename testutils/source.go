@@ -304,22 +304,6 @@ func main() {
 package main
 func dummy(){}
 `}, 0, gosec.Config{gosec.Globals: map[gosec.GlobalOption]string{gosec.Audit: "enabled"}}}}
-	// SampleCodeG105 - bignum overflow
-	SampleCodeG105 = []CodeSample{{[]string{`
-package main
-import (
-	"math/big"
-)
-func main() {
-	z := new(big.Int)
-	x := new(big.Int)
-	x = x.SetUint64(2)
-	y := new(big.Int)
-    y = y.SetUint64(4)
-   	m := new(big.Int)
-    m = m.SetUint64(0)
-    z = z.Exp(x, y, m)
-}`}, 1, gosec.NewConfig()}}
 
 	// SampleCodeG106 - ssh InsecureIgnoreHostKey
 	SampleCodeG106 = []CodeSample{{[]string{`
