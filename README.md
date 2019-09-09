@@ -218,7 +218,7 @@ make test
 Make sure you have installed the [goreleaser](https://github.com/goreleaser/goreleaser) tool and then you can release gosec as follows:
 
 ```bash
-git tag 1.0.0
+git tag v1.0.0
 export GITHUB_TOKEN=<YOUR GITHUB TOKEN>
 make release
 ```
@@ -233,7 +233,7 @@ gosec analyzes Go source code to look for common programming mistakes that
 can lead to security problems.
 
 VERSION: 1.0.0
-GIT TAG: 1.0.0
+GIT TAG: v1.0.0
 BUILD DATE: 2018-04-27T12:41:38Z
 ```
 
