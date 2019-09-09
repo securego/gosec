@@ -20,7 +20,6 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"regexp"
 	"sort"
 	"strings"
 
@@ -58,6 +57,17 @@ USAGE:
 `
 )
 
+type arrayFlags []string
+
+func (a *arrayFlags) String() string {
+	return strings.Join(*a, " ")
+}
+
+func (a *arrayFlags) Set(value string) error {
+	*a = append(*a, value)
+	return nil
+}
+
 var (
 	// #nosec flag
 	flagIgnoreNoSec = flag.Bool("nosec", false, "Ignores #nosec comments when set")
@@ -92,9 +102,6 @@ var (
 	// go build tags
 	flagBuildTags = flag.String("tags", "", "Comma separated list of build tags")
 
-	// scan the vendor folder
-	flagScanVendor = flag.Bool("vendor", false, "Scan the vendor folder")
-
 	// fail by severity
 	flagSeverity = flag.String("severity", "low", "Filter out the issues with a lower severity than the given value. Valid options are: low, medium, high")
 
@@ -109,6 +116,9 @@ var (
 
 	// print version and quit with exit code 0
 	flagVersion = flag.Bool("version", false, "Print version and quit with exit code 0")
+
+	// exlude the folders from scan
+	flagDirsExclude arrayFlags
 
 	logger *log.Logger
 )
@@ -233,6 +243,13 @@ func main() {
 	// Setup usage description
 	flag.Usage = usage
 
+	// Setup the excluded folders from scan
+	flag.Var(&flagDirsExclude, "exclude-dir", "Exclude folder from scan (can be specified multiple times)")
+	err := flag.Set("exclude-dir", "vendor")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "\nError: failed to exclude the %q directory from scan", "vendor")
+	}
+
 	// Parse command line arguments
 	flag.Parse()
 
@@ -291,13 +308,10 @@ func main() {
 	analyzer := gosec.NewAnalyzer(config, *flagScanTests, logger)
 	analyzer.LoadRules(ruleDefinitions.Builders())
 
-	var vendor *regexp.Regexp
-	if !*flagScanVendor {
-		vendor = regexp.MustCompile(`([\\/])?vendor([\\/])?`)
-	}
+	excludedDirs := gosec.ExcludedDirsRegExp(flagDirsExclude)
 	var packages []string
 	for _, path := range flag.Args() {
-		pcks, err := gosec.PackagePaths(path, vendor)
+		pcks, err := gosec.PackagePaths(path, excludedDirs)
 		if err != nil {
 			logger.Fatal(err)
 		}
