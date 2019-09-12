@@ -125,7 +125,7 @@ func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error
 				if err != nil {
 					return fmt.Errorf("parsing errors in pkg %q: %v", pkg.Name, err)
 				}
-				gosec.check(pkg)
+				gosec.Check(pkg)
 			}
 		}
 	}
@@ -180,7 +180,8 @@ func (gosec *Analyzer) load(pkgPath string, conf *packages.Config) ([]*packages.
 	return pkgs, nil
 }
 
-func (gosec *Analyzer) check(pkg *packages.Package) {
+// Check runs analysis on the given package
+func (gosec *Analyzer) Check(pkg *packages.Package) {
 	gosec.logger.Println("Checking package:", pkg.Name)
 	for _, file := range pkg.Syntax {
 		gosec.logger.Println("Checking file:", pkg.Fset.File(file.Pos()).Name())
