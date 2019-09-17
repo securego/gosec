@@ -317,6 +317,7 @@ func main() {
 
 	// SampleCodeG107 - SSRF via http requests with variable url
 	SampleCodeG107 = []CodeSample{{[]string{`
+// Input from the std in is considered insecure
 package main
 import (
 	"net/http"
@@ -342,6 +343,53 @@ func main() {
   	}
   	fmt.Printf("%s", body)
 }`}, 1, gosec.NewConfig()}, {[]string{`
+// A variable value can easily be changed no matter
+// if it's a global or a local one
+package main
+
+import (
+	"fmt"
+	"io/ioutil"
+	"net/http"
+)
+
+var url string = "https://www.google.com"
+
+func main() {
+
+	resp, err := http.Get(url)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("%s", body)
+}`}, 1, gosec.NewConfig()}, {[]string{`
+// Environmental variables are not considered as secure source
+package main
+import (
+	"net/http"
+	"io/ioutil"
+	"fmt"
+	"os"
+)
+func main() {
+	url := os.Getenv("tainted_url")
+	resp, err := http.Get(url)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+			panic(err)
+	}
+	fmt.Printf("%s", body)
+}`}, 1, gosec.NewConfig()}, {[]string{`
+// Constant variables or harcoded strings are secure
 package main
 
 import (
