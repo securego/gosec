@@ -795,22 +795,6 @@ func main() {
 	})
 	log.Fatal(http.ListenAndServe(":3000", nil))
 }`}, 1, gosec.NewConfig()}, {[]string{`
-package main
-
-import (
-	"log"
-	"os"
-	"io/ioutil"
-)
-
-	func main() {
-		f2 := os.Getenv("tainted_file2")
-		body, err := ioutil.ReadFile("/tmp/" + f2)
-		if err != nil {
-		log.Printf("Error: %v\n", err)
-	  }
-		log.Print(body)
- }`}, 1, gosec.NewConfig()}, {[]string{`
  package main
 
  import (
