@@ -79,6 +79,10 @@ var _ = Describe("gosec rules", func() {
 			runner("G107", testutils.SampleCodeG107)
 		})
 
+		It("should detect pprof endpoint", func() {
+			runner("G108", testutils.SampleCodeG108)
+		})
+
 		It("should detect sql injection via format strings", func() {
 			runner("G201", testutils.SampleCodeG201)
 		})
