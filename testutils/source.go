@@ -788,36 +788,123 @@ func main() {
 	// SampleCodeG301 - mkdir permission check
 	SampleCodeG301 = []CodeSample{{[]string{`
 package main
-import "os"
+
+import (
+	"fmt"
+	"os"
+)
+
 func main() {
-	os.Mkdir("/tmp/mydir", 0777)
-	os.Mkdir("/tmp/mydir", 0600)
-	os.MkdirAll("/tmp/mydir/mysubidr", 0775)
-}`}, 2, gosec.NewConfig()}}
+	err := os.Mkdir("/tmp/mydir", 0777)
+	if err != nil {
+		fmt.Println("Error when creating a directory!")
+		return
+	}
+}`}, 1, gosec.NewConfig()}, {[]string{`
+package main
+
+import (
+	"fmt"
+	"os"
+)
+
+func main() {
+	err := os.MkdirAll("/tmp/mydir", 0777)
+	if err != nil {
+		fmt.Println("Error when creating a directory!")
+		return
+	}
+}`}, 1, gosec.NewConfig()}, {[]string{`
+package main
+
+import (
+	"fmt"
+	"os"
+)
+
+func main() {
+	err := os.Mkdir("/tmp/mydir", 0600)
+	if err != nil {
+		fmt.Println("Error when creating a directory!")
+		return
+	}
+}`}, 0, gosec.NewConfig()}}
 
 	// SampleCodeG302 - file create / chmod permissions check
 	SampleCodeG302 = []CodeSample{{[]string{`
 package main
-import "os"
+
+import (
+	"fmt"
+	"os"
+)
+
 func main() {
-	os.Chmod("/tmp/somefile", 0777)
-	os.Chmod("/tmp/someotherfile", 0600)
-	os.OpenFile("/tmp/thing", os.O_CREATE|os.O_WRONLY, 0666)
-	os.OpenFile("/tmp/thing", os.O_CREATE|os.O_WRONLY, 0600)
-}`}, 2, gosec.NewConfig()}}
+	err := os.Chmod("/tmp/somefile", 0777)
+	if err != nil {
+		fmt.Println("Error when changing file permissions!")
+		return
+	}
+}`}, 1, gosec.NewConfig()}, {[]string{`
+package main
+
+import (
+	"fmt"
+	"os"
+)
+
+func main() {
+	_, err := os.OpenFile("/tmp/thing", os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		fmt.Println("Error opening a file!")
+		return
+	}
+}`}, 1, gosec.NewConfig()}, {[]string{`
+package main
+
+import (
+	"fmt"
+	"os"
+)
+
+func main() {
+	err := os.Chmod("/tmp/mydir", 0400)
+	if err != nil {
+		fmt.Println("Error")
+		return
+	}
+}`}, 0, gosec.NewConfig()}, {[]string{`
+package main
+
+import (
+	"fmt"
+	"os"
+)
+
+func main() {
+	_, err := os.OpenFile("/tmp/thing", os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		fmt.Println("Error opening a file!")
+		return
+	}
+}
+`}, 0, gosec.NewConfig()}}
 
 	// SampleCodeG303 - bad tempfile permissions & hardcoded shared path
 	SampleCodeG303 = []CodeSample{{[]string{`
 package samples
+
 import (
+	"fmt"
 	"io/ioutil"
-	"os"
 )
+
 func main() {
-	file1, _ := os.Create("/tmp/demo1")
-	defer file1.Close()
-	ioutil.WriteFile("/tmp/demo2", []byte("This is some data"), 0644)
-}`}, 2, gosec.NewConfig()}}
+	err := ioutil.WriteFile("/tmp/demo2", []byte("This is some data"), 0644)
+	if err != nil {
+		fmt.Println("Error while writing!")
+	}
+}`}, 1, gosec.NewConfig()}}
 
 	// SampleCodeG304 - potential file inclusion vulnerability
 	SampleCodeG304 = []CodeSample{{[]string{`
@@ -828,12 +915,12 @@ import (
 "log"
 )
 func main() {
-f := os.Getenv("tainted_file")
-body, err := ioutil.ReadFile(f)
-if err != nil {
- log.Printf("Error: %v\n", err)
-}
-log.Print(body)
+	f := os.Getenv("tainted_file")
+	body, err := ioutil.ReadFile(f)
+	if err != nil {
+	log.Printf("Error: %v\n", err)
+	}
+	log.Print(body)
 
 }`}, 1, gosec.NewConfig()}, {[]string{`
 package main
