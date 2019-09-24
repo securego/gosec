@@ -20,7 +20,7 @@ func (p *pprofCheck) ID() string {
 // Match checks for pprof imports
 func (p *pprofCheck) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error) {
 	if node, ok := n.(*ast.ImportSpec); ok {
-		if p.importPath == unquote(node.Path.Value) && p.importName == node.Name.Name {
+		if p.importPath == unquote(node.Path.Value) && node.Name != nil && p.importName == node.Name.Name {
 			return gosec.NewIssue(c, node, p.ID(), p.What, p.Severity, p.Confidence), nil
 		}
 	}

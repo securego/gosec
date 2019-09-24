@@ -420,7 +420,22 @@ func main() {
 		fmt.Fprintf(w, "Hello World!")
 	})
 	log.Fatal(http.ListenAndServe(":8080", nil))
-}`}, 1, gosec.NewConfig()}}
+}`}, 1, gosec.NewConfig()}, {[]string{`
+package main
+
+import (
+	"fmt"
+	"log"
+	"net/http"
+	"net/http/pprof"
+)
+
+func main() {
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "Hello World!")
+	})
+	log.Fatal(http.ListenAndServe(":8080", nil))
+}`}, 0, gosec.NewConfig()}}
 	// SampleCodeG201 - SQL injection via format string
 	SampleCodeG201 = []CodeSample{
 		{[]string{`
