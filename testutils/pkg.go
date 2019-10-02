@@ -80,7 +80,7 @@ func (p *TestPackage) Build() error {
 	}
 
 	conf := &packages.Config{
-		Mode:  packages.LoadSyntax,
+		Mode:  gosec.LoadMode,
 		Tests: false,
 	}
 	pkgs, err := packages.Load(conf, packageFiles...)
