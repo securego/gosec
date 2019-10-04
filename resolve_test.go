@@ -91,8 +91,26 @@ var _ = Describe("Resolve ast node to concrete value", func() {
 			Expect(target).ShouldNot(BeNil())
 			Expect(gosec.TryResolve(target, ctx)).Should(BeTrue())
 		})
-
-		// TODO: It should resolve call expressions
+		It("should successfully resolve value spec", func() {
+			var value *ast.ValueSpec
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("foo.go", `package main; const x = "bar"; func main(){ var y string = x; println(y) }`)
+			ctx := pkg.CreateContext("foo.go")
+			v := testutils.NewMockVisitor()
+			v.Callback = func(n ast.Node, ctx *gosec.Context) bool {
+				if node, ok := n.(*ast.ValueSpec); ok {
+					if len(node.Names) == 1 && node.Names[0].Name == "y" {
+						value = node
+					}
+				}
+				return true
+			}
+			v.Context = ctx
+			ast.Walk(v, ctx.Root)
+			Expect(value).ShouldNot(BeNil())
+			Expect(gosec.TryResolve(value, ctx)).Should(BeTrue())
+		})
 
 	})
 
