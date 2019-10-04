@@ -14,9 +14,7 @@
 
 package gosec
 
-import (
-	"go/ast"
-)
+import "go/ast"
 
 func resolveIdent(n *ast.Ident, c *Context) bool {
 	if n.Obj == nil || n.Obj.Kind != ast.Var {
