@@ -1,4 +1,4 @@
-ARG GO_VERSION=1.12
+ARG GO_VERSION=1.13
 FROM golang:${GO_VERSION}-alpine AS builder
 RUN apk add --update --no-cache ca-certificates make git curl
 RUN mkdir -p /build
