@@ -343,8 +343,8 @@ func main() {
   	}
   	fmt.Printf("%s", body)
 }`}, 1, gosec.NewConfig()}, {[]string{`
-// A variable value can easily be changed no matter
-// if it's a global or a local one
+// Variable defined a package level can be changed at any time
+// regardless of the initial value
 package main
 
 import (
@@ -356,7 +356,6 @@ import (
 var url string = "https://www.google.com"
 
 func main() {
-
 	resp, err := http.Get(url)
 	if err != nil {
 		panic(err)
@@ -389,7 +388,7 @@ func main() {
 	}
 	fmt.Printf("%s", body)
 }`}, 1, gosec.NewConfig()}, {[]string{`
-// Constant variables or harcoded strings are secure
+// Constant variables or hard-coded strings are secure
 package main
 
 import (
@@ -401,9 +400,96 @@ func main() {
 	resp, err := http.Get(url)
 	if err != nil {
 		fmt.Println(err)
-    	}
-      	fmt.Println(resp.Status)
-}`}, 0, gosec.NewConfig()}}
+    }
+    fmt.Println(resp.Status)
+}`}, 0, gosec.NewConfig()}, {[]string{`
+// A variable at function scope which is initialized to
+// a constant string is secure (e.g. cannot be changed concurrently)
+package main
+
+import (
+	"fmt"
+	"net/http"
+)
+func main() {
+    var url string = "http://127.0.0.1"
+	resp, err := http.Get(url)
+	if err != nil {
+		fmt.Println(err)
+    }
+    fmt.Println(resp.Status)
+}`}, 0, gosec.NewConfig()}, {[]string{`
+// A variable at function scope which is initialized to
+// a constant string is secure (e.g. cannot be changed concurrently)
+package main
+
+import (
+	"fmt"
+	"net/http"
+)
+func main() {
+	url := "http://127.0.0.1"
+	resp, err := http.Get(url)
+	if err != nil {
+		fmt.Println(err)
+    }
+    fmt.Println(resp.Status)
+}`}, 0, gosec.NewConfig()}, {[]string{`
+// A variable at function scope which is initialized to
+// a constant string is secure (e.g. cannot be changed concurrently)
+package main
+
+import (
+	"fmt"
+	"net/http"
+)
+func main() {
+	url1 := "test"
+    var url2 string = "http://127.0.0.1"
+	url2 = url1
+	resp, err := http.Get(url2)
+	if err != nil {
+		fmt.Println(err)
+    }
+    fmt.Println(resp.Status)
+}`}, 0, gosec.NewConfig()}, {[]string{`
+// An exported variable declared a packaged scope is not secure 
+// because it can changed at any time
+package main
+
+import (
+	"fmt"
+	"net/http"
+)
+
+var Url string
+
+func main() {
+	resp, err := http.Get(Url)
+	if err != nil {
+		fmt.Println(err)
+    }
+    fmt.Println(resp.Status)
+}`}, 1, gosec.NewConfig()}, {[]string{`
+// An url provided as a function argument is not secure
+package main
+
+import (
+	"fmt"
+	"net/http"
+)
+func get(url string) {
+	resp, err := http.Get(url)
+	if err != nil {
+		fmt.Println(err)
+    }
+    fmt.Println(resp.Status)
+}
+func main() {
+	url := "http://127.0.0.1"
+	get(url)
+}`}, 1, gosec.NewConfig()}}
+
 	// SampleCodeG108 - pprof endpoint automatically exposed
 	SampleCodeG108 = []CodeSample{{[]string{`
 package main
