@@ -91,6 +91,7 @@ var _ = Describe("Resolve ast node to concrete value", func() {
 			Expect(target).ShouldNot(BeNil())
 			Expect(gosec.TryResolve(target, ctx)).Should(BeTrue())
 		})
+
 		It("should successfully resolve value spec", func() {
 			var value *ast.ValueSpec
 			pkg := testutils.NewTestPackage()
@@ -111,7 +112,6 @@ var _ = Describe("Resolve ast node to concrete value", func() {
 			Expect(value).ShouldNot(BeNil())
 			Expect(gosec.TryResolve(value, ctx)).Should(BeTrue())
 		})
-
 	})
 
 })
