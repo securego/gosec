@@ -112,6 +112,24 @@ var _ = Describe("Resolve ast node to concrete value", func() {
 			Expect(value).ShouldNot(BeNil())
 			Expect(gosec.TryResolve(value, ctx)).Should(BeTrue())
 		})
-	})
 
+		It("should successfully resolve composite literal", func() {
+			var value *ast.CompositeLit
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("foo.go", `package main; func main(){ y := []string{"value1", "value2"}; println(y) }`)
+			ctx := pkg.CreateContext("foo.go")
+			v := testutils.NewMockVisitor()
+			v.Callback = func(n ast.Node, ctx *gosec.Context) bool {
+				if node, ok := n.(*ast.CompositeLit); ok {
+					value = node
+				}
+				return true
+			}
+			v.Context = ctx
+			ast.Walk(v, ctx.Root)
+			Expect(value).ShouldNot(BeNil())
+			Expect(gosec.TryResolve(value, ctx)).Should(BeTrue())
+		})
+	})
 })
