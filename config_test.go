@@ -2,6 +2,7 @@ package gosec_test
 
 import (
 	"bytes"
+	"strings"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -106,6 +107,36 @@ var _ = Describe("Configuration", func() {
 			Expect(err).Should(BeNil())
 			Expect(enabled).Should(BeTrue())
 		})
-	})
 
+		It("should parse the global settings of type string from file", func() {
+			config := `
+			{
+				"global": {
+					"nosec": "enabled"
+				}
+			}`
+			cfg := gosec.NewConfig()
+			_, err := cfg.ReadFrom(strings.NewReader(config))
+			Expect(err).Should(BeNil())
+
+			value, err := cfg.GetGlobal(gosec.Nosec)
+			Expect(err).Should(BeNil())
+			Expect(value).Should(Equal("enabled"))
+		})
+		It("should parse the global settings of other types from file", func() {
+			config := `
+			{
+				"global": {
+					"nosec": true
+				}
+			}`
+			cfg := gosec.NewConfig()
+			_, err := cfg.ReadFrom(strings.NewReader(config))
+			Expect(err).Should(BeNil())
+
+			value, err := cfg.GetGlobal(gosec.Nosec)
+			Expect(err).Should(BeNil())
+			Expect(value).Should(Equal("true"))
+		})
+	})
 })
