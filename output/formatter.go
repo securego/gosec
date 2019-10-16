@@ -18,6 +18,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"encoding/xml"
+	"fmt"
 	htmlTemplate "html/template"
 	"io"
 	"strconv"
@@ -30,6 +31,43 @@ import (
 
 // ReportFormat enumerates the output format for reported issues
 type ReportFormat int
+
+// A data-structure that contains CWE id and url
+type Cwe struct {
+	id  string
+	url string
+}
+
+func getCwe(id int) Cwe {
+	return Cwe{id: strconv.Itoa(id), url: fmt.Sprintf("https://cwe.mitre.org/data/definitions/%s.html", id)}
+}
+
+var issueToCWE = map[string]Cwe{
+	"G101": getCwe(798),
+	"G102": getCwe(200),
+	"G103": getCwe(242),
+	"G104": getCwe(703),
+	"G106": getCwe(322),
+	"G107": getCwe(88),
+	"G201": getCwe(89),
+	"G202": getCwe(89),
+	"G203": getCwe(79),
+	"G204": getCwe(78),
+	"G301": getCwe(276),
+	"G302": getCwe(276),
+	"G303": getCwe(377),
+	"G304": getCwe(22),
+	"G305": getCwe(22),
+	"G401": getCwe(326),
+	"G402": getCwe(295),
+	"G403": getCwe(310),
+	"G404": getCwe(338),
+	"G501": getCwe(327),
+	"G502": getCwe(327),
+	"G503": getCwe(327),
+	"G504": getCwe(327),
+	"G505": getCwe(327),
+}
 
 const (
 	// ReportText is the default format that writes to stdout
