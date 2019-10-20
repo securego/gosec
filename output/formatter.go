@@ -69,6 +69,15 @@ var issueToCWE = map[string]Cwe{
 	"G505": getCwe("327"),
 }
 
+// CweForRule returns a template string (based on the associated CWE) for a gosec rule
+func CweForRule(ruleID string) string {
+	cwe, ok := issueToCWE[ruleID]
+	if ok {
+		return fmt.Sprintf("(CWE-%s %s)", cwe.id, cwe.url)
+	}
+	return ""
+}
+
 const (
 	// ReportText is the default format that writes to stdout
 	ReportText ReportFormat = iota // Plain text format
@@ -94,7 +103,7 @@ Golang errors in file: [{{ $filePath }}]:
 {{end}}
 {{end}}
 {{ range $index, $issue := .Issues }}
-[{{ $issue.File }}:{{ $issue.Line }}] - {{ $issue.RuleID }} ({{ index .issueToCWE $issue.RuleID }}): {{ $issue.What }} (Confidence: {{ $issue.Confidence}}, Severity: {{ $issue.Severity }})
+[{{ $issue.File }}:{{ $issue.Line }}] - {{ $issue.RuleID }} {{ CweForRule $issue.RuleID }}: {{ $issue.What }} (Confidence: {{ $issue.Confidence}}, Severity: {{ $issue.Severity }})
   > {{ $issue.Code }}
 
 {{ end }}
@@ -256,7 +265,7 @@ func reportJUnitXML(w io.Writer, data *reportInfo) error {
 }
 
 func reportFromPlaintextTemplate(w io.Writer, reportTemplate string, data *reportInfo) error {
-	t, e := plainTemplate.New("gosec").Parse(reportTemplate)
+	t, e := plainTemplate.New("gosec").Funcs(plainTemplate.FuncMap{"CweForRule": CweForRule}).Parse(reportTemplate)
 	if e != nil {
 		return e
 	}
@@ -265,7 +274,7 @@ func reportFromPlaintextTemplate(w io.Writer, reportTemplate string, data *repor
 }
 
 func reportFromHTMLTemplate(w io.Writer, reportTemplate string, data *reportInfo) error {
-	t, e := htmlTemplate.New("gosec").Parse(reportTemplate)
+	t, e := htmlTemplate.New("gosec").Funcs(htmlTemplate.FuncMap{"CweForRule": CweForRule}).Parse(reportTemplate)
 	if e != nil {
 		return e
 	}
