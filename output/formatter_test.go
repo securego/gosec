@@ -242,10 +242,6 @@ var _ = Describe("Formatter", func() {
 			rootPaths := []string{"/home/src/project1", "/home/src/project2"}
 
 			issues, err := convertToSonarIssues(rootPaths, data)
-
-			fmt.Println("gggg")
-			fmt.Println(issues)
-			fmt.Println("++++")
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(*issues).To(Equal(*want))
 		})
