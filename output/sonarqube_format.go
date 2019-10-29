@@ -1,5 +1,7 @@
 package output
 
+import "github.com/securego/gosec"
+
 type textRange struct {
 	StartLine   int `json:"startLine"`
 	EndLine     int `json:"endLine"`
@@ -15,6 +17,7 @@ type location struct {
 type sonarIssue struct {
 	EngineID           string     `json:"engineId"`
 	RuleID             string     `json:"ruleId"`
+	Cwe                gosec.Cwe  `json:"cwe"`
 	PrimaryLocation    location   `json:"primaryLocation"`
 	Type               string     `json:"type"`
 	Severity           string     `json:"severity"`

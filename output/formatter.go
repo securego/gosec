@@ -32,52 +32,6 @@ import (
 // ReportFormat enumerates the output format for reported issues
 type ReportFormat int
 
-// Cwe id and url
-type Cwe struct {
-	id  string
-	url string
-}
-
-func getCwe(id string) Cwe {
-	return Cwe{id: id, url: fmt.Sprintf("https://cwe.mitre.org/data/definitions/%s.html", id)}
-}
-
-var issueToCWE = map[string]Cwe{
-	"G101": getCwe("798"),
-	"G102": getCwe("200"),
-	"G103": getCwe("242"),
-	"G104": getCwe("703"),
-	"G106": getCwe("322"),
-	"G107": getCwe("88"),
-	"G201": getCwe("89"),
-	"G202": getCwe("89"),
-	"G203": getCwe("79"),
-	"G204": getCwe("78"),
-	"G301": getCwe("276"),
-	"G302": getCwe("276"),
-	"G303": getCwe("377"),
-	"G304": getCwe("22"),
-	"G305": getCwe("22"),
-	"G401": getCwe("326"),
-	"G402": getCwe("295"),
-	"G403": getCwe("310"),
-	"G404": getCwe("338"),
-	"G501": getCwe("327"),
-	"G502": getCwe("327"),
-	"G503": getCwe("327"),
-	"G504": getCwe("327"),
-	"G505": getCwe("327"),
-}
-
-// CweForRule returns a template string (based on the associated CWE) for a gosec rule
-func CweForRule(ruleID string) string {
-	cwe, ok := issueToCWE[ruleID]
-	if ok {
-		return fmt.Sprintf("(CWE-%s %s)", cwe.id, cwe.url)
-	}
-	return ""
-}
-
 const (
 	// ReportText is the default format that writes to stdout
 	ReportText ReportFormat = iota // Plain text format
@@ -103,7 +57,7 @@ Golang errors in file: [{{ $filePath }}]:
 {{end}}
 {{end}}
 {{ range $index, $issue := .Issues }}
-[{{ $issue.File }}:{{ $issue.Line }}] - {{ $issue.RuleID }} {{ CweForRule $issue.RuleID }}: {{ $issue.What }} (Confidence: {{ $issue.Confidence}}, Severity: {{ $issue.Severity }})
+[{{ $issue.File }}:{{ $issue.Line }}] - {{ $issue.RuleID }} (CWE-{{ $issue.Cwe.ID }}): {{ $issue.What }} (Confidence: {{ $issue.Confidence}}, Severity: {{ $issue.Severity }})
   > {{ $issue.Code }}
 
 {{ end }}
@@ -173,6 +127,7 @@ func convertToSonarIssues(rootPaths []string, data *reportInfo) (*sonarIssues, e
 				sonarFilePath = strings.Replace(issue.File, rootPath+"/", "", 1)
 			}
 		}
+
 		if sonarFilePath == "" {
 			continue
 		}
@@ -201,6 +156,7 @@ func convertToSonarIssues(rootPaths []string, data *reportInfo) (*sonarIssues, e
 			Type:          "VULNERABILITY",
 			Severity:      getSonarSeverity(issue.Severity.String()),
 			EffortMinutes: SonarqubeEffortMinutes,
+			Cwe:           issue.Cwe,
 		}
 		si.SonarIssues = append(si.SonarIssues, s)
 	}
@@ -237,6 +193,7 @@ func reportCSV(w io.Writer, data *reportInfo) error {
 			issue.Severity.String(),
 			issue.Confidence.String(),
 			issue.Code,
+			fmt.Sprintf("CWE-%s", issue.Cwe.ID),
 		})
 		if err != nil {
 			return err
@@ -265,7 +222,7 @@ func reportJUnitXML(w io.Writer, data *reportInfo) error {
 }
 
 func reportFromPlaintextTemplate(w io.Writer, reportTemplate string, data *reportInfo) error {
-	t, e := plainTemplate.New("gosec").Funcs(plainTemplate.FuncMap{"CweForRule": CweForRule}).Parse(reportTemplate)
+	t, e := plainTemplate.New("gosec").Parse(reportTemplate)
 	if e != nil {
 		return e
 	}
@@ -274,7 +231,7 @@ func reportFromPlaintextTemplate(w io.Writer, reportTemplate string, data *repor
 }
 
 func reportFromHTMLTemplate(w io.Writer, reportTemplate string, data *reportInfo) error {
-	t, e := htmlTemplate.New("gosec").Funcs(htmlTemplate.FuncMap{"CweForRule": CweForRule}).Parse(reportTemplate)
+	t, e := htmlTemplate.New("gosec").Parse(reportTemplate)
 	if e != nil {
 		return e
 	}
