@@ -283,7 +283,7 @@ var _ = Describe("Formatter", func() {
 				Expect(string(buf.Bytes())).To(Equal(expect))
 			}
 		})
-		It("json should contain the CWE mapping", func() {
+		It("json formatted report should contain the CWE mapping", func() {
 			for _, rule := range grules {
 				cwe := gosec.IssueToCWE[rule]
 				issue := createIssue(rule, cwe)
@@ -302,7 +302,7 @@ var _ = Describe("Formatter", func() {
 				Expect(result).To(Equal(expectation))
 			}
 		})
-		It("html should contain the CWE mapping", func() {
+		It("html formatted report should  contain the CWE mapping", func() {
 			for _, rule := range grules {
 				cwe := gosec.IssueToCWE[rule]
 				issue := createIssue(rule, cwe)
@@ -321,7 +321,7 @@ var _ = Describe("Formatter", func() {
 				Expect(result).To(ContainSubstring(expectation))
 			}
 		})
-		It("yaml should contain the CWE mapping", func() {
+		It("yaml formatted report should contain the CWE mapping", func() {
 			for _, rule := range grules {
 				cwe := gosec.IssueToCWE[rule]
 				issue := createIssue(rule, cwe)
@@ -340,7 +340,7 @@ var _ = Describe("Formatter", func() {
 				Expect(result).To(ContainSubstring(expectation))
 			}
 		})
-		It("junit-xml should contain the CWE mapping", func() {
+		It("junit-xml formatted report should contain the CWE mapping", func() {
 			for _, rule := range grules {
 				cwe := gosec.IssueToCWE[rule]
 				issue := createIssue(rule, cwe)
@@ -359,7 +359,7 @@ var _ = Describe("Formatter", func() {
 				Expect(result).To(ContainSubstring(expectation))
 			}
 		})
-		It("text should contain the CWE mapping", func() {
+		It("text formatted report should contain the CWE mapping", func() {
 			for _, rule := range grules {
 				cwe := gosec.IssueToCWE[rule]
 				issue := createIssue(rule, cwe)
@@ -378,7 +378,7 @@ var _ = Describe("Formatter", func() {
 				Expect(result).To(ContainSubstring(expectation))
 			}
 		})
-		It("sonarqube should contain the CWE mapping", func() {
+		It("sonarqube formatted report should contain the CWE mapping", func() {
 			for _, rule := range grules {
 				cwe := gosec.IssueToCWE[rule]
 				issue := createIssue(rule, cwe)
