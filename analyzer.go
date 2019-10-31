@@ -174,6 +174,10 @@ func (gosec *Analyzer) load(pkgPath string, conf *packages.Config) ([]*packages.
 		packageFiles = append(packageFiles, path.Join(pkgPath, filename))
 	}
 
+	for _, filename := range basePackage.CgoFiles {
+		packageFiles = append(packageFiles, path.Join(pkgPath, filename))
+	}
+
 	if gosec.tests {
 		testsFiles := []string{}
 		testsFiles = append(testsFiles, basePackage.TestGoFiles...)
