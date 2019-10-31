@@ -36,7 +36,8 @@ func generatePlaintext(issue *gosec.Issue) string {
 	return "Results:\n" +
 		"[" + issue.File + ":" + issue.Line + "] - " +
 		issue.What + " (Confidence: " + strconv.Itoa(int(issue.Confidence)) +
-		", Severity: " + strconv.Itoa(int(issue.Severity)) + ")\n" + "> " + htmlLib.EscapeString(issue.Code)
+		", Severity: " + strconv.Itoa(int(issue.Severity)) +
+		", CWE: " + issue.Cwe.ID + ")\n" + "> " + htmlLib.EscapeString(issue.Code)
 }
 
 func groupDataByRules(data *reportInfo) map[string][]*gosec.Issue {

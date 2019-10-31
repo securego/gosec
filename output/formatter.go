@@ -18,6 +18,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"encoding/xml"
+	"fmt"
 	htmlTemplate "html/template"
 	"io"
 	"strconv"
@@ -56,7 +57,7 @@ Golang errors in file: [{{ $filePath }}]:
 {{end}}
 {{end}}
 {{ range $index, $issue := .Issues }}
-[{{ $issue.File }}:{{ $issue.Line }}] - {{ $issue.RuleID }}: {{ $issue.What }} (Confidence: {{ $issue.Confidence}}, Severity: {{ $issue.Severity }})
+[{{ $issue.File }}:{{ $issue.Line }}] - {{ $issue.RuleID }} (CWE-{{ $issue.Cwe.ID }}): {{ $issue.What }} (Confidence: {{ $issue.Confidence}}, Severity: {{ $issue.Severity }})
   > {{ $issue.Code }}
 
 {{ end }}
@@ -126,6 +127,7 @@ func convertToSonarIssues(rootPaths []string, data *reportInfo) (*sonarIssues, e
 				sonarFilePath = strings.Replace(issue.File, rootPath+"/", "", 1)
 			}
 		}
+
 		if sonarFilePath == "" {
 			continue
 		}
@@ -154,6 +156,7 @@ func convertToSonarIssues(rootPaths []string, data *reportInfo) (*sonarIssues, e
 			Type:          "VULNERABILITY",
 			Severity:      getSonarSeverity(issue.Severity.String()),
 			EffortMinutes: SonarqubeEffortMinutes,
+			Cwe:           issue.Cwe,
 		}
 		si.SonarIssues = append(si.SonarIssues, s)
 	}
@@ -190,6 +193,7 @@ func reportCSV(w io.Writer, data *reportInfo) error {
 			issue.Severity.String(),
 			issue.Confidence.String(),
 			issue.Code,
+			fmt.Sprintf("CWE-%s", issue.Cwe.ID),
 		})
 		if err != nil {
 			return err

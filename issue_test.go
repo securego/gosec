@@ -41,7 +41,7 @@ var _ = Describe("Issue", func() {
 			Expect(issue).ShouldNot(BeNil())
 			Expect(issue.Code).Should(MatchRegexp(`"bar"`))
 			Expect(issue.Line).Should(Equal("2"))
-
+			Expect(issue.Cwe.ID).Should(Equal(""))
 		})
 
 		It("should return an error if specific context is not able to be obtained", func() {
