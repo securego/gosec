@@ -106,6 +106,9 @@ $ gosec -include=G101,G203,G401 ./...
 # Run everything except for rule G303
 $ gosec -exclude=G303 ./...
 ```
+### CWE Mapping
+
+Every issue detected by `gosec` is mapped to a [CWE (Common Weakness Enumeration)](http://cwe.mitre.org/data/index.html) which describes in more generic terms the vulnerability. The exact mapping can be found  [here](https://github.com/securego/gosec/blob/53be8dd8644ee48802114178cff6eb7e29757414/issue.go#L49).
 
 ### Configuration
 
@@ -140,7 +143,7 @@ of functions which will be skipped when auditing the not checked errors:
 
 ### Dependencies 
 
-gosec will fetch automatically the dependencies of the code which is being analyzed when go module isturned on (e.g.` GO111MODULE=on`). If this is not the case,
+gosec will fetch automatically the dependencies of the code which is being analyzed when go module is turned on (e.g.` GO111MODULE=on`). If this is not the case,
 the dependencies need to be explicitly downloaded by running the `go get -d` command before the scan.
 
 ### Excluding test files and folders
@@ -247,7 +250,7 @@ The released version of the tool is available in the `dist` folder. The build in
 gosec  - Golang security checker
 
 gosec analyzes Go source code to look for common programming mistakes that
-can lead to security problems.
+
 
 VERSION: 1.0.0
 GIT TAG: v1.0.0
