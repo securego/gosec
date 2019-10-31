@@ -7,8 +7,8 @@ Inspects source code for security problems by scanning the Go AST.
 
 ## License
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
+Licensed under the Apache License, Version 2.0 (the "License").
+You may not use this file except in compliance with the License.
 You may obtain a copy of the License [here](http://www.apache.org/licenses/LICENSE-2.0).
 
 ## Project status
@@ -59,7 +59,7 @@ go get github.com/securego/gosec/cmd/gosec
 Gosec can be configured to only run a subset of rules, to exclude certain file
 paths, and produce reports in different formats. By default all rules will be
 run against the supplied input files. To recursively scan from the current
-directory you can supply './...' as the input argument.
+directory you can supply `./...` as the input argument.
 
 
 ### Available rules
@@ -96,8 +96,8 @@ directory you can supply './...' as the input argument.
 
 ### Selecting rules
 
-By default gosec will run all rules against the supplied file paths. It is however possible to select a subset of rules to run via the '-include=' flag,
-or to specify a set of rules to explicitly exclude using the '-exclude=' flag.
+By default, gosec will run all rules against the supplied file paths. It is however possible to select a subset of rules to run via the `-include=` flag,
+or to specify a set of rules to explicitly exclude using the `-exclude=` flag.
 
 ```bash
 # Run a specific set of rules
@@ -140,7 +140,7 @@ of functions which will be skipped when auditing the not checked errors:
 
 ### Dependencies 
 
-gosec will fetch automatically the dependencies of the code which is being analyzed when go modules are turned on (e.g.` GO111MODULE=on`). If this is not the case,
+gosec will fetch automatically the dependencies of the code which is being analyzed when go module isturned on (e.g.` GO111MODULE=on`). If this is not the case,
 the dependencies need to be explicitly downloaded by running the `go get -d` command before the scan.
 
 ### Excluding test files and folders
@@ -162,7 +162,8 @@ Also additional folders can be excluded as follows:
 
 ### Annotating code
 
-As with all automated detection tools there will be cases of false positives. In cases where gosec reports a failure that has been manually verified as being safe it is possible to annotate the code with a '#nosec' comment.
+As with all automated detection tools, there will be cases of false positives. In cases where gosec reports a failure that has been manually verified as being safe,
+it is possible to annotate the code with a `#nosec` comment.
 
 The annotation causes gosec to stop processing any further nodes within the
 AST so can apply to a whole block or more granularly to a single expression.
@@ -183,10 +184,12 @@ func main(){
 
 ```
 
-When a specific false positive has been identified and verified as safe, you may wish to suppress only that single rule (or a specific set of rules) within a section of code, while continuing to scan for other problems. To do this, you can list the rule(s) to be suppressed within the `#nosec` annotation, e.g: `/* #nosec G401 */` or `// #nosec G201 G202 G203 `
+When a specific false positive has been identified and verified as safe, you may wish to suppress only that single rule (or a specific set of rules)
+within a section of code, while continuing to scan for other problems. To do this, you can list the rule(s) to be suppressed within 
+the `#nosec` annotation, e.g: `/* #nosec G401 */` or `// #nosec G201 G202 G203`
 
-In some cases you may also want to revisit places where #nosec annotations
-have been used. To run the scanner and ignore any #nosec annotations you
+In some cases you may also want to revisit places where `#nosec` annotations
+have been used. To run the scanner and ignore any `#nosec` annotations you
 can do the following:
 
 ```bash
@@ -262,7 +265,7 @@ make image
 ```
 
 You can run the `gosec` tool in a container against your local Go project. You just have to mount the project 
-into a volume as follow:
+into a volume as follows:
 
 ```bash
 docker run -it -v <YOUR PROJECT PATH>/<PROJECT>:/<PROJECT> securego/gosec /<PROJECT>/...
@@ -284,4 +287,4 @@ You can invoke now the `go generate` in the root of the project:
 go generate ./...
 ```
 
-This will generate the `rules/tls_config.go` file with will contain the current ciphers recommendation from Mozilla.
+This will generate the `rules/tls_config.go` file which will contain the current ciphers recommendation from Mozilla.
