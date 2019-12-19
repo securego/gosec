@@ -119,6 +119,7 @@ directory you can supply `./...` as the input argument.
 - G503: Import blacklist: crypto/rc4
 - G504: Import blacklist: net/http/cgi
 - G505: Import blacklist: crypto/sha1
+- G601: Implicit memory aliasing of items from a range statement
 
 ### Retired rules
 
