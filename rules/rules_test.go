@@ -170,8 +170,13 @@ var _ = Describe("gosec rules", func() {
 		It("should detect blacklisted imports - CGI (httpoxy)", func() {
 			runner("G504", testutils.SampleCodeG504)
 		})
+
 		It("should detect blacklisted imports - SHA1", func() {
 			runner("G505", testutils.SampleCodeG505)
+		})
+
+		It("should detect implicit aliasing in ForRange", func() {
+			runner("G601", testutils.SampleCodeG601)
 		})
 
 	})

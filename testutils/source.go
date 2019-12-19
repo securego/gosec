@@ -1848,6 +1848,42 @@ func main() {
 		fmt.Printf("%x - %s\n", sha1.Sum([]byte(arg)), arg)
 	}
 }`}, 1, gosec.NewConfig()}}
+
+	// SampleCodeG601 - Implicit ForRange aliasing
+	SampleCodeG601 = []CodeSample{{[]string{`package main
+
+import "fmt"
+
+var vector []*string
+
+func appendVector(s *string) {
+	vector = append(vector, s)
+}
+
+func printVector() {
+	for _, item := range vector {
+		fmt.Printf("%s", *item)
+	}
+	fmt.Println()
+}
+
+func foo() (int, *string, string) {
+	for _, item := range vector {
+		return 0, &item, item
+	}
+}
+
+func main() {
+	for _, item := range []string{"A", "B", "C"} {
+		appendVector(&item)
+	}
+
+	printVector()
+
+	zero, c_star, c := foo()
+	fmt.Printf("%d %v %s", zero, c_start, c)
+}`}, 1, gosec.NewConfig()}}
+
 	// SampleCode601 - Go build tags
 	SampleCode601 = []CodeSample{{[]string{`
 // +build tag
