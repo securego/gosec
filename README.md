@@ -82,6 +82,7 @@ directory you can supply `./...` as the input argument.
 - G303: Creating tempfile using a predictable path
 - G304: File path provided as taint input
 - G305: File traversal when extracting zip archive
+- G306: Poor file permissions used when writing to a new file
 - G401: Detect the usage of DES, RC4, MD5 or SHA1
 - G402: Look for bad TLS connection settings
 - G403: Ensure minimum RSA key length of 2048 bits

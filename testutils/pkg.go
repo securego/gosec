@@ -55,7 +55,7 @@ func (p *TestPackage) write() error {
 	for filename, content := range p.Files {
 		if e := ioutil.WriteFile(filename, []byte(content), 0644); e != nil {
 			return e
-		}
+		} // #nosec G306
 	}
 	p.ondisk = true
 	return nil
