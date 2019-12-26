@@ -73,7 +73,7 @@ var (
 	flagIgnoreNoSec = flag.Bool("nosec", false, "Ignores #nosec comments when set")
 
 	// format output
-	flagFormat = flag.String("fmt", "text", "Set output format. Valid options are: json, yaml, csv, junit-xml, html, sonarqube, or text")
+	flagFormat = flag.String("fmt", "text", "Set output format. Valid options are: json, yaml, csv, junit-xml, html, sonarqube, golint or text")
 
 	// #nosec alternative tag
 	flagAlternativeNoSec = flag.String("nosec-tag", "", "Set an alternative string for #nosec. Some examples: #dontanalyze, #falsepositive")

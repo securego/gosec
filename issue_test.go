@@ -41,6 +41,7 @@ var _ = Describe("Issue", func() {
 			Expect(issue).ShouldNot(BeNil())
 			Expect(issue.Code).Should(MatchRegexp(`"bar"`))
 			Expect(issue.Line).Should(Equal("2"))
+			Expect(issue.Col).Should(Equal("16"))
 			Expect(issue.Cwe.ID).Should(Equal(""))
 		})
 
@@ -84,6 +85,7 @@ var _ = Describe("Issue", func() {
 			Expect(issue).ShouldNot(BeNil())
 			Expect(issue.File).Should(MatchRegexp("foo.go"))
 			Expect(issue.Line).Should(MatchRegexp("3-4"))
+			Expect(issue.Col).Should(Equal("21"))
 		})
 
 		It("should maintain the provided severity score", func() {
