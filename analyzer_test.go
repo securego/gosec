@@ -265,7 +265,7 @@ var _ = Describe("Analyzer", func() {
 
 		})
 
-		It("should be possible to change the default #nosec directive to another one", func() {
+		It("should be possible to use an alternative nosec tag", func() {
 			// Rule for MD5 weak crypto usage
 			sample := testutils.SampleCodeG401[0]
 			source := sample.Code[0]
