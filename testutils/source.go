@@ -571,6 +571,27 @@ func main() {
 		panic(err)
 	}
 	fmt.Println(bigValue)
+}`}, 0, gosec.NewConfig()}, {[]string{`
+package main
+
+import (
+	"fmt"
+	"strconv"
+)
+
+func main() {
+	bigValue, err := strconv.Atoi("2147483648")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(bigValue)
+	test()
+}
+
+func test() {
+	bigValue := 30
+	value := int32(bigValue)
+	fmt.Println(value)
 }`}, 0, gosec.NewConfig()}}
 
 	// SampleCodeG201 - SQL injection via format string

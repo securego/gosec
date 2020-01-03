@@ -47,15 +47,16 @@ const LoadMode = packages.NeedName |
 // It is passed through to all rule functions as they are called. Rules may use
 // this data in conjunction withe the encountered AST node.
 type Context struct {
-	FileSet  *token.FileSet
-	Comments ast.CommentMap
-	Info     *types.Info
-	Pkg      *types.Package
-	PkgFiles []*ast.File
-	Root     *ast.File
-	Config   Config
-	Imports  *ImportTracker
-	Ignores  []map[string]bool
+	FileSet      *token.FileSet
+	Comments     ast.CommentMap
+	Info         *types.Info
+	Pkg          *types.Package
+	PkgFiles     []*ast.File
+	Root         *ast.File
+	Config       Config
+	Imports      *ImportTracker
+	Ignores      []map[string]bool
+	PassedValues map[string]interface{}
 }
 
 // Metrics used when reporting information about a scanning run.
@@ -204,6 +205,7 @@ func (gosec *Analyzer) Check(pkg *packages.Package) {
 		gosec.context.PkgFiles = pkg.Syntax
 		gosec.context.Imports = NewImportTracker()
 		gosec.context.Imports.TrackFile(file)
+		gosec.context.PassedValues = make(map[string]interface{})
 		ast.Walk(gosec, file)
 		gosec.stats.NumFiles++
 		gosec.stats.NumLines += pkg.Fset.File(file.Pos()).LineCount()
