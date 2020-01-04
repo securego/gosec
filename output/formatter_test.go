@@ -15,6 +15,7 @@ func createIssue(ruleID string, cwe gosec.Cwe) gosec.Issue {
 	return gosec.Issue{
 		File:       "/home/src/project/test.go",
 		Line:       "1",
+		Col:        "1",
 		RuleID:     ruleID,
 		What:       "test",
 		Confidence: gosec.High,
@@ -389,6 +390,19 @@ var _ = Describe("Formatter", func() {
 
 				expectation := stripString(expect.String())
 				Expect(result).To(ContainSubstring(expectation))
+			}
+		})
+		It("golint formatted report should contain the CWE mapping", func() {
+			for _, rule := range grules {
+				cwe := gosec.IssueToCWE[rule]
+				issue := createIssue(rule, cwe)
+				error := map[string][]gosec.Error{}
+
+				buf := new(bytes.Buffer)
+				CreateReport(buf, "golint", []string{}, []*gosec.Issue{&issue}, &gosec.Metrics{}, error)
+				pattern := "/home/src/project/test.go:1:1: [CWE-%s] test (Rule:%s, Severity:HIGH, Confidence:HIGH)\n"
+				expect := fmt.Sprintf(pattern, cwe.ID, rule)
+				Expect(string(buf.Bytes())).To(Equal(expect))
 			}
 		})
 	})
