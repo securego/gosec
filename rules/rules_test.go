@@ -83,6 +83,10 @@ var _ = Describe("gosec rules", func() {
 			runner("G108", testutils.SampleCodeG108)
 		})
 
+		It("should detect integer overflow", func() {
+			runner("G109", testutils.SampleCodeG109)
+		})
+
 		It("should detect sql injection via format strings", func() {
 			runner("G201", testutils.SampleCodeG201)
 		})

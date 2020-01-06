@@ -522,6 +522,78 @@ func main() {
 	})
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }`}, 0, gosec.NewConfig()}}
+
+	// SampleCodeG109 - Potential Integer OverFlow
+	SampleCodeG109 = []CodeSample{
+		// Bind to all networks explicitly
+		{[]string{`
+package main
+
+import (
+	"fmt"
+	"strconv"
+)
+
+func main() {
+	bigValue, err := strconv.Atoi("2147483648")
+	if err != nil {
+		panic(err)
+	}
+	value := int32(bigValue)
+	fmt.Println(value)
+}`}, 1, gosec.NewConfig()}, {[]string{`
+package main
+
+import (
+	"fmt"
+	"strconv"
+)
+
+func main() {
+	bigValue, err := strconv.Atoi("32768")
+	if err != nil {
+		panic(err)
+	}
+	if int16(bigValue) < 0 {
+		fmt.Println(bigValue)
+	}
+}`}, 1, gosec.NewConfig()}, {[]string{`
+package main
+
+import (
+	"fmt"
+	"strconv"
+)
+
+func main() {
+	bigValue, err := strconv.Atoi("2147483648")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(bigValue)
+}`}, 0, gosec.NewConfig()}, {[]string{`
+package main
+
+import (
+	"fmt"
+	"strconv"
+)
+
+func main() {
+	bigValue, err := strconv.Atoi("2147483648")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(bigValue)
+	test()
+}
+
+func test() {
+	bigValue := 30
+	value := int32(bigValue)
+	fmt.Println(value)
+}`}, 0, gosec.NewConfig()}}
+
 	// SampleCodeG201 - SQL injection via format string
 	SampleCodeG201 = []CodeSample{
 		{[]string{`

@@ -109,12 +109,13 @@ func (p *TestPackage) CreateContext(filename string) *gosec.Context {
 			pkgFile = strings.TrimPrefix(pkgFile, strip)
 			if pkgFile == filename {
 				ctx := &gosec.Context{
-					FileSet: pkg.Fset,
-					Root:    file,
-					Config:  gosec.NewConfig(),
-					Info:    pkg.TypesInfo,
-					Pkg:     pkg.Types,
-					Imports: gosec.NewImportTracker(),
+					FileSet:      pkg.Fset,
+					Root:         file,
+					Config:       gosec.NewConfig(),
+					Info:         pkg.TypesInfo,
+					Pkg:          pkg.Types,
+					Imports:      gosec.NewImportTracker(),
+					PassedValues: make(map[string]interface{}),
 				}
 				ctx.Imports.TrackPackages(ctx.Pkg.Imports()...)
 				return ctx
