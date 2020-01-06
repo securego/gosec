@@ -265,7 +265,7 @@ var _ = Describe("Analyzer", func() {
 
 		})
 
-		It("should be possible to change the default #nosec directive to another one", func() {
+		It("should be possible to use an alternative nosec tag", func() {
 			// Rule for MD5 weak crypto usage
 			sample := testutils.SampleCodeG401[0]
 			source := sample.Code[0]
@@ -289,7 +289,7 @@ var _ = Describe("Analyzer", func() {
 
 		})
 
-		It("should not ignore vulnerabilities", func() {
+		It("should ignore vulnerabilities when the default tag is found", func() {
 			// Rule for MD5 weak crypto usage
 			sample := testutils.SampleCodeG401[0]
 			source := sample.Code[0]
@@ -309,7 +309,7 @@ var _ = Describe("Analyzer", func() {
 			err = customAnalyzer.Process(buildTags, nosecPackage.Path)
 			Expect(err).ShouldNot(HaveOccurred())
 			nosecIssues, _, _ := customAnalyzer.Report()
-			Expect(nosecIssues).Should(HaveLen(sample.Errors))
+			Expect(nosecIssues).Should(HaveLen(0))
 
 		})
 

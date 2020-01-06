@@ -259,18 +259,23 @@ func (gosec *Analyzer) AppendError(file string, err error) {
 	gosec.errors[file] = errors
 }
 
-// ignore a node (and sub-tree) if it is tagged with a "#nosec" comment
+// ignore a node (and sub-tree) if it is tagged with a nosec tag comment
 func (gosec *Analyzer) ignore(n ast.Node) ([]string, bool) {
 	if groups, ok := gosec.context.Comments[n]; ok && !gosec.ignoreNosec {
 
 		// Checks if an alternative for #nosec is set and, if not, uses the default.
-		noSecAlternative, err := gosec.config.GetGlobal(NoSecAlternative)
+		noSecDefaultTag := "#nosec"
+		noSecAlternativeTag, err := gosec.config.GetGlobal(NoSecAlternative)
 		if err != nil {
-			noSecAlternative = "#nosec"
+			noSecAlternativeTag = noSecDefaultTag
 		}
 
 		for _, group := range groups {
-			if strings.Contains(group.Text(), noSecAlternative) {
+
+			foundDefaultTag := strings.Contains(group.Text(), noSecDefaultTag)
+			foundAlternativeTag := strings.Contains(group.Text(), noSecAlternativeTag)
+
+			if foundDefaultTag || foundAlternativeTag {
 				gosec.stats.NumNosec++
 
 				// Pull out the specific rules that are listed to be ignored.
