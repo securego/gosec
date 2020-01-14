@@ -10,7 +10,7 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: Perform sast-scan
-      uses: AppThreat/sast-scan-action@v1.0.2
+      uses: AppThreat/sast-scan-action@1.0.2
       env:
         WORKSPACE: https://github.com/securego/gosec/blob/master
       with:
