@@ -1,0 +1,23 @@
+name: SAST scan
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Perform sast-scan
+      uses: AppThreat/sast-scan-action@v1.0.2
+      env:
+        WORKSPACE: https://github.com/securego/gosec/blob/master
+      with:
+        output: reports
+      continue-on-error: true
+    - name: Upload scan reports
+      uses: actions/upload-artifact@v1.0.0
+      with:
+        name: sast-scan-reports
+        path: reports
