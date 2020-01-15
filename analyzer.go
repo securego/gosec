@@ -24,6 +24,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -174,6 +175,9 @@ func (gosec *Analyzer) load(pkgPath string, conf *packages.Config) ([]*packages.
 	for _, filename := range basePackage.GoFiles {
 		packageFiles = append(packageFiles, path.Join(pkgPath, filename))
 	}
+	for _, filename := range basePackage.CgoFiles {
+		packageFiles = append(packageFiles, path.Join(pkgPath, filename))
+	}
 
 	if gosec.tests {
 		testsFiles := []string{}
@@ -195,7 +199,13 @@ func (gosec *Analyzer) load(pkgPath string, conf *packages.Config) ([]*packages.
 func (gosec *Analyzer) Check(pkg *packages.Package) {
 	gosec.logger.Println("Checking package:", pkg.Name)
 	for _, file := range pkg.Syntax {
-		gosec.logger.Println("Checking file:", pkg.Fset.File(file.Pos()).Name())
+		checkedFile := pkg.Fset.File(file.Pos()).Name()
+		// Skip the no-Go file from analysis (e.g. a Cgo files is expanded in 3 different files
+		// stored in the cache which do not need to by analyzed)
+		if filepath.Ext(checkedFile) != ".go" {
+			continue
+		}
+		gosec.logger.Println("Checking file:", checkedFile)
 		gosec.context.FileSet = pkg.Fset
 		gosec.context.Config = gosec.config
 		gosec.context.Comments = ast.NewCommentMap(gosec.context.FileSet, file, file.Comments)
