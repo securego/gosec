@@ -339,6 +339,21 @@ var _ = Describe("Analyzer", func() {
 			Expect(issues).Should(HaveLen(1))
 		})
 	})
+	It("should be able to analyze Cgo files", func() {
+		analyzer.LoadRules(rules.Generate().Builders())
+		sample := testutils.SampleCodeCgo[0]
+		source := sample.Code[0]
+
+		testPackage := testutils.NewTestPackage()
+		defer testPackage.Close()
+		testPackage.AddFile("main.go", source)
+		err := testPackage.Build()
+		Expect(err).ShouldNot(HaveOccurred())
+		err = analyzer.Process(buildTags, testPackage.Path)
+		Expect(err).ShouldNot(HaveOccurred())
+		issues, _, _ := analyzer.Report()
+		Expect(issues).Should(HaveLen(0))
+	})
 
 	Context("when parsing errors from a package", func() {
 
