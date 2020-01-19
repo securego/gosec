@@ -72,6 +72,7 @@ directory you can supply `./...` as the input argument.
 - G107: Url provided to HTTP request as taint input
 - G108: Profiling endpoint automatically exposed on /debug/pprof
 - G109: Potential Integer overflow made by strconv.Atoi result conversion to int16/32
+- G110: Potential DoS vulnerability via decompression bomb
 - G201: SQL query construction using format string
 - G202: SQL query construction using string concatenation
 - G203: Use of unescaped data in HTML templates

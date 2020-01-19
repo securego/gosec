@@ -87,6 +87,10 @@ var _ = Describe("gosec rules", func() {
 			runner("G109", testutils.SampleCodeG109)
 		})
 
+		It("should detect DoS vulnerability via decompression bomb", func() {
+			runner("G110", testutils.SampleCodeG110)
+		})
+
 		It("should detect sql injection via format strings", func() {
 			runner("G201", testutils.SampleCodeG201)
 		})
