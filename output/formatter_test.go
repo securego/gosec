@@ -251,9 +251,9 @@ var _ = Describe("Formatter", func() {
 	Context("When using different report formats", func() {
 
 		grules := []string{"G101", "G102", "G103", "G104", "G106",
-			"G107", "G109", "G201", "G202", "G203", "G204",
-			"G301", "G302", "G303", "G304", "G305", "G401",
-			"G402", "G403", "G404", "G501", "G502", "G503", "G504", "G505"}
+			"G107", "G109", "G110", "G201", "G202", "G203", "G204",
+			"G301", "G302", "G303", "G304", "G305", "G401", "G402",
+			"G403", "G404", "G501", "G502", "G503", "G504", "G505"}
 
 		It("csv formatted report should contain the CWE mapping", func() {
 			for _, rule := range grules {
