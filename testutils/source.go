@@ -525,7 +525,6 @@ func main() {
 
 	// SampleCodeG109 - Potential Integer OverFlow
 	SampleCodeG109 = []CodeSample{
-		// Bind to all networks explicitly
 		{[]string{`
 package main
 
@@ -592,6 +591,22 @@ func test() {
 	bigValue := 30
 	value := int32(bigValue)
 	fmt.Println(value)
+}`}, 0, gosec.NewConfig()}, {[]string{`
+package main
+
+import (
+	"fmt"
+	"strconv"
+)
+
+func main() {
+	value := 10
+	if value == 10 {
+		value, _ := strconv.Atoi("2147483648")
+		fmt.Println(value)
+	}
+	v := int32(value)
+	fmt.Println(v)
 }`}, 0, gosec.NewConfig()}}
 
 	// SampleCodeG110 - potential DoS vulnerability via decompression bomb
