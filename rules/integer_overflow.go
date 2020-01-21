@@ -30,32 +30,29 @@ func (i *integerOverflowCheck) ID() string {
 }
 
 func (i *integerOverflowCheck) Match(node ast.Node, ctx *gosec.Context) (*gosec.Issue, error) {
-	var atoiVarName map[string]ast.Node
+	var atoiVarObj map[*ast.Object]ast.Node
 
 	// To check multiple lines, ctx.PassedValues is used to store temporary data.
 	if _, ok := ctx.PassedValues[i.ID()]; !ok {
-		atoiVarName = make(map[string]ast.Node)
-		ctx.PassedValues[i.ID()] = atoiVarName
-	} else if pv, ok := ctx.PassedValues[i.ID()].(map[string]ast.Node); ok {
-		atoiVarName = pv
+		atoiVarObj = make(map[*ast.Object]ast.Node)
+		ctx.PassedValues[i.ID()] = atoiVarObj
+	} else if pv, ok := ctx.PassedValues[i.ID()].(map[*ast.Object]ast.Node); ok {
+		atoiVarObj = pv
 	} else {
-		return nil, fmt.Errorf("PassedValues[%s] of Context is not map[string]ast.Node, but %T", i.ID(), ctx.PassedValues[i.ID()])
+		return nil, fmt.Errorf("PassedValues[%s] of Context is not map[*ast.Object]ast.Node, but %T", i.ID(), ctx.PassedValues[i.ID()])
 	}
 
 	// strconv.Atoi is a common function.
 	// To reduce false positives, This rule detects code which is converted to int32/int16 only.
 	switch n := node.(type) {
-	case *ast.FuncDecl:
-		// Clear atoiVarName by function
-		ctx.PassedValues[i.ID()] = make(map[string]ast.Node)
 	case *ast.AssignStmt:
 		for _, expr := range n.Rhs {
 			if callExpr, ok := expr.(*ast.CallExpr); ok && i.calls.ContainsCallExpr(callExpr, ctx, false) != nil {
 				if idt, ok := n.Lhs[0].(*ast.Ident); ok && idt.Name != "_" {
 					// Example:
 					//  v, _ := strconv.Atoi("1111")
-					// Add "v" to atoiVarName map
-					atoiVarName[idt.Name] = n
+					// Add v's Obj to atoiVarObj map
+					atoiVarObj[idt.Obj] = n
 				}
 			}
 		}
@@ -63,7 +60,7 @@ func (i *integerOverflowCheck) Match(node ast.Node, ctx *gosec.Context) (*gosec.
 		if fun, ok := n.Fun.(*ast.Ident); ok {
 			if fun.Name == "int32" || fun.Name == "int16" {
 				if idt, ok := n.Args[0].(*ast.Ident); ok {
-					if n, ok := atoiVarName[idt.Name]; ok {
+					if n, ok := atoiVarObj[idt.Obj]; ok {
 						// Detect int32(v) and int16(v)
 						return gosec.NewIssue(ctx, n, i.ID(), i.What, i.Severity, i.Confidence), nil
 					}
