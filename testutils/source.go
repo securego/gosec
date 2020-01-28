@@ -245,7 +245,32 @@ func a() {
 }
 func main() {
 	a()
-}`}, 0, gosec.Config{"G104": map[string]interface{}{"io/ioutil": []interface{}{"WriteFile"}}}}}
+}`}, 0, gosec.Config{"G104": map[string]interface{}{"ioutil": []interface{}{"WriteFile"}}}}, {[]string{`
+package main
+
+import (
+	"bytes"
+	"fmt"
+	"io"
+	"os"
+	"strings"
+)
+
+func createBuffer() *bytes.Buffer {
+	return new(bytes.Buffer)
+}
+
+func main() {
+	new(bytes.Buffer).WriteString("*bytes.Buffer")
+	fmt.Fprintln(os.Stderr, "fmt")
+	new(strings.Builder).WriteString("*strings.Builder")
+	_, pw := io.Pipe()
+	pw.CloseWithError(io.EOF)
+
+	createBuffer().WriteString("*bytes.Buffer")
+	b := createBuffer()
+	b.WriteString("*bytes.Buffer")
+}`}, 0, gosec.NewConfig()}}  // it shoudn't return any errors because all method calls are whitelisted by default
 
 	// SampleCodeG104Audit finds errors that aren't being handled in audit mode
 	SampleCodeG104Audit = []CodeSample{
