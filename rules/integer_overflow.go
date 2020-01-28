@@ -16,8 +16,9 @@ package rules
 
 import (
 	"fmt"
-	"github.com/securego/gosec"
 	"go/ast"
+
+	"github.com/securego/gosec"
 )
 
 type integerOverflowCheck struct {
@@ -47,7 +48,7 @@ func (i *integerOverflowCheck) Match(node ast.Node, ctx *gosec.Context) (*gosec.
 	switch n := node.(type) {
 	case *ast.AssignStmt:
 		for _, expr := range n.Rhs {
-			if callExpr, ok := expr.(*ast.CallExpr); ok && i.calls.ContainsCallExpr(callExpr, ctx, false) != nil {
+			if callExpr, ok := expr.(*ast.CallExpr); ok && i.calls.ContainsPkgCallExpr(callExpr, ctx, false) != nil {
 				if idt, ok := n.Lhs[0].(*ast.Ident); ok && idt.Name != "_" {
 					// Example:
 					//  v, _ := strconv.Atoi("1111")

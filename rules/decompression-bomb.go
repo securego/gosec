@@ -16,8 +16,9 @@ package rules
 
 import (
 	"fmt"
-	"github.com/securego/gosec"
 	"go/ast"
+
+	"github.com/securego/gosec"
 )
 
 type decompressionBombCheck struct {
@@ -31,15 +32,12 @@ func (d *decompressionBombCheck) ID() string {
 }
 
 func containsReaderCall(node ast.Node, ctx *gosec.Context, list gosec.CallList) bool {
-	if list.ContainsCallExpr(node, ctx, false) != nil {
+	if list.ContainsPkgCallExpr(node, ctx, false) != nil {
 		return true
 	}
 	// Resolve type info of ident (for *archive/zip.File.Open)
 	s, idt, _ := gosec.GetCallInfo(node, ctx)
-	if list.Contains(s, idt) {
-		return true
-	}
-	return false
+	return list.Contains(s, idt)
 }
 
 func (d *decompressionBombCheck) Match(node ast.Node, ctx *gosec.Context) (*gosec.Issue, error) {
@@ -70,7 +68,7 @@ func (d *decompressionBombCheck) Match(node ast.Node, ctx *gosec.Context) (*gose
 			}
 		}
 	case *ast.CallExpr:
-		if d.copyCalls.ContainsCallExpr(n, ctx, false) != nil {
+		if d.copyCalls.ContainsPkgCallExpr(n, ctx, false) != nil {
 			if idt, ok := n.Args[1].(*ast.Ident); ok {
 				if _, ok := readerVarObj[idt.Obj]; ok {
 					// Detect io.Copy(x, r)

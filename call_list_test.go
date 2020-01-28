@@ -46,6 +46,20 @@ var _ = Describe("Call List", func() {
 		Expect(actual).Should(Equal(expected))
 	})
 
+	It("should be possible to add pointer call", func() {
+		Expect(calls).Should(HaveLen(0))
+		calls.Add("*bytes.Buffer", "WriteString")
+		actual := calls.ContainsPointer("*bytes.Buffer", "WriteString")
+		Expect(actual).Should(BeTrue())
+	})
+
+	It("should be possible to check pointer call", func() {
+		Expect(calls).Should(HaveLen(0))
+		calls.Add("bytes.Buffer", "WriteString")
+		actual := calls.ContainsPointer("*bytes.Buffer", "WriteString")
+		Expect(actual).Should(BeTrue())
+	})
+
 	It("should not return a match if none are present", func() {
 		calls.Add("ioutil", "Copy")
 		Expect(calls.Contains("fmt", "Println")).Should(BeFalse())
@@ -56,8 +70,7 @@ var _ = Describe("Call List", func() {
 		Expect(calls.Contains("ioutil", "Copy")).Should(BeTrue())
 	})
 
-	It("should match a call expression", func() {
-
+	It("should match a package call expression", func() {
 		// Create file to be scanned
 		pkg := testutils.NewTestPackage()
 		defer pkg.Close()
@@ -73,14 +86,39 @@ var _ = Describe("Call List", func() {
 		v := testutils.NewMockVisitor()
 		v.Context = ctx
 		v.Callback = func(n ast.Node, ctx *gosec.Context) bool {
-			if _, ok := n.(*ast.CallExpr); ok && calls.ContainsCallExpr(n, ctx, false) != nil {
+			if _, ok := n.(*ast.CallExpr); ok && calls.ContainsPkgCallExpr(n, ctx, false) != nil {
 				matched++
 			}
 			return true
 		}
 		ast.Walk(v, ctx.Root)
 		Expect(matched).Should(Equal(1))
-
 	})
 
+	It("should match a call expression", func() {
+		// Create file to be scanned
+		pkg := testutils.NewTestPackage()
+		defer pkg.Close()
+		pkg.AddFile("main.go", testutils.SampleCodeG104[5].Code[0])
+
+		ctx := pkg.CreateContext("main.go")
+
+		calls.Add("bytes.Buffer", "WriteString")
+		calls.Add("strings.Builder", "WriteString")
+		calls.Add("io.Pipe", "CloseWithError")
+		calls.Add("fmt", "Fprintln")
+
+		// Stub out visitor and count number of matched call expr
+		matched := 0
+		v := testutils.NewMockVisitor()
+		v.Context = ctx
+		v.Callback = func(n ast.Node, ctx *gosec.Context) bool {
+			if _, ok := n.(*ast.CallExpr); ok && calls.ContainsCallExpr(n, ctx) != nil {
+				matched++
+			}
+			return true
+		}
+		ast.Walk(v, ctx.Root)
+		Expect(matched).Should(Equal(5))
+	})
 })
