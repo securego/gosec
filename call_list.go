@@ -57,7 +57,7 @@ func (c CallList) Contains(selector, ident string) bool {
 }
 
 // ContainsPointer returns true if a pointer to the selector type or the type
-// itslef is a members of this call list.
+// itself is a members of this call list.
 func (c CallList) ContainsPointer(selector, indent string) bool {
 	if strings.HasPrefix(selector, "*") {
 		if c.Contains(selector, indent) {
@@ -70,7 +70,7 @@ func (c CallList) ContainsPointer(selector, indent string) bool {
 }
 
 // ContainsPkgCallExpr resolves the call expression name and type, and then further looks
-//  up the package path for that type. Finally, it determines if the call exists within the CallList
+//  up the package path for that type. Finally, it determines if the call exists within the call list
 func (c CallList) ContainsPkgCallExpr(n ast.Node, ctx *Context, stripVendor bool) *ast.CallExpr {
 	selector, ident, err := GetCallInfo(n, ctx)
 	if err != nil {
@@ -94,8 +94,8 @@ func (c CallList) ContainsPkgCallExpr(n ast.Node, ctx *Context, stripVendor bool
 	return n.(*ast.CallExpr)
 }
 
-// ContainsCallExpr resolves the call experssion name and type, and then determines
-// if the call existis with the call list
+// ContainsCallExpr resolves the call expression name and type, and then determines
+// if the call exists with the call list
 func (c CallList) ContainsCallExpr(n ast.Node, ctx *Context) *ast.CallExpr {
 	selector, ident, err := GetCallInfo(n, ctx)
 	if err != nil {
