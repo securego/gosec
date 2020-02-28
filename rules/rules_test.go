@@ -127,6 +127,10 @@ var _ = Describe("gosec rules", func() {
 			runner("G305", testutils.SampleCodeG305)
 		})
 
+		It("should detect poor permissions when writing to a file", func() {
+			runner("G306", testutils.SampleCodeG306)
+		})
+
 		It("should detect weak crypto algorithms", func() {
 			runner("G401", testutils.SampleCodeG401)
 		})

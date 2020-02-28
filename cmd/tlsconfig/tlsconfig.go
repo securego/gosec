@@ -186,5 +186,5 @@ func main() {
 	outputPath := filepath.Join(dir, *outputFile)
 	if err := ioutil.WriteFile(outputPath, src, 0644); err != nil {
 		log.Fatalf("Writing output: %s", err)
-	}
+	} // #nosec G306
 }
