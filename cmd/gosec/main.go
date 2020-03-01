@@ -153,7 +153,7 @@ func loadConfig(configFile string) (gosec.Config, error) {
 		if err != nil {
 			return nil, err
 		}
-		defer file.Close()
+		defer file.Close() // #nosec G307
 		if _, err := config.ReadFrom(file); err != nil {
 			return nil, err
 		}
@@ -201,7 +201,7 @@ func saveOutput(filename, format string, paths []string, issues []*gosec.Issue, 
 		if err != nil {
 			return err
 		}
-		defer outfile.Close()
+		defer outfile.Close() // #nosec G307
 		err = output.CreateReport(outfile, format, rootPaths, issues, metrics, errors)
 		if err != nil {
 			return err
