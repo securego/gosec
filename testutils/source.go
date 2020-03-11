@@ -980,8 +980,6 @@ func main() {
 
 	// SampleCodeG204 - Subprocess auditing
 	SampleCodeG204 = []CodeSample{{[]string{`
-// Calling any function which starts a new process
-// with a function call as an argument is considered a command injection
 package main
 import (
 	"log"
@@ -989,12 +987,12 @@ import (
 	"context"
 )
 func main() {
-	err := exec.CommandContext(context.Background(), "sleep", "5").Run()
+	err := exec.CommandContext(context.Background(), "git", "rev-parse", "--show-toplavel").Run()
  	if err != nil {
 		log.Fatal(err)
 	}
   	log.Printf("Command finished with error: %v", err)
-}`}, 1, gosec.NewConfig()}, {[]string{`
+}`}, 0, gosec.NewConfig()}, {[]string{`
 // Calling any function which starts a new process with using
 // command line arguments as it's arguments is considered dangerous
 package main
@@ -1004,7 +1002,7 @@ import (
 	"os/exec"
 )
 func main() {
-	err := exec.CommandContext(os.Args[0], "sleep", "5").Run()
+	err := exec.CommandContext(context.Background(), os.Args[0], "5").Run()
 	if err != nil {
 		log.Fatal(err)
 	}
