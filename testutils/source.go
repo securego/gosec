@@ -1066,6 +1066,44 @@ func main() {
 	}
 }`}, 0, gosec.NewConfig()},
 		{[]string{`
+package main
+
+import (
+	"fmt"
+	"syscall"
+)
+
+func RunCmd(command string) {
+	_, err := syscall.ForkExec(command, []string{}, nil)
+	if err != nil {
+	    fmt.Printf("Error: %v\n", err)
+	}
+}
+
+func main() {
+	RunCmd("sleep")
+}`}, 1, gosec.NewConfig(),
+		},
+		{[]string{`
+package main
+
+import (
+	"fmt"
+	"syscall"
+)
+
+func RunCmd(command string) {
+	_, err := syscall.StartProcess(command, []string{}, nil)
+	if err != nil {
+	    fmt.Printf("Error: %v\n", err)
+	}
+}
+
+func main() {
+	RunCmd("sleep")
+}`}, 1, gosec.NewConfig(),
+		},
+		{[]string{`
 // starting a process with a variable as an argument
 // even if not constant is not considered as dangerous
 // because it has harcoded value

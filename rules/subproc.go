@@ -62,5 +62,7 @@ func NewSubproc(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 	rule.Add("os/exec", "Command")
 	rule.Add("os/exec", "CommandContext")
 	rule.Add("syscall", "Exec")
+	rule.Add("syscall", "ForkExec")
+	rule.Add("syscall", "StartProcess")
 	return rule, []ast.Node{(*ast.CallExpr)(nil)}
 }
