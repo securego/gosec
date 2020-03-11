@@ -41,7 +41,11 @@ func (r *subprocess) ID() string {
 // syscall.Exec("echo", "foobar" + tainted)
 func (r *subprocess) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error) {
 	if node := r.ContainsPkgCallExpr(n, c, false); node != nil {
-		for _, arg := range node.Args {
+		args := node.Args
+		if r.isContext(n, c) {
+			args = args[1:]
+		}
+		for _, arg := range args {
 			if ident, ok := arg.(*ast.Ident); ok {
 				obj := c.Info.ObjectOf(ident)
 				if _, ok := obj.(*types.Var); ok && !gosec.TryResolve(ident, c) {
@@ -54,6 +58,19 @@ func (r *subprocess) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error) {
 		}
 	}
 	return nil, nil
+}
+
+// isContext checks whether or not the node is a CommandContext call or not
+// Thi is requried in order to skip the first argument from the check.
+func (r *subprocess) isContext(n ast.Node, ctx *gosec.Context) bool {
+	selector, indent, err := gosec.GetCallInfo(n, ctx)
+	if err != nil {
+		return false
+	}
+	if selector == "exec" && indent == "CommandContext" {
+		return true
+	}
+	return false
 }
 
 // NewSubproc detects cases where we are forking out to an external process
