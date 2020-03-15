@@ -234,6 +234,23 @@ package main
 func dummy(){}
 `}, 0, gosec.NewConfig()}, {[]string{`
 package main
+
+import (
+	"bytes"
+)
+
+type a struct {
+	buf *bytes.Buffer
+}
+
+func main() {
+	a := &a{
+		buf: new(bytes.Buffer),
+	}
+	a.buf.Write([]byte{0})
+}
+`}, 0, gosec.NewConfig()}, {[]string{`
+package main
 import (
 	"io/ioutil"
 	"os"
