@@ -135,6 +135,14 @@ func GetCallInfo(n ast.Node, ctx *Context) (string, string, error) {
 					return "undefined", fn.Sel.Name, fmt.Errorf("missing type info")
 				}
 				return expr.Name, fn.Sel.Name, nil
+			case *ast.SelectorExpr:
+				if expr.Sel != nil {
+					t := ctx.Info.TypeOf(expr.Sel)
+					if t != nil {
+						return t.String(), fn.Sel.Name, nil
+					}
+					return "undefined", fn.Sel.Name, fmt.Errorf("missing type info")
+				}
 			case *ast.CallExpr:
 				switch call := expr.Fun.(type) {
 				case *ast.Ident:

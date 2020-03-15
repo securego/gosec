@@ -99,7 +99,7 @@ var _ = Describe("Call List", func() {
 		// Create file to be scanned
 		pkg := testutils.NewTestPackage()
 		defer pkg.Close()
-		pkg.AddFile("main.go", testutils.SampleCodeG104[5].Code[0])
+		pkg.AddFile("main.go", testutils.SampleCodeG104[6].Code[0])
 
 		ctx := pkg.CreateContext("main.go")
 
