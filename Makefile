@@ -15,8 +15,12 @@ GINKGO ?= $(GOBIN)/ginkgo
 default:
 	$(MAKE) build
 
-test: build fmt lint sec
+install-test-deps:
 	$(GO_NOMOD) get -u github.com/onsi/ginkgo/ginkgo
+	$(GO_NOMOD) get -u golang.org/x/crypto/ssh
+	$(GO_NOMOD) get -u github.com/lib/pq
+
+test: install-test-deps build fmt lint sec
 	$(GINKGO) -r -v
 
 fmt:
@@ -35,14 +39,14 @@ sec:
 	@echo "SECURITY SCANNING"
 	./$(BIN) ./...
 
-test-coverage:
+test-coverage: install-test-deps
 	go test -race -coverprofile=coverage.txt -covermode=atomic
 
 build:
 	go build -o $(BIN) ./cmd/gosec/
 
 clean:
-	rm -rf build vendor dist
+	rm -rf build vendor dist coverage.txt
 	rm -f release image $(BIN)
 
 release:
