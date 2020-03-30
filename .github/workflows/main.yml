@@ -7,7 +7,7 @@ on:
     branches:
       - master
 jobs:
-  tests:
+  tests-go-1-14:
     runs-on: ubuntu-latest
     env:
       GO111MODULE: on
@@ -15,11 +15,33 @@ jobs:
       - name: Checkout Source 
         uses: actions/checkout@v2
       - name: Run Tests
-        uses: cedrickring/golang-action@1.5.1
+        uses: cedrickring/golang-action/go1.14@1.5.1
+        with:
+          args: make test
+  tests-go-1-13:
+    runs-on: ubuntu-latest
+    env:
+      GO111MODULE: on
+    steps:
+      - name: Checkout Source 
+        uses: actions/checkout@v2
+      - name: Run Tests
+        uses: cedrickring/golang-action/go1.13@1.5.1
+        with:
+          args: make test
+  tests-go-1-12:
+    runs-on: ubuntu-latest
+    env:
+      GO111MODULE: on
+    steps:
+      - name: Checkout Source 
+        uses: actions/checkout@v2
+      - name: Run Tests
+        uses: cedrickring/golang-action/go1.12@1.5.1
         with:
           args: make test
   coverage:
-    needs: tests
+    needs: [tests-go-1-14, test-go-1-13, test-go-1-12]
     runs-on: ubuntu-latest
     env:
       GO111MODULE: on
