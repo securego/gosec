@@ -8,31 +8,36 @@ on:
       - master
 jobs:
   tests:
-    runs-on: ubuntu-latest
     strategy:
       matrix:
-        go-version: ["go1.12", "go1.13", "go1.14"]
+        go-version: [go1.12.x, go1.13.x, go1.14.x]
+        platform:  [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.platform }}
     env:
-      GO111MODULE: "on"
+      GO111MODULE: on
     steps:
+      - name: Install Go
+        uses: actions/setup-go@v1
+        with:
+          go-version: ${{ matrix.go-version }}
       - name: Checkout Source 
         uses: actions/checkout@v2
       - name: Run Tests
-        uses: cedrickring/golang-action/${{ matrix.go-version }}@1.5.1
-        with:
-          args: make test
+        run: make test
   coverage:
     needs: tests
     runs-on: ubuntu-latest
     env:
-      GO111MODULE: "on"
+      GO111MODULE: on
     steps:
+      - name: Install Go
+        uses: actions/setup-go@v1
+        with:
+          go-version: go1.14.x
       - name: Checkout Source 
         uses: actions/checkout@v2
       - name: Create Test Coverage
-        uses: cedrickring/golang-action@1.5.1
-        with:
-          args: make test-coverage
+        run: make test-coverage
       - name: Upload Test Coverage
         uses: codecov/codecov-action@v1
         with:
