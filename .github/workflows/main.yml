@@ -41,7 +41,7 @@ jobs:
         with:
           args: make test
   coverage:
-    needs: [tests-go-1-14, test-go-1-13, test-go-1-12]
+    needs: [tests-go-1-14, tests-go-1-13, tests-go-1-12]
     runs-on: ubuntu-latest
     env:
       GO111MODULE: on
