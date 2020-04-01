@@ -3,7 +3,7 @@ package rules
 import (
 	"go/ast"
 
-	"github.com/securego/gosec"
+	"github.com/securego/gosec/v2"
 )
 
 // NewModernTLSCheck creates a check for Modern TLS ciphers

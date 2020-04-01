@@ -8,6 +8,6 @@ package {{.}}
 import (
 	"go/ast"
 
-	"github.com/securego/gosec"
+	"github.com/securego/gosec/v2"
 )
 `))

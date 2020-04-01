@@ -5,8 +5,8 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/securego/gosec"
-	"github.com/securego/gosec/testutils"
+	"github.com/securego/gosec/v2"
+	"github.com/securego/gosec/v2/testutils"
 )
 
 var _ = Describe("Resolve ast node to concrete value", func() {
