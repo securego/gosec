@@ -5,7 +5,7 @@ import (
 	htmlLib "html"
 	"strconv"
 
-	"github.com/securego/gosec"
+	"github.com/securego/gosec/v2"
 )
 
 type junitXMLReport struct {
@@ -43,11 +43,10 @@ func generatePlaintext(issue *gosec.Issue) string {
 func groupDataByRules(data *reportInfo) map[string][]*gosec.Issue {
 	groupedData := make(map[string][]*gosec.Issue)
 	for _, issue := range data.Issues {
-		if _, ok := groupedData[issue.What]; ok {
-			groupedData[issue.What] = append(groupedData[issue.What], issue)
-		} else {
-			groupedData[issue.What] = []*gosec.Issue{issue}
+		if _, ok := groupedData[issue.What]; !ok {
+			groupedData[issue.What] = []*gosec.Issue{}
 		}
+		groupedData[issue.What] = append(groupedData[issue.What], issue)
 	}
 	return groupedData
 }

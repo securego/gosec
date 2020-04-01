@@ -25,7 +25,7 @@ import (
 	"strings"
 	plainTemplate "text/template"
 
-	"github.com/securego/gosec"
+	"github.com/securego/gosec/v2"
 	"gopkg.in/yaml.v2"
 )
 

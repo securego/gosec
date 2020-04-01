@@ -18,7 +18,7 @@ import (
 	"go/ast"
 	"go/types"
 
-	"github.com/securego/gosec"
+	"github.com/securego/gosec/v2"
 )
 
 type subprocess struct {

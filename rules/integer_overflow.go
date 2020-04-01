@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"go/ast"
 
-	"github.com/securego/gosec"
+	"github.com/securego/gosec/v2"
 )
 
 type integerOverflowCheck struct {
