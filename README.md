@@ -47,6 +47,32 @@ echo "<check sum from the check sum file>  gosec_vX.Y.Z_OS.tar.gz" | sha256sum -
 
 gosec --help
 ```
+### GitHub Action
+
+You can run `gosec` as a GitHub action as follows:
+
+```yaml
+name: Run Gosec
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    env:
+      GO111MODULE: on
+    steps:
+      - name: Checkout Source 
+        uses: actions/checkout@v2
+      - name: Run Gosec Security Scanner
+        uses: securego/gosec@master
+        with:
+          args: ./...
+```
 
 ### Local Installation
 
