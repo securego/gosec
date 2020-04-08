@@ -1,4 +1,4 @@
-name: 'Gosec'
+name: 'Gosec Security Checker'
 description: 'Runs the gosec security checker'
 author: '@ccojocar'
 
