@@ -240,9 +240,9 @@ gosec -tag debug,ignore ./...
 
 ### Output formats
 
-gosec currently supports text, json, yaml, csv, sonarqube, JUnit XML and golint output formats. By default
+gosec currently supports `text`, `json`, `yaml`, `csv`, `sonarqube`, `JUnit XML`, `html` and `golint` output formats. By default
 results will be reported to stdout, but can also be written to an output
-file. The output format is controlled by the '-fmt' flag, and the output file is controlled by the '-out' flag as follows:
+file. The output format is controlled by the `-fmt` flag, and the output file is controlled by the `-out` flag as follows:
 
 ```bash
 # Write output in json format to results.json
@@ -253,51 +253,39 @@ $ gosec -fmt=json -out=results.json *.go
 
 ### Build
 
+You can build the binary with:
 ```bash
 make
 ```
 
 ### Tests
 
+You can run all unit tests using:
 ```bash
 make test
 ```
 
-### Release Build
+### Release
 
-Make sure you have installed the [goreleaser](https://github.com/goreleaser/goreleaser) tool and then you can release gosec as follows:
+You can create a release by tagging the version as follows:
 
-```bash
-git tag v1.0.0
-export GITHUB_TOKEN=<YOUR GITHUB TOKEN>
-make release
+``` bash
+git tag v1.0.0 -m "Release version v1.0.0"
+git push origin v1.0.0
 ```
 
-The released version of the tool is available in the `dist` folder. The build information should be displayed in the usage text.
-
-```bash
-./dist/darwin_amd64/gosec -h
-gosec  - Golang security checker
-
-gosec analyzes Go source code to look for common programming mistakes that
-
-
-VERSION: 1.0.0
-GIT TAG: v1.0.0
-BUILD DATE: 2018-04-27T12:41:38Z
-```
-
-Note that all released archives are also uploaded to GitHub.
+The GitHub [release workflow](.github/workflows/release.yml) triggers immediately after the tag is pushed upstream. This flow will
+release the binaries using the [goreleaser](https://goreleaser.com/actions/) action and then it will build and publish the docker image into Docker Hub.
 
 ### Docker image
 
-You can build the docker image as follows:
+You can also build locally the docker image by using the command:
 
 ```bash
 make image
 ```
 
-You can run the `gosec` tool in a container against your local Go project. You just have to mount the project 
+You can run the `gosec` tool in a container against your local Go project. You only have to mount the project 
 into a volume as follows:
 
 ```bash

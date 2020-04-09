@@ -1,4 +1,4 @@
-name: GoSec CI
+name: CI
 on:
   push:
     branches:

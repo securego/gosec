@@ -11,6 +11,7 @@ GOBIN ?= $(GOPATH)/bin
 GOLINT ?= $(GOBIN)/golint
 GOSEC ?= $(GOBIN)/gosec
 GINKGO ?= $(GOBIN)/ginkgo
+GO_VERSION = 1.14
 
 default:
 	$(MAKE) build
@@ -58,7 +59,7 @@ build-linux:
 
 image:
 	@echo "Building the Docker image..."
-	docker build -t $(IMAGE_REPO)/$(BIN):$(GIT_TAG) .
+	docker build -t $(IMAGE_REPO)/$(BIN):$(GIT_TAG) --build-arg GO_VERSION=$(GO_VERSION) .
 	docker tag $(IMAGE_REPO)/$(BIN):$(GIT_TAG) $(IMAGE_REPO)/$(BIN):latest
 	touch image
 
