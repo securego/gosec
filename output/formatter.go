@@ -76,7 +76,7 @@ type reportInfo struct {
 }
 
 // CreateReport generates a report based for the supplied issues and metrics given
-// the specified format. The formats currently accepted are: json, csv, html and text.
+// the specified format. The formats currently accepted are: json, yaml, csv, junit-xml, html, sonarqube, golint and text.
 func CreateReport(w io.Writer, format string, rootPaths []string, issues []*gosec.Issue, metrics *gosec.Metrics, errors map[string][]gosec.Error) error {
 	data := &reportInfo{
 		Errors: errors,
