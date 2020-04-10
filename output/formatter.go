@@ -58,7 +58,7 @@ Golang errors in file: [{{ $filePath }}]:
 {{end}}
 {{end}}
 {{ range $index, $issue := .Issues }}
-[{{ $issue.File }}:{{ $issue.Line }}] - {{ $issue.RuleID }} (CWE-{{ $issue.Cwe.ID }}): {{ $issue.What }} (Confidence: {{ $issue.Confidence}}, Severity: {{ $issue.Severity }})
+[{{ highlight $issue.FileLocation $issue.Severity }}] - {{ $issue.RuleID }} (CWE-{{ $issue.Cwe.ID }}): {{ $issue.What }} (Confidence: {{ $issue.Confidence}}, Severity: {{ $issue.Severity }})
   > {{ $issue.Code }}
 
 {{ end }}
@@ -284,16 +284,38 @@ func reportFromHTMLTemplate(w io.Writer, reportTemplate string, data *reportInfo
 func plainTextFuncMap(enableColor bool) plainTemplate.FuncMap {
 	if enableColor {
 		return plainTemplate.FuncMap{
-			"danger":  color.Danger.Render,
-			"notice":  color.Notice.Render,
-			"success": color.Success.Render,
+			"highlight": highlight,
+			"danger":    color.Danger.Render,
+			"notice":    color.Notice.Render,
+			"success":   color.Success.Render,
 		}
 	}
 
 	// by default those functions return the given content untouched
 	return plainTemplate.FuncMap{
+		"highlight": func(t string, s gosec.Score) string {
+			return t
+		},
 		"danger":  fmt.Sprint,
 		"notice":  fmt.Sprint,
 		"success": fmt.Sprint,
+	}
+}
+
+var (
+	errorTheme   = color.New(color.FgLightWhite, color.BgRed)
+	warningTheme = color.New(color.FgBlack, color.BgYellow)
+	defaultTheme = color.New(color.FgWhite, color.BgBlack)
+)
+
+// highlight returns content t colored based on Score
+func highlight(t string, s gosec.Score) string {
+	switch s {
+	case gosec.High:
+		return errorTheme.Sprint(t)
+	case gosec.Medium:
+		return warningTheme.Sprint(t)
+	default:
+		return defaultTheme.Sprint(t)
 	}
 }
