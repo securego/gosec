@@ -49,6 +49,43 @@ var _ = Describe("Issue", func() {
 			Skip("Not implemented")
 		})
 
+		It("should construct file path based on line and file information", func() {
+			var target *ast.AssignStmt
+
+			source := `package main
+			import "fmt"
+			func main() {
+				username := "admin"
+				password := "f62e5bcda4fae4f82370da0c6f20697b8f8447ef"
+				fmt.Println("Doing something with: ", username, password)
+			}`
+
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("foo.go", source)
+			ctx := pkg.CreateContext("foo.go")
+			v := testutils.NewMockVisitor()
+			v.Callback = func(n ast.Node, ctx *gosec.Context) bool {
+				if node, ok := n.(*ast.AssignStmt); ok {
+					if id, ok := node.Lhs[0].(*ast.Ident); ok && id.Name == "password" {
+						target = node
+					}
+				}
+				return true
+			}
+			v.Context = ctx
+			ast.Walk(v, ctx.Root)
+			Expect(target).ShouldNot(BeNil())
+
+			// Use hardcodeded rule to check assignment
+			cfg := gosec.NewConfig()
+			rule, _ := rules.NewHardcodedCredentials("TEST", cfg)
+			issue, err := rule.Match(target, ctx)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(issue).ShouldNot(BeNil())
+			Expect(issue.FileLocation()).Should(MatchRegexp("foo.go:5"))
+		})
+
 		It("should provide accurate line and file information", func() {
 			Skip("Not implemented")
 		})
