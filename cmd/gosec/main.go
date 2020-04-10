@@ -120,6 +120,9 @@ var (
 	// exlude the folders from scan
 	flagDirsExclude arrayFlags
 
+	// set color on text format output
+	flagColor = flag.Bool("color", false, "Enable colored output. Valid for text format")
+
 	logger *log.Logger
 )
 
@@ -280,6 +283,11 @@ func main() {
 		logger = log.New(ioutil.Discard, "", 0)
 	} else {
 		logger = log.New(logWriter, "[gosec] ", log.LstdFlags)
+	}
+
+	// Color flag is allowed for text format
+	if *flagColor && *flagFormat != "text" {
+		logger.Fatalf("cannot set color with %s format. Only text format is accepted", *flagFormat)
 	}
 
 	failSeverity, err := convertToScore(*flagSeverity)
