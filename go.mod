@@ -13,6 +13,7 @@ require (
 	golang.org/x/text v0.3.2 // indirect
 	golang.org/x/tools v0.0.0-20200331202046-9d5940d49312
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
+	gopkg.in/gookit/color.v1 v1.1.6
 	gopkg.in/yaml.v2 v2.2.8
 )
 
