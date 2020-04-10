@@ -82,7 +82,7 @@ type reportInfo struct {
 
 // CreateReport generates a report based for the supplied issues and metrics given
 // the specified format. The formats currently accepted are: json, yaml, csv, junit-xml, html, sonarqube, golint and text.
-func CreateReport(w io.Writer, format string, rootPaths []string, issues []*gosec.Issue, metrics *gosec.Metrics, errors map[string][]gosec.Error) error {
+func CreateReport(w io.Writer, format string, enableColor bool, rootPaths []string, issues []*gosec.Issue, metrics *gosec.Metrics, errors map[string][]gosec.Error) error {
 	data := &reportInfo{
 		Errors: errors,
 		Issues: issues,
@@ -101,14 +101,12 @@ func CreateReport(w io.Writer, format string, rootPaths []string, issues []*gose
 	case "html":
 		err = reportFromHTMLTemplate(w, html, data)
 	case "text":
-		enableColor := true
 		err = reportFromPlaintextTemplate(w, text, enableColor, data)
 	case "sonarqube":
 		err = reportSonarqube(rootPaths, w, data)
 	case "golint":
 		err = reportGolint(w, data)
 	default:
-		enableColor := true
 		err = reportFromPlaintextTemplate(w, text, enableColor, data)
 	}
 	return err

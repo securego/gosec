@@ -190,7 +190,7 @@ func loadRules(include, exclude string) rules.RuleList {
 	return rules.Generate(filters...)
 }
 
-func saveOutput(filename, format string, paths []string, issues []*gosec.Issue, metrics *gosec.Metrics, errors map[string][]gosec.Error) error {
+func saveOutput(filename, format string, color bool, paths []string, issues []*gosec.Issue, metrics *gosec.Metrics, errors map[string][]gosec.Error) error {
 	rootPaths := []string{}
 	for _, path := range paths {
 		rootPath, err := gosec.RootPath(path)
@@ -205,12 +205,12 @@ func saveOutput(filename, format string, paths []string, issues []*gosec.Issue, 
 			return err
 		}
 		defer outfile.Close() // #nosec G307
-		err = output.CreateReport(outfile, format, rootPaths, issues, metrics, errors)
+		err = output.CreateReport(outfile, format, color, rootPaths, issues, metrics, errors)
 		if err != nil {
 			return err
 		}
 	} else {
-		err := output.CreateReport(os.Stdout, format, rootPaths, issues, metrics, errors)
+		err := output.CreateReport(os.Stdout, format, color, rootPaths, issues, metrics, errors)
 		if err != nil {
 			return err
 		}
@@ -358,7 +358,7 @@ func main() {
 	}
 
 	// Create output report
-	if err := saveOutput(*flagOutput, *flagFormat, flag.Args(), issues, metrics, errors); err != nil {
+	if err := saveOutput(*flagOutput, *flagFormat, *flagColor, flag.Args(), issues, metrics, errors); err != nil {
 		logger.Fatal(err)
 	}
 
