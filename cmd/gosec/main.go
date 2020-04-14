@@ -120,9 +120,6 @@ var (
 	// exlude the folders from scan
 	flagDirsExclude arrayFlags
 
-	// set color on text format output
-	flagColor = flag.Bool("color", false, "Enable colored output. Valid for text format")
-
 	logger *log.Logger
 )
 
@@ -286,8 +283,9 @@ func main() {
 	}
 
 	// Color flag is allowed for text format
-	if *flagColor && *flagFormat != "text" {
-		logger.Fatalf("cannot set color with %s format. Only text format is accepted", *flagFormat)
+	var color bool
+	if *flagFormat != "text" {
+		color = true
 	}
 
 	failSeverity, err := convertToScore(*flagSeverity)
@@ -358,7 +356,7 @@ func main() {
 	}
 
 	// Create output report
-	if err := saveOutput(*flagOutput, *flagFormat, *flagColor, flag.Args(), issues, metrics, errors); err != nil {
+	if err := saveOutput(*flagOutput, *flagFormat, color, flag.Args(), issues, metrics, errors); err != nil {
 		logger.Fatal(err)
 	}
 
