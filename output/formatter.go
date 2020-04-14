@@ -25,8 +25,8 @@ import (
 	"strings"
 	plainTemplate "text/template"
 
+	color "github.com/gookit/color"
 	"github.com/securego/gosec/v2"
-	color "gopkg.in/gookit/color.v1"
 	"gopkg.in/yaml.v2"
 )
 
