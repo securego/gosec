@@ -262,7 +262,7 @@ var _ = Describe("Formatter", func() {
 				error := map[string][]gosec.Error{}
 
 				buf := new(bytes.Buffer)
-				err := CreateReport(buf, "csv", []string{}, []*gosec.Issue{&issue}, &gosec.Metrics{}, error)
+				err := CreateReport(buf, "csv", false, []string{}, []*gosec.Issue{&issue}, &gosec.Metrics{}, error)
 				Expect(err).ShouldNot(HaveOccurred())
 				pattern := "/home/src/project/test.go,1,test,HIGH,HIGH,testcode,CWE-%s\n"
 				expect := fmt.Sprintf(pattern, cwe.ID)
@@ -276,7 +276,7 @@ var _ = Describe("Formatter", func() {
 				error := map[string][]gosec.Error{}
 
 				buf := new(bytes.Buffer)
-				err := CreateReport(buf, "xml", []string{}, []*gosec.Issue{&issue}, &gosec.Metrics{NumFiles: 0, NumLines: 0, NumNosec: 0, NumFound: 0}, error)
+				err := CreateReport(buf, "xml", false, []string{}, []*gosec.Issue{&issue}, &gosec.Metrics{NumFiles: 0, NumLines: 0, NumNosec: 0, NumFound: 0}, error)
 				Expect(err).ShouldNot(HaveOccurred())
 				pattern := "Results:\n\n\n[/home/src/project/test.go:1] - %s (CWE-%s): test (Confidence: HIGH, Severity: HIGH)\n  > testcode\n\n\nSummary:\n   Files: 0\n   Lines: 0\n   Nosec: 0\n  Issues: 0\n\n"
 				expect := fmt.Sprintf(pattern, rule, cwe.ID)
@@ -296,7 +296,7 @@ var _ = Describe("Formatter", func() {
 				err := enc.Encode(data)
 				Expect(err).ShouldNot(HaveOccurred())
 				buf := new(bytes.Buffer)
-				err = CreateReport(buf, "json", []string{}, []*gosec.Issue{&issue}, &gosec.Metrics{}, error)
+				err = CreateReport(buf, "json", false, []string{}, []*gosec.Issue{&issue}, &gosec.Metrics{}, error)
 				Expect(err).ShouldNot(HaveOccurred())
 				result := stripString(buf.String())
 				expectation := stripString(expect.String())
@@ -316,7 +316,7 @@ var _ = Describe("Formatter", func() {
 				err := enc.Encode(data)
 				Expect(err).ShouldNot(HaveOccurred())
 				buf := new(bytes.Buffer)
-				err = CreateReport(buf, "html", []string{}, []*gosec.Issue{&issue}, &gosec.Metrics{}, error)
+				err = CreateReport(buf, "html", false, []string{}, []*gosec.Issue{&issue}, &gosec.Metrics{}, error)
 				Expect(err).ShouldNot(HaveOccurred())
 				result := stripString(buf.String())
 				expectation := stripString(expect.String())
@@ -336,7 +336,7 @@ var _ = Describe("Formatter", func() {
 				err := enc.Encode(data)
 				Expect(err).ShouldNot(HaveOccurred())
 				buf := new(bytes.Buffer)
-				err = CreateReport(buf, "yaml", []string{}, []*gosec.Issue{&issue}, &gosec.Metrics{}, error)
+				err = CreateReport(buf, "yaml", false, []string{}, []*gosec.Issue{&issue}, &gosec.Metrics{}, error)
 				Expect(err).ShouldNot(HaveOccurred())
 				result := stripString(buf.String())
 				expectation := stripString(expect.String())
@@ -356,7 +356,7 @@ var _ = Describe("Formatter", func() {
 				err := enc.Encode(data)
 				Expect(err).ShouldNot(HaveOccurred())
 				buf := new(bytes.Buffer)
-				err = CreateReport(buf, "junit-xml", []string{}, []*gosec.Issue{&issue}, &gosec.Metrics{}, error)
+				err = CreateReport(buf, "junit-xml", false, []string{}, []*gosec.Issue{&issue}, &gosec.Metrics{}, error)
 				Expect(err).ShouldNot(HaveOccurred())
 				expectation := stripString(fmt.Sprintf("[/home/src/project/test.go:1] - test (Confidence: 2, Severity: 2, CWE: %s)", cwe.ID))
 				result := stripString(buf.String())
@@ -376,7 +376,7 @@ var _ = Describe("Formatter", func() {
 				err := enc.Encode(data)
 				Expect(err).ShouldNot(HaveOccurred())
 				buf := new(bytes.Buffer)
-				err = CreateReport(buf, "text", []string{}, []*gosec.Issue{&issue}, &gosec.Metrics{}, error)
+				err = CreateReport(buf, "text", false, []string{}, []*gosec.Issue{&issue}, &gosec.Metrics{}, error)
 				Expect(err).ShouldNot(HaveOccurred())
 				expectation := stripString(fmt.Sprintf("[/home/src/project/test.go:1] - %s (CWE-%s): test (Confidence: HIGH, Severity: HIGH)", rule, cwe.ID))
 				result := stripString(buf.String())
@@ -389,7 +389,7 @@ var _ = Describe("Formatter", func() {
 				issue := createIssue(rule, cwe)
 				error := map[string][]gosec.Error{}
 				buf := new(bytes.Buffer)
-				err := CreateReport(buf, "sonarqube", []string{"/home/src/project"}, []*gosec.Issue{&issue}, &gosec.Metrics{}, error)
+				err := CreateReport(buf, "sonarqube", false, []string{"/home/src/project"}, []*gosec.Issue{&issue}, &gosec.Metrics{}, error)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				result := stripString(buf.String())
@@ -410,7 +410,7 @@ var _ = Describe("Formatter", func() {
 				error := map[string][]gosec.Error{}
 
 				buf := new(bytes.Buffer)
-				err := CreateReport(buf, "golint", []string{}, []*gosec.Issue{&issue}, &gosec.Metrics{}, error)
+				err := CreateReport(buf, "golint", false, []string{}, []*gosec.Issue{&issue}, &gosec.Metrics{}, error)
 				Expect(err).ShouldNot(HaveOccurred())
 				pattern := "/home/src/project/test.go:1:1: [CWE-%s] test (Rule:%s, Severity:HIGH, Confidence:HIGH)\n"
 				expect := fmt.Sprintf(pattern, cwe.ID, rule)

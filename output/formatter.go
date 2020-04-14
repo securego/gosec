@@ -26,6 +26,7 @@ import (
 	plainTemplate "text/template"
 
 	"github.com/securego/gosec/v2"
+	color "gopkg.in/gookit/color.v1"
 	"gopkg.in/yaml.v2"
 )
 
@@ -57,15 +58,19 @@ Golang errors in file: [{{ $filePath }}]:
 {{end}}
 {{end}}
 {{ range $index, $issue := .Issues }}
-[{{ $issue.File }}:{{ $issue.Line }}] - {{ $issue.RuleID }} (CWE-{{ $issue.Cwe.ID }}): {{ $issue.What }} (Confidence: {{ $issue.Confidence}}, Severity: {{ $issue.Severity }})
+[{{ highlight $issue.FileLocation $issue.Severity }}] - {{ $issue.RuleID }} (CWE-{{ $issue.Cwe.ID }}): {{ $issue.What }} (Confidence: {{ $issue.Confidence}}, Severity: {{ $issue.Severity }})
   > {{ $issue.Code }}
 
 {{ end }}
-Summary:
+{{ notice "Summary:" }}
    Files: {{.Stats.NumFiles}}
    Lines: {{.Stats.NumLines}}
    Nosec: {{.Stats.NumNosec}}
-  Issues: {{.Stats.NumFound}}
+  Issues: {{ if eq .Stats.NumFound 0 }}
+	{{- success .Stats.NumFound }}
+	{{- else }}
+	{{- danger .Stats.NumFound }}
+	{{- end }}
 
 `
 
@@ -76,8 +81,8 @@ type reportInfo struct {
 }
 
 // CreateReport generates a report based for the supplied issues and metrics given
-// the specified format. The formats currently accepted are: json, csv, html and text.
-func CreateReport(w io.Writer, format string, rootPaths []string, issues []*gosec.Issue, metrics *gosec.Metrics, errors map[string][]gosec.Error) error {
+// the specified format. The formats currently accepted are: json, yaml, csv, junit-xml, html, sonarqube, golint and text.
+func CreateReport(w io.Writer, format string, enableColor bool, rootPaths []string, issues []*gosec.Issue, metrics *gosec.Metrics, errors map[string][]gosec.Error) error {
 	data := &reportInfo{
 		Errors: errors,
 		Issues: issues,
@@ -96,13 +101,13 @@ func CreateReport(w io.Writer, format string, rootPaths []string, issues []*gose
 	case "html":
 		err = reportFromHTMLTemplate(w, html, data)
 	case "text":
-		err = reportFromPlaintextTemplate(w, text, data)
+		err = reportFromPlaintextTemplate(w, text, enableColor, data)
 	case "sonarqube":
 		err = reportSonarqube(rootPaths, w, data)
 	case "golint":
 		err = reportGolint(w, data)
 	default:
-		err = reportFromPlaintextTemplate(w, text, data)
+		err = reportFromPlaintextTemplate(w, text, enableColor, data)
 	}
 	return err
 }
@@ -253,8 +258,11 @@ func reportJUnitXML(w io.Writer, data *reportInfo) error {
 	return nil
 }
 
-func reportFromPlaintextTemplate(w io.Writer, reportTemplate string, data *reportInfo) error {
-	t, e := plainTemplate.New("gosec").Parse(reportTemplate)
+func reportFromPlaintextTemplate(w io.Writer, reportTemplate string, enableColor bool, data *reportInfo) error {
+	t, e := plainTemplate.
+		New("gosec").
+		Funcs(plainTextFuncMap(enableColor)).
+		Parse(reportTemplate)
 	if e != nil {
 		return e
 	}
@@ -269,4 +277,43 @@ func reportFromHTMLTemplate(w io.Writer, reportTemplate string, data *reportInfo
 	}
 
 	return t.Execute(w, data)
+}
+
+func plainTextFuncMap(enableColor bool) plainTemplate.FuncMap {
+	if enableColor {
+		return plainTemplate.FuncMap{
+			"highlight": highlight,
+			"danger":    color.Danger.Render,
+			"notice":    color.Notice.Render,
+			"success":   color.Success.Render,
+		}
+	}
+
+	// by default those functions return the given content untouched
+	return plainTemplate.FuncMap{
+		"highlight": func(t string, s gosec.Score) string {
+			return t
+		},
+		"danger":  fmt.Sprint,
+		"notice":  fmt.Sprint,
+		"success": fmt.Sprint,
+	}
+}
+
+var (
+	errorTheme   = color.New(color.FgLightWhite, color.BgRed)
+	warningTheme = color.New(color.FgBlack, color.BgYellow)
+	defaultTheme = color.New(color.FgWhite, color.BgBlack)
+)
+
+// highlight returns content t colored based on Score
+func highlight(t string, s gosec.Score) string {
+	switch s {
+	case gosec.High:
+		return errorTheme.Sprint(t)
+	case gosec.Medium:
+		return warningTheme.Sprint(t)
+	default:
+		return defaultTheme.Sprint(t)
+	}
 }

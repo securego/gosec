@@ -88,6 +88,11 @@ type Issue struct {
 	Col        string `json:"column"`     // Column number in line
 }
 
+// FileLocation point out the file path and line number in file
+func (i Issue) FileLocation() string {
+	return fmt.Sprintf("%s:%s", i.File, i.Line)
+}
+
 // MetaData is embedded in all gosec rules. The Severity, Confidence and What message
 // will be passed through to reported issues.
 type MetaData struct {
