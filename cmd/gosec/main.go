@@ -284,7 +284,7 @@ func main() {
 
 	// Color flag is allowed for text format
 	var color bool
-	if *flagFormat != "text" {
+	if *flagFormat == "text" {
 		color = true
 	}
 
