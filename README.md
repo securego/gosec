@@ -171,6 +171,20 @@ of functions which will be skipped when auditing the not checked errors:
 }
 ```
 
+You can also configure the hard-coded credentials rule `G101` with additional patters, or adjust the entropy threshold:
+
+```JSON
+{
+    "G101": {
+        "pattern": "(?i)passwd|pass|password|pwd|secret|private_key|token",
+         "ingnore_entropy": false,
+         "entropy_threshold": "80.0",
+         "per_char_threshold": "3.0",
+         "trucate": "32"
+    }
+}
+```
+
 ### Dependencies 
 
 gosec will fetch automatically the dependencies of the code which is being analyzed when go module is turned on (e.g.` GO111MODULE=on`). If this is not the case,
