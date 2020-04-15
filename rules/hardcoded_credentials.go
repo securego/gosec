@@ -105,28 +105,36 @@ func NewHardcodedCredentials(id string, conf gosec.Config) (gosec.Rule, []ast.No
 	ignoreEntropy := false
 	var truncateString = 16
 	if val, ok := conf["G101"]; ok {
-		conf := val.(map[string]string)
+		conf := val.(map[string]interface{})
 		if configPattern, ok := conf["pattern"]; ok {
-			pattern = configPattern
+			if cfgPattern, ok := configPattern.(string); ok {
+				pattern = cfgPattern
+			}
 		}
 		if configIgnoreEntropy, ok := conf["ignore_entropy"]; ok {
-			if parsedBool, err := strconv.ParseBool(configIgnoreEntropy); err == nil {
-				ignoreEntropy = parsedBool
+			if cfgIgnoreEntropy, ok := configIgnoreEntropy.(bool); ok {
+				ignoreEntropy = cfgIgnoreEntropy
 			}
 		}
 		if configEntropyThreshold, ok := conf["entropy_threshold"]; ok {
-			if parsedNum, err := strconv.ParseFloat(configEntropyThreshold, 64); err == nil {
-				entropyThreshold = parsedNum
+			if cfgEntropyThreshold, ok := configEntropyThreshold.(string); ok {
+				if parsedNum, err := strconv.ParseFloat(cfgEntropyThreshold, 64); err == nil {
+					entropyThreshold = parsedNum
+				}
 			}
 		}
 		if configCharThreshold, ok := conf["per_char_threshold"]; ok {
-			if parsedNum, err := strconv.ParseFloat(configCharThreshold, 64); err == nil {
-				perCharThreshold = parsedNum
+			if cfgCharThreshold, ok := configCharThreshold.(string); ok {
+				if parsedNum, err := strconv.ParseFloat(cfgCharThreshold, 64); err == nil {
+					perCharThreshold = parsedNum
+				}
 			}
 		}
 		if configTruncate, ok := conf["truncate"]; ok {
-			if parsedInt, err := strconv.Atoi(configTruncate); err == nil {
-				truncateString = parsedInt
+			if cfgTruncate, ok := configTruncate.(string); ok {
+				if parsedInt, err := strconv.Atoi(cfgTruncate); err == nil {
+					truncateString = parsedInt
+				}
 			}
 		}
 	}
