@@ -10,6 +10,7 @@ require (
 	github.com/nbutton23/zxcvbn-go v0.0.0-20180912185939-ae427f1e4c1d
 	github.com/onsi/ginkgo v1.12.0
 	github.com/onsi/gomega v1.9.0
+	github.com/shurcooL/graphql v0.0.0-20181231061246-d48a9a75455f
 	github.com/stretchr/testify v1.4.0 // indirect
 	golang.org/x/text v0.3.2 // indirect
 	golang.org/x/tools v0.0.0-20200331202046-9d5940d49312

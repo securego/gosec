@@ -16,6 +16,7 @@ package rules
 
 import (
 	"go/ast"
+	"go/token"
 	"regexp"
 	"strconv"
 
@@ -58,6 +59,8 @@ func (r *credentials) Match(n ast.Node, ctx *gosec.Context) (*gosec.Issue, error
 		return r.matchAssign(node, ctx)
 	case *ast.ValueSpec:
 		return r.matchValueSpec(node, ctx)
+	case *ast.BinaryExpr:
+		return r.matchEqualityCheck(node, ctx)
 	}
 	return nil, nil
 }
@@ -89,6 +92,21 @@ func (r *credentials) matchValueSpec(valueSpec *ast.ValueSpec, ctx *gosec.Contex
 			if val, err := gosec.GetString(valueSpec.Values[index]); err == nil {
 				if r.ignoreEntropy || (!r.ignoreEntropy && r.isHighEntropyString(val)) {
 					return gosec.NewIssue(ctx, valueSpec, r.ID(), r.What, r.Severity, r.Confidence), nil
+				}
+			}
+		}
+	}
+	return nil, nil
+}
+
+func (r *credentials) matchEqualityCheck(binaryExpr *ast.BinaryExpr, ctx *gosec.Context) (*gosec.Issue, error) {
+	if binaryExpr.Op == token.EQL || binaryExpr.Op == token.NEQ {
+		if ident, ok := binaryExpr.X.(*ast.Ident); ok {
+			if r.pattern.MatchString(ident.Name) {
+				if val, err := gosec.GetString(binaryExpr.Y); err == nil {
+					if r.ignoreEntropy || (!r.ignoreEntropy && r.isHighEntropyString(val)) {
+						return gosec.NewIssue(ctx, binaryExpr, r.ID(), r.What, r.Severity, r.Confidence), nil
+					}
 				}
 			}
 		}
@@ -151,5 +169,5 @@ func NewHardcodedCredentials(id string, conf gosec.Config) (gosec.Rule, []ast.No
 			Confidence: gosec.Low,
 			Severity:   gosec.High,
 		},
-	}, []ast.Node{(*ast.AssignStmt)(nil), (*ast.ValueSpec)(nil)}
+	}, []ast.Node{(*ast.AssignStmt)(nil), (*ast.ValueSpec)(nil), (*ast.BinaryExpr)(nil)}
 }
