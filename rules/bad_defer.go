@@ -40,7 +40,7 @@ func (r *badDefer) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error) {
 		for _, deferTyp := range r.types {
 			if typ, method, err := gosec.GetCallInfo(deferStmt.Call, c); err == nil {
 				if normalize(typ) == deferTyp.typ && contains(deferTyp.methods, method) {
-					return gosec.NewIssue(c, n, r.ID(), fmt.Sprintf(r.What, typ, method), r.Severity, r.Confidence), nil
+					return gosec.NewIssue(c, n, r.ID(), fmt.Sprintf(r.What, method, typ), r.Severity, r.Confidence), nil
 				}
 			}
 		}
