@@ -324,3 +324,7 @@ go generate ./...
 ```
 
 This will generate the `rules/tls_config.go` file which will contain the current ciphers recommendation from Mozilla.
+
+## Who is using gosec?
+
+This is a [list](USERS.md) with some of the gosec's users. 
