@@ -2,7 +2,7 @@
 
 This is a list of gosec's users. Please send a pull request with your organisation or project name if you are using gosec. 
 
-## Comapnies
+## Companies
 
 1. [Gitlab](https://docs.gitlab.com/ee/user/application_security/sast/)
 2. [CloudBees](https://cloudbees.com)
