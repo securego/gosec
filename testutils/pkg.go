@@ -23,7 +23,7 @@ type buildObj struct {
 type TestPackage struct {
 	Path   string
 	Files  map[string]string
-	ondisk bool
+	onDisk bool
 	build  *buildObj
 }
 
@@ -38,7 +38,7 @@ func NewTestPackage() *TestPackage {
 	return &TestPackage{
 		Path:   workingDir,
 		Files:  make(map[string]string),
-		ondisk: false,
+		onDisk: false,
 		build:  nil,
 	}
 }
@@ -49,7 +49,7 @@ func (p *TestPackage) AddFile(filename, content string) {
 }
 
 func (p *TestPackage) write() error {
-	if p.ondisk {
+	if p.onDisk {
 		return nil
 	}
 	for filename, content := range p.Files {
@@ -57,7 +57,7 @@ func (p *TestPackage) write() error {
 			return e
 		} // #nosec G306
 	}
-	p.ondisk = true
+	p.onDisk = true
 	return nil
 }
 
@@ -127,7 +127,7 @@ func (p *TestPackage) CreateContext(filename string) *gosec.Context {
 
 // Close will delete the package and all files in that directory
 func (p *TestPackage) Close() {
-	if p.ondisk {
+	if p.onDisk {
 		err := os.RemoveAll(p.Path)
 		if err != nil {
 			log.Fatal(err)
