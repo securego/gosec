@@ -1849,13 +1849,14 @@ func main() {
 	}
 }`}, 1, gosec.NewConfig()}}
 
-	// SampleCodeG601 - Implicit ForRange aliasing
-	SampleCodeG601 = []CodeSample{{[]string{`package main
+	// SampleCodeG601 - Implicit aliasing over range statement
+	SampleCodeG601 = []CodeSample{
+		{[]string{`
+package main
 
 import "fmt"
 
 var vector []*string
-
 func appendVector(s *string) {
 	vector = append(vector, s)
 }
@@ -1882,12 +1883,26 @@ func main() {
 
 	zero, c_star, c := foo()
 	fmt.Printf("%d %v %s", zero, c_start, c)
-}`}, 1, gosec.NewConfig()}}
+}`,
+		}, 1, gosec.NewConfig()},
+		{[]string{`
+// see: github.com/securego/gosec/issues/475
+package main
+import (
+    "fmt"
+)
+func main() {
+    sampleMap := map[string]string{}
+    sampleString := "A string"
+    for sampleString, _ = range sampleMap {
+        fmt.Println(sampleString)
+    }
+}`}, 0, gosec.NewConfig()},
+	}
 
-	// SampleCode601 - Go build tags
-	SampleCode601 = []CodeSample{{[]string{`
+	// SampleCodeBuildTag - G601 build tags
+	SampleCodeBuildTag = []CodeSample{{[]string{`
 // +build tag
-
 package main
 func main() {
   fmt.Println("no package imported error")

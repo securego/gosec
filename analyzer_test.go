@@ -215,7 +215,7 @@ var _ = Describe("Analyzer", func() {
 		})
 
 		It("should pass the build tags", func() {
-			sample := testutils.SampleCode601[0]
+			sample := testutils.SampleCodeBuildTag[0]
 			source := sample.Code[0]
 			analyzer.LoadRules(rules.Generate().Builders())
 			pkg := testutils.NewTestPackage()
