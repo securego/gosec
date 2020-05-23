@@ -21,6 +21,11 @@ import (
 	"github.com/securego/gosec/v2"
 )
 
+var (
+	sqlKeywordsRegex = regexp.MustCompile(`(?i)(SELECT|DELETE|INSERT|UPDATE|INTO|FROM|WHERE)`)
+	fmtVerbsRegex    = regexp.MustCompile("%[^bdoxXfFp]")
+)
+
 type sqlStatement struct {
 	gosec.MetaData
 
@@ -90,9 +95,7 @@ func (s *sqlStrConcat) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error)
 func NewSQLStrConcat(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 	return &sqlStrConcat{
 		sqlStatement: sqlStatement{
-			patterns: []*regexp.Regexp{
-				regexp.MustCompile(`(?)(SELECT|DELETE|INSERT|UPDATE|INTO|FROM|WHERE) `),
-			},
+			patterns: []*regexp.Regexp{sqlKeywordsRegex},
 			MetaData: gosec.MetaData{
 				ID:         id,
 				Severity:   gosec.Medium,
@@ -201,8 +204,8 @@ func NewSQLStrFormat(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 		noIssueQuoted: gosec.NewCallList(),
 		sqlStatement: sqlStatement{
 			patterns: []*regexp.Regexp{
-				regexp.MustCompile("(?)(SELECT|DELETE|INSERT|UPDATE|INTO|FROM|WHERE) "),
-				regexp.MustCompile("%[^bdoxXfFp]"),
+				sqlKeywordsRegex,
+				fmtVerbsRegex,
 			},
 			MetaData: gosec.MetaData{
 				ID:         id,
