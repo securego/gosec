@@ -146,14 +146,9 @@ func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error
 }
 
 func (gosec *Analyzer) pkgConfig(buildTags []string) *packages.Config {
-	flags := []string{}
-	if len(buildTags) > 0 {
-		tagsFlag := "-tags=" + strings.Join(buildTags, " ")
-		flags = append(flags, tagsFlag)
-	}
 	return &packages.Config{
 		Mode:       LoadMode,
-		BuildFlags: flags,
+		BuildFlags: buildTags,
 		Tests:      gosec.tests,
 	}
 }
@@ -166,7 +161,9 @@ func (gosec *Analyzer) load(pkgPath string, conf *packages.Config) ([]*packages.
 	}
 
 	gosec.logger.Println("Import directory:", abspath)
-	basePackage, err := build.Default.ImportDir(pkgPath, build.ImportComment)
+	d := build.Default
+	d.BuildTags = conf.BuildFlags
+	basePackage, err := d.ImportDir(pkgPath, build.IgnoreVendor)
 	if err != nil {
 		return []*packages.Package{}, fmt.Errorf("importing dir %q: %v", pkgPath, err)
 	}
