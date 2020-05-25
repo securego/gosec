@@ -125,7 +125,12 @@ func (gosec *Analyzer) LoadRules(ruleDefinitions map[string]RuleBuilder) {
 
 // Process kicks off the analysis process for a given package
 func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error {
-	config := gosec.pkgConfig(buildTags)
+	config := &packages.Config{
+		Mode:       LoadMode,
+		BuildFlags: buildTags,
+		Tests:      gosec.tests,
+	}
+
 	for _, pkgPath := range packagePaths {
 		pkgs, err := gosec.load(pkgPath, config)
 		if err != nil {
@@ -145,14 +150,6 @@ func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error
 	return nil
 }
 
-func (gosec *Analyzer) pkgConfig(buildTags []string) *packages.Config {
-	return &packages.Config{
-		Mode:       LoadMode,
-		BuildFlags: buildTags,
-		Tests:      gosec.tests,
-	}
-}
-
 func (gosec *Analyzer) load(pkgPath string, conf *packages.Config) ([]*packages.Package, error) {
 	abspath, err := GetPkgAbsPath(pkgPath)
 	if err != nil {
@@ -161,9 +158,9 @@ func (gosec *Analyzer) load(pkgPath string, conf *packages.Config) ([]*packages.
 	}
 
 	gosec.logger.Println("Import directory:", abspath)
-	d := build.Default
-	d.BuildTags = conf.BuildFlags
-	basePackage, err := d.ImportDir(pkgPath, build.IgnoreVendor)
+	buildD := build.Default
+	buildD.BuildTags = conf.BuildFlags
+	basePackage, err := buildD.ImportDir(pkgPath, build.ImportComment)
 	if err != nil {
 		return []*packages.Package{}, fmt.Errorf("importing dir %q: %v", pkgPath, err)
 	}
