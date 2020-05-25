@@ -229,4 +229,68 @@ var _ = Describe("Helpers", func() {
 			Expect(result).Should(HaveKeyWithValue("fmt", "Println"))
 		})
 	})
+	Context("when getting binary expression operands", func() {
+		It("should return all operands of a binary experssion", func() {
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("main.go", `
+			package main
+
+			import(
+			    "fmt"
+			)
+
+			func main() {
+				be := "test1" + "test2"
+				fmt.Println(be)
+			}
+			`)
+			ctx := pkg.CreateContext("main.go")
+			var be *ast.BinaryExpr
+			visitor := testutils.NewMockVisitor()
+			visitor.Context = ctx
+			visitor.Callback = func(n ast.Node, ctx *gosec.Context) bool {
+				if expr, ok := n.(*ast.BinaryExpr); ok {
+					be = expr
+				}
+				return true
+			}
+			ast.Walk(visitor, ctx.Root)
+
+			operands := gosec.GetBinaryExprOperands(be)
+			Expect(len(operands)).Should(Equal(2))
+		})
+		It("should return all operands of complex binary experssion", func() {
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("main.go", `
+			package main
+
+			import(
+			    "fmt"
+			)
+
+			func main() {
+				be := "test1" + "test2" + "test3" + "test4"
+				fmt.Println(be)
+			}
+			`)
+			ctx := pkg.CreateContext("main.go")
+			var be *ast.BinaryExpr
+			visitor := testutils.NewMockVisitor()
+			visitor.Context = ctx
+			visitor.Callback = func(n ast.Node, ctx *gosec.Context) bool {
+				if expr, ok := n.(*ast.BinaryExpr); ok {
+					if be == nil {
+						be = expr
+					}
+				}
+				return true
+			}
+			ast.Walk(visitor, ctx.Root)
+
+			operands := gosec.GetBinaryExprOperands(be)
+			Expect(len(operands)).Should(Equal(4))
+		})
+	})
 })
