@@ -1,6 +1,7 @@
 package gosec_test
 
 import (
+	"fmt"
 	"go/ast"
 
 	. "github.com/onsi/ginkgo"
@@ -91,21 +92,23 @@ var _ = Describe("Issue", func() {
 		})
 
 		It("should provide accurate line and file information for multi-line statements", func() {
-			var target *ast.BinaryExpr
-
-			source := `package main
-			import "os"
-			func main(){`
-			source += "q := `SELECT * FROM table WHERE` + \n  os.Args[1] + `= ?` // nolint: gosec\n"
-			source += `println(q)}`
-
+			var target *ast.CallExpr
+			source := `
+package main
+import (
+   	"net"
+)
+func main() {
+	_, _ := net.Listen("tcp", "0.0.0.0:2000")
+}
+`
 			pkg := testutils.NewTestPackage()
 			defer pkg.Close()
 			pkg.AddFile("foo.go", source)
 			ctx := pkg.CreateContext("foo.go")
 			v := testutils.NewMockVisitor()
 			v.Callback = func(n ast.Node, ctx *gosec.Context) bool {
-				if node, ok := n.(*ast.BinaryExpr); ok {
+				if node, ok := n.(*ast.CallExpr); ok {
 					target = node
 				}
 				return true
@@ -114,15 +117,16 @@ var _ = Describe("Issue", func() {
 			ast.Walk(v, ctx.Root)
 			Expect(target).ShouldNot(BeNil())
 
-			// Use SQL rule to check binary expr
+			fmt.Printf("target: %v\n", target)
+
 			cfg := gosec.NewConfig()
-			rule, _ := rules.NewSQLStrConcat("TEST", cfg)
+			rule, _ := rules.NewBindsToAllNetworkInterfaces("TEST", cfg)
 			issue, err := rule.Match(target, ctx)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(issue).ShouldNot(BeNil())
 			Expect(issue.File).Should(MatchRegexp("foo.go"))
-			Expect(issue.Line).Should(MatchRegexp("3-4"))
-			Expect(issue.Col).Should(Equal("21"))
+			Expect(issue.Line).Should(MatchRegexp("7"))
+			Expect(issue.Col).Should(Equal("10"))
 		})
 
 		It("should maintain the provided severity score", func() {

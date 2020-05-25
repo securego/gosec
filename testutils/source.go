@@ -789,6 +789,76 @@ func main(){
 	}
 	defer rows.Close()
 }`}, 1, gosec.NewConfig()}, {[]string{`
+// Format string without proper quoting case insensitive
+package main
+import (
+	"database/sql"
+	"fmt"
+	"os"
+)
+
+func main(){
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	q := fmt.Sprintf("select * from foo where name = '%s'", os.Args[1])
+	rows, err := db.Query(q)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}`}, 1, gosec.NewConfig()}, {[]string{`
+// Format string without proper quoting with context
+package main
+import (
+	"context"
+	"database/sql"
+	"fmt"
+	"os"
+)
+
+func main(){
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	q := fmt.Sprintf("select * from foo where name = '%s'", os.Args[1])
+	rows, err := db.QueryContext(context.Background(), q)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}`}, 1, gosec.NewConfig()}, {[]string{`
+// Format string without proper quoting with transation
+package main
+import (
+	"context"
+	"database/sql"
+	"fmt"
+	"os"
+)
+
+func main(){
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	tx, err := db.Begin()
+	if err != nil {
+		panic(err)
+	}
+	defer tx.Rollback()
+	q := fmt.Sprintf("select * from foo where name = '%s'", os.Args[1])
+	rows, err := tx.QueryContext(context.Background(), q)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+	if err := tx.Commit(); err != nil {
+		panic(err)
+	}
+}`}, 1, gosec.NewConfig()}, {[]string{`
 // Format string false positive, safe string spec.
 package main
 import (
@@ -894,6 +964,67 @@ func main(){
 		panic(err)
 	}
 	defer rows.Close()
+}`}, 1, gosec.NewConfig()}, {[]string{`
+// case insensitive match
+package main
+import (
+	"database/sql"
+	"os"
+)
+func main(){
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	rows, err := db.Query("select * from foo where name = " + os.Args[1])
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}`}, 1, gosec.NewConfig()}, {[]string{`
+// context match
+package main
+import (
+    "context"
+	"database/sql"
+	"os"
+)
+func main(){
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	rows, err := db.QueryContext(context.Background(), "select * from foo where name = " + os.Args[1])
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}`}, 1, gosec.NewConfig()}, {[]string{`
+// DB transation check
+package main
+import (
+    "context"
+	"database/sql"
+	"os"
+)
+func main(){
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	tx, err := db.Begin()
+	if err != nil {
+		panic(err)
+	}
+	defer tx.Rollback()
+	rows, err := tx.QueryContext(context.Background(), "select * from foo where name = " + os.Args[1])
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+	if err := tx.Commit(); err != nil {
+		panic(err)
+	}
 }`}, 1, gosec.NewConfig()}, {[]string{`
 // false positive
 package main
