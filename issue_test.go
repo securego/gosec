@@ -1,7 +1,6 @@
 package gosec_test
 
 import (
-	"fmt"
 	"go/ast"
 
 	. "github.com/onsi/ginkgo"
@@ -116,8 +115,6 @@ func main() {
 			v.Context = ctx
 			ast.Walk(v, ctx.Root)
 			Expect(target).ShouldNot(BeNil())
-
-			fmt.Printf("target: %v\n", target)
 
 			cfg := gosec.NewConfig()
 			rule, _ := rules.NewBindsToAllNetworkInterfaces("TEST", cfg)
