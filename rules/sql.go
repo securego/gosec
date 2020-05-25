@@ -16,7 +16,6 @@ package rules
 
 import (
 	"go/ast"
-	"go/token"
 	"regexp"
 	"strings"
 
@@ -82,20 +81,19 @@ func (s *sqlStrConcat) checkQuery(call *ast.CallExpr, ctx *gosec.Context) (*gose
 	}
 
 	if be, ok := query.(*ast.BinaryExpr); ok {
-		// Skip all operations which aren't concatenation
-		if be.Op != token.ADD {
-			return nil, nil
-		}
-		if start, ok := be.X.(*ast.BasicLit); ok {
+		operands := gosec.GetBinaryExprOperands(be)
+		if start, ok := operands[0].(*ast.BasicLit); ok {
 			if str, e := gosec.GetString(start); e == nil {
 				if !s.MatchPatterns(str) {
 					return nil, nil
 				}
-				if _, ok := be.Y.(*ast.BasicLit); ok {
-					return nil, nil // string cat OK
+			}
+			for _, op := range operands[1:] {
+				if _, ok := op.(*ast.BasicLit); ok {
+					continue
 				}
-				if second, ok := be.Y.(*ast.Ident); ok && s.checkObject(second, ctx) {
-					return nil, nil
+				if op, ok := op.(*ast.Ident); ok && s.checkObject(op, ctx) {
+					continue
 				}
 				return gosec.NewIssue(ctx, be, s.ID(), s.What, s.Severity, s.Confidence), nil
 			}
