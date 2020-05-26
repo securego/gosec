@@ -98,7 +98,8 @@ import (
    	"net"
 )
 func main() {
-	_, _ := net.Listen("tcp", "0.0.0.0:2000")
+	_, _ := net.Listen("tcp", 
+	"0.0.0.0:2000")
 }
 `
 			pkg := testutils.NewTestPackage()
@@ -122,7 +123,7 @@ func main() {
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(issue).ShouldNot(BeNil())
 			Expect(issue.File).Should(MatchRegexp("foo.go"))
-			Expect(issue.Line).Should(MatchRegexp("7"))
+			Expect(issue.Line).Should(MatchRegexp("7-8"))
 			Expect(issue.Col).Should(Equal("10"))
 		})
 
