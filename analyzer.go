@@ -158,8 +158,9 @@ func (gosec *Analyzer) load(pkgPath string, conf *packages.Config) ([]*packages.
 	}
 
 	gosec.logger.Println("Import directory:", abspath)
+	// step 1/3 create build context
 	buildD := build.Default
-	// step 1/2: add build tags to get env dependent files into basePackage.
+	// step 2/3: add build tags to get env dependent files into basePackage.
 	buildD.BuildTags = conf.BuildFlags
 	basePackage, err := buildD.ImportDir(pkgPath, build.ImportComment)
 	if err != nil {
@@ -183,7 +184,7 @@ func (gosec *Analyzer) load(pkgPath string, conf *packages.Config) ([]*packages.
 		}
 	}
 
-	// step/2/ remove build tags from conf to proceed build correctly.
+	// step 3/3 remove build tags from conf to proceed build correctly.
 	conf.BuildFlags = nil
 	pkgs, err := packages.Load(conf, packageFiles...)
 	if err != nil {
