@@ -53,6 +53,7 @@ var IssueToCWE = map[string]Cwe{
 	"G104": GetCwe("703"),
 	"G106": GetCwe("322"),
 	"G107": GetCwe("88"),
+	"G108": GetCwe("200"),
 	"G109": GetCwe("190"),
 	"G110": GetCwe("409"),
 	"G201": GetCwe("89"),
@@ -64,6 +65,8 @@ var IssueToCWE = map[string]Cwe{
 	"G303": GetCwe("377"),
 	"G304": GetCwe("22"),
 	"G305": GetCwe("22"),
+	"G306": GetCwe("276"),
+	"G307": GetCwe("703"),
 	"G401": GetCwe("326"),
 	"G402": GetCwe("295"),
 	"G403": GetCwe("310"),
@@ -73,6 +76,7 @@ var IssueToCWE = map[string]Cwe{
 	"G503": GetCwe("327"),
 	"G504": GetCwe("327"),
 	"G505": GetCwe("327"),
+	"G601": GetCwe("118"),
 }
 
 // Issue is returned by a gosec rule if it discovers an issue with the scanned code.

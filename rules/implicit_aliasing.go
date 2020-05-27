@@ -1,7 +1,6 @@
 package rules
 
 import (
-	"fmt"
 	"go/ast"
 	"go/token"
 
@@ -99,7 +98,7 @@ func NewImplicitAliasing(id string, conf gosec.Config) (gosec.Rule, []ast.Node) 
 			ID:         id,
 			Severity:   gosec.Medium,
 			Confidence: gosec.Medium,
-			What:       fmt.Sprintf("Implicit memory aliasing in for loop."),
+			What:       "Implicit memory aliasing in for loop.",
 		},
 	}, []ast.Node{(*ast.RangeStmt)(nil), (*ast.UnaryExpr)(nil), (*ast.ReturnStmt)(nil)}
 }
