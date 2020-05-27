@@ -125,7 +125,12 @@ func (gosec *Analyzer) LoadRules(ruleDefinitions map[string]RuleBuilder) {
 
 // Process kicks off the analysis process for a given package
 func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error {
-	config := gosec.pkgConfig(buildTags)
+	config := &packages.Config{
+		Mode:       LoadMode,
+		BuildFlags: buildTags,
+		Tests:      gosec.tests,
+	}
+
 	for _, pkgPath := range packagePaths {
 		pkgs, err := gosec.load(pkgPath, config)
 		if err != nil {
@@ -145,19 +150,6 @@ func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error
 	return nil
 }
 
-func (gosec *Analyzer) pkgConfig(buildTags []string) *packages.Config {
-	flags := []string{}
-	if len(buildTags) > 0 {
-		tagsFlag := "-tags=" + strings.Join(buildTags, " ")
-		flags = append(flags, tagsFlag)
-	}
-	return &packages.Config{
-		Mode:       LoadMode,
-		BuildFlags: flags,
-		Tests:      gosec.tests,
-	}
-}
-
 func (gosec *Analyzer) load(pkgPath string, conf *packages.Config) ([]*packages.Package, error) {
 	abspath, err := GetPkgAbsPath(pkgPath)
 	if err != nil {
@@ -166,7 +158,11 @@ func (gosec *Analyzer) load(pkgPath string, conf *packages.Config) ([]*packages.
 	}
 
 	gosec.logger.Println("Import directory:", abspath)
-	basePackage, err := build.Default.ImportDir(pkgPath, build.ImportComment)
+	// step 1/3 create build context.
+	buildD := build.Default
+	// step 2/3: add build tags to get env dependent files into basePackage.
+	buildD.BuildTags = conf.BuildFlags
+	basePackage, err := buildD.ImportDir(pkgPath, build.ImportComment)
 	if err != nil {
 		return []*packages.Package{}, fmt.Errorf("importing dir %q: %v", pkgPath, err)
 	}
@@ -188,6 +184,8 @@ func (gosec *Analyzer) load(pkgPath string, conf *packages.Config) ([]*packages.
 		}
 	}
 
+	// step 3/3 remove build tags from conf to proceed build correctly.
+	conf.BuildFlags = nil
 	pkgs, err := packages.Load(conf, packageFiles...)
 	if err != nil {
 		return []*packages.Package{}, fmt.Errorf("loading files from package %q: %v", pkgPath, err)
