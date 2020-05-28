@@ -139,7 +139,7 @@ $ gosec -exclude=G303 ./...
 ```
 ### CWE Mapping
 
-Every issue detected by `gosec` is mapped to a [CWE (Common Weakness Enumeration)](http://cwe.mitre.org/data/index.html) which describes in more generic terms the vulnerability. The exact mapping can be found  [here](https://github.com/securego/gosec/blob/53be8dd8644ee48802114178cff6eb7e29757414/issue.go#L49).
+Every issue detected by `gosec` is mapped to a [CWE (Common Weakness Enumeration)](http://cwe.mitre.org/data/index.html) which describes in more generic terms the vulnerability. The exact mapping can be found  [here](https://github.com/securego/gosec/blob/master/issue.go#L49).
 
 ### Configuration
 
