@@ -1891,13 +1891,15 @@ import "crypto/rand"
 func main() {
 	good, _ := rand.Read(nil)
 	println(good)
-}`}, 0, gosec.NewConfig()}, {[]string{`
+}`}, 0, gosec.NewConfig()},
+		{[]string{`
 package main
 import "math/rand"
 func main() {
 	bad := rand.Int()
 	println(bad)
-}`}, 1, gosec.NewConfig()}, {[]string{`
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
 package main
 import (
 	"crypto/rand"
@@ -1907,6 +1909,25 @@ func main() {
 	good, _ := rand.Read(nil)
 	println(good)
 	bad := mrand.Int31()
+	println(bad)
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+import (
+	"math/rand"
+)
+func main() {
+	gen := rand.New(rand.NewSource(10.4))
+	bad := gen.Int()
+	println(bad)
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+import (
+	"math/rand"
+)
+func main() {
+	bad := rand.Intn(10)
 	println(bad)
 }`}, 1, gosec.NewConfig()}}
 
