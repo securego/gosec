@@ -1906,9 +1906,9 @@ import (
 func main() {
 	good, _ := rand.Read(nil)
 	println(good)
-	i := mrand.Int31()
-	println(i)
-}`}, 0, gosec.NewConfig()}}
+	bad := mrand.Int31()
+	println(bad)
+}`}, 1, gosec.NewConfig()}}
 
 	// SampleCodeG501 - Blacklisted import MD5
 	SampleCodeG501 = []CodeSample{
