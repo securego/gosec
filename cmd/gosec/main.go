@@ -240,6 +240,9 @@ func filterIssues(issues []*gosec.Issue, severity gosec.Score, confidence gosec.
 }
 
 func main() {
+	// Makes sure some version information is set
+	prepareVersionInfo()
+
 	// Setup usage description
 	flag.Usage = usage
 
