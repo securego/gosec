@@ -1887,7 +1887,25 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
-}`}, 1, gosec.NewConfig()}}
+}`}, 1, gosec.NewConfig()}, {[]string{`
+// secure max version when min version is specified
+package main
+import (
+	"crypto/tls"
+	"fmt"
+	"net/http"
+)
+func main() {
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{MaxVersion: 0, MinVersion: tls.VersionTLS13},
+	}
+	client := &http.Client{Transport: tr}
+	_, err := client.Get("https://golang.org/")
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+}`}, 0, gosec.NewConfig()}}
 
 	// SampleCodeG403 - weak key strength
 	SampleCodeG403 = []CodeSample{
