@@ -322,6 +322,7 @@ func highlight(t string, s gosec.Score) string {
 	}
 }
 
+// printCodeSnippet prints the code snippet from the issue by adding a marker to the affected line
 func printCodeSnippet(issue *gosec.Issue) string {
 	scanner := bufio.NewScanner(strings.NewReader(issue.Code))
 	var buf bytes.Buffer
