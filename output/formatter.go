@@ -324,16 +324,38 @@ func highlight(t string, s gosec.Score) string {
 
 // printCodeSnippet prints the code snippet from the issue by adding a marker to the affected line
 func printCodeSnippet(issue *gosec.Issue) string {
+	start, end := parseLine(issue.Line)
 	scanner := bufio.NewScanner(strings.NewReader(issue.Code))
 	var buf bytes.Buffer
+	line := start
 	for scanner.Scan() {
 		codeLine := scanner.Text()
-		if strings.HasPrefix(codeLine, issue.Line) {
+		if strings.HasPrefix(codeLine, strconv.Itoa(line)) && line <= end {
 			codeLine = "  > " + codeLine + "\n"
+			line++
 		} else {
 			codeLine = "    " + codeLine + "\n"
 		}
 		buf.WriteString(codeLine)
 	}
 	return buf.String()
+}
+
+// parseLine extract the start and the end line numbers from a issue line
+func parseLine(line string) (int, int) {
+	parts := strings.Split(line, "-")
+	start := parts[0]
+	end := start
+	if len(parts) > 1 {
+		end = parts[1]
+	}
+	s, err := strconv.Atoi(start)
+	if err != nil {
+		return -1, -1
+	}
+	e, err := strconv.Atoi(end)
+	if err != nil {
+		return -1, -1
+	}
+	return s, e
 }
