@@ -1,9 +1,5 @@
 package main
 
-import (
-	"runtime/debug"
-)
-
 // Version is the build version
 var Version string
 
@@ -19,7 +15,10 @@ var BuildDate string
 // https://github.com/golang/go/issues/29814 gets resolved.
 func prepareVersionInfo() {
 	if Version == "" {
-		bi, _ := debug.ReadBuildInfo()
-		Version = bi.Main.Version
+		// bi, _ := debug.ReadBuildInfo()
+		// Version = bi.Main.Version
+		// TODO use the debug information when it will provide more details
+		// It seems to panic with Go 1.13.
+		Version = "dev"
 	}
 }
