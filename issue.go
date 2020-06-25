@@ -131,6 +131,7 @@ func (c Score) String() string {
 	return "UNDEFINED"
 }
 
+// codeSnippet extracts a code snippet based on the ast reference
 func codeSnippet(file *os.File, start int64, end int64, n ast.Node) (string, error) {
 	if n == nil {
 		return "", fmt.Errorf("invalid AST node provided")
