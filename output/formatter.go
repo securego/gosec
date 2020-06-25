@@ -15,6 +15,8 @@
 package output
 
 import (
+	"bufio"
+	"bytes"
 	"encoding/csv"
 	"encoding/json"
 	"encoding/xml"
@@ -59,7 +61,7 @@ Golang errors in file: [{{ $filePath }}]:
 {{end}}
 {{ range $index, $issue := .Issues }}
 [{{ highlight $issue.FileLocation $issue.Severity }}] - {{ $issue.RuleID }} (CWE-{{ $issue.Cwe.ID }}): {{ $issue.What }} (Confidence: {{ $issue.Confidence}}, Severity: {{ $issue.Severity }})
-  > {{ $issue.Code }}
+{{ printCode $issue }}
 
 {{ end }}
 {{ notice "Summary:" }}
@@ -286,6 +288,7 @@ func plainTextFuncMap(enableColor bool) plainTemplate.FuncMap {
 			"danger":    color.Danger.Render,
 			"notice":    color.Notice.Render,
 			"success":   color.Success.Render,
+			"printCode": printCodeSnippet,
 		}
 	}
 
@@ -294,9 +297,10 @@ func plainTextFuncMap(enableColor bool) plainTemplate.FuncMap {
 		"highlight": func(t string, s gosec.Score) string {
 			return t
 		},
-		"danger":  fmt.Sprint,
-		"notice":  fmt.Sprint,
-		"success": fmt.Sprint,
+		"danger":    fmt.Sprint,
+		"notice":    fmt.Sprint,
+		"success":   fmt.Sprint,
+		"printCode": printCodeSnippet,
 	}
 }
 
@@ -316,4 +320,19 @@ func highlight(t string, s gosec.Score) string {
 	default:
 		return defaultTheme.Sprint(t)
 	}
+}
+
+func printCodeSnippet(issue *gosec.Issue) string {
+	scanner := bufio.NewScanner(strings.NewReader(issue.Code))
+	var buf bytes.Buffer
+	for scanner.Scan() {
+		codeLine := scanner.Text()
+		if strings.HasPrefix(codeLine, issue.Line) {
+			codeLine = "  > " + codeLine + "\n"
+		} else {
+			codeLine = "    " + codeLine + "\n"
+		}
+		buf.WriteString(codeLine)
+	}
+	return buf.String()
 }
