@@ -15,9 +15,12 @@
 package gosec
 
 import (
+	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"go/ast"
+	"go/token"
 	"os"
 	"strconv"
 )
@@ -33,6 +36,10 @@ const (
 	// High severity or confidence
 	High
 )
+
+// SnippetOffset defines the number of lines captured before
+// the beginning and after the end of a code snippet
+const SnippetOffset = 1
 
 // Cwe id and url
 type Cwe struct {
@@ -126,41 +133,53 @@ func (c Score) String() string {
 
 func codeSnippet(file *os.File, start int64, end int64, n ast.Node) (string, error) {
 	if n == nil {
-		return "", fmt.Errorf("Invalid AST node provided")
+		return "", fmt.Errorf("invalid AST node provided")
 	}
+	var pos int64
+	var buf bytes.Buffer
+	scanner := bufio.NewScanner(file)
+	scanner.Split(bufio.ScanLines)
+	for scanner.Scan() {
+		pos++
+		if pos > end {
+			break
+		} else if pos >= start && pos <= end {
+			code := fmt.Sprintf("%d: %s\n", pos, scanner.Text())
+			buf.WriteString(code)
+		}
+	}
+	return buf.String(), nil
+}
 
-	size := (int)(end - start)    // Go bug, os.File.Read should return int64 ...
-	_, err := file.Seek(start, 0) // #nosec
-	if err != nil {
-		return "", fmt.Errorf("move to the beginning of file: %v", err)
+func codeSnippetStartLine(node ast.Node, fobj *token.File) int64 {
+	s := (int64)(fobj.Line(node.Pos()))
+	if s-SnippetOffset > 0 {
+		return s - SnippetOffset
 	}
+	return s
+}
 
-	buf := make([]byte, size)
-	if nread, err := file.Read(buf); err != nil || nread != size {
-		return "", fmt.Errorf("Unable to read code")
-	}
-	return string(buf), nil
+func codeSnippetEndLine(node ast.Node, fobj *token.File) int64 {
+	e := (int64)(fobj.Line(node.End()))
+	return e + SnippetOffset
 }
 
 // NewIssue creates a new Issue
 func NewIssue(ctx *Context, node ast.Node, ruleID, desc string, severity Score, confidence Score) *Issue {
-	var code string
 	fobj := ctx.FileSet.File(node.Pos())
 	name := fobj.Name()
-
 	start, end := fobj.Line(node.Pos()), fobj.Line(node.End())
 	line := strconv.Itoa(start)
 	if start != end {
 		line = fmt.Sprintf("%d-%d", start, end)
 	}
-
 	col := strconv.Itoa(fobj.Position(node.Pos()).Column)
 
-	// #nosec
+	var code string
 	if file, err := os.Open(fobj.Name()); err == nil {
-		defer file.Close()
-		s := (int64)(fobj.Position(node.Pos()).Offset) // Go bug, should be int64
-		e := (int64)(fobj.Position(node.End()).Offset) // Go bug, should be int64
+		defer file.Close() // #nosec
+		s := codeSnippetStartLine(node, fobj)
+		e := codeSnippetEndLine(node, fobj)
 		code, err = codeSnippet(file, s, e, node)
 		if err != nil {
 			code = err.Error()

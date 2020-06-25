@@ -21,7 +21,7 @@ func createIssue(ruleID string, cwe gosec.Cwe) gosec.Issue {
 		What:       "test",
 		Confidence: gosec.High,
 		Severity:   gosec.High,
-		Code:       "testcode",
+		Code:       "1: testcode",
 		Cwe:        cwe,
 	}
 }
@@ -264,7 +264,7 @@ var _ = Describe("Formatter", func() {
 				buf := new(bytes.Buffer)
 				err := CreateReport(buf, "csv", false, []string{}, []*gosec.Issue{&issue}, &gosec.Metrics{}, error)
 				Expect(err).ShouldNot(HaveOccurred())
-				pattern := "/home/src/project/test.go,1,test,HIGH,HIGH,testcode,CWE-%s\n"
+				pattern := "/home/src/project/test.go,1,test,HIGH,HIGH,1: testcode,CWE-%s\n"
 				expect := fmt.Sprintf(pattern, cwe.ID)
 				Expect(string(buf.String())).To(Equal(expect))
 			}
@@ -278,7 +278,7 @@ var _ = Describe("Formatter", func() {
 				buf := new(bytes.Buffer)
 				err := CreateReport(buf, "xml", false, []string{}, []*gosec.Issue{&issue}, &gosec.Metrics{NumFiles: 0, NumLines: 0, NumNosec: 0, NumFound: 0}, error)
 				Expect(err).ShouldNot(HaveOccurred())
-				pattern := "Results:\n\n\n[/home/src/project/test.go:1] - %s (CWE-%s): test (Confidence: HIGH, Severity: HIGH)\n  > testcode\n\n\nSummary:\n   Files: 0\n   Lines: 0\n   Nosec: 0\n  Issues: 0\n\n"
+				pattern := "Results:\n\n\n[/home/src/project/test.go:1] - %s (CWE-%s): test (Confidence: HIGH, Severity: HIGH)\n  > 1: testcode\n\n\n\nSummary:\n   Files: 0\n   Lines: 0\n   Nosec: 0\n  Issues: 0\n\n"
 				expect := fmt.Sprintf(pattern, rule, cwe.ID)
 				Expect(string(buf.String())).To(Equal(expect))
 			}
