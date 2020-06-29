@@ -41,7 +41,7 @@ wget -O - -q https://raw.githubusercontent.com/securego/gosec/master/install.sh 
 # then you will have to download a tar.gz file for your operating system instead of a binary file
 wget https://github.com/securego/gosec/releases/download/vX.Y.Z/gosec_vX.Y.Z_OS.tar.gz
 
-# The file will be in the current folder where you run the command 
+# The file will be in the current folder where you run the command
 # and you can check the checksum like this
 echo "<check sum from the check sum file>  gosec_vX.Y.Z_OS.tar.gz" | sha256sum -c -
 
@@ -66,7 +66,7 @@ jobs:
     env:
       GO111MODULE: on
     steps:
-      - name: Checkout Source 
+      - name: Checkout Source
         uses: actions/checkout@v2
       - name: Run Gosec Security Scanner
         uses: securego/gosec@master
@@ -114,11 +114,11 @@ directory you can supply `./...` as the input argument.
 - G402: Look for bad TLS connection settings
 - G403: Ensure minimum RSA key length of 2048 bits
 - G404: Insecure random number source (rand)
-- G501: Import blacklist: crypto/md5
-- G502: Import blacklist: crypto/des
-- G503: Import blacklist: crypto/rc4
-- G504: Import blacklist: net/http/cgi
-- G505: Import blacklist: crypto/sha1
+- G501: Import blocklist: crypto/md5
+- G502: Import blocklist: crypto/des
+- G503: Import blocklist: crypto/rc4
+- G504: Import blocklist: net/http/cgi
+- G505: Import blocklist: crypto/sha1
 - G601: Implicit memory aliasing of items from a range statement
 
 ### Retired rules
@@ -161,7 +161,7 @@ A number of global settings can be provided in a configuration file as follows:
 # Run with a global configuration file
 $ gosec -conf config.json .
 ```
-Also some rules accept configuration. For instance on rule `G104`, it is possible to define packages along with a list 
+Also some rules accept configuration. For instance on rule `G104`, it is possible to define packages along with a list
 of functions which will be skipped when auditing the not checked errors:
 
 ```JSON
@@ -186,14 +186,14 @@ You can also configure the hard-coded credentials rule `G101` with additional pa
 }
 ```
 
-### Dependencies 
+### Dependencies
 
 gosec will fetch automatically the dependencies of the code which is being analyzed when go module is turned on (e.g.` GO111MODULE=on`). If this is not the case,
 the dependencies need to be explicitly downloaded by running the `go get -d` command before the scan.
 
 ### Excluding test files and folders
 
-gosec will ignore test files across all packages and any dependencies in your vendor directory. 
+gosec will ignore test files across all packages and any dependencies in your vendor directory.
 
 The scanning of test files can be enabled with the following flag:
 
@@ -233,7 +233,7 @@ func main(){
 ```
 
 When a specific false positive has been identified and verified as safe, you may wish to suppress only that single rule (or a specific set of rules)
-within a section of code, while continuing to scan for other problems. To do this, you can list the rule(s) to be suppressed within 
+within a section of code, while continuing to scan for other problems. To do this, you can list the rule(s) to be suppressed within
 the `#nosec` annotation, e.g: `/* #nosec G401 */` or `// #nosec G201 G202 G203`
 
 In some cases you may also want to revisit places where `#nosec` annotations
@@ -300,7 +300,7 @@ You can also build locally the docker image by using the command:
 make image
 ```
 
-You can run the `gosec` tool in a container against your local Go project. You only have to mount the project 
+You can run the `gosec` tool in a container against your local Go project. You only have to mount the project
 into a volume as follows:
 
 ```bash
@@ -327,4 +327,4 @@ This will generate the `rules/tls_config.go` file which will contain the current
 
 ## Who is using gosec?
 
-This is a [list](USERS.md) with some of the gosec's users. 
+This is a [list](USERS.md) with some of the gosec's users.

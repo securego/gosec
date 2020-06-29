@@ -22,7 +22,7 @@ import (
 
 type usesWeakCryptography struct {
 	gosec.MetaData
-	blacklist map[string][]string
+	blocklist map[string][]string
 }
 
 func (r *usesWeakCryptography) ID() string {
@@ -30,7 +30,7 @@ func (r *usesWeakCryptography) ID() string {
 }
 
 func (r *usesWeakCryptography) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error) {
-	for pkg, funcs := range r.blacklist {
+	for pkg, funcs := range r.blocklist {
 		if _, matched := gosec.MatchCallByPackage(n, c, pkg, funcs...); matched {
 			return gosec.NewIssue(c, n, r.ID(), r.What, r.Severity, r.Confidence), nil
 		}
@@ -46,7 +46,7 @@ func NewUsesWeakCryptography(id string, conf gosec.Config) (gosec.Rule, []ast.No
 	calls["crypto/sha1"] = []string{"New", "Sum"}
 	calls["crypto/rc4"] = []string{"NewCipher"}
 	rule := &usesWeakCryptography{
-		blacklist: calls,
+		blocklist: calls,
 		MetaData: gosec.MetaData{
 			ID:         id,
 			Severity:   gosec.Medium,
