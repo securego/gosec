@@ -90,12 +90,12 @@ func Generate(filters ...RuleFilter) RuleList {
 		{"G403", "Ensure minimum RSA key length of 2048 bits", NewWeakKeyStrength},
 		{"G404", "Insecure random number source (rand)", NewWeakRandCheck},
 
-		// blacklist
-		{"G501", "Import blacklist: crypto/md5", NewBlacklistedImportMD5},
-		{"G502", "Import blacklist: crypto/des", NewBlacklistedImportDES},
-		{"G503", "Import blacklist: crypto/rc4", NewBlacklistedImportRC4},
-		{"G504", "Import blacklist: net/http/cgi", NewBlacklistedImportCGI},
-		{"G505", "Import blacklist: crypto/sha1", NewBlacklistedImportSHA1},
+		// blocklist
+		{"G501", "Import blocklist: crypto/md5", NewBlocklistedImportMD5},
+		{"G502", "Import blocklist: crypto/des", NewBlocklistedImportDES},
+		{"G503", "Import blocklist: crypto/rc4", NewBlocklistedImportRC4},
+		{"G504", "Import blocklist: net/http/cgi", NewBlocklistedImportCGI},
+		{"G505", "Import blocklist: crypto/sha1", NewBlocklistedImportSHA1},
 
 		// memory safety
 		{"G601", "Implicit memory aliasing in RangeStmt", NewImplicitAliasing},

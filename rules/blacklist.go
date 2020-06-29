@@ -21,9 +21,9 @@ import (
 	"github.com/securego/gosec/v2"
 )
 
-type blacklistedImport struct {
+type blocklistedImport struct {
 	gosec.MetaData
-	Blacklisted map[string]string
+	Blocklisted map[string]string
 }
 
 func unquote(original string) string {
@@ -32,63 +32,63 @@ func unquote(original string) string {
 	return strings.TrimRight(copy, `"`)
 }
 
-func (r *blacklistedImport) ID() string {
+func (r *blocklistedImport) ID() string {
 	return r.MetaData.ID
 }
 
-func (r *blacklistedImport) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error) {
+func (r *blocklistedImport) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error) {
 	if node, ok := n.(*ast.ImportSpec); ok {
-		if description, ok := r.Blacklisted[unquote(node.Path.Value)]; ok {
+		if description, ok := r.Blocklisted[unquote(node.Path.Value)]; ok {
 			return gosec.NewIssue(c, node, r.ID(), description, r.Severity, r.Confidence), nil
 		}
 	}
 	return nil, nil
 }
 
-// NewBlacklistedImports reports when a blacklisted import is being used.
+// NewBlocklistedImports reports when a blocklisted import is being used.
 // Typically when a deprecated technology is being used.
-func NewBlacklistedImports(id string, conf gosec.Config, blacklist map[string]string) (gosec.Rule, []ast.Node) {
-	return &blacklistedImport{
+func NewBlocklistedImports(id string, conf gosec.Config, blocklist map[string]string) (gosec.Rule, []ast.Node) {
+	return &blocklistedImport{
 		MetaData: gosec.MetaData{
 			ID:         id,
 			Severity:   gosec.Medium,
 			Confidence: gosec.High,
 		},
-		Blacklisted: blacklist,
+		Blocklisted: blocklist,
 	}, []ast.Node{(*ast.ImportSpec)(nil)}
 }
 
-// NewBlacklistedImportMD5 fails if MD5 is imported
-func NewBlacklistedImportMD5(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
-	return NewBlacklistedImports(id, conf, map[string]string{
-		"crypto/md5": "Blacklisted import crypto/md5: weak cryptographic primitive",
+// NewBlocklistedImportMD5 fails if MD5 is imported
+func NewBlocklistedImportMD5(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
+	return NewBlocklistedImports(id, conf, map[string]string{
+		"crypto/md5": "Blocklisted import crypto/md5: weak cryptographic primitive",
 	})
 }
 
-// NewBlacklistedImportDES fails if DES is imported
-func NewBlacklistedImportDES(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
-	return NewBlacklistedImports(id, conf, map[string]string{
-		"crypto/des": "Blacklisted import crypto/des: weak cryptographic primitive",
+// NewBlocklistedImportDES fails if DES is imported
+func NewBlocklistedImportDES(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
+	return NewBlocklistedImports(id, conf, map[string]string{
+		"crypto/des": "Blocklisted import crypto/des: weak cryptographic primitive",
 	})
 }
 
-// NewBlacklistedImportRC4 fails if DES is imported
-func NewBlacklistedImportRC4(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
-	return NewBlacklistedImports(id, conf, map[string]string{
-		"crypto/rc4": "Blacklisted import crypto/rc4: weak cryptographic primitive",
+// NewBlocklistedImportRC4 fails if DES is imported
+func NewBlocklistedImportRC4(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
+	return NewBlocklistedImports(id, conf, map[string]string{
+		"crypto/rc4": "Blocklisted import crypto/rc4: weak cryptographic primitive",
 	})
 }
 
-// NewBlacklistedImportCGI fails if CGI is imported
-func NewBlacklistedImportCGI(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
-	return NewBlacklistedImports(id, conf, map[string]string{
-		"net/http/cgi": "Blacklisted import net/http/cgi: Go versions < 1.6.3 are vulnerable to Httpoxy attack: (CVE-2016-5386)",
+// NewBlocklistedImportCGI fails if CGI is imported
+func NewBlocklistedImportCGI(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
+	return NewBlocklistedImports(id, conf, map[string]string{
+		"net/http/cgi": "Blocklisted import net/http/cgi: Go versions < 1.6.3 are vulnerable to Httpoxy attack: (CVE-2016-5386)",
 	})
 }
 
-// NewBlacklistedImportSHA1 fails if SHA1 is imported
-func NewBlacklistedImportSHA1(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
-	return NewBlacklistedImports(id, conf, map[string]string{
-		"crypto/sha1": "Blacklisted import crypto/sha1: weak cryptographic primitive",
+// NewBlocklistedImportSHA1 fails if SHA1 is imported
+func NewBlocklistedImportSHA1(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
+	return NewBlocklistedImports(id, conf, map[string]string{
+		"crypto/sha1": "Blocklisted import crypto/sha1: weak cryptographic primitive",
 	})
 }

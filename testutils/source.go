@@ -76,7 +76,7 @@ import "fmt"
 func main() {
 	var password string
 	if password == "f62e5bcda4fae4f82370da0c6f20697b8f8447ef" {
-		fmt.Println("password equality") 
+		fmt.Println("password equality")
 	}
 }`}, 1, gosec.NewConfig()},
 		{[]string{`
@@ -85,7 +85,7 @@ import "fmt"
 func main() {
 	var password string
 	if password != "f62e5bcda4fae4f82370da0c6f20697b8f8447ef" {
-		fmt.Println("password equality") 
+		fmt.Println("password equality")
 	}
 }`}, 1, gosec.NewConfig()},
 		{[]string{`
@@ -94,7 +94,7 @@ import "fmt"
 func main() {
 	var p string
 	if p != "f62e5bcda4fae4f82370da0c6f20697b8f8447ef" {
-		fmt.Println("password equality") 
+		fmt.Println("password equality")
 	}
 }`}, 0, gosec.NewConfig()}}
 
@@ -522,7 +522,7 @@ func main() {
     }
     fmt.Println(resp.Status)
 }`}, 0, gosec.NewConfig()}, {[]string{`
-// An exported variable declared a packaged scope is not secure 
+// An exported variable declared a packaged scope is not secure
 // because it can changed at any time
 package main
 
@@ -1672,34 +1672,34 @@ func check(e error) {
 }
 
 func main() {
-	
+
 	d1 := []byte("hello\ngo\n")
 	err := ioutil.WriteFile("/tmp/dat1", d1, 0744)
 	check(err)
 
 	allowed := ioutil.WriteFile("/tmp/dat1", d1, 0600)
 	check(allowed)
-	
+
 	f, err := os.Create("/tmp/dat2")
 	check(err)
-	
+
 	defer f.Close()
-	
+
 	d2 := []byte{115, 111, 109, 101, 10}
 	n2, err := f.Write(d2)
 
 	defer check(err)
 	fmt.Printf("wrote %d bytes\n", n2)
-	
+
 	n3, err := f.WriteString("writes\n")
 	fmt.Printf("wrote %d bytes\n", n3)
-	
+
 	f.Sync()
-	
+
 	w := bufio.NewWriter(f)
 	n4, err := w.WriteString("buffered\n")
 	fmt.Printf("wrote %d bytes\n", n4)
-	
+
 	w.Flush()
 
 }`}, 1, gosec.NewConfig()}}
@@ -1739,16 +1739,16 @@ func main() {
 
 	defer check(err)
 	fmt.Printf("wrote %d bytes\n", n2)
-	
+
 	n3, err := f.WriteString("writes\n")
 	fmt.Printf("wrote %d bytes\n", n3)
-	
+
 	f.Sync()
-	
+
 	w := bufio.NewWriter(f)
 	n4, err := w.WriteString("buffered\n")
 	fmt.Printf("wrote %d bytes\n", n4)
-	
+
 	w.Flush()
 
 }`}, 1, gosec.NewConfig()}}
@@ -1973,7 +1973,7 @@ func main() {
 	println(bad)
 }`}, 1, gosec.NewConfig()}}
 
-	// SampleCodeG501 - Blacklisted import MD5
+	// SampleCodeG501 - Blocklisted import MD5
 	SampleCodeG501 = []CodeSample{
 		{[]string{`
 package main
@@ -1988,7 +1988,7 @@ func main() {
 	}
 }`}, 1, gosec.NewConfig()}}
 
-	// SampleCodeG502 - Blacklisted import DES
+	// SampleCodeG502 - Blocklisted import DES
 	SampleCodeG502 = []CodeSample{
 		{[]string{`
 package main
@@ -2016,7 +2016,7 @@ func main() {
 	fmt.Println("Secret message is: %s", hex.EncodeToString(ciphertext))
 }`}, 1, gosec.NewConfig()}}
 
-	// SampleCodeG503 - Blacklisted import RC4
+	// SampleCodeG503 - Blocklisted import RC4
 	SampleCodeG503 = []CodeSample{{[]string{`
 package main
 import (
@@ -2035,7 +2035,7 @@ func main() {
 	fmt.Println("Secret message is: %s", hex.EncodeToString(ciphertext))
 }`}, 1, gosec.NewConfig()}}
 
-	// SampleCodeG504 - Blacklisted import CGI
+	// SampleCodeG504 - Blocklisted import CGI
 	SampleCodeG504 = []CodeSample{{[]string{`
 package main
 import (
@@ -2045,7 +2045,7 @@ import (
 func main() {
 	cgi.Serve(http.FileServer(http.Dir("/usr/share/doc")))
 }`}, 1, gosec.NewConfig()}}
-	// SampleCodeG505 - Blacklisted import SHA1
+	// SampleCodeG505 - Blocklisted import SHA1
 	SampleCodeG505 = []CodeSample{
 		{[]string{`
 package main
