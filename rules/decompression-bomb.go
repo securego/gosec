@@ -95,6 +95,7 @@ func NewDecompressionBombCheck(id string, conf gosec.Config) (gosec.Rule, []ast.
 
 	copyCalls := gosec.NewCallList()
 	copyCalls.Add("io", "Copy")
+	copyCalls.Add("io", "CopyBuffer")
 
 	return &decompressionBombCheck{
 		MetaData: gosec.MetaData{
