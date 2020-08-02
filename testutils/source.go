@@ -1588,7 +1588,7 @@ func main() {
 	log.Print(body)
 }`}, 1, gosec.NewConfig()}}
 
-	// SampleCodeG305 - File path traversal when extracting zip archives
+	// SampleCodeG305 - File path traversal when extracting zip/tar archives
 	SampleCodeG305 = []CodeSample{{[]string{`
 package unzip
 
@@ -1680,6 +1680,76 @@ func unzip(archive, target string) error {
 	}
 
 	return nil
+}`}, 1, gosec.NewConfig()}, {[]string{`
+package zip
+
+import (
+    "archive/zip"
+    "io"
+    "os"
+    "path"
+)
+
+func extractFile(f *zip.File, destPath string) error {
+    filePath := path.Join(destPath, f.Name)
+    os.MkdirAll(path.Dir(filePath), os.ModePerm)
+
+    rc, err := f.Open()
+    if err != nil {
+        return err
+    }
+    defer rc.Close()
+
+    fw, err := os.Create(filePath)
+    if err != nil {
+        return err
+    }
+    defer fw.Close()
+
+    if _, err = io.Copy(fw, rc); err != nil {
+        return err
+    }
+
+    if f.FileInfo().Mode()&os.ModeSymlink != 0 {
+        return nil
+    }
+
+    if err = os.Chtimes(filePath, f.ModTime(), f.ModTime()); err != nil {
+        return err
+    }
+    return os.Chmod(filePath, f.FileInfo().Mode())
+}`}, 1, gosec.NewConfig()}, {[]string{`
+package tz
+
+import (
+    "archive/tar"
+    "io"
+    "os"
+    "path"
+)
+
+func extractFile(f *tar.Header, tr *tar.Reader, destPath string) error {
+    filePath := path.Join(destPath, f.Name)
+    os.MkdirAll(path.Dir(filePath), os.ModePerm)
+
+    fw, err := os.Create(filePath)
+    if err != nil {
+        return err
+    }
+    defer fw.Close()
+
+    if _, err = io.Copy(fw, tr); err != nil {
+        return err
+    }
+
+    if f.FileInfo().Mode()&os.ModeSymlink != 0 {
+        return nil
+    }
+
+    if err = os.Chtimes(filePath, f.FileInfo().ModTime(), f.FileInfo().ModTime()); err != nil {
+        return err
+    }
+    return os.Chmod(filePath, f.FileInfo().Mode())
 }`}, 1, gosec.NewConfig()}}
 
 	// SampleCodeG306 - Poor permissions for WriteFile
