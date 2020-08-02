@@ -107,7 +107,7 @@ directory you can supply `./...` as the input argument.
 - G302: Poor file permissions used with chmod
 - G303: Creating tempfile using a predictable path
 - G304: File path provided as taint input
-- G305: File traversal when extracting zip archive
+- G305: File traversal when extracting zip/tar archive
 - G306: Poor file permissions used when writing to a new file
 - G307: Deferring a method which returns an error
 - G401: Detect the usage of DES, RC4, MD5 or SHA1
