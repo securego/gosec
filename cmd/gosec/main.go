@@ -273,7 +273,7 @@ func main() {
 	}
 
 	// Setup logging
-	logWriter := os.Stderr
+	logWriter := os.Stdout
 	if *flagLogfile != "" {
 		var e error
 		logWriter, e = os.Create(*flagLogfile)
