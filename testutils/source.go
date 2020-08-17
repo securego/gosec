@@ -1586,7 +1586,42 @@ func main() {
 		log.Printf("Error: %v\n", err)
 	}
 	log.Print(body)
-}`}, 1, gosec.NewConfig()}}
+}`}, 1, gosec.NewConfig()}, {[]string{`
+package main
+
+import (
+    "os"
+    "path/filepath"
+)
+
+func main() {
+    repoFile := "path_of_file"
+    cleanRepoFile := filepath.Clean(repoFile)
+    byContext, err := os.OpenFile(cleanRepoFile, os.O_RDONLY, 0600)
+    if err != nil {
+        panic(err)
+    }
+}
+`}, 0, gosec.NewConfig()}, {[]string{`
+package main
+
+import (
+    "os"
+    "path/filepath"
+)
+
+func openFile(filePath string) {
+	byContext, err := os.OpenFile(filepath.Clean(filePath), os.O_RDONLY, 0600)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func main() {
+    repoFile := "path_of_file"
+	openFile(repoFile)
+}
+`}, 0, gosec.NewConfig()}}
 
 	// SampleCodeG305 - File path traversal when extracting zip/tar archives
 	SampleCodeG305 = []CodeSample{{[]string{`
