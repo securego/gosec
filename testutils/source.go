@@ -1621,6 +1621,23 @@ func main() {
     repoFile := "path_of_file"
 	openFile(repoFile)
 }
+`}, 0, gosec.NewConfig()}, {[]string{`
+package main
+
+import (
+    "os"
+    "path/filepath"
+)
+
+func main() {
+    repoFile := "path_of_file"
+    relFile := filepath.Rel(repoFile)
+    byContext, err := os.OpenFile(relFile, os.O_RDONLY, 0600)
+    if err != nil {
+        panic(err)
+    }
+}
+
 `}, 0, gosec.NewConfig()}}
 
 	// SampleCodeG305 - File path traversal when extracting zip/tar archives
