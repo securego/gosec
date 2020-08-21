@@ -77,7 +77,7 @@ jobs:
 ### Local Installation
 
 ```bash
-go get github.com/securego/gosec/cmd/gosec
+go get github.com/securego/gosec/v2/cmd/gosec
 ```
 
 ## Usage
