@@ -304,8 +304,9 @@ You can run the `gosec` tool in a container against your local Go project. You o
 into a volume as follows:
 
 ```bash
-docker run -it -v <YOUR PROJECT PATH>/<PROJECT>:/<PROJECT> securego/gosec /<PROJECT>/...
+docker run --rm -it -w /<PROJECT>/ -v <YOUR PROJECT PATH>/<PROJECT>:/<PROJECT> securego/gosec /<PROJECT>/...
 ```
+**Note:** the current working directory needs to be set with `-w` option in order to get successfully resolved the dependencies from go module file 
 
 ### Generate TLS rule
 
