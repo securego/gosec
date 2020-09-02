@@ -315,7 +315,7 @@ The configuration of TLS rule can be generated from [Mozilla's TLS ciphers recom
 First you need to install the generator tool:
 
 ```bash
-go get github.com/securego/gosec/cmd/tlsconfig/...
+go get github.com/securego/gosec/v2/cmd/tlsconfig/...
 ```
 
 You can invoke now the `go generate` in the root of the project:
