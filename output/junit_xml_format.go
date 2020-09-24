@@ -40,35 +40,30 @@ func generatePlaintext(issue *gosec.Issue) string {
 		", CWE: " + issue.Cwe.ID + ")\n" + "> " + htmlLib.EscapeString(issue.Code)
 }
 
-func groupDataByRules(data *reportInfo) map[string][]*gosec.Issue {
-	groupedData := make(map[string][]*gosec.Issue)
-	for _, issue := range data.Issues {
-		if _, ok := groupedData[issue.What]; !ok {
-			groupedData[issue.What] = []*gosec.Issue{}
-		}
-		groupedData[issue.What] = append(groupedData[issue.What], issue)
-	}
-	return groupedData
-}
-
-func createJUnitXMLStruct(groupedData map[string][]*gosec.Issue) junitXMLReport {
+func createJUnitXMLStruct(data *reportInfo) junitXMLReport {
 	var xmlReport junitXMLReport
-	for what, issues := range groupedData {
-		testsuite := testsuite{
-			Name:  what,
-			Tests: len(issues),
+	testsuites := map[string]int{}
+
+	for _, issue := range data.Issues {
+		index, ok := testsuites[issue.What]
+		if !ok {
+			xmlReport.Testsuites = append(xmlReport.Testsuites, testsuite{
+				Name: issue.What,
+			})
+			index = len(xmlReport.Testsuites) - 1
+			testsuites[issue.What] = index
 		}
-		for _, issue := range issues {
-			testcase := testcase{
-				Name: issue.File,
-				Failure: failure{
-					Message: "Found 1 vulnerability. See stacktrace for details.",
-					Text:    generatePlaintext(issue),
-				},
-			}
-			testsuite.Testcases = append(testsuite.Testcases, testcase)
+		testcase := testcase{
+			Name: issue.File,
+			Failure: failure{
+				Message: "Found 1 vulnerability. See stacktrace for details.",
+				Text:    generatePlaintext(issue),
+			},
 		}
-		xmlReport.Testsuites = append(xmlReport.Testsuites, testsuite)
+
+		xmlReport.Testsuites[index].Testcases = append(xmlReport.Testsuites[index].Testcases, testcase)
+		xmlReport.Testsuites[index].Tests++
 	}
+
 	return xmlReport
 }

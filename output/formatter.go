@@ -242,9 +242,7 @@ func reportGolint(w io.Writer, data *reportInfo) error {
 }
 
 func reportJUnitXML(w io.Writer, data *reportInfo) error {
-	groupedData := groupDataByRules(data)
-	junitXMLStruct := createJUnitXMLStruct(groupedData)
-
+	junitXMLStruct := createJUnitXMLStruct(data)
 	raw, err := xml.MarshalIndent(junitXMLStruct, "", "\t")
 	if err != nil {
 		return err
