@@ -28,8 +28,8 @@ You may obtain a copy of the License [here](http://www.apache.org/licenses/LICEN
 ### CI Installation
 
 ```bash
-# binary will be $GOPATH/bin/gosec
-curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | sh -s -- -b $GOPATH/bin vX.Y.Z
+# binary will be $(go env GOPATH)/bin/gosec
+curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | sh -s -- -b $(go env GOPATH)/bin vX.Y.Z
 
 # or install it into ./bin/
 curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | sh -s vX.Y.Z
