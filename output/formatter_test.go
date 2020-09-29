@@ -12,6 +12,13 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+func createIssueWithFileWhat(file, what string) *gosec.Issue {
+	issue := createIssue("i1", gosec.GetCwe("G101"))
+	issue.File = file
+	issue.What = what
+	return &issue
+}
+
 func createIssue(ruleID string, cwe gosec.Cwe) gosec.Issue {
 	return gosec.Issue{
 		File:       "/home/src/project/test.go",
@@ -246,6 +253,23 @@ var _ = Describe("Formatter", func() {
 			issues, err := convertToSonarIssues(rootPaths, data)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(*issues).To(Equal(*want))
+		})
+	})
+
+	Context("When using junit", func() {
+		It("preserves order of issues", func() {
+			issues := []*gosec.Issue{createIssueWithFileWhat("i1", "1"), createIssueWithFileWhat("i2", "2"), createIssueWithFileWhat("i3", "1")}
+
+			junitReport := createJUnitXMLStruct(&reportInfo{Issues: issues})
+
+			testSuite := junitReport.Testsuites[0]
+
+			Expect(testSuite.Testcases[0].Name).To(Equal(issues[0].File))
+			Expect(testSuite.Testcases[1].Name).To(Equal(issues[2].File))
+
+			testSuite = junitReport.Testsuites[1]
+			Expect(testSuite.Testcases[0].Name).To(Equal(issues[1].File))
+
 		})
 	})
 	Context("When using different report formats", func() {
