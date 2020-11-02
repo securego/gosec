@@ -48,6 +48,9 @@ const (
 	// ReportJUnitXML set the output format to junit xml
 	ReportJUnitXML // JUnit XML format
 
+	// ReportSARIF set the output format to SARIF
+	ReportSARIF // SARIF format
+
 	//SonarqubeEffortMinutes effort to fix in minutes
 	SonarqubeEffortMinutes = 5
 )
@@ -108,6 +111,8 @@ func CreateReport(w io.Writer, format string, enableColor bool, rootPaths []stri
 		err = reportSonarqube(rootPaths, w, data)
 	case "golint":
 		err = reportGolint(w, data)
+	case "sarif":
+		err = reportSARIFTemplate(rootPaths, w, data)
 	default:
 		err = reportFromPlaintextTemplate(w, text, enableColor, data)
 	}
@@ -170,6 +175,53 @@ func convertToSonarIssues(rootPaths []string, data *reportInfo) (*sonarIssues, e
 		si.SonarIssues = append(si.SonarIssues, s)
 	}
 	return si, nil
+}
+
+func convertToSarifReport(rootPaths []string, data *reportInfo) (*sarifReport, error) {
+	sr := buildSarifReport()
+
+	var rules []*sarifRule
+	var locations []*sarifLocation
+	var results []*sarifResult
+
+	for index, issue := range data.Issues {
+		rules = append(rules, buildSarifRule(issue))
+
+		location, err := buildSarifLocation(issue, rootPaths)
+		if err != nil {
+			return nil, err
+		}
+		locations = append(locations, location)
+
+		result := &sarifResult{
+			RuleID:    fmt.Sprintf("%s (CWE-%s)", issue.RuleID, issue.Cwe.ID),
+			RuleIndex: index,
+			Level:     sarifWarning,
+			Message: &sarifMessage{
+				Text: issue.What,
+			},
+			Locations: locations,
+		}
+
+		results = append(results, result)
+	}
+
+	tool := &sarifTool{
+		Driver: &sarifDriver{
+			Name:           "gosec",
+			InformationURI: "https://github.com/securego/gosec/",
+			Rules:          rules,
+		},
+	}
+
+	run := &sarifRun{
+		Tool:    tool,
+		Results: results,
+	}
+
+	sr.Runs = append(sr.Runs, run)
+
+	return sr, nil
 }
 
 func reportJSON(w io.Writer, data *reportInfo) error {
@@ -256,6 +308,20 @@ func reportJUnitXML(w io.Writer, data *reportInfo) error {
 	}
 
 	return nil
+}
+
+func reportSARIFTemplate(rootPaths []string, w io.Writer, data *reportInfo) error {
+	sr, err := convertToSarifReport(rootPaths, data)
+	if err != nil {
+		return err
+	}
+	raw, err := json.MarshalIndent(sr, "", "\t")
+	if err != nil {
+		return err
+	}
+
+	_, err = w.Write(raw)
+	return err
 }
 
 func reportFromPlaintextTemplate(w io.Writer, reportTemplate string, enableColor bool, data *reportInfo) error {

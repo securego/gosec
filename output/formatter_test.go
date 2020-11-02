@@ -441,5 +441,24 @@ var _ = Describe("Formatter", func() {
 				Expect(string(buf.String())).To(Equal(expect))
 			}
 		})
+		It("sarif formatted report should contain the CWE mapping", func() {
+			for _, rule := range grules {
+				cwe := gosec.IssueToCWE[rule]
+				issue := createIssue(rule, cwe)
+				error := map[string][]gosec.Error{}
+
+				buf := new(bytes.Buffer)
+				err := CreateReport(buf, "sarif", false, []string{}, []*gosec.Issue{&issue}, &gosec.Metrics{}, error)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				result := stripString(buf.String())
+
+				pattern := "rules\":[{\"id\":\"%s(CWE-%s)\""
+				expect := fmt.Sprintf(pattern, rule, cwe.ID)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				Expect(result).To(ContainSubstring(expect))
+			}
+		})
 	})
 })
