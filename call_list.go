@@ -70,7 +70,7 @@ func (c CallList) ContainsPointer(selector, indent string) bool {
 }
 
 // ContainsPkgCallExpr resolves the call expression name and type, and then further looks
-//  up the package path for that type. Finally, it determines if the call exists within the call list
+// up the package path for that type. Finally, it determines if the call exists within the call list
 func (c CallList) ContainsPkgCallExpr(n ast.Node, ctx *Context, stripVendor bool) *ast.CallExpr {
 	selector, ident, err := GetCallInfo(n, ctx)
 	if err != nil {
