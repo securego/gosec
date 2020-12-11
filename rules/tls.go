@@ -134,7 +134,7 @@ func (t *insecureConfigTLS) mapVersion(version string) int16 {
 
 func (t *insecureConfigTLS) checkVersion(n ast.Node, c *gosec.Context) *gosec.Issue {
 	if t.actualMaxVersion == 0 && t.actualMinVersion >= t.MinVersion {
-		// no warning is generated since the min version is grater than the secure min version
+		// no warning is generated since the min version is greater than the secure min version
 		return nil
 	}
 	if t.actualMinVersion < t.MinVersion {
