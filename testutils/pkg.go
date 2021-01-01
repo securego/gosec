@@ -142,3 +142,8 @@ func (p *TestPackage) Pkgs() []*packages.Package {
 	}
 	return []*packages.Package{}
 }
+
+// PrintErrors prints to os.Stderr the accumulated errors of built packages
+func (p *TestPackage) PrintErrors() int {
+	return packages.PrintErrors(p.Pkgs())
+}
