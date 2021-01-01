@@ -39,6 +39,7 @@ var _ = Describe("gosec rules", func() {
 				}
 				err := pkg.Build()
 				Expect(err).ShouldNot(HaveOccurred())
+				Expect(pkg.PrintErrors()).Should(BeZero())
 				err = analyzer.Process(buildTags, pkg.Path)
 				Expect(err).ShouldNot(HaveOccurred())
 				issues, _, _ := analyzer.Report()
