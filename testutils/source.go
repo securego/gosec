@@ -699,7 +699,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	_, err := io.Copy(os.Stdout, r)
+	_, err = io.Copy(os.Stdout, r)
 	if err != nil {
 		panic(err)
 	}
@@ -725,7 +725,7 @@ func main() {
 		panic(err)
 	}
 	buf := make([]byte, 8)
-	_, err := io.CopyBuffer(os.Stdout, r, buf)
+	_, err = io.CopyBuffer(os.Stdout, r, buf)
 	if err != nil {
 		panic(err)
 	}
@@ -1217,6 +1217,7 @@ func main() {
 // command line arguments as it's arguments is considered dangerous
 package main
 import (
+	"context"
 	"log"
 	"os"
 	"os/exec"
@@ -1311,7 +1312,7 @@ import (
 )
 
 func RunCmd(command string) {
-	_, err := syscall.StartProcess(command, []string{}, nil)
+	_, _, err := syscall.StartProcess(command, []string{}, nil)
 	if err != nil {
 	    fmt.Printf("Error: %v\n", err)
 	}
@@ -1597,7 +1598,7 @@ import (
 func main() {
     repoFile := "path_of_file"
     cleanRepoFile := filepath.Clean(repoFile)
-    byContext, err := os.OpenFile(cleanRepoFile, os.O_RDONLY, 0600)
+    _, err := os.OpenFile(cleanRepoFile, os.O_RDONLY, 0600)
     if err != nil {
         panic(err)
     }
@@ -1611,7 +1612,7 @@ import (
 )
 
 func openFile(filePath string) {
-	byContext, err := os.OpenFile(filepath.Clean(filePath), os.O_RDONLY, 0600)
+	_, err := os.OpenFile(filepath.Clean(filePath), os.O_RDONLY, 0600)
 	if err != nil {
 		panic(err)
 	}
@@ -1632,7 +1633,7 @@ import (
 func main() {
     repoFile := "path_of_file"
     relFile := filepath.Rel(repoFile)
-    byContext, err := os.OpenFile(relFile, os.O_RDONLY, 0600)
+    _, err := os.OpenFile(relFile, os.O_RDONLY, 0600)
     if err != nil {
         panic(err)
     }
@@ -2054,7 +2055,6 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
-}
 }`}, 0, gosec.NewConfig()}}
 
 	// SampleCodeG403 - weak key strength
@@ -2109,7 +2109,7 @@ import (
 	"math/rand"
 )
 func main() {
-	gen := rand.New(rand.NewSource(10.4))
+	gen := rand.New(rand.NewSource(10))
 	bad := gen.Int()
 	println(bad)
 }`}, 1, gosec.NewConfig()},
@@ -2243,7 +2243,7 @@ func main() {
 	printVector()
 
 	zero, c_star, c := foo()
-	fmt.Printf("%d %v %s", zero, c_start, c)
+	fmt.Printf("%d %v %s", zero, c_star, c)
 }`,
 		}, 1, gosec.NewConfig()},
 		{[]string{`
