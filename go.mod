@@ -4,6 +4,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/gookit/color v1.3.6
 	github.com/kr/pretty v0.1.0 // indirect
+	github.com/lib/pq v1.9.0 // indirect
 	github.com/mozilla/tls-observatory v0.0.0-20201209171846-0547674fceff
 	github.com/nbutton23/zxcvbn-go v0.0.0-20201221231540-e56b841a3c88
 	github.com/onsi/ginkgo v1.14.2
