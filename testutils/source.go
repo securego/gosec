@@ -582,7 +582,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"net/http/pprof"
 )
 
 func main() {
@@ -1632,8 +1631,11 @@ import (
 
 func main() {
     repoFile := "path_of_file"
-    relFile := filepath.Rel(repoFile)
-    _, err := os.OpenFile(relFile, os.O_RDONLY, 0600)
+	relFile, err := filepath.Rel("./", repoFile)
+	if err != nil {
+		panic(err)
+	}
+    _, err = os.OpenFile(relFile, os.O_RDONLY, 0600)
     if err != nil {
         panic(err)
     }
@@ -2229,10 +2231,11 @@ func printVector() {
 	fmt.Println()
 }
 
-func foo() (int, *string, string) {
+func foo() (int, **string, *string) {
 	for _, item := range vector {
 		return 0, &item, item
 	}
+	return 0, nil, nil
 }
 
 func main() {
