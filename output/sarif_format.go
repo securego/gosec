@@ -35,6 +35,7 @@ type sarifArtifactLocation struct {
 
 type sarifRegion struct {
 	StartLine   uint64 `json:"startLine"`
+	EndLine     uint64 `json:"endLine"`
 	StartColumn uint64 `json:"startColumn"`
 	EndColumn   uint64 `json:"endColumn"`
 }
@@ -114,10 +115,19 @@ func buildSarifRule(issue *gosec.Issue) *sarifRule {
 func buildSarifLocation(issue *gosec.Issue, rootPaths []string) (*sarifLocation, error) {
 	var filePath string
 
-	line, err := strconv.ParseUint(issue.Line, 10, 64)
+	lines := strings.Split(issue.Line, "-")
+	startLine, err := strconv.ParseUint(lines[0], 10, 64)
 	if err != nil {
 		return nil, err
 	}
+	endLine := startLine
+	if len(lines) > 1 {
+		endLine, err = strconv.ParseUint(lines[1], 10, 64)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	col, err := strconv.ParseUint(issue.Col, 10, 64)
 	if err != nil {
 		return nil, err
@@ -135,7 +145,8 @@ func buildSarifLocation(issue *gosec.Issue, rootPaths []string) (*sarifLocation,
 				URI: filePath,
 			},
 			Region: &sarifRegion{
-				StartLine:   line,
+				StartLine:   startLine,
+				EndLine:     endLine,
 				StartColumn: col,
 				EndColumn:   col,
 			},
