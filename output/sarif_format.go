@@ -155,3 +155,20 @@ func buildSarifLocation(issue *gosec.Issue, rootPaths []string) (*sarifLocation,
 
 	return location, nil
 }
+
+// From https://docs.oasis-open.org/sarif/sarif/v2.0/csprd02/sarif-v2.0-csprd02.html#_Toc10127839
+// * "warning": The rule specified by ruleId was evaluated and a problem was found.
+// * "error": The rule specified by ruleId was evaluated and a serious problem was found.
+// * "note": The rule specified by ruleId was evaluated and a minor problem or an opportunity to improve the code was found.
+func getSarifLevel(s string) sarifLevel {
+	switch s {
+	case "LOW":
+		return sarifWarning
+	case "MEDIUM":
+		return sarifError
+	case "HIGH":
+		return sarifError
+	default:
+		return sarifNote
+	}
+}
