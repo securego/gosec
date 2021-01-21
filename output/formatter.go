@@ -182,7 +182,7 @@ func convertToSarifReport(rootPaths []string, data *reportInfo) (*sarifReport, e
 
 	var rules []*sarifRule
 	var locations []*sarifLocation
-	var results []*sarifResult
+	results := []*sarifResult{}
 
 	for index, issue := range data.Issues {
 		rules = append(rules, buildSarifRule(issue))
