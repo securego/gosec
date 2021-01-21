@@ -196,7 +196,7 @@ func convertToSarifReport(rootPaths []string, data *reportInfo) (*sarifReport, e
 		result := &sarifResult{
 			RuleID:    fmt.Sprintf("%s (CWE-%s)", issue.RuleID, issue.Cwe.ID),
 			RuleIndex: index,
-			Level:     sarifWarning,
+			Level:     getSarifLevel(issue.Severity.String()),
 			Message: &sarifMessage{
 				Text: issue.What,
 			},
