@@ -74,6 +74,42 @@ jobs:
           args: ./...
 ```
 
+### Integrating with code scanning
+
+You can [integrate third-party code analysis tools](https://docs.github.com/en/github/finding-security-vulnerabilities-and-errors-in-your-code/integrating-with-code-scanning) with GitHub code scanning by uploading data as SARIF files.
+
+The workflow shows an example of running the `gosec` as a step in a GitHub action workflow which outputs the `results.sarif` file. The workflow then uploads the `results.sarif` file to GitHub using the `upload-sarif` action.
+
+```yaml
+name: "Security Scan"
+
+# Run workflow each time code is pushed to your repository and on a schedule.
+# The scheduled workflow runs every at 00:00 on Sunday UTC time.
+on:
+  push:
+  schedule:
+  - cron: '0 0 * * 0'
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    env:
+      GO111MODULE: on
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v2
+      - name: Run Gosec Security Scanner
+        uses: securego/gosec@master
+        with:
+          # we let the report trigger content trigger a failure using the GitHub Security features.
+          args: '-no-fail -fmt sarif -out results.sarif ./...'
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v1
+        with:
+          # Path to SARIF file relative to the root of the repository
+          sarif_file: results.sarif
+```
+
 ### Local Installation
 
 ```bash
