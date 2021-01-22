@@ -21,12 +21,17 @@ type sarifProperties struct {
 }
 
 type sarifRule struct {
-	ID               string           `json:"id"`
-	Name             string           `json:"name"`
-	ShortDescription *sarifMessage    `json:"shortDescription"`
-	FullDescription  *sarifMessage    `json:"fullDescription"`
-	Help             *sarifMessage    `json:"help"`
-	Properties       *sarifProperties `json:"properties"`
+	ID                   string              `json:"id"`
+	Name                 string              `json:"name"`
+	ShortDescription     *sarifMessage       `json:"shortDescription"`
+	FullDescription      *sarifMessage       `json:"fullDescription"`
+	Help                 *sarifMessage       `json:"help"`
+	Properties           *sarifProperties    `json:"properties"`
+	DefaultConfiguration *sarifConfiguration `json:"defaultConfiguration"`
+}
+
+type sarifConfiguration struct {
+	Level sarifLevel `json:"level"`
 }
 
 type sarifArtifactLocation struct {
@@ -107,6 +112,9 @@ func buildSarifRule(issue *gosec.Issue) *sarifRule {
 		},
 		Properties: &sarifProperties{
 			Tags: []string{fmt.Sprintf("CWE-%s", issue.Cwe.ID), issue.Severity.String()},
+		},
+		DefaultConfiguration: &sarifConfiguration{
+			Level: getSarifLevel(issue.Severity.String()),
 		},
 	}
 }
