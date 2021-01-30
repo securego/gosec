@@ -209,6 +209,7 @@ func convertToSarifReport(rootPaths []string, data *reportInfo) (*sarifReport, e
 	tool := &sarifTool{
 		Driver: &sarifDriver{
 			Name:           "gosec",
+			Version:        "2.1.0",
 			InformationURI: "https://github.com/securego/gosec/",
 			Rules:          rules,
 		},

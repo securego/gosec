@@ -2,9 +2,10 @@ package output
 
 import (
 	"fmt"
-	"github.com/securego/gosec/v2"
 	"strconv"
 	"strings"
+
+	"github.com/securego/gosec/v2"
 )
 
 type sarifLevel string
@@ -68,6 +69,7 @@ type sarifResult struct {
 
 type sarifDriver struct {
 	Name           string       `json:"name"`
+	Version        string       `json:"version"`
 	InformationURI string       `json:"informationUri"`
 	Rules          []*sarifRule `json:"rules,omitempty"`
 }
