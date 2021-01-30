@@ -93,7 +93,7 @@ type sarifReport struct {
 func buildSarifReport() *sarifReport {
 	return &sarifReport{
 		Version: "2.1.0",
-		Schema:  "https://schemastore.azurewebsites.net/schemas/json/sarif-2.1.0-rtm.4.json",
+		Schema:  "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
 		Runs:    []*sarifRun{},
 	}
 }
