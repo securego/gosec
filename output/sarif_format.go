@@ -2,9 +2,10 @@ package output
 
 import (
 	"fmt"
-	"github.com/securego/gosec/v2"
 	"strconv"
 	"strings"
+
+	"github.com/securego/gosec/v2"
 )
 
 type sarifLevel string
@@ -68,6 +69,7 @@ type sarifResult struct {
 
 type sarifDriver struct {
 	Name           string       `json:"name"`
+	Version        string       `json:"version"`
 	InformationURI string       `json:"informationUri"`
 	Rules          []*sarifRule `json:"rules,omitempty"`
 }
@@ -91,7 +93,7 @@ type sarifReport struct {
 func buildSarifReport() *sarifReport {
 	return &sarifReport{
 		Version: "2.1.0",
-		Schema:  "https://schemastore.azurewebsites.net/schemas/json/sarif-2.1.0-rtm.4.json",
+		Schema:  "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
 		Runs:    []*sarifRun{},
 	}
 }

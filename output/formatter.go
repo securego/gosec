@@ -180,27 +180,39 @@ func convertToSonarIssues(rootPaths []string, data *reportInfo) (*sonarIssues, e
 func convertToSarifReport(rootPaths []string, data *reportInfo) (*sarifReport, error) {
 	sr := buildSarifReport()
 
-	var rules []*sarifRule
-	var locations []*sarifLocation
+	type rule struct {
+		index int
+		rule  *sarifRule
+	}
+
+	rules := make([]*sarifRule, 0)
+	rulesIndices := make(map[string]rule)
+	lastRuleIndex := -1
+
 	results := []*sarifResult{}
 
-	for index, issue := range data.Issues {
-		rules = append(rules, buildSarifRule(issue))
+	for _, issue := range data.Issues {
+		r, ok := rulesIndices[issue.RuleID]
+		if !ok {
+			lastRuleIndex++
+			r = rule{index: lastRuleIndex, rule: buildSarifRule(issue)}
+			rulesIndices[issue.RuleID] = r
+			rules = append(rules, r.rule)
+		}
 
 		location, err := buildSarifLocation(issue, rootPaths)
 		if err != nil {
 			return nil, err
 		}
-		locations = append(locations, location)
 
 		result := &sarifResult{
-			RuleID:    fmt.Sprintf("%s (CWE-%s)", issue.RuleID, issue.Cwe.ID),
-			RuleIndex: index,
+			RuleID:    r.rule.ID,
+			RuleIndex: r.index,
 			Level:     getSarifLevel(issue.Severity.String()),
 			Message: &sarifMessage{
 				Text: issue.What,
 			},
-			Locations: locations,
+			Locations: []*sarifLocation{location},
 		}
 
 		results = append(results, result)
@@ -209,6 +221,7 @@ func convertToSarifReport(rootPaths []string, data *reportInfo) (*sarifReport, e
 	tool := &sarifTool{
 		Driver: &sarifDriver{
 			Name:           "gosec",
+			Version:        "2.1.0",
 			InformationURI: "https://github.com/securego/gosec/",
 			Rules:          rules,
 		},
