@@ -180,21 +180,24 @@ func convertToSonarIssues(rootPaths []string, data *reportInfo) (*sonarIssues, e
 func convertToSarifReport(rootPaths []string, data *reportInfo) (*sarifReport, error) {
 	sr := buildSarifReport()
 
+	type rule struct {
+		index int
+		rule  *sarifRule
+	}
+
 	rules := make([]*sarifRule, 0)
+	rulesIndices := make(map[string]rule)
+	lastRuleIndex := -1
+
 	results := []*sarifResult{}
 
 	for _, issue := range data.Issues {
-		sarifRule := buildSarifRule(issue)
-		ruleIndex := -1
-		for i, rule := range rules {
-			if rule.ID == sarifRule.ID {
-				ruleIndex = i
-				break
-			}
-		}
-		if ruleIndex == -1 {
-			rules = append(rules, sarifRule)
-			ruleIndex = len(rules) - 1
+		r, ok := rulesIndices[issue.RuleID]
+		if !ok {
+			lastRuleIndex++
+			r = rule{index: lastRuleIndex, rule: buildSarifRule(issue)}
+			rulesIndices[issue.RuleID] = r
+			rules = append(rules, r.rule)
 		}
 
 		location, err := buildSarifLocation(issue, rootPaths)
@@ -203,8 +206,8 @@ func convertToSarifReport(rootPaths []string, data *reportInfo) (*sarifReport, e
 		}
 
 		result := &sarifResult{
-			RuleID:    fmt.Sprintf("%s (CWE-%s)", issue.RuleID, issue.Cwe.ID),
-			RuleIndex: ruleIndex,
+			RuleID:    r.rule.ID,
+			RuleIndex: r.index,
 			Level:     getSarifLevel(issue.Severity.String()),
 			Message: &sarifMessage{
 				Text: issue.What,
