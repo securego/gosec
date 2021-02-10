@@ -2057,7 +2057,24 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
-}`}, 0, gosec.NewConfig()}}
+}`}, 0, gosec.NewConfig()}, {[]string{`
+package p0
+
+import "crypto/tls"
+
+func TlsConfig0() *tls.Config {
+	var v uint16 = 0
+	return &tls.Config{MinVersion: v}
+}
+`, `
+package p0
+
+import "crypto/tls"
+
+func TlsConfig1() *tls.Config {
+   return &tls.Config{MinVersion: 0x0304}
+}
+`}, 1, gosec.NewConfig()}}
 
 	// SampleCodeG403 - weak key strength
 	SampleCodeG403 = []CodeSample{

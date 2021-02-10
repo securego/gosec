@@ -146,6 +146,11 @@ func (t *insecureConfigTLS) checkVersion(n ast.Node, c *gosec.Context) *gosec.Is
 	return nil
 }
 
+func (t *insecureConfigTLS) resetVersion() {
+	t.actualMaxVersion = 0
+	t.actualMinVersion = 0
+}
+
 func (t *insecureConfigTLS) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error) {
 	if complit, ok := n.(*ast.CompositeLit); ok && complit.Type != nil {
 		actualType := c.Info.TypeOf(complit.Type)
@@ -158,7 +163,9 @@ func (t *insecureConfigTLS) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, e
 					}
 				}
 			}
-			return t.checkVersion(complit, c), nil
+			issue := t.checkVersion(complit, c)
+			t.resetVersion()
+			return issue, nil
 		}
 	}
 	return nil, nil
