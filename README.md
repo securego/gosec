@@ -300,6 +300,8 @@ file. The output format is controlled by the `-fmt` flag, and the output file is
 $ gosec -fmt=json -out=results.json *.go
 ```
 
+**Note:** gosec generates the [generic issue import format](https://docs.sonarqube.org/latest/analysis/generic-issue/) for SonarQube, and a report has to be imported into SonarQube using `sonar.externalIssuesReportPaths=artifacts/test/gosec-report.json`.
+
 ## Development
 
 ### Build
