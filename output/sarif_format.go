@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/securego/gosec/v2"
 )
 
@@ -101,8 +102,8 @@ func buildSarifReport() *sarifReport {
 // buildSarifRule return SARIF rule field struct
 func buildSarifRule(issue *gosec.Issue) *sarifRule {
 	return &sarifRule{
-		ID:   fmt.Sprintf("%s (CWE-%s)", issue.RuleID, issue.Cwe.ID),
-		Name: issue.What,
+		ID:   fmt.Sprintf("%s", uuid.New()),
+		Name: fmt.Sprintf("%s (CWE-%s)", issue.RuleID, issue.Cwe.ID),
 		ShortDescription: &sarifMessage{
 			Text: issue.What,
 		},
