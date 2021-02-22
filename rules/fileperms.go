@@ -25,7 +25,7 @@ import (
 type filePermissions struct {
 	gosec.MetaData
 	mode  int64
-	pkg   string
+	pkgs  []string
 	calls []string
 }
 
@@ -51,10 +51,12 @@ func getConfiguredMode(conf map[string]interface{}, configKey string, defaultMod
 }
 
 func (r *filePermissions) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error) {
-	if callexpr, matched := gosec.MatchCallByPackage(n, c, r.pkg, r.calls...); matched {
-		modeArg := callexpr.Args[len(callexpr.Args)-1]
-		if mode, err := gosec.GetInt(modeArg); err == nil && mode > r.mode {
-			return gosec.NewIssue(c, n, r.ID(), r.What, r.Severity, r.Confidence), nil
+	for _, pkg := range r.pkgs {
+		if callexpr, matched := gosec.MatchCallByPackage(n, c, pkg, r.calls...); matched {
+			modeArg := callexpr.Args[len(callexpr.Args)-1]
+			if mode, err := gosec.GetInt(modeArg); err == nil && mode > r.mode {
+				return gosec.NewIssue(c, n, r.ID(), r.What, r.Severity, r.Confidence), nil
+			}
 		}
 	}
 	return nil, nil
@@ -65,7 +67,7 @@ func NewWritePerms(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 	mode := getConfiguredMode(conf, "G306", 0600)
 	return &filePermissions{
 		mode:  mode,
-		pkg:   "io/ioutil",
+		pkgs:  []string{"io/ioutil", "os"},
 		calls: []string{"WriteFile"},
 		MetaData: gosec.MetaData{
 			ID:         id,
@@ -82,7 +84,7 @@ func NewFilePerms(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 	mode := getConfiguredMode(conf, "G302", 0600)
 	return &filePermissions{
 		mode:  mode,
-		pkg:   "os",
+		pkgs:  []string{"os"},
 		calls: []string{"OpenFile", "Chmod"},
 		MetaData: gosec.MetaData{
 			ID:         id,
@@ -99,7 +101,7 @@ func NewMkdirPerms(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 	mode := getConfiguredMode(conf, "G301", 0750)
 	return &filePermissions{
 		mode:  mode,
-		pkg:   "os",
+		pkgs:  []string{"os"},
 		calls: []string{"Mkdir", "MkdirAll"},
 		MetaData: gosec.MetaData{
 			ID:         id,
