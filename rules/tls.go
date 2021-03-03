@@ -26,12 +26,12 @@ import (
 
 type insecureConfigTLS struct {
 	gosec.MetaData
-	MinVersion       int16
-	MaxVersion       int16
+	MinVersion       int64
+	MaxVersion       int64
 	requiredType     string
 	goodCiphers      []string
-	actualMinVersion int16
-	actualMaxVersion int16
+	actualMinVersion int64
+	actualMaxVersion int64
 }
 
 func (t *insecureConfigTLS) ID() string {
@@ -86,7 +86,7 @@ func (t *insecureConfigTLS) processTLSConfVal(n *ast.KeyValueExpr, c *gosec.Cont
 
 		case "MinVersion":
 			if ival, ierr := gosec.GetInt(n.Value); ierr == nil {
-				t.actualMinVersion = (int16)(ival)
+				t.actualMinVersion = ival
 			} else {
 				if se, ok := n.Value.(*ast.SelectorExpr); ok {
 					if pkg, ok := se.X.(*ast.Ident); ok && pkg.Name == "tls" {
@@ -97,7 +97,7 @@ func (t *insecureConfigTLS) processTLSConfVal(n *ast.KeyValueExpr, c *gosec.Cont
 
 		case "MaxVersion":
 			if ival, ierr := gosec.GetInt(n.Value); ierr == nil {
-				t.actualMaxVersion = (int16)(ival)
+				t.actualMaxVersion = ival
 			} else {
 				if se, ok := n.Value.(*ast.SelectorExpr); ok {
 					if pkg, ok := se.X.(*ast.Ident); ok && pkg.Name == "tls" {
@@ -117,8 +117,8 @@ func (t *insecureConfigTLS) processTLSConfVal(n *ast.KeyValueExpr, c *gosec.Cont
 	return nil
 }
 
-func (t *insecureConfigTLS) mapVersion(version string) int16 {
-	var v int16
+func (t *insecureConfigTLS) mapVersion(version string) int64 {
+	var v int64
 	switch version {
 	case "VersionTLS13":
 		v = tls.VersionTLS13
