@@ -13,6 +13,7 @@ This is a list of gosec's users. Please send a pull request with your organisati
 7. [Guardalis](https://www.guardrails.io/)
 8. [1Password](https://github.com/1Password/srp)
 9. [PingCAP/tidb](https://github.com/pingcap/tidb)
+10. [Checkmarx](https://www.checkmarx.com/)
 
 ## Projects
 
@@ -24,3 +25,4 @@ This is a list of gosec's users. Please send a pull request with your organisati
 6. [GolangCI](https://golangci.com/)
 7. [semgrep.live](https://semgrep.live/)
 8. [gofiber](https://github.com/gofiber/fiber)
+9. [KICS](https://github.com/Checkmarx/kics)
