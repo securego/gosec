@@ -454,7 +454,7 @@ var _ = Describe("Formatter", func() {
 
 				result := stripString(buf.String())
 
-				pattern := "rules\":[{\"id\":\"%s(CWE-%s)\""
+				pattern := "\"id\":\"%s(CWE-%s)\""
 				expect := fmt.Sprintf(pattern, rule, cwe.ID)
 				Expect(err).ShouldNot(HaveOccurred())
 

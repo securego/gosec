@@ -47,6 +47,62 @@ func buildSarifRule(issue *gosec.Issue) *sarif.ReportingDescriptor {
 		DefaultConfiguration: &sarif.ReportingConfiguration{
 			Level: getSarifLevel(issue.Severity.String()),
 		},
+		Relationships: []*sarif.ReportingDescriptorRelationship{
+			{
+				Target: &sarif.ReportingDescriptorReference{
+					Id: issue.Cwe.ID,
+					ToolComponent: &sarif.ToolComponentReference{
+						Name: "CWE",
+					},
+				},
+			},
+		},
+	}
+}
+
+func buildSarifTool(driver *sarif.ToolComponent) *sarif.Tool {
+	return &sarif.Tool{
+		Driver: driver,
+	}
+}
+
+func buildSarifTaxonomies(taxa []*sarif.ReportingDescriptor) []*sarif.ToolComponent {
+	return []*sarif.ToolComponent{
+		{Name: "CWE",
+			Organization: "MITRE",
+			ShortDescription: &sarif.MultiformatMessageString{
+				Text: "The MITRE Common Weakness Enumeration",
+			},
+			Taxa: taxa,
+		},
+	}
+}
+
+func buildSarifTaxum(cwse gosec.Cwe) *sarif.ReportingDescriptor {
+	return &sarif.ReportingDescriptor{
+		Id:      cwse.ID,
+		Name:    cwse.Name,
+		HelpUri: cwse.URL,
+	}
+}
+
+func buildSarifDriver(rules []*sarif.ReportingDescriptor) *sarif.ToolComponent {
+	return &sarif.ToolComponent{
+		Name:    "gosec",
+		Version: "2.1.0",
+		SupportedTaxonomies: []*sarif.ToolComponentReference{
+			{Name: "CWE"},
+		},
+		InformationUri: "https://github.com/securego/gosec/",
+		Rules:          rules,
+	}
+}
+
+func buildSarifRun(results []*sarif.Result, taxonomies []*sarif.ToolComponent, tool *sarif.Tool) *sarif.Run {
+	return &sarif.Run{
+		Results:    results,
+		Taxonomies: taxonomies,
+		Tool:       tool,
 	}
 }
 
