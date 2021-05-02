@@ -460,11 +460,11 @@ var _ = Describe("Formatter", func() {
 
 				Expect(result).To(ContainSubstring(expectedRule))
 
-				cweUriPattern := "\"helpUri\":\"https://cwe.mitre.org/data/definitions/%s.html\""
-				expectedCweUri := fmt.Sprintf(cweUriPattern, cwe.ID)
+				cweURIPattern := "\"helpUri\":\"https://cwe.mitre.org/data/definitions/%s.html\""
+				expectedCweURI := fmt.Sprintf(cweURIPattern, cwe.ID)
 				Expect(err).ShouldNot(HaveOccurred())
 
-				Expect(result).To(ContainSubstring(expectedCweUri))
+				Expect(result).To(ContainSubstring(expectedCweURI))
 
 				cweIDPattern := "\"id\":\"%s\""
 				expectedCweID := fmt.Sprintf(cweIDPattern, cwe.ID)
