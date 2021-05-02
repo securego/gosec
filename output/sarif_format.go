@@ -30,7 +30,7 @@ func buildSarifReport() *sarif.StaticAnalysisResultsFormatSARIFVersion210JSONSch
 // buildSarifRule return SARIF rule field struct
 func buildSarifRule(issue *gosec.Issue) *sarif.ReportingDescriptor {
 	return &sarif.ReportingDescriptor{
-		Id:   fmt.Sprintf("%s (CWE-%s)", issue.RuleID, issue.Cwe.ID),
+		Id:   issue.RuleID,
 		Name: issue.What,
 		ShortDescription: &sarif.MultiformatMessageString{
 			Text: issue.What,
@@ -39,7 +39,7 @@ func buildSarifRule(issue *gosec.Issue) *sarif.ReportingDescriptor {
 			Text: issue.What,
 		},
 		Help: &sarif.MultiformatMessageString{
-			Text: fmt.Sprintf("%s\nSeverity: %s\nConfidence: %s\nCWE: %s", issue.What, issue.Severity.String(), issue.Confidence.String(), issue.Cwe.URL),
+			Text: fmt.Sprintf("%s\nSeverity: %s\nConfidence: %s\n", issue.What, issue.Severity.String(), issue.Confidence.String()),
 		},
 		Properties: &sarif.PropertyBag{
 			Tags: []string{fmt.Sprintf("CWE-%s", issue.Cwe.ID), issue.Severity.String()},
@@ -55,6 +55,7 @@ func buildSarifRule(issue *gosec.Issue) *sarif.ReportingDescriptor {
 						Name: "CWE",
 					},
 				},
+				Kinds: []string{"superset"},
 			},
 		},
 	}
@@ -89,7 +90,7 @@ func buildSarifTaxum(cwse gosec.Cwe) *sarif.ReportingDescriptor {
 func buildSarifDriver(rules []*sarif.ReportingDescriptor) *sarif.ToolComponent {
 	return &sarif.ToolComponent{
 		Name:    "gosec",
-		Version: "2.1.0",
+		Version: "2.7.0",
 		SupportedTaxonomies: []*sarif.ToolComponentReference{
 			{Name: "CWE"},
 		},

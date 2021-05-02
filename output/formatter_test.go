@@ -454,11 +454,23 @@ var _ = Describe("Formatter", func() {
 
 				result := stripString(buf.String())
 
-				pattern := "\"id\":\"%s(CWE-%s)\""
-				expect := fmt.Sprintf(pattern, rule, cwe.ID)
+				ruleIDPattern := "\"id\":\"%s\""
+				expectedRule := fmt.Sprintf(ruleIDPattern, rule)
 				Expect(err).ShouldNot(HaveOccurred())
 
-				Expect(result).To(ContainSubstring(expect))
+				Expect(result).To(ContainSubstring(expectedRule))
+
+				cweUriPattern := "\"helpUri\":\"https://cwe.mitre.org/data/definitions/%s.html\""
+				expectedCweUri := fmt.Sprintf(cweUriPattern, cwe.ID)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				Expect(result).To(ContainSubstring(expectedCweUri))
+
+				cweIDPattern := "\"id\":\"%s\""
+				expectedCweID := fmt.Sprintf(cweIDPattern, cwe.ID)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				Expect(result).To(ContainSubstring(expectedCweID))
 			}
 		})
 	})
