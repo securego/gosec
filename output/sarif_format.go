@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/securego/gosec/v2"
+	"github.com/securego/gosec/v2/sarif"
 )
 
 type sarifLevel string
@@ -17,128 +18,56 @@ const (
 	sarifError   = sarifLevel("error")
 )
 
-type sarifProperties struct {
-	Tags []string `json:"tags"`
-}
-
-type sarifRule struct {
-	ID                   string              `json:"id"`
-	Name                 string              `json:"name"`
-	ShortDescription     *sarifMessage       `json:"shortDescription"`
-	FullDescription      *sarifMessage       `json:"fullDescription"`
-	Help                 *sarifMessage       `json:"help"`
-	Properties           *sarifProperties    `json:"properties"`
-	DefaultConfiguration *sarifConfiguration `json:"defaultConfiguration"`
-}
-
-type sarifConfiguration struct {
-	Level sarifLevel `json:"level"`
-}
-
-type sarifArtifactLocation struct {
-	URI string `json:"uri"`
-}
-
-type sarifRegion struct {
-	StartLine   uint64 `json:"startLine"`
-	EndLine     uint64 `json:"endLine"`
-	StartColumn uint64 `json:"startColumn"`
-	EndColumn   uint64 `json:"endColumn"`
-}
-
-type sarifPhysicalLocation struct {
-	ArtifactLocation *sarifArtifactLocation `json:"artifactLocation"`
-	Region           *sarifRegion           `json:"region"`
-}
-
-type sarifLocation struct {
-	PhysicalLocation *sarifPhysicalLocation `json:"physicalLocation"`
-}
-
-type sarifMessage struct {
-	Text string `json:"text"`
-}
-
-type sarifResult struct {
-	RuleID    string           `json:"ruleId"`
-	RuleIndex int              `json:"ruleIndex"`
-	Level     sarifLevel       `json:"level"`
-	Message   *sarifMessage    `json:"message"`
-	Locations []*sarifLocation `json:"locations"`
-}
-
-type sarifDriver struct {
-	Name           string       `json:"name"`
-	Version        string       `json:"version"`
-	InformationURI string       `json:"informationUri"`
-	Rules          []*sarifRule `json:"rules,omitempty"`
-}
-
-type sarifTool struct {
-	Driver *sarifDriver `json:"driver"`
-}
-
-type sarifRun struct {
-	Tool    *sarifTool     `json:"tool"`
-	Results []*sarifResult `json:"results"`
-}
-
-type sarifReport struct {
-	Schema  string      `json:"$schema"`
-	Version string      `json:"version"`
-	Runs    []*sarifRun `json:"runs"`
-}
-
 // buildSarifReport return SARIF report struct
-func buildSarifReport() *sarifReport {
-	return &sarifReport{
+func buildSarifReport() *sarif.StaticAnalysisResultsFormatSARIFVersion210JSONSchema {
+	return &sarif.StaticAnalysisResultsFormatSARIFVersion210JSONSchema{
 		Version: "2.1.0",
 		Schema:  "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
-		Runs:    []*sarifRun{},
+		Runs:    []*sarif.Run{},
 	}
 }
 
 // buildSarifRule return SARIF rule field struct
-func buildSarifRule(issue *gosec.Issue) *sarifRule {
-	return &sarifRule{
-		ID:   fmt.Sprintf("%s (CWE-%s)", issue.RuleID, issue.Cwe.ID),
+func buildSarifRule(issue *gosec.Issue) *sarif.ReportingDescriptor {
+	return &sarif.ReportingDescriptor{
+		Id:   fmt.Sprintf("%s (CWE-%s)", issue.RuleID, issue.Cwe.ID),
 		Name: issue.What,
-		ShortDescription: &sarifMessage{
+		ShortDescription: &sarif.MultiformatMessageString{
 			Text: issue.What,
 		},
-		FullDescription: &sarifMessage{
+		FullDescription: &sarif.MultiformatMessageString{
 			Text: issue.What,
 		},
-		Help: &sarifMessage{
+		Help: &sarif.MultiformatMessageString{
 			Text: fmt.Sprintf("%s\nSeverity: %s\nConfidence: %s\nCWE: %s", issue.What, issue.Severity.String(), issue.Confidence.String(), issue.Cwe.URL),
 		},
-		Properties: &sarifProperties{
+		Properties: &sarif.PropertyBag{
 			Tags: []string{fmt.Sprintf("CWE-%s", issue.Cwe.ID), issue.Severity.String()},
 		},
-		DefaultConfiguration: &sarifConfiguration{
+		DefaultConfiguration: &sarif.ReportingConfiguration{
 			Level: getSarifLevel(issue.Severity.String()),
 		},
 	}
 }
 
 // buildSarifLocation return SARIF location struct
-func buildSarifLocation(issue *gosec.Issue, rootPaths []string) (*sarifLocation, error) {
+func buildSarifLocation(issue *gosec.Issue, rootPaths []string) (*sarif.Location, error) {
 	var filePath string
 
 	lines := strings.Split(issue.Line, "-")
-	startLine, err := strconv.ParseUint(lines[0], 10, 64)
+	startLine, err := strconv.Atoi(lines[0])
 	if err != nil {
 		return nil, err
 	}
 	endLine := startLine
 	if len(lines) > 1 {
-		endLine, err = strconv.ParseUint(lines[1], 10, 64)
+		endLine, err = strconv.Atoi(lines[1])
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	col, err := strconv.ParseUint(issue.Col, 10, 64)
+	col, err := strconv.Atoi(issue.Col)
 	if err != nil {
 		return nil, err
 	}
@@ -149,21 +78,20 @@ func buildSarifLocation(issue *gosec.Issue, rootPaths []string) (*sarifLocation,
 		}
 	}
 
-	location := &sarifLocation{
-		PhysicalLocation: &sarifPhysicalLocation{
-			ArtifactLocation: &sarifArtifactLocation{
-				URI: filePath,
+	return &sarif.Location{
+		PhysicalLocation: &sarif.PhysicalLocation{
+			ArtifactLocation: &sarif.ArtifactLocation{
+				Uri: filePath,
 			},
-			Region: &sarifRegion{
+			Region: &sarif.Region{
 				StartLine:   startLine,
 				EndLine:     endLine,
 				StartColumn: col,
 				EndColumn:   col,
 			},
 		},
-	}
+	}, nil
 
-	return location, nil
 }
 
 // From https://docs.oasis-open.org/sarif/sarif/v2.0/csprd02/sarif-v2.0-csprd02.html#_Toc10127839

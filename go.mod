@@ -1,6 +1,7 @@
 module github.com/securego/gosec/v2
 
 require (
+	github.com/a-h/generate v0.0.0-20190312091541-e59c34d33fb3
 	github.com/gookit/color v1.4.2
 	github.com/lib/pq v1.10.1 // indirect
 	github.com/mozilla/tls-observatory v0.0.0-20210209181001-cf43108d6880
