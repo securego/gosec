@@ -14,7 +14,7 @@ import (
 )
 
 func createIssueWithFileWhat(file, what string) *gosec.Issue {
-	issue := createIssue("i1", gosec.GetCwe("G101"))
+	issue := createIssue("i1", gosec.GetCwe("G101", "G101 Name"))
 	issue.File = file
 	issue.What = what
 	return &issue
