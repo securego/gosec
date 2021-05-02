@@ -43,48 +43,71 @@ const SnippetOffset = 1
 
 // Cwe id and url
 type Cwe struct {
-	ID  string
-	URL string
+	ID   string
+	URL  string
 	Name string
 }
 
 // GetCwe creates a cwe object for a given RuleID
-func GetCwe(id string, name string) Cwe {
-	return Cwe{ID: id, URL: fmt.Sprintf("https://cwe.mitre.org/data/definitions/%s.html", id), Name : name}
+func GetCwe(id string) Cwe {
+	return Cwe{ID: id, URL: fmt.Sprintf("https://cwe.mitre.org/data/definitions/%s.html", id), Name: CweDB[id]}
+}
+
+var CweDB = map[string]string{
+	"22":  "Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')",
+	"78":  "Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')",
+	"79":  "Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')",
+	"88":  "Improper Neutralization of Argument Delimiters in a Command ('Argument Injection')",
+	"89":  "Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')",
+	"118": "Incorrect Access of Indexable Resource ('Range Error')",
+	"190": "Integer Overflow or Wraparound",
+	"200": "Exposure of Sensitive Information to an Unauthorized Actor",
+	"242": "Use of Inherently Dangerous Function",
+	"276": "Incorrect Default Permissions",
+	"295": "Improper Certificate Validation",
+	"310": "Cryptographic Issues",
+	"322": "Key Exchange without Entity Authentication",
+	"326": "Inadequate Encryption Strength",
+	"327": "Use of a Broken or Risky Cryptographic Algorithm",
+	"338": "Use of Cryptographically Weak Pseudo-Random Number Generator (PRNG)",
+	"377": "Insecure Temporary File",
+	"409": "Improper Handling of Highly Compressed Data (Data Amplification)",
+	"703": "Improper Check or Handling of Exceptional Conditions",
+	"798": "Use of Hard-coded Credentials",
 }
 
 // IssueToCWE maps gosec rules to CWEs
 var IssueToCWE = map[string]Cwe{
-	"G101": GetCwe("798","Use of Hard-coded Credentials"),
-	"G102": GetCwe("200","Exposure of Sensitive Information to an Unauthorized Actor"),
-	"G103": GetCwe("242", "Use of Inherently Dangerous Function"),
-	"G104": GetCwe("703", "Improper Check or Handling of Exceptional Conditions"),
-	"G106": GetCwe("322", "Key Exchange without Entity Authentication"),
-	"G107": GetCwe("88",  "Improper Neutralization of Argument Delimiters in a Command ('Argument Injection')"),
-	"G108": GetCwe("200", "Exposure of Sensitive Information to an Unauthorized Actor"),
-	"G109": GetCwe("190", "Integer Overflow or Wraparound"),
-	"G110": GetCwe("409", "Improper Handling of Highly Compressed Data (Data Amplification)"),
-	"G201": GetCwe("89", "Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')"),
-	"G202": GetCwe("89", "Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')"),
-	"G203": GetCwe("79", "Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"),
-	"G204": GetCwe("78", "Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"),
-	"G301": GetCwe("276", "Incorrect Default Permissions"),
-	"G302": GetCwe("276", "Incorrect Default Permissions"),
-	"G303": GetCwe("377", "Insecure Temporary File"),
-	"G304": GetCwe("22", "Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"),
-	"G305": GetCwe("22","Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"),
-	"G306": GetCwe("276", "Incorrect Default Permissions"),
-	"G307": GetCwe("703", "Improper Check or Handling of Exceptional Conditions"),
-	"G401": GetCwe("326", "Inadequate Encryption Strength"),
-	"G402": GetCwe("295", "Improper Certificate Validation"),
-	"G403": GetCwe("310", "Cryptographic Issues"),
-	"G404": GetCwe("338", "Use of Cryptographically Weak Pseudo-Random Number Generator (PRNG)"),
-	"G501": GetCwe("327","Use of a Broken or Risky Cryptographic Algorithm"),
-	"G502": GetCwe("327","Use of a Broken or Risky Cryptographic Algorithm"),
-	"G503": GetCwe("327","Use of a Broken or Risky Cryptographic Algorithm"),
-	"G504": GetCwe("327","Use of a Broken or Risky Cryptographic Algorithm"),
-	"G505": GetCwe("327","Use of a Broken or Risky Cryptographic Algorithm"),
-	"G601": GetCwe("118","Incorrect Access of Indexable Resource ('Range Error')"),
+	"G101": GetCwe("798"),
+	"G102": GetCwe("200"),
+	"G103": GetCwe("242"),
+	"G104": GetCwe("703"),
+	"G106": GetCwe("322"),
+	"G107": GetCwe("88"),
+	"G108": GetCwe("200"),
+	"G109": GetCwe("190"),
+	"G110": GetCwe("409"),
+	"G201": GetCwe("89"),
+	"G202": GetCwe("89"),
+	"G203": GetCwe("79"),
+	"G204": GetCwe("78"),
+	"G301": GetCwe("276"),
+	"G302": GetCwe("276"),
+	"G303": GetCwe("377"),
+	"G304": GetCwe("22"),
+	"G305": GetCwe("22"),
+	"G306": GetCwe("276"),
+	"G307": GetCwe("703"),
+	"G401": GetCwe("326"),
+	"G402": GetCwe("295"),
+	"G403": GetCwe("310"),
+	"G404": GetCwe("338"),
+	"G501": GetCwe("327"),
+	"G502": GetCwe("327"),
+	"G503": GetCwe("327"),
+	"G504": GetCwe("327"),
+	"G505": GetCwe("327"),
+	"G601": GetCwe("118"),
 }
 
 // Issue is returned by a gosec rule if it discovers an issue with the scanned code.
