@@ -154,6 +154,7 @@ func buildSarifLocation(issue *gosec.Issue, rootPaths []string) (*sarif.Location
 // * "warning": The rule specified by ruleId was evaluated and a problem was found.
 // * "error": The rule specified by ruleId was evaluated and a serious problem was found.
 // * "note": The rule specified by ruleId was evaluated and a minor problem or an opportunity to improve the code was found.
+// * "none": The concept of “severity” does not apply to this result because the kind property (§3.27.9) has a value other than "fail".
 func getSarifLevel(s string) sarifLevel {
 	switch s {
 	case "LOW":
