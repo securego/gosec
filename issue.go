@@ -50,10 +50,10 @@ type Cwe struct {
 
 // GetCwe creates a cwe object for a given RuleID
 func GetCwe(id string) Cwe {
-	return Cwe{ID: id, URL: fmt.Sprintf("https://cwe.mitre.org/data/definitions/%s.html", id), Name: CweDB[id]}
+	return Cwe{ID: id, URL: fmt.Sprintf("https://cwe.mitre.org/data/definitions/%s.html", id), Name: cweDB[id]}
 }
 
-var CweDB = map[string]string{
+var cweDB = map[string]string{
 	"22":  "Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')",
 	"78":  "Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')",
 	"79":  "Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')",
