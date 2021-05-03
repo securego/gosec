@@ -43,37 +43,13 @@ const SnippetOffset = 1
 
 // Cwe id and url
 type Cwe struct {
-	ID   string
-	URL  string
-	Name string
+	ID  string
+	URL string
 }
 
 // GetCwe creates a cwe object for a given RuleID
 func GetCwe(id string) Cwe {
-	return Cwe{ID: id, URL: fmt.Sprintf("https://cwe.mitre.org/data/definitions/%s.html", id), Name: cweDB[id]}
-}
-
-var cweDB = map[string]string{
-	"22":  "Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')",
-	"78":  "Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')",
-	"79":  "Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')",
-	"88":  "Improper Neutralization of Argument Delimiters in a Command ('Argument Injection')",
-	"89":  "Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')",
-	"118": "Incorrect Access of Indexable Resource ('Range Error')",
-	"190": "Integer Overflow or Wraparound",
-	"200": "Exposure of Sensitive Information to an Unauthorized Actor",
-	"242": "Use of Inherently Dangerous Function",
-	"276": "Incorrect Default Permissions",
-	"295": "Improper Certificate Validation",
-	"310": "Cryptographic Issues",
-	"322": "Key Exchange without Entity Authentication",
-	"326": "Inadequate Encryption Strength",
-	"327": "Use of a Broken or Risky Cryptographic Algorithm",
-	"338": "Use of Cryptographically Weak Pseudo-Random Number Generator (PRNG)",
-	"377": "Insecure Temporary File",
-	"409": "Improper Handling of Highly Compressed Data (Data Amplification)",
-	"703": "Improper Check or Handling of Exceptional Conditions",
-	"798": "Use of Hard-coded Credentials",
+	return Cwe{ID: id, URL: fmt.Sprintf("https://cwe.mitre.org/data/definitions/%s.html", id)}
 }
 
 // IssueToCWE maps gosec rules to CWEs
