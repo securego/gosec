@@ -19,7 +19,7 @@ const (
 	sarifNote    = sarifLevel("note")
 	sarifWarning = sarifLevel("warning")
 	sarifError   = sarifLevel("error")
-	CWE          = "CWE"
+	cweAcronym   = "CWE"
 )
 
 func convertToSarifReport(rootPaths []string, data *reportInfo) (*sarif.StaticAnalysisResultsFormatSARIFVersion210JSONSchema, error) {
@@ -120,7 +120,7 @@ func buildSarifReportingDescriptorRelationship(weakness cwe.Weakness) *sarif.Rep
 			Id:   weakness.ID,
 			Guid: uuid3(weakness.Name),
 			ToolComponent: &sarif.ToolComponentReference{
-				Name: CWE,
+				Name: cweAcronym,
 			},
 		},
 		Kinds: []string{"superset"},
@@ -137,7 +137,7 @@ func buildSarifTaxonomies(taxa []*sarif.ReportingDescriptor) []*sarif.ToolCompon
 	version := "4.4"
 	return []*sarif.ToolComponent{
 		{
-			Name:           CWE,
+			Name:           cweAcronym,
 			Version:        version,
 			ReleaseDateUtc: "2021-03-15",
 			InformationUri: fmt.Sprintf("https://cwe.mitre.org/data/published/cwe_v%s.pdf/", version),
@@ -179,7 +179,7 @@ func buildSarifDriver(rules []*sarif.ReportingDescriptor) *sarif.ToolComponent {
 		Name:    "gosec",
 		Version: gosecVersion,
 		SupportedTaxonomies: []*sarif.ToolComponentReference{
-			{Name: CWE, Index: 1, Guid: uuid3(CWE)},
+			{Name: cweAcronym, Index: 1, Guid: uuid3(cweAcronym)},
 		},
 		InformationUri: "https://github.com/securego/gosec/",
 		Rules:          rules,
