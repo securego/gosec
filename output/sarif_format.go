@@ -146,7 +146,9 @@ func buildSarifTaxonomies(taxa []*sarif.ReportingDescriptor) []*sarif.ToolCompon
 			ShortDescription: &sarif.MultiformatMessageString{
 				Text: "The MITRE Common Weakness Enumeration",
 			},
-			Guid: uuid3(cweAcronym),
+			Guid:            uuid3(cweAcronym),
+			IsComprehensive: true,
+			MinimumRequiredLocalizedDataSemanticVersion: version,
 			Taxa: taxa,
 		},
 	}
