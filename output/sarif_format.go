@@ -38,9 +38,9 @@ func convertToSarifReport(rootPaths []string, data *reportInfo) (*sarif.StaticAn
 	weaknesses := make(map[string]cwe.Weakness)
 
 	for _, issue := range data.Issues {
-		_, ok := weaknesses[issue.Cwe.ID]
+		weakness, ok := weaknesses[issue.Cwe.ID]
 		if !ok {
-			weakness := cwe.Get(issue.Cwe.ID)
+			weakness = cwe.Get(issue.Cwe.ID)
 			weaknesses[issue.Cwe.ID] = weakness
 			taxon := parseSarifTaxon(weakness, issue.Cwe.URL)
 			taxa = append(taxa, taxon)
@@ -49,7 +49,7 @@ func convertToSarifReport(rootPaths []string, data *reportInfo) (*sarif.StaticAn
 		r, ok := rulesIndices[issue.RuleID]
 		if !ok {
 			lastRuleIndex++
-			r = rule{index: lastRuleIndex, rule: parseSarifRule(issue, weaknesses[issue.Cwe.ID])}
+			r = rule{index: lastRuleIndex, rule: parseSarifRule(issue, weakness)}
 			rulesIndices[issue.RuleID] = r
 			rules = append(rules, r.rule)
 		}
