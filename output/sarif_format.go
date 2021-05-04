@@ -42,7 +42,7 @@ func convertToSarifReport(rootPaths []string, data *reportInfo) (*sarif.Report, 
 		if !ok {
 			weakness := cwe.Get(issue.Cwe.ID)
 			weaknesses[issue.Cwe.ID] = weakness
-			taxon := parseSarifTaxon(weakness, issue.Cwe.URL)
+			taxon := parseSarifTaxon(weakness)
 			taxa = append(taxa, taxon)
 		}
 
@@ -161,18 +161,14 @@ func buildCWETaxonomy(version string, taxa []*sarif.ReportingDescriptor) *sarif.
 	}
 }
 
-func parseSarifTaxon(weakness cwe.Weakness, url string) *sarif.ReportingDescriptor {
-	return buildSarifTaxon(weakness.ID, weakness.Name, url, weakness.Description)
-}
-
-func buildSarifTaxon(id string, name string, uri string, description string) *sarif.ReportingDescriptor {
+func parseSarifTaxon(weakness cwe.Weakness) *sarif.ReportingDescriptor {
 	return &sarif.ReportingDescriptor{
-		Id:      id,
-		Name:    name,
-		Guid:    uuid3(cweAcronym + id),
-		HelpUri: uri,
+		Id:      weakness.ID,
+		Name:    weakness.Name,
+		Guid:    uuid3(cweAcronym + weakness.ID),
+		HelpUri: weakness.URL(),
 		ShortDescription: &sarif.MultiformatMessageString{
-			Text: description,
+			Text: weakness.Description,
 		},
 	}
 }
