@@ -240,6 +240,7 @@ func parseSarifArtifactLocation(issue *gosec.Issue, rootPaths []string) *sarif.A
 func buildSarifArtifactLocation(uri string) *sarif.ArtifactLocation {
 	return &sarif.ArtifactLocation{
 		Uri: uri,
+		SourceLanguage: "go",
 	}
 }
 
