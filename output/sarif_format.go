@@ -22,7 +22,7 @@ const (
 	cweAcronym   = "CWE"
 )
 
-func convertToSarifReport(rootPaths []string, data *reportInfo) (*sarif.StaticAnalysisResultsFormatSARIFVersion210JSONSchema, error) {
+func convertToSarifReport(rootPaths []string, data *reportInfo) (*sarif.Report, error) {
 
 	type rule struct {
 		index int
@@ -59,15 +59,7 @@ func convertToSarifReport(rootPaths []string, data *reportInfo) (*sarif.StaticAn
 			return nil, err
 		}
 
-		result := &sarif.Result{
-			RuleId:    r.rule.Id,
-			RuleIndex: r.index,
-			Level:     getSarifLevel(issue.Severity.String()),
-			Message: &sarif.Message{
-				Text: issue.What,
-			},
-			Locations: []*sarif.Location{location},
-		}
+		result := buildSarifResult(r.rule.Id, r.index, issue, []*sarif.Location{location})
 
 		results = append(results, result)
 	}
@@ -79,9 +71,21 @@ func convertToSarifReport(rootPaths []string, data *reportInfo) (*sarif.StaticAn
 	return buildSarifReport(run), nil
 }
 
+func buildSarifResult(ruleID string, index int, issue *gosec.Issue, locations []*sarif.Location) *sarif.Result {
+	return &sarif.Result{
+		RuleId:    ruleID,
+		RuleIndex: index,
+		Level:     getSarifLevel(issue.Severity.String()),
+		Message: &sarif.Message{
+			Text: issue.What,
+		},
+		Locations: locations,
+	}
+}
+
 // buildSarifReport return SARIF report struct
-func buildSarifReport(run *sarif.Run) *sarif.StaticAnalysisResultsFormatSARIFVersion210JSONSchema {
-	return &sarif.StaticAnalysisResultsFormatSARIFVersion210JSONSchema{
+func buildSarifReport(run *sarif.Run) *sarif.Report {
+	return &sarif.Report{
 		Version: "2.1.0",
 		Schema:  "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
 		Runs:    []*sarif.Run{run},
@@ -134,23 +138,26 @@ func buildSarifTool(driver *sarif.ToolComponent) *sarif.Tool {
 }
 
 func buildSarifTaxonomies(taxa []*sarif.ReportingDescriptor) []*sarif.ToolComponent {
-	version := "4.4"
 	return []*sarif.ToolComponent{
-		{
-			Name:           cweAcronym,
-			Version:        version,
-			ReleaseDateUtc: "2021-03-15",
-			InformationUri: fmt.Sprintf("https://cwe.mitre.org/data/published/cwe_v%s.pdf/", version),
-			DownloadUri:    fmt.Sprintf("https://cwe.mitre.org/data/xml/cwec_v%s.xml.zip", version),
-			Organization:   "MITRE",
-			ShortDescription: &sarif.MultiformatMessageString{
-				Text: "The MITRE Common Weakness Enumeration",
-			},
-			Guid:            uuid3(cweAcronym),
-			IsComprehensive: true,
-			MinimumRequiredLocalizedDataSemanticVersion: version,
-			Taxa: taxa,
+		buildCWETaxonomy("4.4", taxa),
+	}
+}
+
+func buildCWETaxonomy(version string, taxa []*sarif.ReportingDescriptor) *sarif.ToolComponent {
+	return &sarif.ToolComponent{
+		Name:           cweAcronym,
+		Version:        version,
+		ReleaseDateUtc: "2021-03-15",
+		InformationUri: fmt.Sprintf("https://cwe.mitre.org/data/published/cwe_v%s.pdf/", version),
+		DownloadUri:    fmt.Sprintf("https://cwe.mitre.org/data/xml/cwec_v%s.xml.zip", version),
+		Organization:   "MITRE",
+		ShortDescription: &sarif.MultiformatMessageString{
+			Text: "The MITRE Common Weakness Enumeration",
 		},
+		Guid:            uuid3(cweAcronym),
+		IsComprehensive: true,
+		MinimumRequiredLocalizedDataSemanticVersion: version,
+		Taxa: taxa,
 	}
 }
 

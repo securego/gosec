@@ -1137,8 +1137,8 @@ type StackFrame struct {
 	ThreadId int `json:"threadId,omitempty"`
 }
 
-// StaticAnalysisResultsFormatSARIFVersion210JSONSchema Static Analysis Results Format (SARIF) Version 2.1.0 JSON Schema: a standard format for the output of static analysis tools.
-type StaticAnalysisResultsFormatSARIFVersion210JSONSchema struct {
+// Report Static Analysis Results Format (SARIF) Version 2.1.0 JSON Schema: a standard format for the output of static analysis tools.
+type Report struct {
 
 	// References to external property files that share data between runs.
 	InlineExternalProperties []*ExternalProperties `json:"inlineExternalProperties,omitempty"`
