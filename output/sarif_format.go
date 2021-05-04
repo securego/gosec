@@ -38,9 +38,9 @@ func convertToSarifReport(rootPaths []string, data *reportInfo) (*sarif.StaticAn
 	weaknesses := make(map[string]cwe.Weakness)
 
 	for _, issue := range data.Issues {
-		weakness, ok := weaknesses[issue.Cwe.ID]
+		_, ok := weaknesses[issue.Cwe.ID]
 		if !ok {
-			weakness = cwe.Get(issue.Cwe.ID)
+			weakness := cwe.Get(issue.Cwe.ID)
 			weaknesses[issue.Cwe.ID] = weakness
 			taxon := parseSarifTaxon(weakness, issue.Cwe.URL)
 			taxa = append(taxa, taxon)
@@ -49,7 +49,7 @@ func convertToSarifReport(rootPaths []string, data *reportInfo) (*sarif.StaticAn
 		r, ok := rulesIndices[issue.RuleID]
 		if !ok {
 			lastRuleIndex++
-			r = rule{index: lastRuleIndex, rule: parseSarifRule(issue, weakness)}
+			r = rule{index: lastRuleIndex, rule: parseSarifRule(issue)}
 			rulesIndices[issue.RuleID] = r
 			rules = append(rules, r.rule)
 		}
@@ -89,7 +89,7 @@ func buildSarifReport(run *sarif.Run) *sarif.StaticAnalysisResultsFormatSARIFVer
 }
 
 // parseSarifRule return SARIF rule field struct
-func parseSarifRule(issue *gosec.Issue, weakness cwe.Weakness) *sarif.ReportingDescriptor {
+func parseSarifRule(issue *gosec.Issue) *sarif.ReportingDescriptor {
 	return &sarif.ReportingDescriptor{
 		Id:   issue.RuleID,
 		Name: issue.What,
@@ -109,16 +109,16 @@ func parseSarifRule(issue *gosec.Issue, weakness cwe.Weakness) *sarif.ReportingD
 			Level: getSarifLevel(issue.Severity.String()),
 		},
 		Relationships: []*sarif.ReportingDescriptorRelationship{
-			buildSarifReportingDescriptorRelationship(weakness),
+			buildSarifReportingDescriptorRelationship(issue.Cwe.ID),
 		},
 	}
 }
 
-func buildSarifReportingDescriptorRelationship(weakness cwe.Weakness) *sarif.ReportingDescriptorRelationship {
+func buildSarifReportingDescriptorRelationship(weaknessID string) *sarif.ReportingDescriptorRelationship {
 	return &sarif.ReportingDescriptorRelationship{
 		Target: &sarif.ReportingDescriptorReference{
-			Id:   weakness.ID,
-			Guid: uuid3(weakness.Name),
+			Id:   weaknessID,
+			Guid: uuid3(cweAcronym + weaknessID),
 			ToolComponent: &sarif.ToolComponentReference{
 				Name: cweAcronym,
 			},
@@ -162,7 +162,7 @@ func buildSarifTaxon(id string, name string, uri string, description string) *sa
 	return &sarif.ReportingDescriptor{
 		Id:      id,
 		Name:    name,
-		Guid:    uuid3(name),
+		Guid:    uuid3(cweAcronym + id),
 		HelpUri: uri,
 		ShortDescription: &sarif.MultiformatMessageString{
 			Text: description,
@@ -182,7 +182,7 @@ func buildSarifDriver(rules []*sarif.ReportingDescriptor) *sarif.ToolComponent {
 		Name:    "gosec",
 		Version: gosecVersion,
 		SupportedTaxonomies: []*sarif.ToolComponentReference{
-			{Name: cweAcronym, Index: 1, Guid: uuid3(cweAcronym)},
+			{Name: cweAcronym, Guid: uuid3(cweAcronym)},
 		},
 		InformationUri: "https://github.com/securego/gosec/",
 		Rules:          rules,
@@ -203,8 +203,44 @@ func buildSarifRun(results []*sarif.Result, taxonomies []*sarif.ToolComponent, t
 
 // parseSarifLocation return SARIF location struct
 func parseSarifLocation(issue *gosec.Issue, rootPaths []string) (*sarif.Location, error) {
-	var filePath string
+	region, err := parseSarifRegion(issue)
+	if err != nil {
+		return nil, err
+	}
+	artifactLocation := parseSarifArtifactLocation(issue, rootPaths)
+	return buildSarifLocation(buildSarifPhysicalLocation(artifactLocation, region)), nil
+}
 
+func buildSarifLocation(physicalLocation *sarif.PhysicalLocation) *sarif.Location {
+	return &sarif.Location{
+		PhysicalLocation: physicalLocation,
+	}
+}
+
+func buildSarifPhysicalLocation(artifactLocation *sarif.ArtifactLocation, region *sarif.Region) *sarif.PhysicalLocation {
+	return &sarif.PhysicalLocation{
+		ArtifactLocation: artifactLocation,
+		Region:           region,
+	}
+}
+
+func parseSarifArtifactLocation(issue *gosec.Issue, rootPaths []string) *sarif.ArtifactLocation {
+	var filePath string
+	for _, rootPath := range rootPaths {
+		if strings.HasPrefix(issue.File, rootPath) {
+			filePath = strings.Replace(issue.File, rootPath+"/", "", 1)
+		}
+	}
+	return buildSarifArtifactLocation(filePath)
+}
+
+func buildSarifArtifactLocation(uri string) *sarif.ArtifactLocation {
+	return &sarif.ArtifactLocation{
+		Uri: uri,
+	}
+}
+
+func parseSarifRegion(issue *gosec.Issue) (*sarif.Region, error) {
 	lines := strings.Split(issue.Line, "-")
 	startLine, err := strconv.Atoi(lines[0])
 	if err != nil {
@@ -222,37 +258,10 @@ func parseSarifLocation(issue *gosec.Issue, rootPaths []string) (*sarif.Location
 	if err != nil {
 		return nil, err
 	}
-
-	for _, rootPath := range rootPaths {
-		if strings.HasPrefix(issue.File, rootPath) {
-			filePath = strings.Replace(issue.File, rootPath+"/", "", 1)
-		}
-	}
-
-	return buildSarifLocation(buildSarifPhysicalLocation(parseSarifArtifactLocation(filePath), parseSarifRegion(startLine, endLine, col))), nil
-
+	return buildSarifRegion(startLine, endLine, col), nil
 }
 
-func buildSarifLocation(physicalLocation *sarif.PhysicalLocation) *sarif.Location {
-	return &sarif.Location{
-		PhysicalLocation: physicalLocation,
-	}
-}
-
-func buildSarifPhysicalLocation(artifactLocation *sarif.ArtifactLocation, region *sarif.Region) *sarif.PhysicalLocation {
-	return &sarif.PhysicalLocation{
-		ArtifactLocation: artifactLocation,
-		Region:           region,
-	}
-}
-
-func parseSarifArtifactLocation(filePath string) *sarif.ArtifactLocation {
-	return &sarif.ArtifactLocation{
-		Uri: filePath,
-	}
-}
-
-func parseSarifRegion(startLine int, endLine int, col int) *sarif.Region {
+func buildSarifRegion(startLine int, endLine int, col int) *sarif.Region {
 	return &sarif.Region{
 		StartLine:   startLine,
 		EndLine:     endLine,
