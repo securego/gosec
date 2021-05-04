@@ -408,6 +408,26 @@ var _ = Describe("Formatter", func() {
 				Expect(result).To(ContainSubstring(expectation))
 			}
 		})
+		It("sonarqube formatted report shouldn't contain the CWE mapping", func() {
+			for _, rule := range grules {
+				cwe := gosec.IssueToCWE[rule]
+				issue := createIssue(rule, cwe)
+				error := map[string][]gosec.Error{}
+				buf := new(bytes.Buffer)
+				err := CreateReport(buf, "sonarqube", false, []string{"/home/src/project"}, []*gosec.Issue{&issue}, &gosec.Metrics{}, error)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				result := stripString(buf.String())
+
+				expect := new(bytes.Buffer)
+				enc := json.NewEncoder(expect)
+				err = enc.Encode(cwe)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				expectation := stripString(expect.String())
+				Expect(result).ShouldNot(ContainSubstring(expectation))
+			}
+		})
 		It("golint formatted report should contain the CWE mapping", func() {
 			for _, rule := range grules {
 				cwe := gosec.IssueToCWE[rule]
