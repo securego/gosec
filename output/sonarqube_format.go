@@ -1,32 +1,79 @@
 package output
 
-import "github.com/securego/gosec/v2"
+import (
+	"github.com/securego/gosec/v2"
+	"github.com/securego/gosec/v2/sonar"
+	"strconv"
+	"strings"
+)
 
-type textRange struct {
-	StartLine   int `json:"startLine"`
-	EndLine     int `json:"endLine"`
-	StartColumn int `json:"startColumn,omitempty"`
-	EtartColumn int `json:"endColumn,omitempty"`
-}
-type location struct {
-	Message   string    `json:"message"`
-	FilePath  string    `json:"filePath"`
-	TextRange textRange `json:"textRange,omitempty"`
+const (
+	//SonarqubeEffortMinutes effort to fix in minutes
+	SonarqubeEffortMinutes = 5
+)
+
+func convertToSonarIssues(rootPaths []string, data *reportInfo) (*sonar.Report, error) {
+	si := &sonar.Report{Issues: []*sonar.Issue{}}
+	for _, issue := range data.Issues {
+		sonarFilePath := parseFilePath(issue, rootPaths)
+
+		if sonarFilePath == "" {
+			continue
+		}
+
+		textRange, err := parseTextRange(issue)
+		if err != nil {
+			return si, err
+		}
+
+		primaryLocation := buildPrimaryLocation(issue.What, sonarFilePath, textRange)
+		severity := getSonarSeverity(issue.Severity.String())
+
+		s := &sonar.Issue{
+			EngineID:        "gosec",
+			RuleID:          issue.RuleID,
+			PrimaryLocation: primaryLocation,
+			Type:            "VULNERABILITY",
+			Severity:        severity,
+			EffortMinutes:   SonarqubeEffortMinutes,
+		}
+		si.Issues = append(si.Issues, s)
+	}
+	return si, nil
 }
 
-type sonarIssue struct {
-	EngineID           string     `json:"engineId"`
-	RuleID             string     `json:"ruleId"`
-	Cwe                gosec.Cwe  `json:"cwe"`
-	PrimaryLocation    location   `json:"primaryLocation"`
-	Type               string     `json:"type"`
-	Severity           string     `json:"severity"`
-	EffortMinutes      int        `json:"effortMinutes"`
-	SecondaryLocations []location `json:"secondaryLocations,omitempty"`
+func buildPrimaryLocation(message string, filePath string, textRange *sonar.TextRange) *sonar.Location {
+	return &sonar.Location{
+		Message:   message,
+		FilePath:  filePath,
+		TextRange: textRange,
+	}
 }
 
-type sonarIssues struct {
-	SonarIssues []sonarIssue `json:"issues"`
+func parseFilePath(issue *gosec.Issue, rootPaths []string) string {
+	var sonarFilePath string
+	for _, rootPath := range rootPaths {
+		if strings.HasPrefix(issue.File, rootPath) {
+			sonarFilePath = strings.Replace(issue.File, rootPath+"/", "", 1)
+		}
+	}
+	return sonarFilePath
+}
+
+func parseTextRange(issue *gosec.Issue) (*sonar.TextRange, error) {
+	lines := strings.Split(issue.Line, "-")
+	startLine, err := strconv.Atoi(lines[0])
+	if err != nil {
+		return nil, err
+	}
+	endLine := startLine
+	if len(lines) > 1 {
+		endLine, err = strconv.Atoi(lines[1])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return &sonar.TextRange{StartLine: startLine, EndLine: endLine}, nil
 }
 
 func getSonarSeverity(s string) string {
