@@ -24,7 +24,7 @@ import (
 	"strings"
 
 	"github.com/securego/gosec/v2"
-	"github.com/securego/gosec/v2/output"
+	"github.com/securego/gosec/v2/report"
 	"github.com/securego/gosec/v2/rules"
 )
 
@@ -202,12 +202,12 @@ func saveOutput(filename, format string, color bool, paths []string, issues []*g
 			return err
 		}
 		defer outfile.Close() // #nosec G307
-		err = output.CreateReport(outfile, format, color, rootPaths, issues, metrics, errors)
+		err = report.CreateReport(outfile, format, color, rootPaths, issues, metrics, errors)
 		if err != nil {
 			return err
 		}
 	} else {
-		err := output.CreateReport(os.Stdout, format, color, rootPaths, issues, metrics, errors)
+		err := report.CreateReport(os.Stdout, format, color, rootPaths, issues, metrics, errors)
 		if err != nil {
 			return err
 		}
