@@ -2,6 +2,7 @@ package output
 
 import (
 	"github.com/securego/gosec/v2"
+	"github.com/securego/gosec/v2/formatter"
 	"github.com/securego/gosec/v2/sonar"
 	"strconv"
 	"strings"
@@ -12,7 +13,7 @@ const (
 	SonarqubeEffortMinutes = 5
 )
 
-func convertToSonarIssues(rootPaths []string, data *reportInfo) (*sonar.Report, error) {
+func convertToSonarIssues(rootPaths []string, data *formatter.ReportInfo) (*sonar.Report, error) {
 	si := &sonar.Report{Issues: []*sonar.Issue{}}
 	for _, issue := range data.Issues {
 		sonarFilePath := parseFilePath(issue, rootPaths)

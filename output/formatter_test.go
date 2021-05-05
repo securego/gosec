@@ -9,6 +9,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/securego/gosec/v2"
+	"github.com/securego/gosec/v2/formatter"
 	"github.com/securego/gosec/v2/sonar"
 	"gopkg.in/yaml.v2"
 )
@@ -34,10 +35,10 @@ func createIssue(ruleID string, cwe gosec.Cwe) gosec.Issue {
 	}
 }
 
-func createReportInfo(rule string, cwe gosec.Cwe) reportInfo {
+func createReportInfo(rule string, cwe gosec.Cwe) formatter.ReportInfo {
 	issue := createIssue(rule, cwe)
 	metrics := gosec.Metrics{}
-	return reportInfo{
+	return formatter.ReportInfo{
 		Errors: map[string][]gosec.Error{},
 		Issues: []*gosec.Issue{
 			&issue,
@@ -58,7 +59,7 @@ var _ = Describe("Formatter", func() {
 	})
 	Context("when converting to Sonarqube issues", func() {
 		It("it should parse the report info", func() {
-			data := &reportInfo{
+			data := &formatter.ReportInfo{
 				Errors: map[string][]gosec.Error{},
 				Issues: []*gosec.Issue{
 					{
@@ -106,7 +107,7 @@ var _ = Describe("Formatter", func() {
 		})
 
 		It("it should parse the report info with files in subfolders", func() {
-			data := &reportInfo{
+			data := &formatter.ReportInfo{
 				Errors: map[string][]gosec.Error{},
 				Issues: []*gosec.Issue{
 					{
@@ -153,7 +154,7 @@ var _ = Describe("Formatter", func() {
 			Expect(*issues).To(Equal(*want))
 		})
 		It("it should not parse the report info for files from other projects", func() {
-			data := &reportInfo{
+			data := &formatter.ReportInfo{
 				Errors: map[string][]gosec.Error{},
 				Issues: []*gosec.Issue{
 					{
@@ -185,7 +186,7 @@ var _ = Describe("Formatter", func() {
 		})
 
 		It("it should parse the report info for multiple projects projects", func() {
-			data := &reportInfo{
+			data := &formatter.ReportInfo{
 				Errors: map[string][]gosec.Error{},
 				Issues: []*gosec.Issue{
 					{
@@ -261,7 +262,7 @@ var _ = Describe("Formatter", func() {
 		It("preserves order of issues", func() {
 			issues := []*gosec.Issue{createIssueWithFileWhat("i1", "1"), createIssueWithFileWhat("i2", "2"), createIssueWithFileWhat("i3", "1")}
 
-			junitReport := createJUnitXMLStruct(&reportInfo{Issues: issues})
+			junitReport := createJUnitXMLStruct(&formatter.ReportInfo{Issues: issues})
 
 			testSuite := junitReport.Testsuites[0]
 
@@ -454,11 +455,23 @@ var _ = Describe("Formatter", func() {
 
 				result := stripString(buf.String())
 
-				pattern := "rules\":[{\"id\":\"%s(CWE-%s)\""
-				expect := fmt.Sprintf(pattern, rule, cwe.ID)
+				ruleIDPattern := "\"id\":\"%s\""
+				expectedRule := fmt.Sprintf(ruleIDPattern, rule)
 				Expect(err).ShouldNot(HaveOccurred())
 
-				Expect(result).To(ContainSubstring(expect))
+				Expect(result).To(ContainSubstring(expectedRule))
+
+				cweURIPattern := "\"helpUri\":\"https://cwe.mitre.org/data/definitions/%s.html\""
+				expectedCweURI := fmt.Sprintf(cweURIPattern, cwe.ID)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				Expect(result).To(ContainSubstring(expectedCweURI))
+
+				cweIDPattern := "\"id\":\"%s\""
+				expectedCweID := fmt.Sprintf(cweIDPattern, cwe.ID)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				Expect(result).To(ContainSubstring(expectedCweID))
 			}
 		})
 	})
