@@ -107,7 +107,10 @@ func parseSarifRule(issue *gosec.Issue) *sarif.ReportingDescriptor {
 			Text: fmt.Sprintf("%s\nSeverity: %s\nConfidence: %s\n", issue.What, issue.Severity.String(), issue.Confidence.String()),
 		},
 		Properties: &sarif.PropertyBag{
-			Tags: []string{fmt.Sprintf("CWE-%s", issue.Cwe.ID), issue.Severity.String()},
+			Tags: []string{"security", issue.Severity.String()},
+			AdditionalProperties: map[string]interface{}{
+				"precision": strings.ToLower(issue.Confidence.String()),
+			},
 		},
 		DefaultConfiguration: &sarif.ReportingConfiguration{
 			Level: getSarifLevel(issue.Severity.String()),
@@ -240,7 +243,6 @@ func parseSarifArtifactLocation(issue *gosec.Issue, rootPaths []string) *sarif.A
 func buildSarifArtifactLocation(uri string) *sarif.ArtifactLocation {
 	return &sarif.ArtifactLocation{
 		Uri: uri,
-		SourceLanguage: "go",
 	}
 }
 
@@ -267,10 +269,11 @@ func parseSarifRegion(issue *gosec.Issue) (*sarif.Region, error) {
 
 func buildSarifRegion(startLine int, endLine int, col int) *sarif.Region {
 	return &sarif.Region{
-		StartLine:   startLine,
-		EndLine:     endLine,
-		StartColumn: col,
-		EndColumn:   col,
+		StartLine:      startLine,
+		EndLine:        endLine,
+		StartColumn:    col,
+		EndColumn:      col,
+		SourceLanguage: "go",
 	}
 }
 
