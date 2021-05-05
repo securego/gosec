@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/securego/gosec/v2"
+	"github.com/securego/gosec/v2/formatter"
 )
 
 type junitXMLReport struct {
@@ -40,7 +41,7 @@ func generatePlaintext(issue *gosec.Issue) string {
 		", CWE: " + issue.Cwe.ID + ")\n" + "> " + htmlLib.EscapeString(issue.Code)
 }
 
-func createJUnitXMLStruct(data *reportInfo) junitXMLReport {
+func createJUnitXMLStruct(data *formatter.ReportInfo) junitXMLReport {
 	var xmlReport junitXMLReport
 	testsuites := map[string]int{}
 
