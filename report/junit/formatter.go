@@ -1,37 +1,12 @@
-package output
+package junit
 
 import (
-	"encoding/xml"
 	htmlLib "html"
 	"strconv"
 
 	"github.com/securego/gosec/v2"
-	"github.com/securego/gosec/v2/formatter"
+	"github.com/securego/gosec/v2/report/core"
 )
-
-type junitXMLReport struct {
-	XMLName    xml.Name    `xml:"testsuites"`
-	Testsuites []testsuite `xml:"testsuite"`
-}
-
-type testsuite struct {
-	XMLName   xml.Name   `xml:"testsuite"`
-	Name      string     `xml:"name,attr"`
-	Tests     int        `xml:"tests,attr"`
-	Testcases []testcase `xml:"testcase"`
-}
-
-type testcase struct {
-	XMLName xml.Name `xml:"testcase"`
-	Name    string   `xml:"name,attr"`
-	Failure failure  `xml:"failure"`
-}
-
-type failure struct {
-	XMLName xml.Name `xml:"failure"`
-	Message string   `xml:"message,attr"`
-	Text    string   `xml:",innerxml"`
-}
 
 func generatePlaintext(issue *gosec.Issue) string {
 	return "Results:\n" +
@@ -41,22 +16,23 @@ func generatePlaintext(issue *gosec.Issue) string {
 		", CWE: " + issue.Cwe.ID + ")\n" + "> " + htmlLib.EscapeString(issue.Code)
 }
 
-func createJUnitXMLStruct(data *formatter.ReportInfo) junitXMLReport {
-	var xmlReport junitXMLReport
+//GenerateReport Convert a gosec report to a JUnit Report
+func GenerateReport(data *core.ReportInfo) JunitXMLReport {
+	var xmlReport JunitXMLReport
 	testsuites := map[string]int{}
 
 	for _, issue := range data.Issues {
 		index, ok := testsuites[issue.What]
 		if !ok {
-			xmlReport.Testsuites = append(xmlReport.Testsuites, testsuite{
+			xmlReport.Testsuites = append(xmlReport.Testsuites, &Testsuite{
 				Name: issue.What,
 			})
 			index = len(xmlReport.Testsuites) - 1
 			testsuites[issue.What] = index
 		}
-		testcase := testcase{
+		testcase := &Testcase{
 			Name: issue.File,
-			Failure: failure{
+			Failure: &Failure{
 				Message: "Found 1 vulnerability. See stacktrace for details.",
 				Text:    generatePlaintext(issue),
 			},

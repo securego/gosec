@@ -1,4 +1,4 @@
-package output
+package report
 
 import (
 	"bytes"
@@ -9,8 +9,9 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/securego/gosec/v2"
-	"github.com/securego/gosec/v2/formatter"
-	"github.com/securego/gosec/v2/sonar"
+	"github.com/securego/gosec/v2/report/core"
+	"github.com/securego/gosec/v2/report/junit"
+	"github.com/securego/gosec/v2/report/sonar"
 	"gopkg.in/yaml.v2"
 )
 
@@ -35,10 +36,10 @@ func createIssue(ruleID string, cwe gosec.Cwe) gosec.Issue {
 	}
 }
 
-func createReportInfo(rule string, cwe gosec.Cwe) formatter.ReportInfo {
+func createReportInfo(rule string, cwe gosec.Cwe) core.ReportInfo {
 	issue := createIssue(rule, cwe)
 	metrics := gosec.Metrics{}
-	return formatter.ReportInfo{
+	return core.ReportInfo{
 		Errors: map[string][]gosec.Error{},
 		Issues: []*gosec.Issue{
 			&issue,
@@ -59,7 +60,7 @@ var _ = Describe("Formatter", func() {
 	})
 	Context("when converting to Sonarqube issues", func() {
 		It("it should parse the report info", func() {
-			data := &formatter.ReportInfo{
+			data := &core.ReportInfo{
 				Errors: map[string][]gosec.Error{},
 				Issues: []*gosec.Issue{
 					{
@@ -94,20 +95,20 @@ var _ = Describe("Formatter", func() {
 						},
 						Type:          "VULNERABILITY",
 						Severity:      "BLOCKER",
-						EffortMinutes: SonarqubeEffortMinutes,
+						EffortMinutes: sonar.EffortMinutes,
 					},
 				},
 			}
 
 			rootPath := "/home/src/project"
 
-			issues, err := convertToSonarIssues([]string{rootPath}, data)
+			issues, err := sonar.GenerateReport([]string{rootPath}, data)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(*issues).To(Equal(*want))
 		})
 
 		It("it should parse the report info with files in subfolders", func() {
-			data := &formatter.ReportInfo{
+			data := &core.ReportInfo{
 				Errors: map[string][]gosec.Error{},
 				Issues: []*gosec.Issue{
 					{
@@ -142,19 +143,19 @@ var _ = Describe("Formatter", func() {
 						},
 						Type:          "VULNERABILITY",
 						Severity:      "BLOCKER",
-						EffortMinutes: SonarqubeEffortMinutes,
+						EffortMinutes: sonar.EffortMinutes,
 					},
 				},
 			}
 
 			rootPath := "/home/src/project"
 
-			issues, err := convertToSonarIssues([]string{rootPath}, data)
+			issues, err := sonar.GenerateReport([]string{rootPath}, data)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(*issues).To(Equal(*want))
 		})
 		It("it should not parse the report info for files from other projects", func() {
-			data := &formatter.ReportInfo{
+			data := &core.ReportInfo{
 				Errors: map[string][]gosec.Error{},
 				Issues: []*gosec.Issue{
 					{
@@ -180,13 +181,13 @@ var _ = Describe("Formatter", func() {
 
 			rootPath := "/home/src/project2"
 
-			issues, err := convertToSonarIssues([]string{rootPath}, data)
+			issues, err := sonar.GenerateReport([]string{rootPath}, data)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(*issues).To(Equal(*want))
 		})
 
 		It("it should parse the report info for multiple projects projects", func() {
-			data := &formatter.ReportInfo{
+			data := &core.ReportInfo{
 				Errors: map[string][]gosec.Error{},
 				Issues: []*gosec.Issue{
 					{
@@ -230,7 +231,7 @@ var _ = Describe("Formatter", func() {
 						},
 						Type:          "VULNERABILITY",
 						Severity:      "BLOCKER",
-						EffortMinutes: SonarqubeEffortMinutes,
+						EffortMinutes: sonar.EffortMinutes,
 					},
 					{
 						EngineID: "gosec",
@@ -245,14 +246,14 @@ var _ = Describe("Formatter", func() {
 						},
 						Type:          "VULNERABILITY",
 						Severity:      "BLOCKER",
-						EffortMinutes: SonarqubeEffortMinutes,
+						EffortMinutes: sonar.EffortMinutes,
 					},
 				},
 			}
 
 			rootPaths := []string{"/home/src/project1", "/home/src/project2"}
 
-			issues, err := convertToSonarIssues(rootPaths, data)
+			issues, err := sonar.GenerateReport(rootPaths, data)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(*issues).To(Equal(*want))
 		})
@@ -262,7 +263,7 @@ var _ = Describe("Formatter", func() {
 		It("preserves order of issues", func() {
 			issues := []*gosec.Issue{createIssueWithFileWhat("i1", "1"), createIssueWithFileWhat("i2", "2"), createIssueWithFileWhat("i3", "1")}
 
-			junitReport := createJUnitXMLStruct(&formatter.ReportInfo{Issues: issues})
+			junitReport := junit.GenerateReport(&core.ReportInfo{Issues: issues})
 
 			testSuite := junitReport.Testsuites[0]
 

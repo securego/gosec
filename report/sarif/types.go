@@ -809,7 +809,7 @@ type ReportingDescriptor struct {
 	// An array of readable identifiers by which this report was known in some previous version of the analysis tool.
 	DeprecatedNames []string `json:"deprecatedNames,omitempty"`
 
-	// A description of the report. Should, as far as possible, provide details sufficient to enable resolution of any problem indicated by the result.
+	// A description of the core. Should, as far as possible, provide details sufficient to enable resolution of any problem indicated by the result.
 	FullDescription *MultiformatMessageString `json:"fullDescription,omitempty"`
 
 	// A unique identifer for the reporting descriptor in the form of a GUID.
@@ -821,7 +821,7 @@ type ReportingDescriptor struct {
 	// A URI where the primary documentation for the report can be found.
 	HelpURI string `json:"helpUri,omitempty"`
 
-	// A stable, opaque identifier for the report.
+	// A stable, opaque identifier for the core.
 	ID string `json:"id"`
 
 	// A set of name/value pairs with arbitrary names. Each value is a multiformatMessageString object, which holds message strings in plain text and (optionally) Markdown format. The strings can include placeholders, which can be used to construct a message in combination with an arbitrary number of additional string arguments.
@@ -830,13 +830,13 @@ type ReportingDescriptor struct {
 	// A report identifier that is understandable to an end user.
 	Name string `json:"name,omitempty"`
 
-	// Key/value pairs that provide additional information about the report.
+	// Key/value pairs that provide additional information about the core.
 	Properties *PropertyBag `json:"properties,omitempty"`
 
 	// An array of objects that describe relationships between this reporting descriptor and others.
 	Relationships []*ReportingDescriptorRelationship `json:"relationships,omitempty"`
 
-	// A concise description of the report. Should be a single sentence that is understandable when visible space is limited to a single line of text.
+	// A concise description of the core. Should be a single sentence that is understandable when visible space is limited to a single line of text.
 	ShortDescription *MultiformatMessageString `json:"shortDescription,omitempty"`
 }
 

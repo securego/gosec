@@ -1,4 +1,4 @@
-package formatter
+package core
 
 import (
 	"github.com/securego/gosec/v2"

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package output
+package report
 
 import (
 	"bufio"
@@ -29,8 +29,10 @@ import (
 
 	color "github.com/gookit/color"
 	"github.com/securego/gosec/v2"
-	"github.com/securego/gosec/v2/formatter"
-	"github.com/securego/gosec/v2/sarif"
+	"github.com/securego/gosec/v2/report/core"
+	"github.com/securego/gosec/v2/report/junit"
+	"github.com/securego/gosec/v2/report/sarif"
+	"github.com/securego/gosec/v2/report/sonar"
 	"gopkg.in/yaml.v2"
 )
 
@@ -81,7 +83,7 @@ Golang errors in file: [{{ $filePath }}]:
 // CreateReport generates a report based for the supplied issues and metrics given
 // the specified format. The formats currently accepted are: json, yaml, csv, junit-xml, html, sonarqube, golint and text.
 func CreateReport(w io.Writer, format string, enableColor bool, rootPaths []string, issues []*gosec.Issue, metrics *gosec.Metrics, errors map[string][]gosec.Error) error {
-	data := &formatter.ReportInfo{
+	data := &core.ReportInfo{
 		Errors: errors,
 		Issues: issues,
 		Stats:  metrics,
@@ -112,8 +114,8 @@ func CreateReport(w io.Writer, format string, enableColor bool, rootPaths []stri
 	return err
 }
 
-func reportSonarqube(rootPaths []string, w io.Writer, data *formatter.ReportInfo) error {
-	si, err := convertToSonarIssues(rootPaths, data)
+func reportSonarqube(rootPaths []string, w io.Writer, data *core.ReportInfo) error {
+	si, err := sonar.GenerateReport(rootPaths, data)
 	if err != nil {
 		return err
 	}
@@ -125,7 +127,7 @@ func reportSonarqube(rootPaths []string, w io.Writer, data *formatter.ReportInfo
 	return err
 }
 
-func reportJSON(w io.Writer, data *formatter.ReportInfo) error {
+func reportJSON(w io.Writer, data *core.ReportInfo) error {
 	raw, err := json.MarshalIndent(data, "", "\t")
 	if err != nil {
 		return err
@@ -135,7 +137,7 @@ func reportJSON(w io.Writer, data *formatter.ReportInfo) error {
 	return err
 }
 
-func reportYAML(w io.Writer, data *formatter.ReportInfo) error {
+func reportYAML(w io.Writer, data *core.ReportInfo) error {
 	raw, err := yaml.Marshal(data)
 	if err != nil {
 		return err
@@ -144,7 +146,7 @@ func reportYAML(w io.Writer, data *formatter.ReportInfo) error {
 	return err
 }
 
-func reportCSV(w io.Writer, data *formatter.ReportInfo) error {
+func reportCSV(w io.Writer, data *core.ReportInfo) error {
 	out := csv.NewWriter(w)
 	defer out.Flush()
 	for _, issue := range data.Issues {
@@ -164,7 +166,7 @@ func reportCSV(w io.Writer, data *formatter.ReportInfo) error {
 	return nil
 }
 
-func reportGolint(w io.Writer, data *formatter.ReportInfo) error {
+func reportGolint(w io.Writer, data *core.ReportInfo) error {
 	// Output Sample:
 	// /tmp/main.go:11:14: [CWE-310] RSA keys should be at least 2048 bits (Rule:G403, Severity:MEDIUM, Confidence:HIGH)
 
@@ -194,8 +196,8 @@ func reportGolint(w io.Writer, data *formatter.ReportInfo) error {
 	return nil
 }
 
-func reportJUnitXML(w io.Writer, data *formatter.ReportInfo) error {
-	junitXMLStruct := createJUnitXMLStruct(data)
+func reportJUnitXML(w io.Writer, data *core.ReportInfo) error {
+	junitXMLStruct := junit.GenerateReport(data)
 	raw, err := xml.MarshalIndent(junitXMLStruct, "", "\t")
 	if err != nil {
 		return err
@@ -211,8 +213,8 @@ func reportJUnitXML(w io.Writer, data *formatter.ReportInfo) error {
 	return nil
 }
 
-func reportSARIFTemplate(rootPaths []string, w io.Writer, data *formatter.ReportInfo) error {
-	sr, err := sarif.ConvertToSarifReport(rootPaths, data)
+func reportSARIFTemplate(rootPaths []string, w io.Writer, data *core.ReportInfo) error {
+	sr, err := sarif.GenerateReport(rootPaths, data)
 	if err != nil {
 		return err
 	}
@@ -225,7 +227,7 @@ func reportSARIFTemplate(rootPaths []string, w io.Writer, data *formatter.Report
 	return err
 }
 
-func reportFromPlaintextTemplate(w io.Writer, reportTemplate string, enableColor bool, data *formatter.ReportInfo) error {
+func reportFromPlaintextTemplate(w io.Writer, reportTemplate string, enableColor bool, data *core.ReportInfo) error {
 	t, e := plainTemplate.
 		New("gosec").
 		Funcs(plainTextFuncMap(enableColor)).
@@ -237,7 +239,7 @@ func reportFromPlaintextTemplate(w io.Writer, reportTemplate string, enableColor
 	return t.Execute(w, data)
 }
 
-func reportFromHTMLTemplate(w io.Writer, reportTemplate string, data *formatter.ReportInfo) error {
+func reportFromHTMLTemplate(w io.Writer, reportTemplate string, data *core.ReportInfo) error {
 	t, e := htmlTemplate.New("gosec").Parse(reportTemplate)
 	if e != nil {
 		return e
