@@ -36,12 +36,12 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// ReportFormat enumerates the output format for reported issues
-type ReportFormat int
+// Format enumerates the output format for reported issues
+type Format int
 
 const (
 	// ReportText is the default format that writes to stdout
-	ReportText ReportFormat = iota // Plain text format
+	ReportText Format = iota // Plain text format
 
 	// ReportJSON set the output format to json
 	ReportJSON // Json format

@@ -4,8 +4,8 @@ import (
 	"encoding/xml"
 )
 
-//JunitXMLReport defines a JUnit XML report
-type JunitXMLReport struct {
+//Report defines a JUnit XML report
+type Report struct {
 	XMLName    xml.Name     `xml:"testsuites"`
 	Testsuites []*Testsuite `xml:"testsuite"`
 }

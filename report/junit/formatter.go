@@ -17,8 +17,8 @@ func generatePlaintext(issue *gosec.Issue) string {
 }
 
 //GenerateReport Convert a gosec report to a JUnit Report
-func GenerateReport(data *core.ReportInfo) JunitXMLReport {
-	var xmlReport JunitXMLReport
+func GenerateReport(data *core.ReportInfo) Report {
+	var xmlReport Report
 	testsuites := map[string]int{}
 
 	for _, issue := range data.Issues {
