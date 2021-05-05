@@ -50,9 +50,6 @@ const (
 
 	// ReportSARIF set the output format to SARIF
 	ReportSARIF // SARIF format
-
-	//SonarqubeEffortMinutes effort to fix in minutes
-	SonarqubeEffortMinutes = 5
 )
 
 var text = `Results:
@@ -130,51 +127,6 @@ func reportSonarqube(rootPaths []string, w io.Writer, data *reportInfo) error {
 	}
 	_, err = w.Write(raw)
 	return err
-}
-
-func convertToSonarIssues(rootPaths []string, data *reportInfo) (*sonarIssues, error) {
-	si := &sonarIssues{[]sonarIssue{}}
-	for _, issue := range data.Issues {
-		var sonarFilePath string
-		for _, rootPath := range rootPaths {
-			if strings.HasPrefix(issue.File, rootPath) {
-				sonarFilePath = strings.Replace(issue.File, rootPath+"/", "", 1)
-			}
-		}
-
-		if sonarFilePath == "" {
-			continue
-		}
-
-		lines := strings.Split(issue.Line, "-")
-		startLine, err := strconv.Atoi(lines[0])
-		if err != nil {
-			return si, err
-		}
-		endLine := startLine
-		if len(lines) > 1 {
-			endLine, err = strconv.Atoi(lines[1])
-			if err != nil {
-				return si, err
-			}
-		}
-
-		s := sonarIssue{
-			EngineID: "gosec",
-			RuleID:   issue.RuleID,
-			PrimaryLocation: location{
-				Message:   issue.What,
-				FilePath:  sonarFilePath,
-				TextRange: textRange{StartLine: startLine, EndLine: endLine},
-			},
-			Type:          "VULNERABILITY",
-			Severity:      getSonarSeverity(issue.Severity.String()),
-			EffortMinutes: SonarqubeEffortMinutes,
-			Cwe:           issue.Cwe,
-		}
-		si.SonarIssues = append(si.SonarIssues, s)
-	}
-	return si, nil
 }
 
 func convertToSarifReport(rootPaths []string, data *reportInfo) (*sarifReport, error) {

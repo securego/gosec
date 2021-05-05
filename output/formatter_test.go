@@ -9,6 +9,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/securego/gosec/v2"
+	"github.com/securego/gosec/v2/sonar"
 	"gopkg.in/yaml.v2"
 )
 
@@ -60,7 +61,7 @@ var _ = Describe("Formatter", func() {
 			data := &reportInfo{
 				Errors: map[string][]gosec.Error{},
 				Issues: []*gosec.Issue{
-					&gosec.Issue{
+					{
 						Severity:   2,
 						Confidence: 0,
 						RuleID:     "test",
@@ -77,15 +78,15 @@ var _ = Describe("Formatter", func() {
 					NumFound: 0,
 				},
 			}
-			want := &sonarIssues{
-				SonarIssues: []sonarIssue{
+			want := &sonar.Report{
+				Issues: []*sonar.Issue{
 					{
 						EngineID: "gosec",
 						RuleID:   "test",
-						PrimaryLocation: location{
+						PrimaryLocation: &sonar.Location{
 							Message:  "test",
 							FilePath: "test.go",
-							TextRange: textRange{
+							TextRange: &sonar.TextRange{
 								StartLine: 1,
 								EndLine:   2,
 							},
@@ -108,7 +109,7 @@ var _ = Describe("Formatter", func() {
 			data := &reportInfo{
 				Errors: map[string][]gosec.Error{},
 				Issues: []*gosec.Issue{
-					&gosec.Issue{
+					{
 						Severity:   2,
 						Confidence: 0,
 						RuleID:     "test",
@@ -125,15 +126,15 @@ var _ = Describe("Formatter", func() {
 					NumFound: 0,
 				},
 			}
-			want := &sonarIssues{
-				SonarIssues: []sonarIssue{
+			want := &sonar.Report{
+				Issues: []*sonar.Issue{
 					{
 						EngineID: "gosec",
 						RuleID:   "test",
-						PrimaryLocation: location{
+						PrimaryLocation: &sonar.Location{
 							Message:  "test",
 							FilePath: "subfolder/test.go",
-							TextRange: textRange{
+							TextRange: &sonar.TextRange{
 								StartLine: 1,
 								EndLine:   2,
 							},
@@ -155,7 +156,7 @@ var _ = Describe("Formatter", func() {
 			data := &reportInfo{
 				Errors: map[string][]gosec.Error{},
 				Issues: []*gosec.Issue{
-					&gosec.Issue{
+					{
 						Severity:   2,
 						Confidence: 0,
 						RuleID:     "test",
@@ -172,8 +173,8 @@ var _ = Describe("Formatter", func() {
 					NumFound: 0,
 				},
 			}
-			want := &sonarIssues{
-				SonarIssues: []sonarIssue{},
+			want := &sonar.Report{
+				Issues: []*sonar.Issue{},
 			}
 
 			rootPath := "/home/src/project2"
@@ -187,7 +188,7 @@ var _ = Describe("Formatter", func() {
 			data := &reportInfo{
 				Errors: map[string][]gosec.Error{},
 				Issues: []*gosec.Issue{
-					&gosec.Issue{
+					{
 						Severity:   2,
 						Confidence: 0,
 						RuleID:     "test",
@@ -196,7 +197,7 @@ var _ = Describe("Formatter", func() {
 						Code:       "",
 						Line:       "1-2",
 					},
-					&gosec.Issue{
+					{
 						Severity:   2,
 						Confidence: 0,
 						RuleID:     "test",
@@ -213,15 +214,15 @@ var _ = Describe("Formatter", func() {
 					NumFound: 0,
 				},
 			}
-			want := &sonarIssues{
-				SonarIssues: []sonarIssue{
+			want := &sonar.Report{
+				Issues: []*sonar.Issue{
 					{
 						EngineID: "gosec",
 						RuleID:   "test",
-						PrimaryLocation: location{
+						PrimaryLocation: &sonar.Location{
 							Message:  "test",
 							FilePath: "test-project1.go",
-							TextRange: textRange{
+							TextRange: &sonar.TextRange{
 								StartLine: 1,
 								EndLine:   2,
 							},
@@ -233,10 +234,10 @@ var _ = Describe("Formatter", func() {
 					{
 						EngineID: "gosec",
 						RuleID:   "test",
-						PrimaryLocation: location{
+						PrimaryLocation: &sonar.Location{
 							Message:  "test",
 							FilePath: "test-project2.go",
-							TextRange: textRange{
+							TextRange: &sonar.TextRange{
 								StartLine: 1,
 								EndLine:   2,
 							},
@@ -407,7 +408,7 @@ var _ = Describe("Formatter", func() {
 				Expect(result).To(ContainSubstring(expectation))
 			}
 		})
-		It("sonarqube formatted report should contain the CWE mapping", func() {
+		It("sonarqube formatted report shouldn't contain the CWE mapping", func() {
 			for _, rule := range grules {
 				cwe := gosec.IssueToCWE[rule]
 				issue := createIssue(rule, cwe)
@@ -424,7 +425,7 @@ var _ = Describe("Formatter", func() {
 				Expect(err).ShouldNot(HaveOccurred())
 
 				expectation := stripString(expect.String())
-				Expect(result).To(ContainSubstring(expectation))
+				Expect(result).ShouldNot(ContainSubstring(expectation))
 			}
 		})
 		It("golint formatted report should contain the CWE mapping", func() {
