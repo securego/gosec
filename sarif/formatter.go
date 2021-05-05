@@ -22,6 +22,7 @@ const (
 	cweAcronym   = "CWE"
 )
 
+//ConvertToSarifReport Convert a gosec report to a Sarif Report
 func ConvertToSarifReport(rootPaths []string, data *formatter.ReportInfo) (*Report, error) {
 
 	type rule struct {
