@@ -24,7 +24,7 @@ func WriteReport(w io.Writer, enableColor bool, data *core.ReportInfo) error {
 	t, e := template.
 		New("gosec").
 		Funcs(plainTextFuncMap(enableColor)).
-		Parse(Template)
+		Parse(templateContent)
 	if e != nil {
 		return e
 	}

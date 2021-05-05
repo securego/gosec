@@ -1,6 +1,6 @@
 package text
 
-const Template = `Results:
+const templateContent = `Results:
 {{range $filePath,$fileErrors := .Errors}}
 Golang errors in file: [{{ $filePath }}]:
 {{range $index, $error := $fileErrors}}

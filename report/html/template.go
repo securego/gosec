@@ -14,7 +14,7 @@
 
 package html
 
-const Template = `
+const templateContent = `
 <!doctype html>
 <html lang="en">
 <head>
