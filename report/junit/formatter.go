@@ -1,7 +1,7 @@
 package junit
 
 import (
-	htmlLib "html"
+	"html"
 	"strconv"
 
 	"github.com/securego/gosec/v2"
@@ -13,7 +13,7 @@ func generatePlaintext(issue *gosec.Issue) string {
 		"[" + issue.File + ":" + issue.Line + "] - " +
 		issue.What + " (Confidence: " + strconv.Itoa(int(issue.Confidence)) +
 		", Severity: " + strconv.Itoa(int(issue.Severity)) +
-		", CWE: " + issue.Cwe.ID + ")\n" + "> " + htmlLib.EscapeString(issue.Code)
+		", CWE: " + issue.Cwe.ID + ")\n" + "> " + html.EscapeString(issue.Code)
 }
 
 //GenerateReport Convert a gosec report to a JUnit Report
