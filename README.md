@@ -311,6 +311,22 @@ You can build the binary with:
 make
 ```
 
+### Note on Sarif Types Generation
+
+Install the tool with :
+```bash
+go get -u github.com/a-h/generate/cmd/schema-generate
+```
+
+Then generate the types with :
+```bash
+schema-generate -i sarif-schema-2.1.0.json -o mypath/types.go
+```
+
+Most of the MarshallJSON/UnmarshalJSON are removed except the one for PropertyBag which is handy to inline the additionnal properties. The rest can be removed.
+The URI,ID, UUID, GUID were renamed so it fits the Golang convention defined [here](https://github.com/golang/lint/blob/master/lint.go#L700)
+
+
 ### Tests
 
 You can run all unit tests using:

@@ -1,11 +1,10 @@
-//Package cwe, types are based on http://cwe.mitre.org/data/xsd/cwe_schema_v6.4.xsd
 package cwe
 
 import (
 	"fmt"
 )
 
-// Weakness defines a CWE weakness
+// Weakness defines a CWE weakness based on http://cwe.mitre.org/data/xsd/cwe_schema_v6.4.xsd
 type Weakness struct {
 	ID          string
 	Name        string
