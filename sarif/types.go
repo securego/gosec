@@ -121,10 +121,10 @@ type ArtifactLocation struct {
 	Properties *PropertyBag `json:"properties,omitempty"`
 
 	// A string containing a valid relative or absolute URI.
-	Uri string `json:"uri,omitempty"`
+	URI string `json:"uri,omitempty"`
 
 	// A string which indirectly specifies the absolute URI with respect to which a relative URI in the "uri" property is interpreted.
-	UriBaseId string `json:"uriBaseId,omitempty"`
+	UriBaseID string `json:"uriBaseId,omitempty"`
 }
 
 // Attachment An artifact relevant to a result.
@@ -192,7 +192,7 @@ type Conversion struct {
 type Edge struct {
 
 	// A string that uniquely identifies the edge within its graph.
-	Id string `json:"id"`
+	ID string `json:"id"`
 
 	// A short description of the edge.
 	Label *Message `json:"label,omitempty"`
@@ -201,17 +201,17 @@ type Edge struct {
 	Properties *PropertyBag `json:"properties,omitempty"`
 
 	// Identifies the source node (the node at which the edge starts).
-	SourceNodeId string `json:"sourceNodeId"`
+	SourceNodeID string `json:"sourceNodeId"`
 
 	// Identifies the target node (the node at which the edge ends).
-	TargetNodeId string `json:"targetNodeId"`
+	TargetNodeID string `json:"targetNodeId"`
 }
 
 // EdgeTraversal Represents the traversal of a single edge during a graph traversal.
 type EdgeTraversal struct {
 
 	// Identifies the edge being traversed.
-	EdgeId string `json:"edgeId"`
+	EdgeID string `json:"edgeId"`
 
 	// The values of relevant expressions after the edge has been traversed.
 	FinalState map[string]*MultiformatMessageString `json:"finalState,omitempty"`
@@ -270,7 +270,7 @@ type ExternalProperties struct {
 	Graphs []*Graph `json:"graphs,omitempty"`
 
 	// A stable, unique identifer for this external properties object, in the form of a GUID.
-	Guid string `json:"guid,omitempty"`
+	GUID string `json:"guid,omitempty"`
 
 	// Describes the invocation of the analysis tool that will be merged with a separate run.
 	Invocations []*Invocation `json:"invocations,omitempty"`
@@ -288,7 +288,7 @@ type ExternalProperties struct {
 	Results []*Result `json:"results,omitempty"`
 
 	// A stable, unique identifer for the run associated with this external properties object, in the form of a GUID.
-	RunGuid string `json:"runGuid,omitempty"`
+	RunGUID string `json:"runGuid,omitempty"`
 
 	// The URI of the JSON schema corresponding to the version of the external property file format.
 	Schema string `json:"schema,omitempty"`
@@ -316,7 +316,7 @@ type ExternalProperties struct {
 type ExternalPropertyFileReference struct {
 
 	// A stable, unique identifer for the external property file in the form of a GUID.
-	Guid string `json:"guid,omitempty"`
+	GUID string `json:"guid,omitempty"`
 
 	// A non-negative integer specifying the number of items contained in the external property file.
 	ItemCount int `json:"itemCount,omitempty"`
@@ -592,7 +592,7 @@ type Message struct {
 	Arguments []string `json:"arguments,omitempty"`
 
 	// The identifier for this message.
-	Id string `json:"id,omitempty"`
+	ID string `json:"id,omitempty"`
 
 	// A Markdown message string.
 	Markdown string `json:"markdown,omitempty"`
@@ -624,7 +624,7 @@ type Node struct {
 	Children []*Node `json:"children,omitempty"`
 
 	// A string that uniquely identifies the node within its graph.
-	Id string `json:"id"`
+	ID string `json:"id"`
 
 	// A short description of the node.
 	Label *Message `json:"label,omitempty"`
@@ -661,7 +661,7 @@ type Notification struct {
 	Properties *PropertyBag `json:"properties,omitempty"`
 
 	// The thread identifier of the code that generated the notification.
-	ThreadId int `json:"threadId,omitempty"`
+	ThreadID int `json:"threadId,omitempty"`
 
 	// The Coordinated Universal Time (UTC) date and time at which the analysis tool generated the notification.
 	TimeUtc string `json:"timeUtc,omitempty"`
@@ -807,16 +807,16 @@ type ReportingDescriptor struct {
 	FullDescription *MultiformatMessageString `json:"fullDescription,omitempty"`
 
 	// A unique identifer for the reporting descriptor in the form of a GUID.
-	Guid string `json:"guid,omitempty"`
+	GUID string `json:"guid,omitempty"`
 
 	// Provides the primary documentation for the report, useful when there is no online documentation.
 	Help *MultiformatMessageString `json:"help,omitempty"`
 
 	// A URI where the primary documentation for the report can be found.
-	HelpUri string `json:"helpUri,omitempty"`
+	HelpURI string `json:"helpUri,omitempty"`
 
 	// A stable, opaque identifier for the report.
-	Id string `json:"id"`
+	ID string `json:"id"`
 
 	// A set of name/value pairs with arbitrary names. Each value is a multiformatMessageString object, which holds message strings in plain text and (optionally) Markdown format. The strings can include placeholders, which can be used to construct a message in combination with an arbitrary number of additional string arguments.
 	MessageStrings map[string]*MultiformatMessageString `json:"messageStrings,omitempty"`
@@ -838,10 +838,10 @@ type ReportingDescriptor struct {
 type ReportingDescriptorReference struct {
 
 	// A guid that uniquely identifies the descriptor.
-	Guid string `json:"guid,omitempty"`
+	GUID string `json:"guid,omitempty"`
 
 	// The id of the descriptor.
-	Id string `json:"id,omitempty"`
+	ID string `json:"id,omitempty"`
 
 	// The index into an array of descriptors in toolComponent.ruleDescriptors, toolComponent.notificationDescriptors, or toolComponent.taxonomyDescriptors, depending on context.
 	Index int `json:"index,omitempty"`
@@ -885,7 +885,7 @@ type Result struct {
 	CodeFlows []*CodeFlow `json:"codeFlows,omitempty"`
 
 	// A stable, unique identifier for the equivalence class of logically identical results to which this result belongs, in the form of a GUID.
-	CorrelationGuid string `json:"correlationGuid,omitempty"`
+	CorrelationGUID string `json:"correlationGuid,omitempty"`
 
 	// A set of strings each of which individually defines a stable, unique identity for the result.
 	Fingerprints map[string]string `json:"fingerprints,omitempty"`
@@ -900,10 +900,10 @@ type Result struct {
 	Graphs []*Graph `json:"graphs,omitempty"`
 
 	// A stable, unique identifer for the result in the form of a GUID.
-	Guid string `json:"guid,omitempty"`
+	GUID string `json:"guid,omitempty"`
 
 	// An absolute URI at which the result can be viewed.
-	HostedViewerUri string `json:"hostedViewerUri,omitempty"`
+	HostedViewerURI string `json:"hostedViewerUri,omitempty"`
 
 	// A value that categorizes results by evaluation state.
 	Kind interface{} `json:"kind,omitempty"`
@@ -939,7 +939,7 @@ type Result struct {
 	Rule *ReportingDescriptorReference `json:"rule,omitempty"`
 
 	// The stable, unique identifier of the rule, if any, to which this result is relevant.
-	RuleId string `json:"ruleId,omitempty"`
+	RuleID string `json:"ruleId,omitempty"`
 
 	// The index within the tool component rules array of the rule object associated with this result.
 	RuleIndex int `json:"ruleIndex,omitempty"`
@@ -970,7 +970,7 @@ type ResultProvenance struct {
 	ConversionSources []*PhysicalLocation `json:"conversionSources,omitempty"`
 
 	// A GUID-valued string equal to the automationDetails.guid property of the run in which the result was first detected.
-	FirstDetectionRunGuid string `json:"firstDetectionRunGuid,omitempty"`
+	FirstDetectionRunGUID string `json:"firstDetectionRunGuid,omitempty"`
 
 	// The Coordinated Universal Time (UTC) date and time at which the result was first detected. See "Date/time properties" in the SARIF spec for the required format.
 	FirstDetectionTimeUtc string `json:"firstDetectionTimeUtc,omitempty"`
@@ -979,7 +979,7 @@ type ResultProvenance struct {
 	InvocationIndex int `json:"invocationIndex,omitempty"`
 
 	// A GUID-valued string equal to the automationDetails.guid property of the run in which the result was most recently detected.
-	LastDetectionRunGuid string `json:"lastDetectionRunGuid,omitempty"`
+	LastDetectionRunGUID string `json:"lastDetectionRunGuid,omitempty"`
 
 	// The Coordinated Universal Time (UTC) date and time at which the result was most recently detected. See "Date/time properties" in the SARIF spec for the required format.
 	LastDetectionTimeUtc string `json:"lastDetectionTimeUtc,omitempty"`
@@ -1001,7 +1001,7 @@ type Run struct {
 	AutomationDetails *RunAutomationDetails `json:"automationDetails,omitempty"`
 
 	// The 'guid' property of a previous SARIF 'run' that comprises the baseline that was used to compute result 'baselineState' properties for the run.
-	BaselineGuid string `json:"baselineGuid,omitempty"`
+	BaselineGUID string `json:"baselineGuid,omitempty"`
 
 	// Specifies the unit in which the tool measures columns.
 	ColumnKind interface{} `json:"columnKind,omitempty"`
@@ -1080,16 +1080,16 @@ type Run struct {
 type RunAutomationDetails struct {
 
 	// A stable, unique identifier for the equivalence class of runs to which this object's containing run object belongs in the form of a GUID.
-	CorrelationGuid string `json:"correlationGuid,omitempty"`
+	CorrelationGUID string `json:"correlationGuid,omitempty"`
 
 	// A description of the identity and role played within the engineering system by this object's containing run object.
 	Description *Message `json:"description,omitempty"`
 
 	// A stable, unique identifer for this object's containing run object in the form of a GUID.
-	Guid string `json:"guid,omitempty"`
+	GUID string `json:"guid,omitempty"`
 
 	// A hierarchical string that uniquely identifies this object's containing run object.
-	Id string `json:"id,omitempty"`
+	ID string `json:"id,omitempty"`
 
 	// Key/value pairs that provide additional information about the run automation details.
 	Properties *PropertyBag `json:"properties,omitempty"`
@@ -1134,7 +1134,7 @@ type StackFrame struct {
 	Properties *PropertyBag `json:"properties,omitempty"`
 
 	// The thread identifier of the stack frame.
-	ThreadId int `json:"threadId,omitempty"`
+	ThreadID int `json:"threadId,omitempty"`
 }
 
 // Report Static Analysis Results Format (SARIF) Version 2.1.0 JSON Schema: a standard format for the output of static analysis tools.
@@ -1160,7 +1160,7 @@ type Report struct {
 type Suppression struct {
 
 	// A stable, unique identifer for the suprression in the form of a GUID.
-	Guid string `json:"guid,omitempty"`
+	GUID string `json:"guid,omitempty"`
 
 	// A string representing the justification for the suppression.
 	Justification string `json:"justification,omitempty"`
@@ -1182,7 +1182,7 @@ type Suppression struct {
 type ThreadFlow struct {
 
 	// An string that uniquely identifies the threadFlow within the codeFlow in which it occurs.
-	Id string `json:"id,omitempty"`
+	ID string `json:"id,omitempty"`
 
 	// Values of relevant expressions at the start of the thread flow that remain constant.
 	ImmutableState map[string]*MultiformatMessageString `json:"immutableState,omitempty"`
@@ -1272,7 +1272,7 @@ type ToolComponent struct {
 	DottedQuadFileVersion string `json:"dottedQuadFileVersion,omitempty"`
 
 	// The absolute URI from which the tool component can be downloaded.
-	DownloadUri string `json:"downloadUri,omitempty"`
+	DownloadURI string `json:"downloadUri,omitempty"`
 
 	// A comprehensive description of the tool component.
 	FullDescription *MultiformatMessageString `json:"fullDescription,omitempty"`
@@ -1284,10 +1284,10 @@ type ToolComponent struct {
 	GlobalMessageStrings map[string]*MultiformatMessageString `json:"globalMessageStrings,omitempty"`
 
 	// A unique identifer for the tool component in the form of a GUID.
-	Guid string `json:"guid,omitempty"`
+	GUID string `json:"guid,omitempty"`
 
 	// The absolute URI at which information about this version of the tool component can be found.
-	InformationUri string `json:"informationUri,omitempty"`
+	InformationURI string `json:"informationUri,omitempty"`
 
 	// Specifies whether this object contains a complete definition of the localizable and/or non-localizable data for this component, as opposed to including only data that is relevant to the results persisted to this log file.
 	IsComprehensive bool `json:"isComprehensive,omitempty"`
@@ -1351,7 +1351,7 @@ type ToolComponent struct {
 type ToolComponentReference struct {
 
 	// The 'guid' property of the referenced toolComponent.
-	Guid string `json:"guid,omitempty"`
+	GUID string `json:"guid,omitempty"`
 
 	// An index into the referenced toolComponent in tool.extensions.
 	Index int `json:"index,omitempty"`
@@ -1367,7 +1367,7 @@ type ToolComponentReference struct {
 type TranslationMetadata struct {
 
 	// The absolute URI from which the translation metadata can be downloaded.
-	DownloadUri string `json:"downloadUri,omitempty"`
+	DownloadURI string `json:"downloadUri,omitempty"`
 
 	// A comprehensive description of the translation metadata.
 	FullDescription *MultiformatMessageString `json:"fullDescription,omitempty"`
@@ -1376,7 +1376,7 @@ type TranslationMetadata struct {
 	FullName string `json:"fullName,omitempty"`
 
 	// The absolute URI from which information related to the translation metadata can be downloaded.
-	InformationUri string `json:"informationUri,omitempty"`
+	InformationURI string `json:"informationUri,omitempty"`
 
 	// The name associated with the translation metadata.
 	Name string `json:"name"`
@@ -1404,10 +1404,10 @@ type VersionControlDetails struct {
 	Properties *PropertyBag `json:"properties,omitempty"`
 
 	// The absolute URI of the repository.
-	RepositoryUri string `json:"repositoryUri"`
+	RepositoryURI string `json:"repositoryUri"`
 
 	// A string that uniquely and permanently identifies the revision within the repository.
-	RevisionId string `json:"revisionId,omitempty"`
+	RevisionID string `json:"revisionId,omitempty"`
 
 	// A tag that has been applied to the revision.
 	RevisionTag string `json:"revisionTag,omitempty"`

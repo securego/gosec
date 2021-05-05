@@ -59,7 +59,7 @@ func convertToSarifReport(rootPaths []string, data *reportInfo) (*sarif.Report, 
 			return nil, err
 		}
 
-		result := buildSarifResult(r.rule.Id, r.index, issue, []*sarif.Location{location})
+		result := buildSarifResult(r.rule.ID, r.index, issue, []*sarif.Location{location})
 
 		results = append(results, result)
 	}
@@ -73,7 +73,7 @@ func convertToSarifReport(rootPaths []string, data *reportInfo) (*sarif.Report, 
 
 func buildSarifResult(ruleID string, index int, issue *gosec.Issue, locations []*sarif.Location) *sarif.Result {
 	return &sarif.Result{
-		RuleId:    ruleID,
+		RuleID:    ruleID,
 		RuleIndex: index,
 		Level:     getSarifLevel(issue.Severity.String()),
 		Message: &sarif.Message{
@@ -95,7 +95,7 @@ func buildSarifReport(run *sarif.Run) *sarif.Report {
 // parseSarifRule return SARIF rule field struct
 func parseSarifRule(issue *gosec.Issue) *sarif.ReportingDescriptor {
 	return &sarif.ReportingDescriptor{
-		Id:   issue.RuleID,
+		ID:   issue.RuleID,
 		Name: issue.What,
 		ShortDescription: &sarif.MultiformatMessageString{
 			Text: issue.What,
@@ -124,8 +124,8 @@ func parseSarifRule(issue *gosec.Issue) *sarif.ReportingDescriptor {
 func buildSarifReportingDescriptorRelationship(weaknessID string) *sarif.ReportingDescriptorRelationship {
 	return &sarif.ReportingDescriptorRelationship{
 		Target: &sarif.ReportingDescriptorReference{
-			Id:   weaknessID,
-			Guid: uuid3(cweAcronym + weaknessID),
+			ID:   weaknessID,
+			GUID: uuid3(cweAcronym + weaknessID),
 			ToolComponent: &sarif.ToolComponentReference{
 				Name: cweAcronym,
 			},
@@ -151,13 +151,13 @@ func buildCWETaxonomy(version string, taxa []*sarif.ReportingDescriptor) *sarif.
 		Name:           cweAcronym,
 		Version:        version,
 		ReleaseDateUtc: "2021-03-15",
-		InformationUri: fmt.Sprintf("https://cwe.mitre.org/data/published/cwe_v%s.pdf/", version),
-		DownloadUri:    fmt.Sprintf("https://cwe.mitre.org/data/xml/cwec_v%s.xml.zip", version),
+		InformationURI: fmt.Sprintf("https://cwe.mitre.org/data/published/cwe_v%s.pdf/", version),
+		DownloadURI:    fmt.Sprintf("https://cwe.mitre.org/data/xml/cwec_v%s.xml.zip", version),
 		Organization:   "MITRE",
 		ShortDescription: &sarif.MultiformatMessageString{
 			Text: "The MITRE Common Weakness Enumeration",
 		},
-		Guid:            uuid3(cweAcronym),
+		GUID:            uuid3(cweAcronym),
 		IsComprehensive: true,
 		MinimumRequiredLocalizedDataSemanticVersion: version,
 		Taxa: taxa,
@@ -166,10 +166,10 @@ func buildCWETaxonomy(version string, taxa []*sarif.ReportingDescriptor) *sarif.
 
 func parseSarifTaxon(weakness cwe.Weakness) *sarif.ReportingDescriptor {
 	return &sarif.ReportingDescriptor{
-		Id:      weakness.ID,
+		ID:      weakness.ID,
 		Name:    weakness.Name,
-		Guid:    uuid3(cweAcronym + weakness.ID),
-		HelpUri: weakness.URL(),
+		GUID:    uuid3(cweAcronym + weakness.ID),
+		HelpURI: weakness.URL(),
 		ShortDescription: &sarif.MultiformatMessageString{
 			Text: weakness.Description,
 		},
@@ -188,9 +188,9 @@ func buildSarifDriver(rules []*sarif.ReportingDescriptor) *sarif.ToolComponent {
 		Name:    "gosec",
 		Version: gosecVersion,
 		SupportedTaxonomies: []*sarif.ToolComponentReference{
-			{Name: cweAcronym, Guid: uuid3(cweAcronym)},
+			{Name: cweAcronym, GUID: uuid3(cweAcronym)},
 		},
-		InformationUri: "https://github.com/securego/gosec/",
+		InformationURI: "https://github.com/securego/gosec/",
 		Rules:          rules,
 	}
 }
@@ -242,7 +242,7 @@ func parseSarifArtifactLocation(issue *gosec.Issue, rootPaths []string) *sarif.A
 
 func buildSarifArtifactLocation(uri string) *sarif.ArtifactLocation {
 	return &sarif.ArtifactLocation{
-		Uri: uri,
+		URI: uri,
 	}
 }
 
