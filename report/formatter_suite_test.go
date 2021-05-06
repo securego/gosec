@@ -1,4 +1,4 @@
-package output
+package report
 
 import (
 	. "github.com/onsi/ginkgo"

@@ -1,20 +1,20 @@
-package output
+package sonar
 
 import (
 	"github.com/securego/gosec/v2"
-	"github.com/securego/gosec/v2/formatter"
-	"github.com/securego/gosec/v2/sonar"
+	"github.com/securego/gosec/v2/report/core"
 	"strconv"
 	"strings"
 )
 
 const (
-	//SonarqubeEffortMinutes effort to fix in minutes
-	SonarqubeEffortMinutes = 5
+	//EffortMinutes effort to fix in minutes
+	EffortMinutes = 5
 )
 
-func convertToSonarIssues(rootPaths []string, data *formatter.ReportInfo) (*sonar.Report, error) {
-	si := &sonar.Report{Issues: []*sonar.Issue{}}
+//GenerateReport Convert a gosec report to a Sonar Report
+func GenerateReport(rootPaths []string, data *core.ReportInfo) (*Report, error) {
+	si := &Report{Issues: []*Issue{}}
 	for _, issue := range data.Issues {
 		sonarFilePath := parseFilePath(issue, rootPaths)
 
@@ -30,21 +30,21 @@ func convertToSonarIssues(rootPaths []string, data *formatter.ReportInfo) (*sona
 		primaryLocation := buildPrimaryLocation(issue.What, sonarFilePath, textRange)
 		severity := getSonarSeverity(issue.Severity.String())
 
-		s := &sonar.Issue{
+		s := &Issue{
 			EngineID:        "gosec",
 			RuleID:          issue.RuleID,
 			PrimaryLocation: primaryLocation,
 			Type:            "VULNERABILITY",
 			Severity:        severity,
-			EffortMinutes:   SonarqubeEffortMinutes,
+			EffortMinutes:   EffortMinutes,
 		}
 		si.Issues = append(si.Issues, s)
 	}
 	return si, nil
 }
 
-func buildPrimaryLocation(message string, filePath string, textRange *sonar.TextRange) *sonar.Location {
-	return &sonar.Location{
+func buildPrimaryLocation(message string, filePath string, textRange *TextRange) *Location {
+	return &Location{
 		Message:   message,
 		FilePath:  filePath,
 		TextRange: textRange,
@@ -61,7 +61,7 @@ func parseFilePath(issue *gosec.Issue, rootPaths []string) string {
 	return sonarFilePath
 }
 
-func parseTextRange(issue *gosec.Issue) (*sonar.TextRange, error) {
+func parseTextRange(issue *gosec.Issue) (*TextRange, error) {
 	lines := strings.Split(issue.Line, "-")
 	startLine, err := strconv.Atoi(lines[0])
 	if err != nil {
@@ -74,7 +74,7 @@ func parseTextRange(issue *gosec.Issue) (*sonar.TextRange, error) {
 			return nil, err
 		}
 	}
-	return &sonar.TextRange{StartLine: startLine, EndLine: endLine}, nil
+	return &TextRange{StartLine: startLine, EndLine: endLine}, nil
 }
 
 func getSonarSeverity(s string) string {

@@ -9,7 +9,7 @@ import (
 
 	"github.com/securego/gosec/v2"
 	"github.com/securego/gosec/v2/cwe"
-	"github.com/securego/gosec/v2/formatter"
+	"github.com/securego/gosec/v2/report/core"
 )
 
 type sarifLevel string
@@ -22,8 +22,8 @@ const (
 	cweAcronym   = "CWE"
 )
 
-//ConvertToSarifReport Convert a gosec report to a Sarif Report
-func ConvertToSarifReport(rootPaths []string, data *formatter.ReportInfo) (*Report, error) {
+//GenerateReport Convert a gosec report to a Sarif Report
+func GenerateReport(rootPaths []string, data *core.ReportInfo) (*Report, error) {
 
 	type rule struct {
 		index int
