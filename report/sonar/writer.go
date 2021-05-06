@@ -7,7 +7,7 @@ import (
 )
 
 //WriteReport write a report in sonar format to the output writer
-func WriteReport(rootPaths []string, w io.Writer, data *core.ReportInfo) error {
+func WriteReport(w io.Writer, data *core.ReportInfo, rootPaths []string) error {
 	si, err := GenerateReport(rootPaths, data)
 	if err != nil {
 		return err

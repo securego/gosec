@@ -20,7 +20,7 @@ var (
 )
 
 //WriteReport write a (colorized) report in text format
-func WriteReport(w io.Writer, enableColor bool, data *core.ReportInfo) error {
+func WriteReport(w io.Writer, data *core.ReportInfo, enableColor bool) error {
 	t, e := template.
 		New("gosec").
 		Funcs(plainTextFuncMap(enableColor)).

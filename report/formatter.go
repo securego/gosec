@@ -70,15 +70,15 @@ func CreateReport(w io.Writer, format string, enableColor bool, rootPaths []stri
 	case "html":
 		err = html.WriteReport(w, data)
 	case "text":
-		err = text.WriteReport(w, enableColor, data)
+		err = text.WriteReport(w, data, enableColor)
 	case "sonarqube":
-		err = sonar.WriteReport(rootPaths, w, data)
+		err = sonar.WriteReport(w, data, rootPaths)
 	case "golint":
 		err = golint.WriteReport(w, data)
 	case "sarif":
-		err = sarif.WriteReport(rootPaths, w, data)
+		err = sarif.WriteReport(w, data, rootPaths)
 	default:
-		err = text.WriteReport(w, enableColor, data)
+		err = text.WriteReport(w, data, enableColor)
 	}
 	return err
 }
