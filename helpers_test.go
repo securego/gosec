@@ -14,7 +14,7 @@ import (
 )
 
 var _ = Describe("Helpers", func() {
-	Context("when listing pacakge paths", func() {
+	Context("when listing package paths", func() {
 		var dir string
 		JustBeforeEach(func() {
 			var err error
