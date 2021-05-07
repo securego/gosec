@@ -10,6 +10,5 @@ linters:
   - golint
   - gosec
   - nakedret
-  - fieldalignment
   - dogsled
   - depguard
