@@ -2,7 +2,6 @@ package csv
 
 import (
 	"encoding/csv"
-	"fmt"
 	"github.com/securego/gosec/v2/report/core"
 	"io"
 )
