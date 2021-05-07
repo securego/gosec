@@ -7,7 +7,7 @@ import (
 )
 
 //WriteReport write a report in SARIF format to the output writer
-func WriteReport(w io.Writer, data *core.ReportInfo,rootPaths []string) error {
+func WriteReport(w io.Writer, data *core.ReportInfo, rootPaths []string) error {
 	sr, err := GenerateReport(rootPaths, data)
 	if err != nil {
 		return err

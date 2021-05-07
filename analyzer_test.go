@@ -366,7 +366,7 @@ var _ = Describe("Analyzer", func() {
 		It("should properly parse the errors", func() {
 			pkg := &packages.Package{
 				Errors: []packages.Error{
-					packages.Error{
+					{
 						Pos: "file:1:2",
 						Msg: "build error",
 					},
@@ -387,7 +387,7 @@ var _ = Describe("Analyzer", func() {
 		It("should properly parse the errors without line and column", func() {
 			pkg := &packages.Package{
 				Errors: []packages.Error{
-					packages.Error{
+					{
 						Pos: "file",
 						Msg: "build error",
 					},
@@ -408,7 +408,7 @@ var _ = Describe("Analyzer", func() {
 		It("should properly parse the errors without column", func() {
 			pkg := &packages.Package{
 				Errors: []packages.Error{
-					packages.Error{
+					{
 						Pos: "file",
 						Msg: "build error",
 					},
@@ -429,7 +429,7 @@ var _ = Describe("Analyzer", func() {
 		It("should return error when line cannot be parsed", func() {
 			pkg := &packages.Package{
 				Errors: []packages.Error{
-					packages.Error{
+					{
 						Pos: "file:line",
 						Msg: "build error",
 					},
@@ -442,7 +442,7 @@ var _ = Describe("Analyzer", func() {
 		It("should return error when column cannot be parsed", func() {
 			pkg := &packages.Package{
 				Errors: []packages.Error{
-					packages.Error{
+					{
 						Pos: "file:1:column",
 						Msg: "build error",
 					},
@@ -455,11 +455,11 @@ var _ = Describe("Analyzer", func() {
 		It("should append  error to the same file", func() {
 			pkg := &packages.Package{
 				Errors: []packages.Error{
-					packages.Error{
+					{
 						Pos: "file:1:2",
 						Msg: "error1",
 					},
-					packages.Error{
+					{
 						Pos: "file:3:4",
 						Msg: "error2",
 					},
@@ -507,7 +507,7 @@ var _ = Describe("Analyzer", func() {
 		It("should add a new error", func() {
 			pkg := &packages.Package{
 				Errors: []packages.Error{
-					packages.Error{
+					{
 						Pos: "file:1:2",
 						Msg: "build error",
 					},

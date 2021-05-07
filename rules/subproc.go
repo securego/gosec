@@ -61,7 +61,7 @@ func (r *subprocess) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error) {
 }
 
 // isContext checks whether or not the node is a CommandContext call or not
-// Thi is requried in order to skip the first argument from the check.
+// Thi is required in order to skip the first argument from the check.
 func (r *subprocess) isContext(n ast.Node, ctx *gosec.Context) bool {
 	selector, indent, err := gosec.GetCallInfo(n, ctx)
 	if err != nil {
