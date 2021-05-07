@@ -857,7 +857,7 @@ func main(){
 	}
 	defer rows.Close()
 }`}, 1, gosec.NewConfig()}, {[]string{`
-// Format string without proper quoting with transation
+// Format string without proper quoting with transaction
 package main
 import (
 	"context"
@@ -1027,7 +1027,7 @@ func main(){
 	}
 	defer rows.Close()
 }`}, 1, gosec.NewConfig()}, {[]string{`
-// DB transation check
+// DB transaction check
 package main
 import (
     "context"
