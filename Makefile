@@ -41,7 +41,7 @@ sec:
 	./$(BIN) ./...
 
 test-coverage: install-test-deps
-	go test -race -v -count=1 -coverprofile=coverage.out
+	go test -race -v -count=1 -coverprofile=coverage.out ./...
 
 build:
 	go build -o $(BIN) ./cmd/gosec/
