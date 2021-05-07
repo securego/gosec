@@ -8,7 +8,7 @@ Golang errors in file: [{{ $filePath }}]:
 {{end}}
 {{end}}
 {{ range $index, $issue := .Issues }}
-[{{ highlight $issue.FileLocation $issue.Severity }}] - {{ $issue.RuleID }} (CWE-{{ $issue.Cwe.ID }}): {{ $issue.What }} (Confidence: {{ $issue.Confidence}}, Severity: {{ $issue.Severity }})
+[{{ highlight $issue.FileLocation $issue.Severity }}] - {{ $issue.RuleID }} ({{ $issue.Cwe.SprintID }}): {{ $issue.What }} (Confidence: {{ $issue.Confidence}}, Severity: {{ $issue.Severity }})
 {{ printCode $issue }}
 
 {{ end }}
