@@ -41,7 +41,7 @@ sec:
 	./$(BIN) ./...
 
 test-coverage: install-test-deps
-	go test -race -coverprofile=coverage.txt -covermode=atomic
+	go test -race -v -count=1 -coverprofile=coverage.out ./...
 
 build:
 	go build -o $(BIN) ./cmd/gosec/
