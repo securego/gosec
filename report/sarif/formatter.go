@@ -17,19 +17,20 @@ import (
 type Level string
 
 const (
-	//None: The concept of “severity” does not apply to this result because the kind
+	//None : The concept of “severity” does not apply to this result because the kind
 	// property (§3.27.9) has a value other than "fail".
 	None = Level("none")
-	//Note: The rule specified by ruleId was evaluated and a minor problem or an opportunity
+	//Note : The rule specified by ruleId was evaluated and a minor problem or an opportunity
 	// to improve the code was found.
 	Note = Level("note")
-	//Warning: The rule specified by ruleId was evaluated and a problem was found.
+	//Warning : The rule specified by ruleId was evaluated and a problem was found.
 	Warning = Level("warning")
-	//Error: The rule specified by ruleId was evaluated and a serious problem was found.
+	//Error : The rule specified by ruleId was evaluated and a serious problem was found.
 	Error = Level("error")
-
+	//Version : SARIF Schema version
 	Version = "2.1.0"
-	Schema  = "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json"
+	//Schema : SARIF Schema URL
+	Schema = "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json"
 )
 
 //GenerateReport Convert a gosec report to a Sarif Report
