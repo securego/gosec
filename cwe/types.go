@@ -14,7 +14,7 @@ const (
 	Version = "4.4"
 	//ReleaseDateUtc the release Date of CWE Version
 	ReleaseDateUtc = "2021-03-15"
-	//Organisation MITRE
+	//Organization MITRE
 	Organization = "MITRE"
 	//Description the description of CWE
 	Description = "The MITRE Common Weakness Enumeration"
@@ -48,10 +48,12 @@ func (w *Weakness) MarshalJSON() ([]byte, error) {
 	})
 }
 
+//InformationURI link to the published CWE PDF
 func InformationURI() string {
 	return fmt.Sprintf("https://cwe.mitre.org/data/published/cwe_v%s.pdf/", Version)
 }
 
+//DownloadURI link to the zipped XML of the CWE list
 func DownloadURI() string {
 	return fmt.Sprintf("https://cwe.mitre.org/data/xml/cwec_v%s.xml.zip", Version)
 }

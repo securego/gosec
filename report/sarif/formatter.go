@@ -12,13 +12,21 @@ import (
 	"github.com/securego/gosec/v2/report/core"
 )
 
+//Level SARIF level
+// From https://docs.oasis-open.org/sarif/sarif/v2.0/csprd02/sarif-v2.0-csprd02.html#_Toc10127839
 type Level string
 
 const (
-	None    = Level("none")
-	Note    = Level("note")
+	//None: The concept of “severity” does not apply to this result because the kind
+	// property (§3.27.9) has a value other than "fail".
+	None = Level("none")
+	//Note: The rule specified by ruleId was evaluated and a minor problem or an opportunity
+	// to improve the code was found.
+	Note = Level("note")
+	//Warning: The rule specified by ruleId was evaluated and a problem was found.
 	Warning = Level("warning")
-	Error   = Level("error")
+	//Error: The rule specified by ruleId was evaluated and a serious problem was found.
+	Error = Level("error")
 
 	Version = "2.1.0"
 	Schema  = "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json"
@@ -279,13 +287,6 @@ func buildSarifRegion(startLine int, endLine int, col int) *Region {
 	}
 }
 
-// From https://docs.oasis-open.org/sarif/sarif/v2.0/csprd02/sarif-v2.0-csprd02.html#_Toc10127839
-// * "warning": The rule specified by ruleId was evaluated and a problem was found.
-// * "error": The rule specified by ruleId was evaluated and a serious problem was found.
-// * "note": The rule specified by ruleId was evaluated and a minor problem or an opportunity
-// to improve the code was found.
-// * "none": The concept of “severity” does not apply to this result because the kind
-// property (§3.27.9) has a value other than "fail".
 func getSarifLevel(s string) Level {
 	switch s {
 	case "LOW":
