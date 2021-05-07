@@ -105,5 +105,9 @@ var data = map[string]*Weakness{
 
 //Get Retrieves a CWE weakness by it's id
 func Get(id string) *Weakness {
-	return data[id]
+	weakness, ok := data[id]
+	if ok && weakness != nil {
+		return weakness
+	}
+	return nil
 }

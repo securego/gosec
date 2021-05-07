@@ -44,7 +44,11 @@ const SnippetOffset = 1
 
 // GetCweByRule retrieves a cwe weakness for a given RuleID
 func GetCweByRule(id string) *cwe.Weakness {
-	return cwe.Get(ruleToCWE[id])
+	cweID, ok := ruleToCWE[id]
+	if ok && cweID != "" {
+		return cwe.Get(cweID)
+	}
+	return nil
 }
 
 // ruleToCWE maps gosec rules to CWEs
