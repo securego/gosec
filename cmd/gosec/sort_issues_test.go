@@ -17,7 +17,7 @@ var defaultIssue = gosec.Issue{
 	Confidence: gosec.High,
 	Severity:   gosec.High,
 	Code:       "1: testcode",
-	Cwe:        gosec.GetCwe("G101"),
+	Cwe:        gosec.GetCweByRule("G101"),
 }
 
 func createIssue() gosec.Issue {
