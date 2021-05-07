@@ -2,7 +2,6 @@ package csv
 
 import (
 	"encoding/csv"
-	"fmt"
 	"github.com/securego/gosec/v2/report/core"
 	"io"
 )
@@ -19,7 +18,7 @@ func WriteReport(w io.Writer, data *core.ReportInfo) error {
 			issue.Severity.String(),
 			issue.Confidence.String(),
 			issue.Code,
-			fmt.Sprintf("CWE-%s", issue.Cwe.ID),
+			issue.Cwe.SprintID(),
 		})
 		if err != nil {
 			return err

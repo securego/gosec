@@ -1,6 +1,6 @@
 package cwe
 
-var data = map[string]Weakness{
+var data = map[string]*Weakness{
 	"118": {
 		ID:          "118",
 		Description: "The software does not restrict or incorrectly restricts operations within the boundaries of a resource that is accessed using an index or pointer, such as memory or files.",
@@ -104,6 +104,10 @@ var data = map[string]Weakness{
 }
 
 //Get Retrieves a CWE weakness by it's id
-func Get(id string) Weakness {
-	return data[id]
+func Get(id string) *Weakness {
+	weakness, ok := data[id]
+	if ok && weakness != nil {
+		return weakness
+	}
+	return nil
 }

@@ -19,7 +19,6 @@ const (
 	sarifNote    = sarifLevel("note")
 	sarifWarning = sarifLevel("warning")
 	sarifError   = sarifLevel("error")
-	cweAcronym   = "CWE"
 )
 
 //GenerateReport Convert a gosec report to a Sarif Report
@@ -36,7 +35,7 @@ func GenerateReport(rootPaths []string, data *core.ReportInfo) (*Report, error) 
 
 	results := []*Result{}
 	taxa := make([]*ReportingDescriptor, 0)
-	weaknesses := make(map[string]cwe.Weakness)
+	weaknesses := make(map[string]*cwe.Weakness)
 
 	for _, issue := range data.Issues {
 		_, ok := weaknesses[issue.Cwe.ID]
@@ -117,18 +116,18 @@ func parseSarifRule(issue *gosec.Issue) *ReportingDescriptor {
 			Level: getSarifLevel(issue.Severity.String()),
 		},
 		Relationships: []*ReportingDescriptorRelationship{
-			buildSarifReportingDescriptorRelationship(issue.Cwe.ID),
+			buildSarifReportingDescriptorRelationship(issue.Cwe),
 		},
 	}
 }
 
-func buildSarifReportingDescriptorRelationship(weaknessID string) *ReportingDescriptorRelationship {
+func buildSarifReportingDescriptorRelationship(weakness *cwe.Weakness) *ReportingDescriptorRelationship {
 	return &ReportingDescriptorRelationship{
 		Target: &ReportingDescriptorReference{
-			ID:   weaknessID,
-			GUID: uuid3(cweAcronym + weaknessID),
+			ID:   weakness.ID,
+			GUID: uuid3(weakness.SprintID()),
 			ToolComponent: &ToolComponentReference{
-				Name: cweAcronym,
+				Name: cwe.Acronym,
 			},
 		},
 		Kinds: []string{"superset"},
@@ -149,7 +148,7 @@ func buildSarifTaxonomies(taxa []*ReportingDescriptor) []*ToolComponent {
 
 func buildCWETaxonomy(version string, taxa []*ReportingDescriptor) *ToolComponent {
 	return &ToolComponent{
-		Name:           cweAcronym,
+		Name:           cwe.Acronym,
 		Version:        version,
 		ReleaseDateUtc: "2021-03-15",
 		InformationURI: fmt.Sprintf("https://cwe.mitre.org/data/published/cwe_v%s.pdf/", version),
@@ -158,19 +157,19 @@ func buildCWETaxonomy(version string, taxa []*ReportingDescriptor) *ToolComponen
 		ShortDescription: &MultiformatMessageString{
 			Text: "The MITRE Common Weakness Enumeration",
 		},
-		GUID:            uuid3(cweAcronym),
+		GUID:            uuid3(cwe.Acronym),
 		IsComprehensive: true,
 		MinimumRequiredLocalizedDataSemanticVersion: version,
 		Taxa: taxa,
 	}
 }
 
-func parseSarifTaxon(weakness cwe.Weakness) *ReportingDescriptor {
+func parseSarifTaxon(weakness *cwe.Weakness) *ReportingDescriptor {
 	return &ReportingDescriptor{
 		ID:      weakness.ID,
 		Name:    weakness.Name,
-		GUID:    uuid3(cweAcronym + weakness.ID),
-		HelpURI: weakness.URL(),
+		GUID:    uuid3(weakness.SprintID()),
+		HelpURI: weakness.SprintURL(),
 		ShortDescription: &MultiformatMessageString{
 			Text: weakness.Description,
 		},
@@ -189,7 +188,7 @@ func buildSarifDriver(rules []*ReportingDescriptor) *ToolComponent {
 		Name:    "gosec",
 		Version: gosecVersion,
 		SupportedTaxonomies: []*ToolComponentReference{
-			{Name: cweAcronym, GUID: uuid3(cweAcronym)},
+			{Name: cwe.Acronym, GUID: uuid3(cwe.Acronym)},
 		},
 		InformationURI: "https://github.com/securego/gosec/",
 		Rules:          rules,

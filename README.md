@@ -47,6 +47,7 @@ echo "<check sum from the check sum file>  gosec_vX.Y.Z_OS.tar.gz" | sha256sum -
 
 gosec --help
 ```
+
 ### GitHub Action
 
 You can run `gosec` as a GitHub action as follows:
@@ -123,7 +124,6 @@ paths, and produce reports in different formats. By default all rules will be
 run against the supplied input files. To recursively scan from the current
 directory you can supply `./...` as the input argument.
 
-
 ### Available rules
 
 - G101: Look for hard coded credentials
@@ -173,9 +173,10 @@ $ gosec -include=G101,G203,G401 ./...
 # Run everything except for rule G303
 $ gosec -exclude=G303 ./...
 ```
+
 ### CWE Mapping
 
-Every issue detected by `gosec` is mapped to a [CWE (Common Weakness Enumeration)](http://cwe.mitre.org/data/index.html) which describes in more generic terms the vulnerability. The exact mapping can be found  [here](https://github.com/securego/gosec/blob/master/issue.go#L49).
+Every issue detected by `gosec` is mapped to a [CWE (Common Weakness Enumeration)](http://cwe.mitre.org/data/index.html) which describes in more generic terms the vulnerability. The exact mapping can be found  [here](https://github.com/securego/gosec/blob/master/issue.go#L50).
 
 ### Configuration
 
@@ -197,6 +198,7 @@ A number of global settings can be provided in a configuration file as follows:
 # Run with a global configuration file
 $ gosec -conf config.json .
 ```
+
 Also some rules accept configuration. For instance on rule `G104`, it is possible to define packages along with a list
 of functions which will be skipped when auditing the not checked errors:
 
@@ -224,7 +226,7 @@ You can also configure the hard-coded credentials rule `G101` with additional pa
 
 ### Dependencies
 
-gosec will fetch automatically the dependencies of the code which is being analyzed when go module is turned on (e.g.` GO111MODULE=on`). If this is not the case,
+gosec will fetch automatically the dependencies of the code which is being analyzed when go module is turned on (e.g.`GO111MODULE=on`). If this is not the case,
 the dependencies need to be explicitly downloaded by running the `go get -d` command before the scan.
 
 ### Excluding test files and folders
@@ -307,6 +309,7 @@ $ gosec -fmt=json -out=results.json *.go
 ### Build
 
 You can build the binary with:
+
 ```bash
 make
 ```
@@ -314,11 +317,13 @@ make
 ### Note on Sarif Types Generation
 
 Install the tool with :
+
 ```bash
 go get -u github.com/a-h/generate/cmd/schema-generate
 ```
 
 Then generate the types with :
+
 ```bash
 schema-generate -i sarif-schema-2.1.0.json -o mypath/types.go
 ```
@@ -326,10 +331,10 @@ schema-generate -i sarif-schema-2.1.0.json -o mypath/types.go
 Most of the MarshallJSON/UnmarshalJSON are removed except the one for PropertyBag which is handy to inline the additionnal properties. The rest can be removed.
 The URI,ID, UUID, GUID were renamed so it fits the Golang convention defined [here](https://github.com/golang/lint/blob/master/lint.go#L700)
 
-
 ### Tests
 
 You can run all unit tests using:
+
 ```bash
 make test
 ```
@@ -360,7 +365,8 @@ into a volume as follows:
 ```bash
 docker run --rm -it -w /<PROJECT>/ -v <YOUR PROJECT PATH>/<PROJECT>:/<PROJECT> securego/gosec /<PROJECT>/...
 ```
-**Note:** the current working directory needs to be set with `-w` option in order to get successfully resolved the dependencies from go module file 
+
+**Note:** the current working directory needs to be set with `-w` option in order to get successfully resolved the dependencies from go module file
 
 ### Generate TLS rule
 

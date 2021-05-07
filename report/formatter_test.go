@@ -9,6 +9,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/securego/gosec/v2"
+	"github.com/securego/gosec/v2/cwe"
 	"github.com/securego/gosec/v2/report/core"
 	"github.com/securego/gosec/v2/report/junit"
 	"github.com/securego/gosec/v2/report/sonar"
@@ -16,13 +17,13 @@ import (
 )
 
 func createIssueWithFileWhat(file, what string) *gosec.Issue {
-	issue := createIssue("i1", gosec.GetCwe("G101"))
+	issue := createIssue("i1", gosec.GetCweByRule("G101"))
 	issue.File = file
 	issue.What = what
 	return &issue
 }
 
-func createIssue(ruleID string, cwe gosec.Cwe) gosec.Issue {
+func createIssue(ruleID string, weakness *cwe.Weakness) gosec.Issue {
 	return gosec.Issue{
 		File:       "/home/src/project/test.go",
 		Line:       "1",
@@ -32,12 +33,12 @@ func createIssue(ruleID string, cwe gosec.Cwe) gosec.Issue {
 		Confidence: gosec.High,
 		Severity:   gosec.High,
 		Code:       "1: testcode",
-		Cwe:        cwe,
+		Cwe:        weakness,
 	}
 }
 
-func createReportInfo(rule string, cwe gosec.Cwe) core.ReportInfo {
-	issue := createIssue(rule, cwe)
+func createReportInfo(rule string, weakness *cwe.Weakness) core.ReportInfo {
+	issue := createIssue(rule, weakness)
 	metrics := gosec.Metrics{}
 	return core.ReportInfo{
 		Errors: map[string][]gosec.Error{},
@@ -284,7 +285,7 @@ var _ = Describe("Formatter", func() {
 
 		It("csv formatted report should contain the CWE mapping", func() {
 			for _, rule := range grules {
-				cwe := gosec.IssueToCWE[rule]
+				cwe := gosec.GetCweByRule(rule)
 				issue := createIssue(rule, cwe)
 				error := map[string][]gosec.Error{}
 
@@ -298,7 +299,7 @@ var _ = Describe("Formatter", func() {
 		})
 		It("xml formatted report should contain the CWE mapping", func() {
 			for _, rule := range grules {
-				cwe := gosec.IssueToCWE[rule]
+				cwe := gosec.GetCweByRule(rule)
 				issue := createIssue(rule, cwe)
 				error := map[string][]gosec.Error{}
 
@@ -312,7 +313,7 @@ var _ = Describe("Formatter", func() {
 		})
 		It("json formatted report should contain the CWE mapping", func() {
 			for _, rule := range grules {
-				cwe := gosec.IssueToCWE[rule]
+				cwe := gosec.GetCweByRule(rule)
 				issue := createIssue(rule, cwe)
 				error := map[string][]gosec.Error{}
 
@@ -332,7 +333,7 @@ var _ = Describe("Formatter", func() {
 		})
 		It("html formatted report should  contain the CWE mapping", func() {
 			for _, rule := range grules {
-				cwe := gosec.IssueToCWE[rule]
+				cwe := gosec.GetCweByRule(rule)
 				issue := createIssue(rule, cwe)
 				error := map[string][]gosec.Error{}
 
@@ -352,7 +353,7 @@ var _ = Describe("Formatter", func() {
 		})
 		It("yaml formatted report should contain the CWE mapping", func() {
 			for _, rule := range grules {
-				cwe := gosec.IssueToCWE[rule]
+				cwe := gosec.GetCweByRule(rule)
 				issue := createIssue(rule, cwe)
 				error := map[string][]gosec.Error{}
 
@@ -372,7 +373,7 @@ var _ = Describe("Formatter", func() {
 		})
 		It("junit-xml formatted report should contain the CWE mapping", func() {
 			for _, rule := range grules {
-				cwe := gosec.IssueToCWE[rule]
+				cwe := gosec.GetCweByRule(rule)
 				issue := createIssue(rule, cwe)
 				error := map[string][]gosec.Error{}
 
@@ -392,7 +393,7 @@ var _ = Describe("Formatter", func() {
 		})
 		It("text formatted report should contain the CWE mapping", func() {
 			for _, rule := range grules {
-				cwe := gosec.IssueToCWE[rule]
+				cwe := gosec.GetCweByRule(rule)
 				issue := createIssue(rule, cwe)
 				error := map[string][]gosec.Error{}
 
@@ -412,7 +413,7 @@ var _ = Describe("Formatter", func() {
 		})
 		It("sonarqube formatted report shouldn't contain the CWE mapping", func() {
 			for _, rule := range grules {
-				cwe := gosec.IssueToCWE[rule]
+				cwe := gosec.GetCweByRule(rule)
 				issue := createIssue(rule, cwe)
 				error := map[string][]gosec.Error{}
 				buf := new(bytes.Buffer)
@@ -432,7 +433,7 @@ var _ = Describe("Formatter", func() {
 		})
 		It("golint formatted report should contain the CWE mapping", func() {
 			for _, rule := range grules {
-				cwe := gosec.IssueToCWE[rule]
+				cwe := gosec.GetCweByRule(rule)
 				issue := createIssue(rule, cwe)
 				error := map[string][]gosec.Error{}
 
@@ -446,7 +447,7 @@ var _ = Describe("Formatter", func() {
 		})
 		It("sarif formatted report should contain the CWE mapping", func() {
 			for _, rule := range grules {
-				cwe := gosec.IssueToCWE[rule]
+				cwe := gosec.GetCweByRule(rule)
 				issue := createIssue(rule, cwe)
 				error := map[string][]gosec.Error{}
 

@@ -15,7 +15,7 @@ func WriteReport(w io.Writer, data *core.ReportInfo) error {
 	for _, issue := range data.Issues {
 		what := issue.What
 		if issue.Cwe.ID != "" {
-			what = fmt.Sprintf("[CWE-%s] %s", issue.Cwe.ID, issue.What)
+			what = fmt.Sprintf("[%s] %s", issue.Cwe.SprintID(), issue.What)
 		}
 
 		// issue.Line uses "start-end" format for multiple line detection.

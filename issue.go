@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/securego/gosec/v2/cwe"
 	"go/ast"
 	"go/token"
 	"os"
@@ -41,62 +42,60 @@ const (
 // the beginning and after the end of a code snippet
 const SnippetOffset = 1
 
-// Cwe id and url
-type Cwe struct {
-	ID  string
-	URL string
+// GetCweByRule retrieves a cwe weakness for a given RuleID
+func GetCweByRule(id string) *cwe.Weakness {
+	cweID, ok := ruleToCWE[id]
+	if ok && cweID != "" {
+		return cwe.Get(cweID)
+	}
+	return nil
 }
 
-// GetCwe creates a cwe object for a given RuleID
-func GetCwe(id string) Cwe {
-	return Cwe{ID: id, URL: fmt.Sprintf("https://cwe.mitre.org/data/definitions/%s.html", id)}
-}
-
-// IssueToCWE maps gosec rules to CWEs
-var IssueToCWE = map[string]Cwe{
-	"G101": GetCwe("798"),
-	"G102": GetCwe("200"),
-	"G103": GetCwe("242"),
-	"G104": GetCwe("703"),
-	"G106": GetCwe("322"),
-	"G107": GetCwe("88"),
-	"G108": GetCwe("200"),
-	"G109": GetCwe("190"),
-	"G110": GetCwe("409"),
-	"G201": GetCwe("89"),
-	"G202": GetCwe("89"),
-	"G203": GetCwe("79"),
-	"G204": GetCwe("78"),
-	"G301": GetCwe("276"),
-	"G302": GetCwe("276"),
-	"G303": GetCwe("377"),
-	"G304": GetCwe("22"),
-	"G305": GetCwe("22"),
-	"G306": GetCwe("276"),
-	"G307": GetCwe("703"),
-	"G401": GetCwe("326"),
-	"G402": GetCwe("295"),
-	"G403": GetCwe("310"),
-	"G404": GetCwe("338"),
-	"G501": GetCwe("327"),
-	"G502": GetCwe("327"),
-	"G503": GetCwe("327"),
-	"G504": GetCwe("327"),
-	"G505": GetCwe("327"),
-	"G601": GetCwe("118"),
+// ruleToCWE maps gosec rules to CWEs
+var ruleToCWE = map[string]string{
+	"G101": "798",
+	"G102": "200",
+	"G103": "242",
+	"G104": "703",
+	"G106": "322",
+	"G107": "88",
+	"G108": "200",
+	"G109": "190",
+	"G110": "409",
+	"G201": "89",
+	"G202": "89",
+	"G203": "79",
+	"G204": "78",
+	"G301": "276",
+	"G302": "276",
+	"G303": "377",
+	"G304": "22",
+	"G305": "22",
+	"G306": "276",
+	"G307": "703",
+	"G401": "326",
+	"G402": "295",
+	"G403": "310",
+	"G404": "338",
+	"G501": "327",
+	"G502": "327",
+	"G503": "327",
+	"G504": "327",
+	"G505": "327",
+	"G601": "118",
 }
 
 // Issue is returned by a gosec rule if it discovers an issue with the scanned code.
 type Issue struct {
-	Severity   Score  `json:"severity"`   // issue severity (how problematic it is)
-	Confidence Score  `json:"confidence"` // issue confidence (how sure we are we found it)
-	Cwe        Cwe    `json:"cwe"`        // Cwe associated with RuleID
-	RuleID     string `json:"rule_id"`    // Human readable explanation
-	What       string `json:"details"`    // Human readable explanation
-	File       string `json:"file"`       // File name we found it in
-	Code       string `json:"code"`       // Impacted code line
-	Line       string `json:"line"`       // Line number in file
-	Col        string `json:"column"`     // Column number in line
+	Severity   Score         `json:"severity"`   // issue severity (how problematic it is)
+	Confidence Score         `json:"confidence"` // issue confidence (how sure we are we found it)
+	Cwe        *cwe.Weakness `json:"cwe"`        // Cwe associated with RuleID
+	RuleID     string        `json:"rule_id"`    // Human readable explanation
+	What       string        `json:"details"`    // Human readable explanation
+	File       string        `json:"file"`       // File name we found it in
+	Code       string        `json:"code"`       // Impacted code line
+	Line       string        `json:"line"`       // Line number in file
+	Col        string        `json:"column"`     // Column number in line
 }
 
 // FileLocation point out the file path and line number in file
@@ -196,6 +195,6 @@ func NewIssue(ctx *Context, node ast.Node, ruleID, desc string, severity Score, 
 		Confidence: confidence,
 		Severity:   severity,
 		Code:       code,
-		Cwe:        IssueToCWE[ruleID],
+		Cwe:        GetCweByRule(ruleID),
 	}
 }
