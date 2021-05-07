@@ -27,6 +27,7 @@ func (w *Weakness) SprintID() string {
 	return fmt.Sprintf("%s-%s", Acronym, w.ID)
 }
 
+//MarshalJSON print only id and URL
 func (w *Weakness) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&struct {
 		ID  string `json:"id"`
