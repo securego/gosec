@@ -6,7 +6,9 @@ import (
 )
 
 const (
-	URL     = "https://cwe.mitre.org/data/definitions/"
+	//URL is the base URL for CWE definitions
+	URL = "https://cwe.mitre.org/data/definitions/"
+	//Acronym is the acronym of CWE
 	Acronym = "CWE"
 )
 

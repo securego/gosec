@@ -42,7 +42,7 @@ const (
 // the beginning and after the end of a code snippet
 const SnippetOffset = 1
 
-// GetCwe creates a cwe object for a given RuleID
+// GetCweByRule retrieves a cwe weakness for a given RuleID
 func GetCweByRule(id string) *cwe.Weakness {
 	return cwe.Get(ruleToCWE[id])
 }
