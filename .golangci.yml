@@ -1,0 +1,15 @@
+linters:
+  enable:
+  - megacheck
+  - govet
+  - unparam
+  - unconvert
+  - misspell
+  - lll
+  - gofmt
+  - golint
+  - gosec
+  - nakedret
+  - fieldalignment
+  - dogsled
+  - depguard
