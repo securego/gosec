@@ -12,13 +12,16 @@ import (
 	"github.com/securego/gosec/v2/report/core"
 )
 
-type sarifLevel string
+type Level string
 
 const (
-	sarifNone    = sarifLevel("none")
-	sarifNote    = sarifLevel("note")
-	sarifWarning = sarifLevel("warning")
-	sarifError   = sarifLevel("error")
+	None    = Level("none")
+	Note    = Level("note")
+	Warning = Level("warning")
+	Error   = Level("error")
+
+	Version = "2.1.0"
+	Schema  = "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json"
 )
 
 //GenerateReport Convert a gosec report to a Sarif Report
@@ -34,7 +37,7 @@ func GenerateReport(rootPaths []string, data *core.ReportInfo) (*Report, error) 
 	lastRuleIndex := -1
 
 	results := []*Result{}
-	taxa := make([]*ReportingDescriptor, 0)
+	cweTaxa := make([]*ReportingDescriptor, 0)
 	weaknesses := make(map[string]*cwe.Weakness)
 
 	for _, issue := range data.Issues {
@@ -42,8 +45,8 @@ func GenerateReport(rootPaths []string, data *core.ReportInfo) (*Report, error) 
 		if !ok {
 			weakness := cwe.Get(issue.Cwe.ID)
 			weaknesses[issue.Cwe.ID] = weakness
-			taxon := parseSarifTaxon(weakness)
-			taxa = append(taxa, taxon)
+			cweTaxon := parseSarifTaxon(weakness)
+			cweTaxa = append(cweTaxa, cweTaxon)
 		}
 
 		r, ok := rulesIndices[issue.RuleID]
@@ -66,7 +69,11 @@ func GenerateReport(rootPaths []string, data *core.ReportInfo) (*Report, error) 
 
 	tool := buildSarifTool(buildSarifDriver(rules))
 
-	run := buildSarifRun(results, buildSarifTaxonomies(taxa), tool)
+	taxonomies := []*ToolComponent{
+		buildCWETaxonomy(cweTaxa),
+	}
+
+	run := buildSarifRun(results, taxonomies, tool)
 
 	return buildSarifReport(run), nil
 }
@@ -86,8 +93,8 @@ func buildSarifResult(ruleID string, index int, issue *gosec.Issue, locations []
 // buildSarifReport return SARIF report struct
 func buildSarifReport(run *Run) *Report {
 	return &Report{
-		Version: "2.1.0",
-		Schema:  "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+		Version: Version,
+		Schema:  Schema,
 		Runs:    []*Run{run},
 	}
 }
@@ -104,7 +111,8 @@ func parseSarifRule(issue *gosec.Issue) *ReportingDescriptor {
 			Text: issue.What,
 		},
 		Help: &MultiformatMessageString{
-			Text: fmt.Sprintf("%s\nSeverity: %s\nConfidence: %s\n", issue.What, issue.Severity.String(), issue.Confidence.String()),
+			Text: fmt.Sprintf("%s\nSeverity: %s\nConfidence: %s\n",
+				issue.What, issue.Severity.String(), issue.Confidence.String()),
 		},
 		Properties: &PropertyBag{
 			Tags: []string{"security", issue.Severity.String()},
@@ -140,26 +148,20 @@ func buildSarifTool(driver *ToolComponent) *Tool {
 	}
 }
 
-func buildSarifTaxonomies(taxa []*ReportingDescriptor) []*ToolComponent {
-	return []*ToolComponent{
-		buildCWETaxonomy("4.4", taxa),
-	}
-}
-
-func buildCWETaxonomy(version string, taxa []*ReportingDescriptor) *ToolComponent {
+func buildCWETaxonomy(taxa []*ReportingDescriptor) *ToolComponent {
 	return &ToolComponent{
 		Name:           cwe.Acronym,
-		Version:        version,
-		ReleaseDateUtc: "2021-03-15",
-		InformationURI: fmt.Sprintf("https://cwe.mitre.org/data/published/cwe_v%s.pdf/", version),
-		DownloadURI:    fmt.Sprintf("https://cwe.mitre.org/data/xml/cwec_v%s.xml.zip", version),
-		Organization:   "MITRE",
+		Version:        cwe.Version,
+		ReleaseDateUtc: cwe.ReleaseDateUtc,
+		InformationURI: cwe.InformationURI(),
+		DownloadURI:    cwe.DownloadURI(),
+		Organization:   cwe.Organization,
 		ShortDescription: &MultiformatMessageString{
-			Text: "The MITRE Common Weakness Enumeration",
+			Text: cwe.Description,
 		},
 		GUID:            uuid3(cwe.Acronym),
 		IsComprehensive: true,
-		MinimumRequiredLocalizedDataSemanticVersion: version,
+		MinimumRequiredLocalizedDataSemanticVersion: cwe.Version,
 		Taxa: taxa,
 	}
 }
@@ -280,17 +282,19 @@ func buildSarifRegion(startLine int, endLine int, col int) *Region {
 // From https://docs.oasis-open.org/sarif/sarif/v2.0/csprd02/sarif-v2.0-csprd02.html#_Toc10127839
 // * "warning": The rule specified by ruleId was evaluated and a problem was found.
 // * "error": The rule specified by ruleId was evaluated and a serious problem was found.
-// * "note": The rule specified by ruleId was evaluated and a minor problem or an opportunity to improve the code was found.
-// * "none": The concept of “severity” does not apply to this result because the kind property (§3.27.9) has a value other than "fail".
-func getSarifLevel(s string) sarifLevel {
+// * "note": The rule specified by ruleId was evaluated and a minor problem or an opportunity
+// to improve the code was found.
+// * "none": The concept of “severity” does not apply to this result because the kind
+// property (§3.27.9) has a value other than "fail".
+func getSarifLevel(s string) Level {
 	switch s {
 	case "LOW":
-		return sarifWarning
+		return Warning
 	case "MEDIUM":
-		return sarifError
+		return Error
 	case "HIGH":
-		return sarifError
+		return Error
 	default:
-		return sarifNote
+		return Note
 	}
 }
