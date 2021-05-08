@@ -302,6 +302,12 @@ file. The output format is controlled by the `-fmt` flag, and the output file is
 $ gosec -fmt=json -out=results.json *.go
 ```
 
+Results will be reported to stdout as well as to the provided output file by `-stdout` flag.
+```bash
+# Write output in json format to results.json as well as stdout
+$ gosec -fmt=json -out=results.json -stdout *.go
+```
+
 **Note:** gosec generates the [generic issue import format](https://docs.sonarqube.org/latest/analysis/generic-issue/) for SonarQube, and a report has to be imported into SonarQube using `sonar.externalIssuesReportPaths=path/to/gosec-report.json`.
 
 ## Development

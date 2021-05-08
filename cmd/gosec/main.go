@@ -117,6 +117,9 @@ var (
 	// print version and quit with exit code 0
 	flagVersion = flag.Bool("version", false, "Print version and quit with exit code 0")
 
+	// stdout the results as well as write it in the output file
+	flagStdOut = flag.Bool("stdout", false, "Stdout the results as well as write it in the output file")
+
 	// exlude the folders from scan
 	flagDirsExclude arrayFlags
 
@@ -187,7 +190,7 @@ func loadRules(include, exclude string) rules.RuleList {
 	return rules.Generate(filters...)
 }
 
-func saveOutput(filename, format string, color bool, paths []string, issues []*gosec.Issue, metrics *gosec.Metrics, errors map[string][]gosec.Error) error {
+func saveOutput(filename, format string, color bool, stdout bool, paths []string, issues []*gosec.Issue, metrics *gosec.Metrics, errors map[string][]gosec.Error) error {
 	rootPaths := []string{}
 	for _, path := range paths {
 		rootPath, err := gosec.RootPath(path)
@@ -205,6 +208,14 @@ func saveOutput(filename, format string, color bool, paths []string, issues []*g
 		err = report.CreateReport(outfile, format, color, rootPaths, issues, metrics, errors)
 		if err != nil {
 			return err
+		}
+		if stdout {
+			format = "text"
+			color = true
+			err = report.CreateReport(os.Stdout, format, color, rootPaths, issues, metrics, errors)
+			if err != nil {
+				return err
+			}
 		}
 	} else {
 		err := report.CreateReport(os.Stdout, format, color, rootPaths, issues, metrics, errors)
@@ -363,7 +374,7 @@ func main() {
 	}
 
 	// Create output report
-	if err := saveOutput(*flagOutput, *flagFormat, color, flag.Args(), issues, metrics, errors); err != nil {
+	if err := saveOutput(*flagOutput, *flagFormat, color, *flagStdOut, flag.Args(), issues, metrics, errors); err != nil {
 		logger.Fatal(err)
 	}
 
