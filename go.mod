@@ -1,7 +1,7 @@
 module github.com/securego/gosec/v2
 
 require (
-	github.com/google/uuid v1.1.1
+	github.com/google/uuid v1.2.0
 	github.com/gookit/color v1.4.2
 	github.com/mozilla/tls-observatory v0.0.0-20210209181001-cf43108d6880
 	github.com/nbutton23/zxcvbn-go v0.0.0-20210217022336-fa2cb2858354
