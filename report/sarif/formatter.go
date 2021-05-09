@@ -50,7 +50,8 @@ func GenerateReport(rootPaths []string, data *core.ReportInfo) (*Report, error) 
 			return nil, err
 		}
 
-		result := NewResult(r.rule.ID, r.index, getSarifLevel(issue.Severity.String()), issue.What).WithLocations(location)
+		result := NewResult(r.rule.ID, r.index, getSarifLevel(issue.Severity.String()), issue.What).
+			WithLocations(location)
 
 		results = append(results, result)
 	}
@@ -59,9 +60,12 @@ func GenerateReport(rootPaths []string, data *core.ReportInfo) (*Report, error) 
 
 	cweTaxonomy := buildCWETaxonomy(cweTaxa)
 
-	run := NewRun(tool).WithTaxonomies(cweTaxonomy).WithResults(results...)
+	run := NewRun(tool).
+		WithTaxonomies(cweTaxonomy).
+		WithResults(results...)
 
-	return NewReport(Version, Schema).WithRuns(run), nil
+	return NewReport(Version, Schema).
+		WithRuns(run), nil
 }
 
 // parseSarifRule return SARIF rule field struct
@@ -98,7 +102,14 @@ func buildSarifReportingDescriptorRelationship(weakness *cwe.Weakness) *Reportin
 }
 
 func buildCWETaxonomy(taxa []*ReportingDescriptor) *ToolComponent {
-	return NewToolComponent(cwe.Acronym, cwe.Version, cwe.InformationURI()).WithReleaseDateUtc(cwe.ReleaseDateUtc).WithDownloadURI(cwe.DownloadURI()).WithOrganization(cwe.Organization).WithShortDescription(NewMultiformatMessageString(cwe.Description)).WithIsComprehensive(true).WithMinimumRequiredLocalizedDataSemanticVersion(cwe.Version).WithTaxa(taxa...)
+	return NewToolComponent(cwe.Acronym, cwe.Version, cwe.InformationURI()).
+		WithReleaseDateUtc(cwe.ReleaseDateUtc).
+		WithDownloadURI(cwe.DownloadURI()).
+		WithOrganization(cwe.Organization).
+		WithShortDescription(NewMultiformatMessageString(cwe.Description)).
+		WithIsComprehensive(true).
+		WithMinimumRequiredLocalizedDataSemanticVersion(cwe.Version).
+		WithTaxa(taxa...)
 }
 
 func parseSarifTaxon(weakness *cwe.Weakness) *ReportingDescriptor {
@@ -119,7 +130,9 @@ func buildSarifDriver(rules []*ReportingDescriptor) *ToolComponent {
 	} else {
 		gosecVersion = "devel"
 	}
-	return NewToolComponent("gosec", gosecVersion, "https://github.com/securego/gosec/").WithSupportedTaxonomies(NewToolComponentReference(cwe.Acronym)).WithRules(rules...)
+	return NewToolComponent("gosec", gosecVersion, "https://github.com/securego/gosec/").
+		WithSupportedTaxonomies(NewToolComponentReference(cwe.Acronym)).
+		WithRules(rules...)
 }
 
 func uuid3(value string) string {

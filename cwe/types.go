@@ -14,7 +14,7 @@ type Weakness struct {
 
 //SprintURL format the CWE URL
 func (w *Weakness) SprintURL() string {
-	return fmt.Sprintf("%s%s.html", URL, w.ID)
+	return fmt.Sprintf("https://cwe.mitre.org/data/definitions/%s.html", w.ID)
 }
 
 //SprintID format the CWE ID

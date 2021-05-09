@@ -1,8 +1,6 @@
 package cwe
 
 const (
-	//URL is the base URL for CWE definitions
-	URL = "https://cwe.mitre.org/data/definitions/"
 	//Acronym is the acronym of CWE
 	Acronym = "CWE"
 	//Version the CWE version
