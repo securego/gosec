@@ -230,6 +230,17 @@ func convertToScore(severity string) (gosec.Score, error) {
 	}
 }
 
+func getRootPaths(paths []string) []string {
+	rootPaths := []string{}
+	for _, path := range paths {
+		rootPath, err := gosec.RootPath(path)
+		if err != nil {
+			logger.Fatal(fmt.Errorf("failed to get the root path of the projects: %s", err))
+		}
+		rootPaths = append(rootPaths, rootPath)
+	}
+	return rootPaths
+}
 func filterIssues(issues []*gosec.Issue, severity gosec.Score, confidence gosec.Score) []*gosec.Issue {
 	result := []*gosec.Issue{}
 	for _, issue := range issues {
@@ -364,14 +375,8 @@ func main() {
 	}
 
 	// Create output report
-	rootPaths := []string{}
-	for _, path := range flag.Args() {
-		rootPath, err := gosec.RootPath(path)
-		if err != nil {
-			logger.Fatal(fmt.Errorf("failed to get the root path of the projects: %s", err))
-		}
-		rootPaths = append(rootPaths, rootPath)
-	}
+	rootPaths := getRootPaths(flag.Args())
+
 	if *flagOutput == "" || *flagStdOut {
 		var fileFormat = *flagFormat
 		if *flagOutput != "" && *flagVerbose != "" {
