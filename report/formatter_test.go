@@ -294,7 +294,7 @@ var _ = Describe("Formatter", func() {
 				Expect(err).ShouldNot(HaveOccurred())
 				pattern := "/home/src/project/test.go,1,test,HIGH,HIGH,1: testcode,CWE-%s\n"
 				expect := fmt.Sprintf(pattern, cwe.ID)
-				Expect(string(buf.String())).To(Equal(expect))
+				Expect(buf.String()).To(Equal(expect))
 			}
 		})
 		It("xml formatted report should contain the CWE mapping", func() {
@@ -308,7 +308,7 @@ var _ = Describe("Formatter", func() {
 				Expect(err).ShouldNot(HaveOccurred())
 				pattern := "Results:\n\n\n[/home/src/project/test.go:1] - %s (CWE-%s): test (Confidence: HIGH, Severity: HIGH)\n  > 1: testcode\n\n\n\nSummary:\n   Files: 0\n   Lines: 0\n   Nosec: 0\n  Issues: 0\n\n"
 				expect := fmt.Sprintf(pattern, rule, cwe.ID)
-				Expect(string(buf.String())).To(Equal(expect))
+				Expect(buf.String()).To(Equal(expect))
 			}
 		})
 		It("json formatted report should contain the CWE mapping", func() {
@@ -442,7 +442,7 @@ var _ = Describe("Formatter", func() {
 				Expect(err).ShouldNot(HaveOccurred())
 				pattern := "/home/src/project/test.go:1:1: [CWE-%s] test (Rule:%s, Severity:HIGH, Confidence:HIGH)\n"
 				expect := fmt.Sprintf(pattern, cwe.ID, rule)
-				Expect(string(buf.String())).To(Equal(expect))
+				Expect(buf.String()).To(Equal(expect))
 			}
 		})
 		It("sarif formatted report should contain the CWE mapping", func() {
