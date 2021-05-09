@@ -121,7 +121,7 @@ var (
 	flagStdOut = flag.Bool("stdout", false, "Stdout the results as well as write it in the output file")
 
 	// overrides the output format when stdout the results while saving them in the output file
-	flagVerbose = flag.String("verbose", "", "Overrides the output format when stdout the results while saving them in the output file")
+	flagVerbose = flag.String("verbose", "", "Overrides the output format when stdout the results while saving them in the output file.\nValid options are: json, yaml, csv, junit-xml, html, sonarqube, golint, sarif or text")
 
 	// exlude the folders from scan
 	flagDirsExclude arrayFlags
