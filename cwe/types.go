@@ -5,21 +5,6 @@ import (
 	"fmt"
 )
 
-const (
-	//URL is the base URL for CWE definitions
-	URL = "https://cwe.mitre.org/data/definitions/"
-	//Acronym is the acronym of CWE
-	Acronym = "CWE"
-	//Version the CWE version
-	Version = "4.4"
-	//ReleaseDateUtc the release Date of CWE Version
-	ReleaseDateUtc = "2021-03-15"
-	//Organization MITRE
-	Organization = "MITRE"
-	//Description the description of CWE
-	Description = "The MITRE Common Weakness Enumeration"
-)
-
 // Weakness defines a CWE weakness based on http://cwe.mitre.org/data/xsd/cwe_schema_v6.4.xsd
 type Weakness struct {
 	ID          string
