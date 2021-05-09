@@ -98,7 +98,7 @@ func buildSarifReportingDescriptorRelationship(weakness *cwe.Weakness) *Reportin
 }
 
 func buildCWETaxonomy(taxa []*ReportingDescriptor) *ToolComponent {
-	return NewToolComponent(cwe.Acronym, cwe.Version, cwe.InformationURI()).WithReleaseDateUtc(cwe.ReleaseDateUtc).WithDownloadURI(cwe.DownloadURI()).WithOrganization(cwe.Organization).WithShortDescription(NewMultiformatMessageString(cwe.Organization)).WithIsComprehensive(true).WithMinimumRequiredLocalizedDataSemanticVersion(cwe.Version).WithTaxa(taxa...)
+	return NewToolComponent(cwe.Acronym, cwe.Version, cwe.InformationURI()).WithReleaseDateUtc(cwe.ReleaseDateUtc).WithDownloadURI(cwe.DownloadURI()).WithOrganization(cwe.Organization).WithShortDescription(NewMultiformatMessageString(cwe.Description)).WithIsComprehensive(true).WithMinimumRequiredLocalizedDataSemanticVersion(cwe.Version).WithTaxa(taxa...)
 }
 
 func parseSarifTaxon(weakness *cwe.Weakness) *ReportingDescriptor {
