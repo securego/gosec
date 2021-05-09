@@ -193,6 +193,26 @@ func loadRules(include, exclude string) rules.RuleList {
 	return rules.Generate(filters...)
 }
 
+func getRootPaths(paths []string) []string {
+	rootPaths := []string{}
+	for _, path := range paths {
+		rootPath, err := gosec.RootPath(path)
+		if err != nil {
+			logger.Fatal(fmt.Errorf("failed to get the root path of the projects: %s", err))
+		}
+		rootPaths = append(rootPaths, rootPath)
+	}
+	return rootPaths
+}
+
+func getPrintedFormat(format string, verbose string) string {
+	var fileFormat = format
+	if format != "" && verbose != "" {
+		fileFormat = verbose
+	}
+	return fileFormat
+}
+
 func printReport(format string, color bool, rootPaths []string, issues []*gosec.Issue, metrics *gosec.Metrics, errors map[string][]gosec.Error) error {
 
 	err := report.CreateReport(os.Stdout, format, color, rootPaths, issues, metrics, errors)
@@ -230,17 +250,6 @@ func convertToScore(severity string) (gosec.Score, error) {
 	}
 }
 
-func getRootPaths(paths []string) []string {
-	rootPaths := []string{}
-	for _, path := range paths {
-		rootPath, err := gosec.RootPath(path)
-		if err != nil {
-			logger.Fatal(fmt.Errorf("failed to get the root path of the projects: %s", err))
-		}
-		rootPaths = append(rootPaths, rootPath)
-	}
-	return rootPaths
-}
 func filterIssues(issues []*gosec.Issue, severity gosec.Score, confidence gosec.Score) []*gosec.Issue {
 	result := []*gosec.Issue{}
 	for _, issue := range issues {
@@ -378,10 +387,7 @@ func main() {
 	rootPaths := getRootPaths(flag.Args())
 
 	if *flagOutput == "" || *flagStdOut {
-		var fileFormat = *flagFormat
-		if *flagOutput != "" && *flagVerbose != "" {
-			fileFormat = *flagVerbose
-		}
+		var fileFormat = getPrintedFormat(*flagOutput, *flagVerbose)
 		if err := printReport(fileFormat, color, rootPaths, issues, metrics, errors); err != nil {
 			logger.Fatal((err))
 		}
