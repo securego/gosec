@@ -302,8 +302,8 @@ file. The output format is controlled by the `-fmt` flag, and the output file is
 $ gosec -fmt=json -out=results.json *.go
 ```
 
-Results will be reported to stdout as well as to the provided output file by `-stdout` flag. The `-verbose` flag overrides the
-overrides the output format when stdout the results while saving them in the output file
+Results will be reported to stdout as well as to the provided output file by `-stdout` flag. The `-verbose` flag overrides the 
+output format when stdout the results while saving them in the output file
 ```bash
 # Write output in json format to results.json as well as stdout
 $ gosec -fmt=json -out=results.json -stdout *.go
