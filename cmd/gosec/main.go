@@ -117,6 +117,12 @@ var (
 	// print version and quit with exit code 0
 	flagVersion = flag.Bool("version", false, "Print version and quit with exit code 0")
 
+	// stdout the results as well as write it in the output file
+	flagStdOut = flag.Bool("stdout", false, "Stdout the results as well as write it in the output file")
+
+	// overrides the output format when stdout the results while saving them in the output file
+	flagVerbose = flag.String("verbose", "", "Overrides the output format when stdout the results while saving them in the output file.\nValid options are: json, yaml, csv, junit-xml, html, sonarqube, golint, sarif or text")
+
 	// exlude the folders from scan
 	flagDirsExclude arrayFlags
 
@@ -187,30 +193,45 @@ func loadRules(include, exclude string) rules.RuleList {
 	return rules.Generate(filters...)
 }
 
-func saveOutput(filename, format string, color bool, paths []string, issues []*gosec.Issue, metrics *gosec.Metrics, errors map[string][]gosec.Error) error {
+func getRootPaths(paths []string) []string {
 	rootPaths := []string{}
 	for _, path := range paths {
 		rootPath, err := gosec.RootPath(path)
 		if err != nil {
-			return fmt.Errorf("failed to get the root path of the projects: %s", err)
+			logger.Fatal(fmt.Errorf("failed to get the root path of the projects: %s", err))
 		}
 		rootPaths = append(rootPaths, rootPath)
 	}
-	if filename != "" {
-		outfile, err := os.Create(filename)
-		if err != nil {
-			return err
-		}
-		defer outfile.Close() // #nosec G307
-		err = report.CreateReport(outfile, format, color, rootPaths, issues, metrics, errors)
-		if err != nil {
-			return err
-		}
-	} else {
-		err := report.CreateReport(os.Stdout, format, color, rootPaths, issues, metrics, errors)
-		if err != nil {
-			return err
-		}
+	return rootPaths
+}
+
+func getPrintedFormat(format string, verbose string) string {
+	var fileFormat = format
+	if format != "" && verbose != "" {
+		fileFormat = verbose
+	}
+	return fileFormat
+}
+
+func printReport(format string, color bool, rootPaths []string, issues []*gosec.Issue, metrics *gosec.Metrics, errors map[string][]gosec.Error) error {
+
+	err := report.CreateReport(os.Stdout, format, color, rootPaths, issues, metrics, errors)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func saveReport(filename, format string, color bool, rootPaths []string, issues []*gosec.Issue, metrics *gosec.Metrics, errors map[string][]gosec.Error) error {
+
+	outfile, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer outfile.Close() // #nosec G307
+	err = report.CreateReport(outfile, format, color, rootPaths, issues, metrics, errors)
+	if err != nil {
+		return err
 	}
 	return nil
 }
@@ -291,7 +312,7 @@ func main() {
 
 	// Color flag is allowed for text format
 	var color bool
-	if *flagFormat == "text" {
+	if *flagFormat == "text" || *flagVerbose == "text" {
 		color = true
 	}
 
@@ -363,8 +384,18 @@ func main() {
 	}
 
 	// Create output report
-	if err := saveOutput(*flagOutput, *flagFormat, color, flag.Args(), issues, metrics, errors); err != nil {
-		logger.Fatal(err)
+	rootPaths := getRootPaths(flag.Args())
+
+	if *flagOutput == "" || *flagStdOut {
+		var fileFormat = getPrintedFormat(*flagOutput, *flagVerbose)
+		if err := printReport(fileFormat, color, rootPaths, issues, metrics, errors); err != nil {
+			logger.Fatal((err))
+		}
+	}
+	if *flagOutput != "" {
+		if err := saveReport(*flagOutput, *flagFormat, color, rootPaths, issues, metrics, errors); err != nil {
+			logger.Fatal(err)
+		}
 	}
 
 	// Finalize logging
