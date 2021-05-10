@@ -24,19 +24,12 @@ func GenerateReport(data *core.ReportInfo) Report {
 	for _, issue := range data.Issues {
 		index, ok := testsuites[issue.What]
 		if !ok {
-			xmlReport.Testsuites = append(xmlReport.Testsuites, &Testsuite{
-				Name: issue.What,
-			})
+			xmlReport.Testsuites = append(xmlReport.Testsuites, NewTestsuite(issue.What))
 			index = len(xmlReport.Testsuites) - 1
 			testsuites[issue.What] = index
 		}
-		testcase := &Testcase{
-			Name: issue.File,
-			Failure: &Failure{
-				Message: "Found 1 vulnerability. See stacktrace for details.",
-				Text:    generatePlaintext(issue),
-			},
-		}
+		failure := NewFailure("Found 1 vulnerability. See stacktrace for details.", generatePlaintext(issue))
+		testcase := NewTestcase(issue.File, failure)
 
 		xmlReport.Testsuites[index].Testcases = append(xmlReport.Testsuites[index].Testcases, testcase)
 		xmlReport.Testsuites[index].Tests++

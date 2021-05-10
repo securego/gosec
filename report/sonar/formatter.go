@@ -27,28 +27,13 @@ func GenerateReport(rootPaths []string, data *core.ReportInfo) (*Report, error) 
 			return si, err
 		}
 
-		primaryLocation := buildPrimaryLocation(issue.What, sonarFilePath, textRange)
+		primaryLocation := NewLocation(issue.What, sonarFilePath, textRange)
 		severity := getSonarSeverity(issue.Severity.String())
 
-		s := &Issue{
-			EngineID:        "gosec",
-			RuleID:          issue.RuleID,
-			PrimaryLocation: primaryLocation,
-			Type:            "VULNERABILITY",
-			Severity:        severity,
-			EffortMinutes:   EffortMinutes,
-		}
+		s := NewIssue("gosec", issue.RuleID, primaryLocation, "VULNERABILITY", severity, EffortMinutes)
 		si.Issues = append(si.Issues, s)
 	}
 	return si, nil
-}
-
-func buildPrimaryLocation(message string, filePath string, textRange *TextRange) *Location {
-	return &Location{
-		Message:   message,
-		FilePath:  filePath,
-		TextRange: textRange,
-	}
 }
 
 func parseFilePath(issue *gosec.Issue, rootPaths []string) string {
@@ -74,7 +59,7 @@ func parseTextRange(issue *gosec.Issue) (*TextRange, error) {
 			return nil, err
 		}
 	}
-	return &TextRange{StartLine: startLine, EndLine: endLine}, nil
+	return NewTextRange(startLine, endLine), nil
 }
 
 func getSonarSeverity(s string) string {
