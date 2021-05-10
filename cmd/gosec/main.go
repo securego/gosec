@@ -120,6 +120,9 @@ var (
 	// stdout the results as well as write it in the output file
 	flagStdOut = flag.Bool("stdout", false, "Stdout the results as well as write it in the output file")
 
+	//print the text report with color, this is enabled by default
+	flagColor = flag.Bool("color", true, "Prints the text format report with colorization when it goes in the stdout")
+
 	// overrides the output format when stdout the results while saving them in the output file
 	flagVerbose = flag.String("verbose", "", "Overrides the output format when stdout the results while saving them in the output file.\nValid options are: json, yaml, csv, junit-xml, html, sonarqube, golint, sarif or text")
 
@@ -222,14 +225,14 @@ func printReport(format string, color bool, rootPaths []string, issues []*gosec.
 	return nil
 }
 
-func saveReport(filename, format string, color bool, rootPaths []string, issues []*gosec.Issue, metrics *gosec.Metrics, errors map[string][]gosec.Error) error {
+func saveReport(filename, format string, rootPaths []string, issues []*gosec.Issue, metrics *gosec.Metrics, errors map[string][]gosec.Error) error {
 
 	outfile, err := os.Create(filename)
 	if err != nil {
 		return err
 	}
 	defer outfile.Close() // #nosec G307
-	err = report.CreateReport(outfile, format, color, rootPaths, issues, metrics, errors)
+	err = report.CreateReport(outfile, format, false, rootPaths, issues, metrics, errors)
 	if err != nil {
 		return err
 	}
@@ -310,12 +313,6 @@ func main() {
 		logger = log.New(logWriter, "[gosec] ", log.LstdFlags)
 	}
 
-	// Color flag is allowed for text format
-	var color bool
-	if *flagFormat == "text" || *flagVerbose == "text" {
-		color = true
-	}
-
 	failSeverity, err := convertToScore(*flagSeverity)
 	if err != nil {
 		logger.Fatalf("Invalid severity value: %v", err)
@@ -388,12 +385,12 @@ func main() {
 
 	if *flagOutput == "" || *flagStdOut {
 		var fileFormat = getPrintedFormat(*flagOutput, *flagVerbose)
-		if err := printReport(fileFormat, color, rootPaths, issues, metrics, errors); err != nil {
+		if err := printReport(fileFormat, *flagColor, rootPaths, issues, metrics, errors); err != nil {
 			logger.Fatal((err))
 		}
 	}
 	if *flagOutput != "" {
-		if err := saveReport(*flagOutput, *flagFormat, color, rootPaths, issues, metrics, errors); err != nil {
+		if err := saveReport(*flagOutput, *flagFormat, rootPaths, issues, metrics, errors); err != nil {
 			logger.Fatal(err)
 		}
 	}
