@@ -64,7 +64,7 @@ func (r *Region) WithSnippet(snippet *ArtifactContent) *Region {
 	return r
 }
 
-//ArtifactContent instantiate an ArtifactContent
+//NewArtifactContent instantiate an ArtifactContent
 func NewArtifactContent(text string) *ArtifactContent {
 	return &ArtifactContent{
 		Text: text,
