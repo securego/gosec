@@ -172,12 +172,12 @@ func parseSarifRegion(issue *gosec.Issue) (*Region, error) {
 			return nil, err
 		}
 	}
-
 	col, err := strconv.Atoi(issue.Col)
 	if err != nil {
 		return nil, err
 	}
-	return NewRegion(startLine, endLine, col, col, "go"), nil
+	snippet := NewArtifactContent(issue.Code)
+	return NewRegion(startLine, endLine, col, col, "go").WithSnippet(snippet), nil
 }
 
 func getSarifLevel(s string) Level {
