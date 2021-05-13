@@ -58,6 +58,19 @@ func NewRegion(startLine int, endLine int, startColumn int, endColumn int, sourc
 	}
 }
 
+//WithSnippet defines the Snippet for the current Region
+func (r *Region) WithSnippet(snippet *ArtifactContent) *Region {
+	r.Snippet = snippet
+	return r
+}
+
+//NewArtifactContent instantiate an ArtifactContent
+func NewArtifactContent(text string) *ArtifactContent {
+	return &ArtifactContent{
+		Text: text,
+	}
+}
+
 //NewTool instantiate a Tool
 func NewTool(driver *ToolComponent) *Tool {
 	return &Tool{
