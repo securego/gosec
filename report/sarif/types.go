@@ -2,12 +2,6 @@
 
 package sarif
 
-import (
-	"bytes"
-	"encoding/json"
-	"fmt"
-)
-
 // Address A physical or virtual address, or a range of addresses, in an 'addressable region' (memory or a binary file).
 type Address struct {
 
@@ -693,12 +687,7 @@ type PhysicalLocation struct {
 }
 
 // PropertyBag Key/value pairs that provide additional information about the object.
-type PropertyBag struct {
-	AdditionalProperties map[string]interface{} `json:"-,omitempty"`
-
-	// A set of distinct strings that provide additional information.
-	Tags []string `json:"tags,omitempty"`
-}
+type PropertyBag map[string]interface{}
 
 // Rectangle An area within an image.
 type Rectangle struct {
@@ -1479,38 +1468,4 @@ type WebResponse struct {
 
 	// The response version. Example: '1.1'.
 	Version string `json:"version,omitempty"`
-}
-
-func (strct *PropertyBag) MarshalJSON() ([]byte, error) {
-	buf := bytes.NewBuffer(make([]byte, 0))
-	buf.WriteString("{")
-	comma := false
-	// Marshal the "tags" field
-	if comma {
-		buf.WriteString(",")
-	}
-	buf.WriteString("\"tags\": ")
-	if tmp, err := json.Marshal(strct.Tags); err != nil {
-		return nil, err
-	} else {
-		buf.Write(tmp)
-	}
-	comma = true
-	// Marshal any additional Properties
-	for k, v := range strct.AdditionalProperties {
-		if comma {
-			buf.WriteString(",")
-		}
-		buf.WriteString(fmt.Sprintf("\"%s\":", k))
-		if tmp, err := json.Marshal(v); err != nil {
-			return nil, err
-		} else {
-			buf.Write(tmp)
-		}
-		comma = true
-	}
-
-	buf.WriteString("}")
-	rv := buf.Bytes()
-	return rv, nil
 }

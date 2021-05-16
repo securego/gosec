@@ -5,13 +5,6 @@ import (
 	"fmt"
 )
 
-const (
-	//URL is the base URL for CWE definitions
-	URL = "https://cwe.mitre.org/data/definitions/"
-	//Acronym is the acronym of CWE
-	Acronym = "CWE"
-)
-
 // Weakness defines a CWE weakness based on http://cwe.mitre.org/data/xsd/cwe_schema_v6.4.xsd
 type Weakness struct {
 	ID          string
@@ -21,7 +14,7 @@ type Weakness struct {
 
 //SprintURL format the CWE URL
 func (w *Weakness) SprintURL() string {
-	return fmt.Sprintf("%s%s.html", URL, w.ID)
+	return fmt.Sprintf("https://cwe.mitre.org/data/definitions/%s.html", w.ID)
 }
 
 //SprintID format the CWE ID
@@ -38,4 +31,14 @@ func (w *Weakness) MarshalJSON() ([]byte, error) {
 		ID:  w.ID,
 		URL: w.SprintURL(),
 	})
+}
+
+//InformationURI link to the published CWE PDF
+func InformationURI() string {
+	return fmt.Sprintf("https://cwe.mitre.org/data/published/cwe_v%s.pdf/", Version)
+}
+
+//DownloadURI link to the zipped XML of the CWE list
+func DownloadURI() string {
+	return fmt.Sprintf("https://cwe.mitre.org/data/xml/cwec_v%s.xml.zip", Version)
 }
