@@ -51,34 +51,29 @@ const (
 
 // CreateReport generates a report based for the supplied issues and metrics given
 // the specified format. The formats currently accepted are: json, yaml, csv, junit-xml, html, sonarqube, golint and text.
-func CreateReport(w io.Writer, format string, enableColor bool, rootPaths []string, issues []*gosec.Issue, metrics *gosec.Metrics, errors map[string][]gosec.Error) error {
-	data := &gosec.ReportInfo{
-		Errors: errors,
-		Issues: issues,
-		Stats:  metrics,
-	}
+func CreateReport(w io.Writer, format string, enableColor bool, rootPaths []string, reportInfo *gosec.ReportInfo) error {
 	var err error
 	switch format {
 	case "json":
-		err = json.WriteReport(w, data)
+		err = json.WriteReport(w, reportInfo)
 	case "yaml":
-		err = yaml.WriteReport(w, data)
+		err = yaml.WriteReport(w, reportInfo)
 	case "csv":
-		err = csv.WriteReport(w, data)
+		err = csv.WriteReport(w, reportInfo)
 	case "junit-xml":
-		err = junit.WriteReport(w, data)
+		err = junit.WriteReport(w, reportInfo)
 	case "html":
-		err = html.WriteReport(w, data)
+		err = html.WriteReport(w, reportInfo)
 	case "text":
-		err = text.WriteReport(w, data, enableColor)
+		err = text.WriteReport(w, reportInfo, enableColor)
 	case "sonarqube":
-		err = sonar.WriteReport(w, data, rootPaths)
+		err = sonar.WriteReport(w, reportInfo, rootPaths)
 	case "golint":
-		err = golint.WriteReport(w, data)
+		err = golint.WriteReport(w, reportInfo)
 	case "sarif":
-		err = sarif.WriteReport(w, data, rootPaths)
+		err = sarif.WriteReport(w, reportInfo, rootPaths)
 	default:
-		err = text.WriteReport(w, data, enableColor)
+		err = text.WriteReport(w, reportInfo, enableColor)
 	}
 	return err
 }
