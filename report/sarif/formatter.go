@@ -2,18 +2,18 @@ package sarif
 
 import (
 	"fmt"
-	"github.com/google/uuid"
 	"runtime/debug"
 	"strconv"
 	"strings"
 
+	"github.com/google/uuid"
+
 	"github.com/securego/gosec/v2"
 	"github.com/securego/gosec/v2/cwe"
-	"github.com/securego/gosec/v2/report/core"
 )
 
 //GenerateReport Convert a gosec report to a Sarif Report
-func GenerateReport(rootPaths []string, data *core.ReportInfo) (*Report, error) {
+func GenerateReport(rootPaths []string, data *gosec.ReportInfo) (*Report, error) {
 
 	type rule struct {
 		index int

@@ -2,13 +2,14 @@ package golint
 
 import (
 	"fmt"
-	"github.com/securego/gosec/v2/report/core"
 	"io"
 	"strings"
+
+	"github.com/securego/gosec/v2"
 )
 
 //WriteReport write a report in golint format to the output writer
-func WriteReport(w io.Writer, data *core.ReportInfo) error {
+func WriteReport(w io.Writer, data *gosec.ReportInfo) error {
 	// Output Sample:
 	// /tmp/main.go:11:14: [CWE-310] RSA keys should be at least 2048 bits (Rule:G403, Severity:MEDIUM, Confidence:HIGH)
 

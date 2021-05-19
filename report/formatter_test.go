@@ -10,7 +10,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/securego/gosec/v2"
 	"github.com/securego/gosec/v2/cwe"
-	"github.com/securego/gosec/v2/report/core"
 	"github.com/securego/gosec/v2/report/junit"
 	"github.com/securego/gosec/v2/report/sonar"
 	"gopkg.in/yaml.v2"
@@ -37,10 +36,10 @@ func createIssue(ruleID string, weakness *cwe.Weakness) gosec.Issue {
 	}
 }
 
-func createReportInfo(rule string, weakness *cwe.Weakness) core.ReportInfo {
+func createReportInfo(rule string, weakness *cwe.Weakness) gosec.ReportInfo {
 	issue := createIssue(rule, weakness)
 	metrics := gosec.Metrics{}
-	return core.ReportInfo{
+	return gosec.ReportInfo{
 		Errors: map[string][]gosec.Error{},
 		Issues: []*gosec.Issue{
 			&issue,
@@ -61,7 +60,7 @@ var _ = Describe("Formatter", func() {
 	})
 	Context("when converting to Sonarqube issues", func() {
 		It("it should parse the report info", func() {
-			data := &core.ReportInfo{
+			data := &gosec.ReportInfo{
 				Errors: map[string][]gosec.Error{},
 				Issues: []*gosec.Issue{
 					{
@@ -109,7 +108,7 @@ var _ = Describe("Formatter", func() {
 		})
 
 		It("it should parse the report info with files in subfolders", func() {
-			data := &core.ReportInfo{
+			data := &gosec.ReportInfo{
 				Errors: map[string][]gosec.Error{},
 				Issues: []*gosec.Issue{
 					{
@@ -156,7 +155,7 @@ var _ = Describe("Formatter", func() {
 			Expect(*issues).To(Equal(*want))
 		})
 		It("it should not parse the report info for files from other projects", func() {
-			data := &core.ReportInfo{
+			data := &gosec.ReportInfo{
 				Errors: map[string][]gosec.Error{},
 				Issues: []*gosec.Issue{
 					{
@@ -188,7 +187,7 @@ var _ = Describe("Formatter", func() {
 		})
 
 		It("it should parse the report info for multiple projects projects", func() {
-			data := &core.ReportInfo{
+			data := &gosec.ReportInfo{
 				Errors: map[string][]gosec.Error{},
 				Issues: []*gosec.Issue{
 					{
@@ -264,7 +263,7 @@ var _ = Describe("Formatter", func() {
 		It("preserves order of issues", func() {
 			issues := []*gosec.Issue{createIssueWithFileWhat("i1", "1"), createIssueWithFileWhat("i2", "2"), createIssueWithFileWhat("i3", "1")}
 
-			junitReport := junit.GenerateReport(&core.ReportInfo{Issues: issues})
+			junitReport := junit.GenerateReport(&gosec.ReportInfo{Issues: issues})
 
 			testSuite := junitReport.Testsuites[0]
 

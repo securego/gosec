@@ -1,10 +1,10 @@
 package sonar
 
 import (
-	"github.com/securego/gosec/v2"
-	"github.com/securego/gosec/v2/report/core"
 	"strconv"
 	"strings"
+
+	"github.com/securego/gosec/v2"
 )
 
 const (
@@ -13,7 +13,7 @@ const (
 )
 
 //GenerateReport Convert a gosec report to a Sonar Report
-func GenerateReport(rootPaths []string, data *core.ReportInfo) (*Report, error) {
+func GenerateReport(rootPaths []string, data *gosec.ReportInfo) (*Report, error) {
 	si := &Report{Issues: []*Issue{}}
 	for _, issue := range data.Issues {
 		sonarFilePath := parseFilePath(issue, rootPaths)

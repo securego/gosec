@@ -5,7 +5,6 @@ import (
 	"strconv"
 
 	"github.com/securego/gosec/v2"
-	"github.com/securego/gosec/v2/report/core"
 )
 
 func generatePlaintext(issue *gosec.Issue) string {
@@ -17,7 +16,7 @@ func generatePlaintext(issue *gosec.Issue) string {
 }
 
 //GenerateReport Convert a gosec report to a JUnit Report
-func GenerateReport(data *core.ReportInfo) Report {
+func GenerateReport(data *gosec.ReportInfo) Report {
 	var xmlReport Report
 	testsuites := map[string]int{}
 
