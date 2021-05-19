@@ -15,6 +15,7 @@ builds:
       - windows
     goarch:
       - amd64
+      - arm64
     ldflags: -X main.Version={{.Version}} -X main.GitTag={{.Tag}} -X main.BuildDate={{.Date}}
     env:
       - CGO_ENABLED=0
