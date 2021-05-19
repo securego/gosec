@@ -8,6 +8,8 @@ require (
 	github.com/onsi/ginkgo v1.16.2
 	github.com/onsi/gomega v1.12.0
 	golang.org/x/mod v0.4.1 // indirect
+	golang.org/x/net v0.0.0-20210510120150-4163338589ed // indirect
+	golang.org/x/text v0.3.6 // indirect
 	golang.org/x/tools v0.1.0
 	gopkg.in/yaml.v2 v2.4.0
 )
