@@ -304,10 +304,10 @@ var _ = Describe("Formatter", func() {
 				error := map[string][]gosec.Error{}
 
 				buf := new(bytes.Buffer)
-				reportInfo := gosec.NewReportInfo([]*gosec.Issue{&issue}, &gosec.Metrics{NumFiles: 0, NumLines: 0, NumNosec: 0, NumFound: 0}, error)
+				reportInfo := gosec.NewReportInfo([]*gosec.Issue{&issue}, &gosec.Metrics{NumFiles: 0, NumLines: 0, NumNosec: 0, NumFound: 0}, error).WithVersion("v2.7.0")
 				err := CreateReport(buf, "xml", false, []string{}, reportInfo)
 				Expect(err).ShouldNot(HaveOccurred())
-				pattern := "Results:\n\n\n[/home/src/project/test.go:1] - %s (CWE-%s): test (Confidence: HIGH, Severity: HIGH)\n  > 1: testcode\n\n\n\nSummary:\n   Files: 0\n   Lines: 0\n   Nosec: 0\n  Issues: 0\n\n"
+				pattern := "Results:\n\n\n[/home/src/project/test.go:1] - %s (CWE-%s): test (Confidence: HIGH, Severity: HIGH)\n  > 1: testcode\n\n\n\nSummary:\n  Gosec  : v2.7.0\n  Files  : 0\n  Lines  : 0\n  Nosec  : 0\n  Issues : 0\n\n"
 				expect := fmt.Sprintf(pattern, rule, cwe.ID)
 				Expect(buf.String()).To(Equal(expect))
 			}
