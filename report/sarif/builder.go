@@ -126,6 +126,12 @@ func NewToolComponent(name string, version string, informationURI string) *ToolC
 	}
 }
 
+//WithLanguage set Language for the current ToolComponent
+func (t *ToolComponent) WithLanguage(language string) *ToolComponent {
+	t.Language = language
+	return t
+}
+
 //WithSemanticVersion set SemanticVersion for the current ToolComponent
 func (t *ToolComponent) WithSemanticVersion(semanticVersion string) *ToolComponent {
 	t.SemanticVersion = semanticVersion

@@ -107,6 +107,7 @@ func buildCWETaxonomy(taxa []*ReportingDescriptor) *ToolComponent {
 		WithOrganization(cwe.Organization).
 		WithShortDescription(NewMultiformatMessageString(cwe.Description)).
 		WithIsComprehensive(true).
+		WithLanguage("en").
 		WithMinimumRequiredLocalizedDataSemanticVersion(cwe.Version).
 		WithTaxa(taxa...)
 }
