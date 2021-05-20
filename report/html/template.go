@@ -40,6 +40,10 @@ const templateContent = `
     .break-word {
       word-wrap: break-word;
     }
+
+    .help {
+      white-space: pre-wrap;
+    }
   </style>
 </head>
 <body>
@@ -102,6 +106,7 @@ const templateContent = `
           <p className="help">
             Scanned { this.props.data.Stats.files.toLocaleString() } files
             with { this.props.data.Stats.lines.toLocaleString() } lines of code.
+            { this.props.data.Stats.nosec ? '\n' + this.props.data.Stats.nosec.toLocaleString() + ' false positives (nosec) have been waived.' : ''}
           </p>
         );
       }
