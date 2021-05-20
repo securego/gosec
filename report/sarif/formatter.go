@@ -2,6 +2,7 @@ package sarif
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -54,6 +55,9 @@ func GenerateReport(rootPaths []string, data *gosec.ReportInfo) (*Report, error)
 
 		results = append(results, result)
 	}
+
+	sort.SliceStable(rules, func(i, j int) bool { return rules[i].ID < rules[j].ID })
+	sort.SliceStable(cweTaxa, func(i, j int) bool { return cweTaxa[i].ID < cweTaxa[j].ID })
 
 	tool := NewTool(buildSarifDriver(rules, data.GosecVersion))
 
