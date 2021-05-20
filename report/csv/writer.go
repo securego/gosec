@@ -2,12 +2,13 @@ package csv
 
 import (
 	"encoding/csv"
-	"github.com/securego/gosec/v2/report/core"
 	"io"
+
+	"github.com/securego/gosec/v2"
 )
 
 //WriteReport write a report in csv format to the output writer
-func WriteReport(w io.Writer, data *core.ReportInfo) error {
+func WriteReport(w io.Writer, data *gosec.ReportInfo) error {
 	out := csv.NewWriter(w)
 	defer out.Flush()
 	for _, issue := range data.Issues {

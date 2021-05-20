@@ -4,7 +4,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/securego/gosec/v2"
-	"github.com/securego/gosec/v2/report/core"
 	"github.com/securego/gosec/v2/report/sonar"
 )
 
@@ -13,7 +12,7 @@ var _ = Describe("Sonar Formatter", func() {
 	})
 	Context("when converting to Sonarqube issues", func() {
 		It("it should parse the report info", func() {
-			data := &core.ReportInfo{
+			data := &gosec.ReportInfo{
 				Errors: map[string][]gosec.Error{},
 				Issues: []*gosec.Issue{
 					{
@@ -61,7 +60,7 @@ var _ = Describe("Sonar Formatter", func() {
 		})
 
 		It("it should parse the report info with files in subfolders", func() {
-			data := &core.ReportInfo{
+			data := &gosec.ReportInfo{
 				Errors: map[string][]gosec.Error{},
 				Issues: []*gosec.Issue{
 					{
@@ -108,7 +107,7 @@ var _ = Describe("Sonar Formatter", func() {
 			Expect(*issues).To(Equal(*want))
 		})
 		It("it should not parse the report info for files from other projects", func() {
-			data := &core.ReportInfo{
+			data := &gosec.ReportInfo{
 				Errors: map[string][]gosec.Error{},
 				Issues: []*gosec.Issue{
 					{
@@ -140,7 +139,7 @@ var _ = Describe("Sonar Formatter", func() {
 		})
 
 		It("it should parse the report info for multiple projects projects", func() {
-			data := &core.ReportInfo{
+			data := &gosec.ReportInfo{
 				Errors: map[string][]gosec.Error{},
 				Issues: []*gosec.Issue{
 					{

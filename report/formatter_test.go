@@ -10,7 +10,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/securego/gosec/v2"
 	"github.com/securego/gosec/v2/cwe"
-	"github.com/securego/gosec/v2/report/core"
 	"github.com/securego/gosec/v2/report/junit"
 	"github.com/securego/gosec/v2/report/sonar"
 	"gopkg.in/yaml.v2"
@@ -37,10 +36,10 @@ func createIssue(ruleID string, weakness *cwe.Weakness) gosec.Issue {
 	}
 }
 
-func createReportInfo(rule string, weakness *cwe.Weakness) core.ReportInfo {
+func createReportInfo(rule string, weakness *cwe.Weakness) gosec.ReportInfo {
 	issue := createIssue(rule, weakness)
 	metrics := gosec.Metrics{}
-	return core.ReportInfo{
+	return gosec.ReportInfo{
 		Errors: map[string][]gosec.Error{},
 		Issues: []*gosec.Issue{
 			&issue,
@@ -61,7 +60,7 @@ var _ = Describe("Formatter", func() {
 	})
 	Context("when converting to Sonarqube issues", func() {
 		It("it should parse the report info", func() {
-			data := &core.ReportInfo{
+			data := &gosec.ReportInfo{
 				Errors: map[string][]gosec.Error{},
 				Issues: []*gosec.Issue{
 					{
@@ -109,7 +108,7 @@ var _ = Describe("Formatter", func() {
 		})
 
 		It("it should parse the report info with files in subfolders", func() {
-			data := &core.ReportInfo{
+			data := &gosec.ReportInfo{
 				Errors: map[string][]gosec.Error{},
 				Issues: []*gosec.Issue{
 					{
@@ -156,7 +155,7 @@ var _ = Describe("Formatter", func() {
 			Expect(*issues).To(Equal(*want))
 		})
 		It("it should not parse the report info for files from other projects", func() {
-			data := &core.ReportInfo{
+			data := &gosec.ReportInfo{
 				Errors: map[string][]gosec.Error{},
 				Issues: []*gosec.Issue{
 					{
@@ -188,7 +187,7 @@ var _ = Describe("Formatter", func() {
 		})
 
 		It("it should parse the report info for multiple projects projects", func() {
-			data := &core.ReportInfo{
+			data := &gosec.ReportInfo{
 				Errors: map[string][]gosec.Error{},
 				Issues: []*gosec.Issue{
 					{
@@ -264,7 +263,7 @@ var _ = Describe("Formatter", func() {
 		It("preserves order of issues", func() {
 			issues := []*gosec.Issue{createIssueWithFileWhat("i1", "1"), createIssueWithFileWhat("i2", "2"), createIssueWithFileWhat("i3", "1")}
 
-			junitReport := junit.GenerateReport(&core.ReportInfo{Issues: issues})
+			junitReport := junit.GenerateReport(&gosec.ReportInfo{Issues: issues})
 
 			testSuite := junitReport.Testsuites[0]
 
@@ -290,7 +289,8 @@ var _ = Describe("Formatter", func() {
 				error := map[string][]gosec.Error{}
 
 				buf := new(bytes.Buffer)
-				err := CreateReport(buf, "csv", false, []string{}, []*gosec.Issue{&issue}, &gosec.Metrics{}, error)
+				reportInfo := gosec.NewReportInfo([]*gosec.Issue{&issue}, &gosec.Metrics{}, error)
+				err := CreateReport(buf, "csv", false, []string{}, reportInfo)
 				Expect(err).ShouldNot(HaveOccurred())
 				pattern := "/home/src/project/test.go,1,test,HIGH,HIGH,1: testcode,CWE-%s\n"
 				expect := fmt.Sprintf(pattern, cwe.ID)
@@ -304,7 +304,8 @@ var _ = Describe("Formatter", func() {
 				error := map[string][]gosec.Error{}
 
 				buf := new(bytes.Buffer)
-				err := CreateReport(buf, "xml", false, []string{}, []*gosec.Issue{&issue}, &gosec.Metrics{NumFiles: 0, NumLines: 0, NumNosec: 0, NumFound: 0}, error)
+				reportInfo := gosec.NewReportInfo([]*gosec.Issue{&issue}, &gosec.Metrics{NumFiles: 0, NumLines: 0, NumNosec: 0, NumFound: 0}, error)
+				err := CreateReport(buf, "xml", false, []string{}, reportInfo)
 				Expect(err).ShouldNot(HaveOccurred())
 				pattern := "Results:\n\n\n[/home/src/project/test.go:1] - %s (CWE-%s): test (Confidence: HIGH, Severity: HIGH)\n  > 1: testcode\n\n\n\nSummary:\n   Files: 0\n   Lines: 0\n   Nosec: 0\n  Issues: 0\n\n"
 				expect := fmt.Sprintf(pattern, rule, cwe.ID)
@@ -324,7 +325,8 @@ var _ = Describe("Formatter", func() {
 				err := enc.Encode(data)
 				Expect(err).ShouldNot(HaveOccurred())
 				buf := new(bytes.Buffer)
-				err = CreateReport(buf, "json", false, []string{}, []*gosec.Issue{&issue}, &gosec.Metrics{}, error)
+				reportInfo := gosec.NewReportInfo([]*gosec.Issue{&issue}, &gosec.Metrics{}, error)
+				err = CreateReport(buf, "json", false, []string{}, reportInfo)
 				Expect(err).ShouldNot(HaveOccurred())
 				result := stripString(buf.String())
 				expectation := stripString(expect.String())
@@ -344,7 +346,8 @@ var _ = Describe("Formatter", func() {
 				err := enc.Encode(data)
 				Expect(err).ShouldNot(HaveOccurred())
 				buf := new(bytes.Buffer)
-				err = CreateReport(buf, "html", false, []string{}, []*gosec.Issue{&issue}, &gosec.Metrics{}, error)
+				reportInfo := gosec.NewReportInfo([]*gosec.Issue{&issue}, &gosec.Metrics{}, error)
+				err = CreateReport(buf, "html", false, []string{}, reportInfo)
 				Expect(err).ShouldNot(HaveOccurred())
 				result := stripString(buf.String())
 				expectation := stripString(expect.String())
@@ -364,7 +367,8 @@ var _ = Describe("Formatter", func() {
 				err := enc.Encode(data)
 				Expect(err).ShouldNot(HaveOccurred())
 				buf := new(bytes.Buffer)
-				err = CreateReport(buf, "yaml", false, []string{}, []*gosec.Issue{&issue}, &gosec.Metrics{}, error)
+				reportInfo := gosec.NewReportInfo([]*gosec.Issue{&issue}, &gosec.Metrics{}, error)
+				err = CreateReport(buf, "yaml", false, []string{}, reportInfo)
 				Expect(err).ShouldNot(HaveOccurred())
 				result := stripString(buf.String())
 				expectation := stripString(expect.String())
@@ -384,7 +388,8 @@ var _ = Describe("Formatter", func() {
 				err := enc.Encode(data)
 				Expect(err).ShouldNot(HaveOccurred())
 				buf := new(bytes.Buffer)
-				err = CreateReport(buf, "junit-xml", false, []string{}, []*gosec.Issue{&issue}, &gosec.Metrics{}, error)
+				reportInfo := gosec.NewReportInfo([]*gosec.Issue{&issue}, &gosec.Metrics{}, error)
+				err = CreateReport(buf, "junit-xml", false, []string{}, reportInfo)
 				Expect(err).ShouldNot(HaveOccurred())
 				expectation := stripString(fmt.Sprintf("[/home/src/project/test.go:1] - test (Confidence: 2, Severity: 2, CWE: %s)", cwe.ID))
 				result := stripString(buf.String())
@@ -404,7 +409,8 @@ var _ = Describe("Formatter", func() {
 				err := enc.Encode(data)
 				Expect(err).ShouldNot(HaveOccurred())
 				buf := new(bytes.Buffer)
-				err = CreateReport(buf, "text", false, []string{}, []*gosec.Issue{&issue}, &gosec.Metrics{}, error)
+				reportInfo := gosec.NewReportInfo([]*gosec.Issue{&issue}, &gosec.Metrics{}, error)
+				err = CreateReport(buf, "text", false, []string{}, reportInfo)
 				Expect(err).ShouldNot(HaveOccurred())
 				expectation := stripString(fmt.Sprintf("[/home/src/project/test.go:1] - %s (CWE-%s): test (Confidence: HIGH, Severity: HIGH)", rule, cwe.ID))
 				result := stripString(buf.String())
@@ -417,7 +423,8 @@ var _ = Describe("Formatter", func() {
 				issue := createIssue(rule, cwe)
 				error := map[string][]gosec.Error{}
 				buf := new(bytes.Buffer)
-				err := CreateReport(buf, "sonarqube", false, []string{"/home/src/project"}, []*gosec.Issue{&issue}, &gosec.Metrics{}, error)
+				reportInfo := gosec.NewReportInfo([]*gosec.Issue{&issue}, &gosec.Metrics{}, error)
+				err := CreateReport(buf, "sonarqube", false, []string{"/home/src/project"}, reportInfo)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				result := stripString(buf.String())
@@ -438,7 +445,8 @@ var _ = Describe("Formatter", func() {
 				error := map[string][]gosec.Error{}
 
 				buf := new(bytes.Buffer)
-				err := CreateReport(buf, "golint", false, []string{}, []*gosec.Issue{&issue}, &gosec.Metrics{}, error)
+				reportInfo := gosec.NewReportInfo([]*gosec.Issue{&issue}, &gosec.Metrics{}, error)
+				err := CreateReport(buf, "golint", false, []string{}, reportInfo)
 				Expect(err).ShouldNot(HaveOccurred())
 				pattern := "/home/src/project/test.go:1:1: [CWE-%s] test (Rule:%s, Severity:HIGH, Confidence:HIGH)\n"
 				expect := fmt.Sprintf(pattern, cwe.ID, rule)
@@ -452,7 +460,8 @@ var _ = Describe("Formatter", func() {
 				error := map[string][]gosec.Error{}
 
 				buf := new(bytes.Buffer)
-				err := CreateReport(buf, "sarif", false, []string{}, []*gosec.Issue{&issue}, &gosec.Metrics{}, error)
+				reportInfo := gosec.NewReportInfo([]*gosec.Issue{&issue}, &gosec.Metrics{}, error).WithVersion("v2.7.0")
+				err := CreateReport(buf, "sarif", false, []string{}, reportInfo)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				result := stripString(buf.String())

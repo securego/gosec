@@ -2,18 +2,18 @@ package sarif
 
 import (
 	"fmt"
-	"github.com/google/uuid"
-	"runtime/debug"
+	"sort"
 	"strconv"
 	"strings"
 
+	"github.com/google/uuid"
+
 	"github.com/securego/gosec/v2"
 	"github.com/securego/gosec/v2/cwe"
-	"github.com/securego/gosec/v2/report/core"
 )
 
 //GenerateReport Convert a gosec report to a Sarif Report
-func GenerateReport(rootPaths []string, data *core.ReportInfo) (*Report, error) {
+func GenerateReport(rootPaths []string, data *gosec.ReportInfo) (*Report, error) {
 
 	type rule struct {
 		index int
@@ -56,7 +56,10 @@ func GenerateReport(rootPaths []string, data *core.ReportInfo) (*Report, error) 
 		results = append(results, result)
 	}
 
-	tool := NewTool(buildSarifDriver(rules))
+	sort.SliceStable(rules, func(i, j int) bool { return rules[i].ID < rules[j].ID })
+	sort.SliceStable(cweTaxa, func(i, j int) bool { return cweTaxa[i].ID < cweTaxa[j].ID })
+
+	tool := NewTool(buildSarifDriver(rules, data.GosecVersion))
 
 	cweTaxonomy := buildCWETaxonomy(cweTaxa)
 
@@ -108,6 +111,7 @@ func buildCWETaxonomy(taxa []*ReportingDescriptor) *ToolComponent {
 		WithOrganization(cwe.Organization).
 		WithShortDescription(NewMultiformatMessageString(cwe.Description)).
 		WithIsComprehensive(true).
+		WithLanguage("en").
 		WithMinimumRequiredLocalizedDataSemanticVersion(cwe.Version).
 		WithTaxa(taxa...)
 }
@@ -115,22 +119,27 @@ func buildCWETaxonomy(taxa []*ReportingDescriptor) *ToolComponent {
 func parseSarifTaxon(weakness *cwe.Weakness) *ReportingDescriptor {
 	return &ReportingDescriptor{
 		ID:               weakness.ID,
-		Name:             weakness.Name,
 		GUID:             uuid3(weakness.SprintID()),
 		HelpURI:          weakness.SprintURL(),
-		ShortDescription: NewMultiformatMessageString(weakness.Description),
+		FullDescription:  NewMultiformatMessageString(weakness.Description),
+		ShortDescription: NewMultiformatMessageString(weakness.Name),
 	}
 }
 
-func buildSarifDriver(rules []*ReportingDescriptor) *ToolComponent {
-	buildInfo, ok := debug.ReadBuildInfo()
-	var gosecVersion string
-	if ok {
-		gosecVersion = buildInfo.Main.Version[1:]
-	} else {
-		gosecVersion = "devel"
+func parseSemanticVersion(version string) string {
+	if len(version) == 0 {
+		return "devel"
 	}
+	if strings.HasPrefix(version, "v") {
+		return version[1:]
+	}
+	return version
+}
+
+func buildSarifDriver(rules []*ReportingDescriptor, gosecVersion string) *ToolComponent {
+	semanticVersion := parseSemanticVersion(gosecVersion)
 	return NewToolComponent("gosec", gosecVersion, "https://github.com/securego/gosec/").
+		WithSemanticVersion(semanticVersion).
 		WithSupportedTaxonomies(NewToolComponentReference(cwe.Acronym)).
 		WithRules(rules...)
 }

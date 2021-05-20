@@ -2,12 +2,13 @@ package junit
 
 import (
 	"encoding/xml"
-	"github.com/securego/gosec/v2/report/core"
 	"io"
+
+	"github.com/securego/gosec/v2"
 )
 
 //WriteReport write a report in JUnit format to the output writer
-func WriteReport(w io.Writer, data *core.ReportInfo) error {
+func WriteReport(w io.Writer, data *gosec.ReportInfo) error {
 	junitXMLStruct := GenerateReport(data)
 	raw, err := xml.MarshalIndent(junitXMLStruct, "", "\t")
 	if err != nil {

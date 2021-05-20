@@ -2,12 +2,13 @@ package json
 
 import (
 	"encoding/json"
-	"github.com/securego/gosec/v2/report/core"
 	"io"
+
+	"github.com/securego/gosec/v2"
 )
 
 //WriteReport write a report in json format to the output writer
-func WriteReport(w io.Writer, data *core.ReportInfo) error {
+func WriteReport(w io.Writer, data *gosec.ReportInfo) error {
 	raw, err := json.MarshalIndent(data, "", "\t")
 	if err != nil {
 		return err

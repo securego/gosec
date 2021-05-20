@@ -15,8 +15,9 @@
 package report
 
 import (
+	"io"
+
 	"github.com/securego/gosec/v2"
-	"github.com/securego/gosec/v2/report/core"
 	"github.com/securego/gosec/v2/report/csv"
 	"github.com/securego/gosec/v2/report/golint"
 	"github.com/securego/gosec/v2/report/html"
@@ -26,7 +27,6 @@ import (
 	"github.com/securego/gosec/v2/report/sonar"
 	"github.com/securego/gosec/v2/report/text"
 	"github.com/securego/gosec/v2/report/yaml"
-	"io"
 )
 
 // Format enumerates the output format for reported issues
@@ -51,12 +51,7 @@ const (
 
 // CreateReport generates a report based for the supplied issues and metrics given
 // the specified format. The formats currently accepted are: json, yaml, csv, junit-xml, html, sonarqube, golint and text.
-func CreateReport(w io.Writer, format string, enableColor bool, rootPaths []string, issues []*gosec.Issue, metrics *gosec.Metrics, errors map[string][]gosec.Error) error {
-	data := &core.ReportInfo{
-		Errors: errors,
-		Issues: issues,
-		Stats:  metrics,
-	}
+func CreateReport(w io.Writer, format string, enableColor bool, rootPaths []string, data *gosec.ReportInfo) error {
 	var err error
 	switch format {
 	case "json":

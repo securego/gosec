@@ -4,13 +4,13 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"github.com/gookit/color"
-	"github.com/securego/gosec/v2"
-	"github.com/securego/gosec/v2/report/core"
 	"io"
 	"strconv"
 	"strings"
 	"text/template"
+
+	"github.com/gookit/color"
+	"github.com/securego/gosec/v2"
 )
 
 var (
@@ -20,7 +20,7 @@ var (
 )
 
 //WriteReport write a (colorized) report in text format
-func WriteReport(w io.Writer, data *core.ReportInfo, enableColor bool) error {
+func WriteReport(w io.Writer, data *gosec.ReportInfo, enableColor bool) error {
 	t, e := template.
 		New("gosec").
 		Funcs(plainTextFuncMap(enableColor)).

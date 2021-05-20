@@ -216,23 +216,23 @@ func getPrintedFormat(format string, verbose string) string {
 	return fileFormat
 }
 
-func printReport(format string, color bool, rootPaths []string, issues []*gosec.Issue, metrics *gosec.Metrics, errors map[string][]gosec.Error) error {
+func printReport(format string, color bool, rootPaths []string, reportInfo *gosec.ReportInfo) error {
 
-	err := report.CreateReport(os.Stdout, format, color, rootPaths, issues, metrics, errors)
+	err := report.CreateReport(os.Stdout, format, color, rootPaths, reportInfo)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func saveReport(filename, format string, rootPaths []string, issues []*gosec.Issue, metrics *gosec.Metrics, errors map[string][]gosec.Error) error {
+func saveReport(filename, format string, rootPaths []string, reportInfo *gosec.ReportInfo) error {
 
 	outfile, err := os.Create(filename)
 	if err != nil {
 		return err
 	}
 	defer outfile.Close() // #nosec G307
-	err = report.CreateReport(outfile, format, false, rootPaths, issues, metrics, errors)
+	err = report.CreateReport(outfile, format, false, rootPaths, reportInfo)
 	if err != nil {
 		return err
 	}
@@ -383,14 +383,16 @@ func main() {
 	// Create output report
 	rootPaths := getRootPaths(flag.Args())
 
+	reportInfo := gosec.NewReportInfo(issues, metrics, errors).WithVersion(Version)
+
 	if *flagOutput == "" || *flagStdOut {
 		var fileFormat = getPrintedFormat(*flagOutput, *flagVerbose)
-		if err := printReport(fileFormat, *flagColor, rootPaths, issues, metrics, errors); err != nil {
+		if err := printReport(fileFormat, *flagColor, rootPaths, reportInfo); err != nil {
 			logger.Fatal((err))
 		}
 	}
 	if *flagOutput != "" {
-		if err := saveReport(*flagOutput, *flagFormat, rootPaths, issues, metrics, errors); err != nil {
+		if err := saveReport(*flagOutput, *flagFormat, rootPaths, reportInfo); err != nil {
 			logger.Fatal(err)
 		}
 	}
