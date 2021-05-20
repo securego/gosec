@@ -114,10 +114,10 @@ func buildCWETaxonomy(taxa []*ReportingDescriptor) *ToolComponent {
 func parseSarifTaxon(weakness *cwe.Weakness) *ReportingDescriptor {
 	return &ReportingDescriptor{
 		ID:               weakness.ID,
-		Name:             weakness.Name,
 		GUID:             uuid3(weakness.SprintID()),
 		HelpURI:          weakness.SprintURL(),
-		ShortDescription: NewMultiformatMessageString(weakness.Description),
+		FullDescription:  NewMultiformatMessageString(weakness.Description),
+		ShortDescription: NewMultiformatMessageString(weakness.Name),
 	}
 }
 
