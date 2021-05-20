@@ -383,7 +383,7 @@ func main() {
 	// Create output report
 	rootPaths := getRootPaths(flag.Args())
 
-	reportInfo := gosec.NewReportInfo(issues, metrics, errors)
+	reportInfo := gosec.NewReportInfo(issues, metrics, errors).WithVersion(Version)
 
 	if *flagOutput == "" || *flagStdOut {
 		var fileFormat = getPrintedFormat(*flagOutput, *flagVerbose)

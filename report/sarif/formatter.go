@@ -2,7 +2,6 @@ package sarif
 
 import (
 	"fmt"
-	"runtime/debug"
 	"strconv"
 	"strings"
 
@@ -56,7 +55,7 @@ func GenerateReport(rootPaths []string, data *gosec.ReportInfo) (*Report, error)
 		results = append(results, result)
 	}
 
-	tool := NewTool(buildSarifDriver(rules))
+	tool := NewTool(buildSarifDriver(rules, data.GosecVersion))
 
 	cweTaxonomy := buildCWETaxonomy(cweTaxa)
 
@@ -122,15 +121,20 @@ func parseSarifTaxon(weakness *cwe.Weakness) *ReportingDescriptor {
 	}
 }
 
-func buildSarifDriver(rules []*ReportingDescriptor) *ToolComponent {
-	buildInfo, ok := debug.ReadBuildInfo()
-	var gosecVersion string
-	if ok {
-		gosecVersion = buildInfo.Main.Version[1:]
-	} else {
-		gosecVersion = "devel"
+func parseSemanticVersion(version string) string {
+	if len(version) == 0 {
+		return "devel"
 	}
+	if strings.HasPrefix(version, "v") {
+		return version[1:]
+	}
+	return version
+}
+
+func buildSarifDriver(rules []*ReportingDescriptor, gosecVersion string) *ToolComponent {
+	semanticVersion := parseSemanticVersion(gosecVersion)
 	return NewToolComponent("gosec", gosecVersion, "https://github.com/securego/gosec/").
+		WithSemanticVersion(semanticVersion).
 		WithSupportedTaxonomies(NewToolComponentReference(cwe.Acronym)).
 		WithRules(rules...)
 }

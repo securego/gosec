@@ -460,7 +460,7 @@ var _ = Describe("Formatter", func() {
 				error := map[string][]gosec.Error{}
 
 				buf := new(bytes.Buffer)
-				reportInfo := gosec.NewReportInfo([]*gosec.Issue{&issue}, &gosec.Metrics{}, error)
+				reportInfo := gosec.NewReportInfo([]*gosec.Issue{&issue}, &gosec.Metrics{}, error).WithVersion("v2.7.0")
 				err := CreateReport(buf, "sarif", false, []string{}, reportInfo)
 				Expect(err).ShouldNot(HaveOccurred())
 
