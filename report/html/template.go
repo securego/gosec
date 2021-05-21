@@ -54,18 +54,19 @@ const templateContent = `
   <script type="text/babel">
     var IssueTag = React.createClass({
       render: function() {
-        var level = "tag "
+        var level = "tag"
         if (this.props.level === "HIGH") {
-          level += "is-danger";
+          level += " is-danger";
         } else if (this.props.level === "MEDIUM") {
-          level += "is-warning";
+          level += " is-warning";
         } else if (this.props.level === "LOW") {
-          level += "is-info";
+          level += " is-info";
         }
+        level +=" is-rounded";
         return (
           <div className="control">
             <div className="tags has-addons">
-              <span className="tag is-dark">{ this.props.label }</span>
+              <span className="tag is-dark is-rounded">{ this.props.label }</span>
               <span className={ level }>{ this.props.level }</span>
             </div>
           </div>
@@ -93,7 +94,7 @@ const templateContent = `
                 <p>{ this.props.data.details }</p>
               </div>
               <div className="column is-two-fifths">
-                <div className="field is-grouped is-grouped-multiline">
+                <div className="field is-grouped is-grouped-right">
                   <IssueTag label="Severity" level={ this.props.data.severity }/>
                   <IssueTag label="Confidence" level={ this.props.data.confidence }/>
                 </div>
