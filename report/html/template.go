@@ -276,12 +276,14 @@ const templateContent = `
               </strong>
             </div>
             <div className="panel-block">
-              <select onChange={ this.updateIssueType }>
-                <option value="all" selected={ !this.props.issueType }>
-                  (all)
-                </option>
-                { issueTypes }
-              </select>
+              <div class="select">
+                <select onChange={ this.updateIssueType }>
+                  <option value="all" selected={ !this.props.issueType }>
+                    (all)
+                  </option>
+                  { issueTypes }
+                </select>
+              </div>
             </div>
           </nav>
         );
