@@ -38,7 +38,7 @@ const templateContent = `
     white-space: pre-wrap;
   }
   .tag {
-    width: 75px;
+    width: 80px;
   }
   </style>
 </head>
@@ -90,7 +90,7 @@ const templateContent = `
             </div>
             <div className="highlight">
               <pre>
-                <code className="go hljs">{ this.props.data.code }</code>
+                <code className="go">{ this.props.data.code }</code>
               </pre>
             </div>
           </div>
