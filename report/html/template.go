@@ -94,7 +94,7 @@ const templateContent = `
                 <p>{ this.props.data.details }</p>
               </div>
               <div className="column is-two-fifths">
-                <div className="field is-grouped is-grouped-right">
+                <div className="field is-grouped is-grouped-multiline">
                   <IssueTag label="Severity" level={ this.props.data.severity }/>
                   <IssueTag label="Confidence" level={ this.props.data.confidence }/>
                 </div>
