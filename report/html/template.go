@@ -58,15 +58,14 @@ const templateContent = `
   <script type="text/babel">
     var IssueTag = React.createClass({
       render: function() {
-        var className = "tag "
+        var level = "tag "
         if (this.props.level === "HIGH") {
-          className += "is-danger";
-        }
-        if (this.props.level === "MEDIUM") {
-          className += "is-warning";
+          level += "is-danger";
+        } else if (this.props.level === "MEDIUM") {
+          level += "is-warning";
         }
         return (
-          <div className={ className }>
+          <div className={ level }>
             { this.props.label }: { this.props.level }
           </div>
         );
