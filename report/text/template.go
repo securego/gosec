@@ -13,10 +13,11 @@ Golang errors in file: [{{ $filePath }}]:
 
 {{ end }}
 {{ notice "Summary:" }}
-   Files: {{.Stats.NumFiles}}
-   Lines: {{.Stats.NumLines}}
-   Nosec: {{.Stats.NumNosec}}
-  Issues: {{ if eq .Stats.NumFound 0 }}
+  Gosec  : {{.GosecVersion}}
+  Files  : {{.Stats.NumFiles}}
+  Lines  : {{.Stats.NumLines}}
+  Nosec  : {{.Stats.NumNosec}}
+  Issues : {{ if eq .Stats.NumFound 0 }}
 	{{- success .Stats.NumFound }}
 	{{- else }}
 	{{- danger .Stats.NumFound }}

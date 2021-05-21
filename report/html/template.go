@@ -19,7 +19,7 @@ const templateContent = `
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Go AST Scanner</title>
+  <title>Golang Security Checker</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.2.1/css/bulma.min.css" integrity="sha256-DRcOKg8NK1KkSkcymcGmxOtS/lAn0lHWJXRa15gMHHk=" crossorigin="anonymous"/>
   <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/react/15.3.2/react.min.js" integrity="sha256-cLWs9L+cjZg8CjGHMpJqUgKKouPlmoMP/0wIdPtaPGs=" crossorigin="anonymous"></script>
   <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/react/15.3.2/react-dom.min.js" integrity="sha256-JIW8lNqN2EtqC6ggNZYnAdKMJXRQfkPMvdRt+b0/Jxc=" crossorigin="anonymous"></script>
@@ -89,9 +89,7 @@ const templateContent = `
             </p>
             <figure className="highlight">
               <pre>
-                <code className="golang hljs">
-                  { this.props.data.code }
-                </code>
+                <code className="go">{ this.props.data.code }</code>
               </pre>
             </figure>
           </div>
@@ -103,7 +101,7 @@ const templateContent = `
       render: function() {
         return (
           <p className="help">
-            Scanned { this.props.data.Stats.files.toLocaleString() } files
+            Gosec {this.props.data.GosecVersion} scanned { this.props.data.Stats.files.toLocaleString() } files
             with { this.props.data.Stats.lines.toLocaleString() } lines of code.
             { this.props.data.Stats.nosec ? '\n' + this.props.data.Stats.nosec.toLocaleString() + ' false positives (nosec) have been waived.' : ''}
           </p>
@@ -170,7 +168,6 @@ const templateContent = `
         );
       }
     });
-    
     var LevelSelector = React.createClass({
       handleChange: function(level) {
         return function(e) {
@@ -183,14 +180,18 @@ const templateContent = `
         }.bind(this);
       },
       render: function() {
-        var highDisabled = !this.props.available.includes("HIGH");
-        var mediumDisabled = !this.props.available.includes("MEDIUM");
-        var lowDisabled = !this.props.available.includes("LOW");
-        var on = "", off = "disabled";
         var HIGH = "HIGH", MEDIUM = "MEDIUM", LOW = "LOW";
+        var highDisabled = !this.props.available.includes(HIGH);
+        var mediumDisabled = !this.props.available.includes(MEDIUM);
+        var lowDisabled = !this.props.available.includes(LOW);
+        var on = "", off = "disabled";
+        var baseClassName = "label checkbox ";
+        var highClassName = baseClassName + (highDisabled ? off : on); 
+        var mediumClassName = baseClassName + (mediumDisabled ? off : on); 
+        var lowClassName = baseClassName + (lowDisabled ? off : on); 
         return (
           <span>
-            <label className="label checkbox { (highDisabled ? off : on )}">
+            <label className={ highClassName }>
               <input
                 type="checkbox"
                 checked={ this.props.selected.includes(HIGH) }
@@ -198,7 +199,7 @@ const templateContent = `
                 onChange={ this.handleChange(HIGH) }/>
               High
             </label>
-            <label className="label checkbox {( mediumDisabled ? off : on )}">
+            <label className={mediumClassName}>
               <input
                 type="checkbox"
                 checked={ this.props.selected.includes(MEDIUM) }
@@ -206,7 +207,7 @@ const templateContent = `
                 onChange={ this.handleChange(MEDIUM) }/>
               Medium
             </label>
-            <label className="label checkbox {( lowDisabled ? off : on )}">
+            <label className={lowClassName}>
               <input
                 type="checkbox"
                 checked={ this.props.selected.includes(LOW) }
@@ -218,7 +219,6 @@ const templateContent = `
         );
       }
     });
-    
     var Navigation = React.createClass({
       updateSeverity: function(vals) {
         this.props.onSeverity(vals);
@@ -276,12 +276,14 @@ const templateContent = `
               </strong>
             </div>
             <div className="panel-block">
-              <select onChange={ this.updateIssueType }>
-                <option value="all" selected={ !this.props.issueType }>
-                  (all)
-                </option>
-                { issueTypes }
-              </select>
+              <div className="select">
+                <select onChange={ this.updateIssueType }>
+                  <option value="all" selected={ !this.props.issueType }>
+                    (all)
+                  </option>
+                  { issueTypes }
+                </select>
+              </div>
             </div>
           </nav>
         );
@@ -353,11 +355,9 @@ const templateContent = `
           .filter(function(item, pos, ary) {
             return !pos || item != ary[pos - 1];
           });
-    
         if (this.state.issueType && !allTypes.includes(this.state.issueType)) {
           this.setState({issueType: null});
         }
-        
         this.setState({allIssueTypes: allTypes});
       },
       render: function() {
