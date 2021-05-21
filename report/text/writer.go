@@ -3,6 +3,8 @@ package text
 import (
 	"bufio"
 	"bytes"
+	// use go embed
+	_ "embed"
 	"fmt"
 	"io"
 	"strconv"
@@ -17,6 +19,9 @@ var (
 	errorTheme   = color.New(color.FgLightWhite, color.BgRed)
 	warningTheme = color.New(color.FgBlack, color.BgYellow)
 	defaultTheme = color.New(color.FgWhite, color.BgBlack)
+
+	//go:embed template.txt
+	templateContent string
 )
 
 //WriteReport write a (colorized) report in text format

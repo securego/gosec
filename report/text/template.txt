@@ -1,6 +1,4 @@
-package text
-
-const templateContent = `Results:
+Results:
 {{range $filePath,$fileErrors := .Errors}}
 Golang errors in file: [{{ $filePath }}]:
 {{range $index, $error := $fileErrors}}
@@ -21,5 +19,3 @@ Golang errors in file: [{{ $filePath }}]:
 	{{- else }}
 	{{- danger .Stats.NumFound }}
 	{{- end }}
-
-`
