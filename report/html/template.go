@@ -80,7 +80,9 @@ const templateContent = `
       },
       render: function() { 
         return (
-          <pre><code className="go hljs">{ this.props.code }</code></pre>
+          <div className="highlight">
+            <pre><code className="go hljs">{ this.props.code }</code></pre>
+          </div>
         );
       }
     });
@@ -100,9 +102,7 @@ const templateContent = `
                 </div>
               </div>
             </div>
-            <div className="highlight">
-              <Highlight code={ this.props.data.code }/>
-            </div>
+            <Highlight code={ this.props.data.code }/>
           </div>
         );
       }
