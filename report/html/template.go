@@ -251,7 +251,7 @@ const templateContent = `
             <div className="box">
             <div className="field is-horizontal">
               <div className="field-label is-normal">
-                <label className="label">Severity</label>
+                <label className="label is-pulled-left">Severity</label>
               </div>
               <div className="field-body">
               <LevelSelector 
@@ -262,7 +262,7 @@ const templateContent = `
              </div>
               <div className="field is-horizontal">
               <div className="field-label is-normal">
-                <label className="label">Confidence</label>
+                <label className="label is-pulled-left">Confidence</label>
               </div>
               <div className="field-body">
               <LevelSelector
@@ -273,7 +273,7 @@ const templateContent = `
               </div>
               <div className="field is-horizontal">
               <div className="field-label is-normal">
-                <label className="label">Issue type</label>
+                <label className="label is-pulled-left">Issue type</label>
               </div>
               <div className="field-body">
                 <div className="field">
