@@ -40,6 +40,9 @@ const templateContent = `
   .tag {
     width: 80px;
   }
+  .panel-block{
+    padding: 0;
+  }
   </style>
 </head>
 <body>
@@ -239,6 +242,7 @@ const templateContent = `
         return (
           <nav className="panel">
             <div className="panel-heading">Filters</div>
+            <div className="panel-block">
             <div className="box">
             <div className="field is-horizontal">
               <div className="field-label is-normal">
@@ -277,6 +281,7 @@ const templateContent = `
                         { issueTypes }
                       </select>
                     </div>
+                  </div>
                   </div>
                 </div>
               </div>
