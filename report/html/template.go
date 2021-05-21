@@ -93,7 +93,7 @@ const templateContent = `
             </div>
             <div className="highlight">
               <pre>
-                <code className="go">{ this.props.data.code }</code>
+                <code className="go hljs">{ this.props.data.code }</code>
               </pre>
             </div>
           </div>
