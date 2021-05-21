@@ -40,9 +40,6 @@ const templateContent = `
   .tag {
     width: 80px;
   }
-  .panel-block{
-    padding: 0;
-  }
   </style>
 </head>
 <body>
@@ -75,6 +72,17 @@ const templateContent = `
         );
       }
     });
+    var Highlight = React.createClass({
+      componentDidMount: function(){
+        var current = ReactDOM.findDOMNode(this);
+        hljs.highlightElement(current);
+      },
+      render: function() { 
+        return (
+          <pre><code className="go hljs">{ this.props.code }</code></pre>
+        );
+      }
+    });
     var Issue = React.createClass({
       render: function() {
         return (
@@ -92,9 +100,7 @@ const templateContent = `
               </div>
             </div>
             <div className="highlight">
-              <pre>
-                <code className="go hljs">{ this.props.data.code }</code>
-              </pre>
+              <Highlight code={ this.props.data.code }/>
             </div>
           </div>
         );
@@ -242,7 +248,6 @@ const templateContent = `
         return (
           <nav className="panel">
             <div className="panel-heading">Filters</div>
-            <div className="panel-block">
             <div className="box">
             <div className="field is-horizontal">
               <div className="field-label is-normal">
@@ -271,7 +276,7 @@ const templateContent = `
                 <label className="label">Issue type</label>
               </div>
               <div className="field-body">
-                <div className="field is-narrow">
+                <div className="field">
                   <div className="control">
                     <div className="select is-fullwidth">
                       <select onChange={ this.updateIssueType }>
@@ -284,7 +289,6 @@ const templateContent = `
                   </div>
                   </div>
                 </div>
-              </div>
               </div>
             </div>
           </nav>
@@ -396,7 +400,6 @@ const templateContent = `
       <IssueBrowser data={ data } />,
       document.getElementById("content")
     );
-    hljs.highlightAll();
   </script>
 </body>
 </html>`
