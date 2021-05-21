@@ -100,7 +100,7 @@ const templateContent = `
     var Stats = React.createClass({
       render: function() {
         return (
-          <p className="help">
+          <p className="help is-pulled-right">
             Gosec {this.props.data.GosecVersion} scanned { this.props.data.Stats.files.toLocaleString() } files
             with { this.props.data.Stats.lines.toLocaleString() } lines of code.
             { this.props.data.Stats.nosec ? '\n' + this.props.data.Stats.nosec.toLocaleString() + ' false positives (nosec) have been waived.' : ''}
