@@ -276,7 +276,7 @@ const templateContent = `
               </strong>
             </div>
             <div className="panel-block">
-              <div class="select">
+              <div className="select">
                 <select onChange={ this.updateIssueType }>
                   <option value="all" selected={ !this.props.issueType }>
                     (all)
