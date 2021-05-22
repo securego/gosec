@@ -75,11 +75,12 @@ const templateContent = `
     });
     var Highlight = React.createClass({
       componentDidMount: function(){
+        var current = ReactDOM.findDOMNode(this);
         hljs.highlightAll();
       },
       render: function() { 
         return (
-          <pre><code className="go">{ this.props.code }</code></pre>
+          <code className="go">{ this.props.code }</code>
         );
       }
     });
@@ -100,7 +101,7 @@ const templateContent = `
               </div>
             </div>
             <div className="highlight">
-              <Highlight code={ this.props.data.code }/>
+              <pre><Highlight code={ this.props.data.code }/></pre>
             </div>
           </div>
         );
