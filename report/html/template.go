@@ -76,7 +76,7 @@ const templateContent = `
     var Highlight = React.createClass({
       componentDidMount: function(){
         var current = ReactDOM.findDOMNode(this);
-        hljs.highlightAll();
+        hljs.highlightElement(current);
       },
       render: function() { 
         return (
