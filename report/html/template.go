@@ -29,7 +29,7 @@ const templateContent = `
   <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.17.0/babel.min.js" integrity="sha256-1IWWLlCKFGFj/cjryvC7GDF5wRYnf9tSvNVVEj8Bm+o=" crossorigin="anonymous"></script>
   <style>
   .field-label {
-    min-width: 85px;
+    min-width: 80px;
   }
   .break-word {
     word-wrap: break-word;
@@ -80,7 +80,7 @@ const templateContent = `
       },
       render: function() { 
         return (
-          <code className="go hljs">{ this.props.code }</code>
+          <pre><code className="go">{ this.props.code }</code></pre>
         );
       }
     });
@@ -89,11 +89,11 @@ const templateContent = `
         return (
           <div className="issue box">
           <div className="columns">
-              <div className="column is-three-fifths">
+              <div className="column is-three-quarters">
                 <strong className="break-word">{ this.props.data.file } (line { this.props.data.line })</strong>
                 <p>{ this.props.data.details }</p>
               </div>
-              <div className="column is-two-fifths">
+              <div className="column is-one-quarter">
                 <div className="field is-grouped is-grouped-multiline">
                   <IssueTag label="Severity" level={ this.props.data.severity }/>
                   <IssueTag label="Confidence" level={ this.props.data.confidence }/>
@@ -101,7 +101,7 @@ const templateContent = `
               </div>
             </div>
             <div className="highlight">
-              <pre><Highlight code={ this.props.data.code }/></pre>
+              <Highlight code={ this.props.data.code }/>
             </div>
           </div>
         );
@@ -190,33 +190,33 @@ const templateContent = `
         var mediumDisabled = !this.props.available.includes(MEDIUM);
         var lowDisabled = !this.props.available.includes(LOW);
         return (
-          <div className="field is-grouped">
-            <div className="control is-expanded">
-            <label className="checkbox" disabled={ highDisabled }>
-              <input
-                type="checkbox"
-                checked={ this.props.selected.includes(HIGH) }
-                disabled={ highDisabled }
-                onChange={ this.handleChange(HIGH) }/> High
-            </label>
+          <div className="field">
+            <div className="control">
+              <label className="checkbox" disabled={ highDisabled }>
+                <input
+                  type="checkbox"
+                  checked={ this.props.selected.includes(HIGH) }
+                  disabled={ highDisabled }
+                  onChange={ this.handleChange(HIGH) }/> High
+              </label>
             </div>
-            <div className="control is-expanded">
-            <label className="checkbox" disabled={ mediumDisabled }>
-              <input
-                type="checkbox"
-                checked={ this.props.selected.includes(MEDIUM) }
-                disabled={ mediumDisabled }
-                onChange={ this.handleChange(MEDIUM) }/> Medium
-            </label>
+            <div className="control">
+              <label className="checkbox" disabled={ mediumDisabled }>
+                <input
+                  type="checkbox"
+                  checked={ this.props.selected.includes(MEDIUM) }
+                  disabled={ mediumDisabled }
+                  onChange={ this.handleChange(MEDIUM) }/> Medium
+              </label>
             </div>
-            <div className="control is-expanded">
-            <label className="checkbox" disabled={ lowDisabled }>
-              <input
-                type="checkbox"
-                checked={ this.props.selected.includes(LOW) }
-                disabled={ lowDisabled }
-                onChange={ this.handleChange(LOW) }/> Low
-            </label>
+            <div className="control">
+              <label className="checkbox" disabled={ lowDisabled }>
+                <input
+                  type="checkbox"
+                  checked={ this.props.selected.includes(LOW) }
+                  disabled={ lowDisabled }
+                  onChange={ this.handleChange(LOW) }/> Low
+              </label>
             </div>
           </div>
         );
@@ -249,45 +249,43 @@ const templateContent = `
         return (
           <nav className="panel">
             <div className="panel-heading">Filters</div>
-            <div className="box">
-            <div className="field is-horizontal">
-              <div className="field-label is-normal">
-                <label className="label is-pulled-left">Severity</label>
-              </div>
-              <div className="field-body">
-              <LevelSelector 
-                selected={ this.props.severity }
-                available={ this.props.allSeverities }
-                onChange={ this.updateSeverity } />
-             </div>
-             </div>
+            <div className="panel-block">
               <div className="field is-horizontal">
-              <div className="field-label is-normal">
-                <label className="label is-pulled-left">Confidence</label>
-              </div>
-              <div className="field-body">
-              <LevelSelector
-                selected={ this.props.confidence }
-                available={ this.props.allConfidences }
-                onChange={ this.updateConfidence } />
+                <div className="field-label is-normal">
+                  <label className="label is-pulled-left">Severity</label>
+                </div>
+                <div className="field-body">
+                  <LevelSelector selected={ this.props.severity } available={ this.props.allSeverities } onChange={ this.updateSeverity } />
+                </div>
+             </div>
+            </div>
+            <div className="panel-block">
+              <div className="field is-horizontal">
+                <div className="field-label is-normal">
+                  <label className="label is-pulled-left">Confidence</label>
+                </div>
+                <div className="field-body">
+                  <LevelSelector selected={ this.props.confidence } available={ this.props.allConfidences } onChange={ this.updateConfidence } />
                 </div>
               </div>
+            </div>
+            <div className="panel-block">
               <div className="field is-horizontal">
-              <div className="field-label is-normal">
-                <label className="label is-pulled-left">Issue type</label>
-              </div>
-              <div className="field-body">
-                <div className="field">
-                  <div className="control">
-                    <div className="select is-fullwidth">
-                      <select onChange={ this.updateIssueType }>
-                        <option value="all" selected={ !this.props.issueType }>
-                          (all)
-                        </option>
-                        { issueTypes }
-                      </select>
+                <div className="field-label is-normal">
+                  <label className="label is-pulled-left">Issue type</label>
+                </div>
+                <div className="field-body">
+                  <div className="field">
+                    <div className="control">
+                      <div className="select is-fullwidth">
+                        <select onChange={ this.updateIssueType }>
+                          <option value="all" selected={ !this.props.issueType }>
+                            (all)
+                          </option>
+                          { issueTypes }
+                        </select>
+                      </div>
                     </div>
-                  </div>
                   </div>
                 </div>
               </div>
@@ -371,7 +369,7 @@ const templateContent = `
         return (
           <div className="content">
             <div className="columns">
-              <div className="column is-one-third">
+              <div className="column is-one-quarter">
                 <Navigation
                   severity={ this.state.severity } 
                   confidence={ this.state.confidence }
@@ -384,7 +382,7 @@ const templateContent = `
                   onIssueType={ this.handleIssueType }
                 />
               </div>
-              <div className="column is-two-thirds">
+              <div className="column is-three-quarters">
                 <Issues
                   data={ this.props.data }
                   severity={ this.state.severity }
