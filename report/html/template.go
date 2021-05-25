@@ -20,30 +20,26 @@ const templateContent = `
 <head>
   <meta charset="utf-8">
   <title>Golang Security Checker</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.2.1/css/bulma.min.css" integrity="sha256-DRcOKg8NK1KkSkcymcGmxOtS/lAn0lHWJXRa15gMHHk=" crossorigin="anonymous"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.9.2/css/bulma.min.css" integrity="sha512-byErQdWdTqREz6DLAA9pCnLbdoGGhXfU6gm1c8bkf7F51JVmUBlayGe2A31VpXWQP+eiJ3ilTAZHCR3vmMyybA==" crossorigin="anonymous"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.7.2/styles/default.min.css" integrity="sha512-kZqGbhf9JTB4bVJ0G8HCkqmaPcRgo88F0dneK30yku5Y/dep7CZfCnNml2Je/sY4lBoqoksXz4PtVXS4GHSUzQ==" crossorigin="anonymous"/>
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.7.2/highlight.min.js" integrity="sha512-s+tOYYcC3Jybgr9mVsdAxsRYlGNq4mlAurOrfNuGMQ/SCofNPu92tjE7YRZCsdEtWL1yGkqk15fU/ark206YTg==" crossorigin="anonymous"></script>
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.7.2/languages/go.min.js" integrity="sha512-+UYV2NyyynWEQcZ4sMTKmeppyV331gqvMOGZ61/dqc89Tn1H40lF05ACd03RSD9EWwGutNwKj256mIR8waEJBQ==" crossorigin="anonymous"></script>
   <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/react/15.3.2/react.min.js" integrity="sha256-cLWs9L+cjZg8CjGHMpJqUgKKouPlmoMP/0wIdPtaPGs=" crossorigin="anonymous"></script>
   <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/react/15.3.2/react-dom.min.js" integrity="sha256-JIW8lNqN2EtqC6ggNZYnAdKMJXRQfkPMvdRt+b0/Jxc=" crossorigin="anonymous"></script>
   <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.17.0/babel.min.js" integrity="sha256-1IWWLlCKFGFj/cjryvC7GDF5wRYnf9tSvNVVEj8Bm+o=" crossorigin="anonymous"></script>
   <style>
-    div.issue div.tag, div.panel-block input[type="checkbox"] {
-      margin-right: 0.5em;
-    }
-    
-    label.disabled {
-      text-decoration: line-through;
-    }
-    
-    nav.panel select {
-      width: 100%;
-    }
-
-    .break-word {
-      word-wrap: break-word;
-    }
-
-    .help {
-      white-space: pre-wrap;
-    }
+  .field-label {
+    min-width: 80px;
+  }
+  .break-word {
+    word-wrap: break-word;
+  }
+  .help {
+    white-space: pre-wrap;
+  }
+  .tag {
+    width: 80px;
+  }
   </style>
 </head>
 <body>
@@ -58,49 +54,63 @@ const templateContent = `
   <script type="text/babel">
     var IssueTag = React.createClass({
       render: function() {
-        var level = "tag "
+        var level = "tag"
         if (this.props.level === "HIGH") {
-          level += "is-danger";
+          level += " is-danger";
         } else if (this.props.level === "MEDIUM") {
-          level += "is-warning";
+          level += " is-warning";
+        } else if (this.props.level === "LOW") {
+          level += " is-info";
         }
+        level +=" is-rounded";
         return (
-          <div className={ level }>
-            { this.props.label }: { this.props.level }
+          <div className="control">
+            <div className="tags has-addons">
+              <span className="tag is-dark is-rounded">{ this.props.label }</span>
+              <span className={ level }>{ this.props.level }</span>
+            </div>
           </div>
         );
       }
     });
-    
+    var Highlight = React.createClass({
+      componentDidMount: function(){
+        var current = ReactDOM.findDOMNode(this);
+        hljs.highlightElement(current);
+      },
+      render: function() { 
+        return (
+          <pre className="go"><code >{ this.props.code }</code></pre>
+        );
+      }
+    });
     var Issue = React.createClass({
       render: function() {
         return (
           <div className="issue box">
-            <div className="is-pulled-right">
-              <IssueTag label="Severity" level={ this.props.data.severity }/>
-              <IssueTag label="Confidence" level={ this.props.data.confidence }/>
+          <div className="columns">
+              <div className="column is-three-quarters">
+                <strong className="break-word">{ this.props.data.file } (line { this.props.data.line })</strong>
+                <p>{ this.props.data.details }</p>
+              </div>
+              <div className="column is-one-quarter">
+                <div className="field is-grouped is-grouped-multiline">
+                  <IssueTag label="Severity" level={ this.props.data.severity }/>
+                  <IssueTag label="Confidence" level={ this.props.data.confidence }/>
+                </div>
+              </div>
             </div>
-            <p>
-              <strong className="break-word">
-                { this.props.data.file } (line { this.props.data.line })
-              </strong>
-              <br/>
-              { this.props.data.details }
-            </p>
-            <figure className="highlight">
-              <pre>
-                <code className="go">{ this.props.data.code }</code>
-              </pre>
-            </figure>
+            <div className="highlight">
+              <Highlight code={ this.props.data.code }/>
+            </div>
           </div>
         );
       }
     });
-    
     var Stats = React.createClass({
       render: function() {
         return (
-          <p className="help">
+          <p className="help is-pulled-right">
             Gosec {this.props.data.GosecVersion} scanned { this.props.data.Stats.files.toLocaleString() } files
             with { this.props.data.Stats.lines.toLocaleString() } lines of code.
             { this.props.data.Stats.nosec ? '\n' + this.props.data.Stats.nosec.toLocaleString() + ' false positives (nosec) have been waived.' : ''}
@@ -108,7 +118,6 @@ const templateContent = `
         );
       }
     });
-    
     var Issues = React.createClass({
       render: function() {
         if (this.props.data.Stats.files === 0) {
@@ -118,7 +127,6 @@ const templateContent = `
             </div>
           );
         }
-    
         if (this.props.data.Issues.length === 0) {
           return (
             <div>
@@ -129,7 +137,6 @@ const templateContent = `
             </div>
           );
         }
-    
         var issues = this.props.data.Issues
           .filter(function(issue) {
             return this.props.severity.includes(issue.severity);
@@ -147,7 +154,6 @@ const templateContent = `
           .map(function(issue) {
             return (<Issue data={issue} />);
           }.bind(this));
-    
         if (issues.length === 0) {
           return (
             <div>
@@ -159,7 +165,6 @@ const templateContent = `
             </div>
           );
         }
-    
         return (
           <div className="issues">
             { issues }
@@ -184,38 +189,36 @@ const templateContent = `
         var highDisabled = !this.props.available.includes(HIGH);
         var mediumDisabled = !this.props.available.includes(MEDIUM);
         var lowDisabled = !this.props.available.includes(LOW);
-        var on = "", off = "disabled";
-        var baseClassName = "label checkbox ";
-        var highClassName = baseClassName + (highDisabled ? off : on); 
-        var mediumClassName = baseClassName + (mediumDisabled ? off : on); 
-        var lowClassName = baseClassName + (lowDisabled ? off : on); 
         return (
-          <span>
-            <label className={ highClassName }>
-              <input
-                type="checkbox"
-                checked={ this.props.selected.includes(HIGH) }
-                disabled={ highDisabled }
-                onChange={ this.handleChange(HIGH) }/>
-              High
-            </label>
-            <label className={mediumClassName}>
-              <input
-                type="checkbox"
-                checked={ this.props.selected.includes(MEDIUM) }
-                disabled={ mediumDisabled }
-                onChange={ this.handleChange(MEDIUM) }/>
-              Medium
-            </label>
-            <label className={lowClassName}>
-              <input
-                type="checkbox"
-                checked={ this.props.selected.includes(LOW) }
-                disabled={ lowDisabled }
-                onChange={ this.handleChange(LOW) }/>
-              Low
-            </label>
-          </span>
+          <div className="field">
+            <div className="control">
+              <label className="checkbox" disabled={ highDisabled }>
+                <input
+                  type="checkbox"
+                  checked={ this.props.selected.includes(HIGH) }
+                  disabled={ highDisabled }
+                  onChange={ this.handleChange(HIGH) }/> High
+              </label>
+            </div>
+            <div className="control">
+              <label className="checkbox" disabled={ mediumDisabled }>
+                <input
+                  type="checkbox"
+                  checked={ this.props.selected.includes(MEDIUM) }
+                  disabled={ mediumDisabled }
+                  onChange={ this.handleChange(MEDIUM) }/> Medium
+              </label>
+            </div>
+            <div className="control">
+              <label className="checkbox" disabled={ lowDisabled }>
+                <input
+                  type="checkbox"
+                  checked={ this.props.selected.includes(LOW) }
+                  disabled={ lowDisabled }
+                  onChange={ this.handleChange(LOW) }/> Low
+              </label>
+            </div>
+          </div>
         );
       }
     });
@@ -245,44 +248,46 @@ const templateContent = `
           }.bind(this));
         return (
           <nav className="panel">
-            <div className="panel-heading">
-              Filters
+            <div className="panel-heading">Filters</div>
+            <div className="panel-block">
+              <div className="field is-horizontal">
+                <div className="field-label is-normal">
+                  <label className="label is-pulled-left">Severity</label>
+                </div>
+                <div className="field-body">
+                  <LevelSelector selected={ this.props.severity } available={ this.props.allSeverities } onChange={ this.updateSeverity } />
+                </div>
+             </div>
             </div>
             <div className="panel-block">
-              <strong>
-                Severity
-              </strong>
+              <div className="field is-horizontal">
+                <div className="field-label is-normal">
+                  <label className="label is-pulled-left">Confidence</label>
+                </div>
+                <div className="field-body">
+                  <LevelSelector selected={ this.props.confidence } available={ this.props.allConfidences } onChange={ this.updateConfidence } />
+                </div>
+              </div>
             </div>
             <div className="panel-block">
-              <LevelSelector 
-                selected={ this.props.severity }
-                available={ this.props.allSeverities }
-                onChange={ this.updateSeverity } />
-            </div>
-            <div className="panel-block">
-              <strong>
-                Confidence
-              </strong>
-            </div>
-            <div className="panel-block">
-              <LevelSelector
-                selected={ this.props.confidence }
-                available={ this.props.allConfidences }
-                onChange={ this.updateConfidence } />
-            </div>
-            <div className="panel-block">
-              <strong>
-                Issue Type
-              </strong>
-            </div>
-            <div className="panel-block">
-              <div className="select">
-                <select onChange={ this.updateIssueType }>
-                  <option value="all" selected={ !this.props.issueType }>
-                    (all)
-                  </option>
-                  { issueTypes }
-                </select>
+              <div className="field is-horizontal">
+                <div className="field-label is-normal">
+                  <label className="label is-pulled-left">Issue type</label>
+                </div>
+                <div className="field-body">
+                  <div className="field">
+                    <div className="control">
+                      <div className="select is-fullwidth">
+                        <select onChange={ this.updateIssueType }>
+                          <option value="all" selected={ !this.props.issueType }>
+                            (all)
+                          </option>
+                          { issueTypes }
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </nav>
@@ -390,7 +395,6 @@ const templateContent = `
         );
       }
     });
-
     ReactDOM.render(
       <IssueBrowser data={ data } />,
       document.getElementById("content")
