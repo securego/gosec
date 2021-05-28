@@ -43,7 +43,7 @@ jobs:
       - name: Run Tests
         run: make test
   coverage:
-    needs: [tests]
+    needs: [test]
     runs-on: ubuntu-latest
     env:
       GO111MODULE: on
