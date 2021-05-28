@@ -17,7 +17,7 @@ jobs:
         continue-on-error: true
         with:
           version: latest
-  tests:
+  test:
     strategy:
       matrix:
         go_version:
@@ -41,7 +41,7 @@ jobs:
         with:
           args: make test
   coverage:
-    needs: [tests-go-1-16, tests-go-1-15, tests-go-1-14]
+    needs: [tests]
     runs-on: ubuntu-latest
     env:
       GO111MODULE: on
