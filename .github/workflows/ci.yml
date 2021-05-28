@@ -12,18 +12,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
         continue-on-error: true
         with:
           version: latest
   test:
+    needs: [golangci]
     strategy:
       matrix:
         go_version:
-          - '^1.14'
-          - '^1.15'
-          - '^1.16'
+          - '1.14'
+          - '1.15'
+          - '1.16'
     runs-on: ubuntu-latest
     env:
       GO111MODULE: on
@@ -31,7 +38,7 @@ jobs:
       - name: Setup go
         uses: actions/setup-go@v2
         with:
-          go-version: ${{ matrix.go_version }}
+          go-version: ^${{ matrix.go_version }}
       - name: Checkout Source 
         uses: actions/checkout@v2
       - uses: actions/cache@v2
