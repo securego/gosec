@@ -35,7 +35,7 @@ jobs:
     env:
       GO111MODULE: on
     steps:
-      - name: Setup go
+      - name: Setup go ${{ matrix.go_version }} 
         uses: actions/setup-go@v2
         with:
           go-version: ${{ matrix.go_version }}
