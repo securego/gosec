@@ -12,9 +12,8 @@ import (
 	"github.com/securego/gosec/v2/cwe"
 )
 
-//GenerateReport Convert a gosec report to a Sarif Report
+// GenerateReport Convert a gosec report to a Sarif Report
 func GenerateReport(rootPaths []string, data *gosec.ReportInfo) (*Report, error) {
-
 	type rule struct {
 		index int
 		rule  *ReportingDescriptor

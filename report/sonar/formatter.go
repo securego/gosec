@@ -8,11 +8,11 @@ import (
 )
 
 const (
-	//EffortMinutes effort to fix in minutes
+	// EffortMinutes effort to fix in minutes
 	EffortMinutes = 5
 )
 
-//GenerateReport Convert a gosec report to a Sonar Report
+// GenerateReport Convert a gosec report to a Sonar Report
 func GenerateReport(rootPaths []string, data *gosec.ReportInfo) (*Report, error) {
 	si := &Report{Issues: []*Issue{}}
 	for _, issue := range data.Issues {

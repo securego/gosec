@@ -112,7 +112,6 @@ func (t *insecureConfigTLS) processTLSConfVal(n *ast.KeyValueExpr, c *gosec.Cont
 			}
 
 		}
-
 	}
 	return nil
 }

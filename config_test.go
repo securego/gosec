@@ -16,7 +16,6 @@ var _ = Describe("Configuration", func() {
 	})
 
 	Context("when loading from disk", func() {
-
 		It("should be possible to load configuration from a file", func() {
 			json := `{"G101": {}}`
 			buffer := bytes.NewBufferString(json)
@@ -35,7 +34,6 @@ var _ = Describe("Configuration", func() {
 			_, err = configuration.ReadFrom(emptyBuffer)
 			Expect(err).Should(HaveOccurred())
 		})
-
 	})
 
 	Context("when saving to disk", func() {
@@ -49,7 +47,6 @@ var _ = Describe("Configuration", func() {
 		})
 
 		It("should be possible to save configuration to file", func() {
-
 			configuration.Set("G101", map[string]string{
 				"mode": "strict",
 			})
@@ -59,12 +56,10 @@ var _ = Describe("Configuration", func() {
 			Expect(int(nbytes)).ShouldNot(BeZero())
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(buffer.String()).Should(Equal(`{"G101":{"mode":"strict"},"global":{}}`))
-
 		})
 	})
 
 	Context("when configuring rules", func() {
-
 		It("should be possible to get configuration for a rule", func() {
 			settings := map[string]string{
 				"ciphers": "AES256-GCM",

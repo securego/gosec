@@ -15,7 +15,7 @@ func generatePlaintext(issue *gosec.Issue) string {
 		", CWE: " + issue.Cwe.ID + ")\n" + "> " + html.EscapeString(issue.Code)
 }
 
-//GenerateReport Convert a gosec report to a JUnit Report
+// GenerateReport Convert a gosec report to a JUnit Report
 func GenerateReport(data *gosec.ReportInfo) Report {
 	var xmlReport Report
 	testsuites := map[string]int{}

@@ -7,7 +7,7 @@ import (
 	"github.com/securego/gosec/v2"
 )
 
-//WriteReport write a report in JUnit format to the output writer
+// WriteReport write a report in JUnit format to the output writer
 func WriteReport(w io.Writer, data *gosec.ReportInfo) error {
 	junitXMLStruct := GenerateReport(data)
 	raw, err := xml.MarshalIndent(junitXMLStruct, "", "\t")

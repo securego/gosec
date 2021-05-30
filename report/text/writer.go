@@ -19,7 +19,7 @@ var (
 	defaultTheme = color.New(color.FgWhite, color.BgBlack)
 )
 
-//WriteReport write a (colorized) report in text format
+// WriteReport write a (colorized) report in text format
 func WriteReport(w io.Writer, data *gosec.ReportInfo, enableColor bool) error {
 	t, e := template.
 		New("gosec").

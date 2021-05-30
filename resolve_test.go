@@ -336,6 +336,5 @@ var _ = Describe("Resolve ast node to concrete value", func() {
 			Expect(value).ShouldNot(BeNil())
 			Expect(gosec.TryResolve(value, ctx)).Should(BeFalse())
 		})
-
 	})
 })

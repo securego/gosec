@@ -13,7 +13,6 @@ import (
 )
 
 var _ = Describe("gosec rules", func() {
-
 	var (
 		logger    *log.Logger
 		config    gosec.Config
@@ -179,7 +178,5 @@ var _ = Describe("gosec rules", func() {
 		It("should detect implicit aliasing in ForRange", func() {
 			runner("G601", testutils.SampleCodeG601)
 		})
-
 	})
-
 })

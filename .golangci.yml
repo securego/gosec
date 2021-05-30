@@ -1,13 +1,30 @@
 linters:
   enable:
-  - megacheck
-  - govet
-  - unparam
-  - unconvert
-  - misspell
-  - gofmt
-  - golint
-  - gosec
-  - nakedret
-  - dogsled
+  - asciicheck
+  - bodyclose
   - depguard
+  - dogsled
+  - durationcheck
+  - errcheck
+  - exhaustive
+  - exportloopref
+  - gci
+  - gochecknoinits
+  - gofmt
+  - gofumpt
+  - goimports
+  - gomnd
+  - gosec
+  - govet
+  - importas
+  - megacheck
+  - misspell
+  - nakedret
+  - nilerr
+  - nolintlint
+  - predeclared
+  - revive
+  - stylecheck
+  - unconvert
+  - unparam
+  - wastedassign

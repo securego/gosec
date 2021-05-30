@@ -120,7 +120,7 @@ var (
 	// stdout the results as well as write it in the output file
 	flagStdOut = flag.Bool("stdout", false, "Stdout the results as well as write it in the output file")
 
-	//print the text report with color, this is enabled by default
+	// print the text report with color, this is enabled by default
 	flagColor = flag.Bool("color", true, "Prints the text format report with colorization when it goes in the stdout")
 
 	// overrides the output format when stdout the results while saving them in the output file
@@ -209,7 +209,7 @@ func getRootPaths(paths []string) []string {
 }
 
 func getPrintedFormat(format string, verbose string) string {
-	var fileFormat = format
+	fileFormat := format
 	if format != "" && verbose != "" {
 		fileFormat = verbose
 	}
@@ -217,7 +217,6 @@ func getPrintedFormat(format string, verbose string) string {
 }
 
 func printReport(format string, color bool, rootPaths []string, reportInfo *gosec.ReportInfo) error {
-
 	err := report.CreateReport(os.Stdout, format, color, rootPaths, reportInfo)
 	if err != nil {
 		return err
@@ -226,7 +225,6 @@ func printReport(format string, color bool, rootPaths []string, reportInfo *gose
 }
 
 func saveReport(filename, format string, rootPaths []string, reportInfo *gosec.ReportInfo) error {
-
 	outfile, err := os.Create(filename)
 	if err != nil {
 		return err
@@ -386,7 +384,7 @@ func main() {
 	reportInfo := gosec.NewReportInfo(issues, metrics, errors).WithVersion(Version)
 
 	if *flagOutput == "" || *flagStdOut {
-		var fileFormat = getPrintedFormat(*flagOutput, *flagVerbose)
+		fileFormat := getPrintedFormat(*flagOutput, *flagVerbose)
 		if err := printReport(fileFormat, *flagColor, rootPaths, reportInfo); err != nil {
 			logger.Fatal((err))
 		}

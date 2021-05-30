@@ -11,7 +11,6 @@ import (
 )
 
 var _ = Describe("Issue", func() {
-
 	Context("when creating a new issue", func() {
 		It("should create a code snippet from the specified ast.Node", func() {
 			var target *ast.BasicLit
@@ -134,7 +133,5 @@ func main() {
 		It("should maintain the provided confidence score", func() {
 			Skip("Not implemented")
 		})
-
 	})
-
 })

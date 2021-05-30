@@ -10,9 +10,7 @@ import (
 )
 
 var _ = Describe("Call List", func() {
-	var (
-		calls gosec.CallList
-	)
+	var calls gosec.CallList
 	BeforeEach(func() {
 		calls = gosec.NewCallList()
 	})

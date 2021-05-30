@@ -17,6 +17,5 @@ var _ = Describe("CWE data", func() {
 			Expect(weakness.Name).ShouldNot(BeNil())
 			Expect(weakness.Description).ShouldNot(BeNil())
 		})
-
 	})
 })

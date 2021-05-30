@@ -44,7 +44,6 @@ func (r *badDefer) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error) {
 				}
 			}
 		}
-
 	}
 
 	return nil, nil
