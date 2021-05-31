@@ -19,11 +19,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/securego/gosec/v2/cwe"
 	"go/ast"
 	"go/token"
 	"os"
 	"strconv"
+
+	"github.com/securego/gosec/v2/cwe"
 )
 
 // Score type used by severity and confidence values

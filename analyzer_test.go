@@ -17,7 +17,6 @@ import (
 )
 
 var _ = Describe("Analyzer", func() {
-
 	var (
 		analyzer  *gosec.Analyzer
 		logger    *log.Logger
@@ -30,7 +29,6 @@ var _ = Describe("Analyzer", func() {
 	})
 
 	Context("when processing a package", func() {
-
 		It("should not report an error if the package contains no Go files", func() {
 			analyzer.LoadRules(rules.Generate().Builders())
 			dir, err := ioutil.TempDir("", "empty")
@@ -118,7 +116,6 @@ var _ = Describe("Analyzer", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			controlIssues, _, _ := analyzer.Report()
 			Expect(controlIssues).Should(HaveLen(sample.Errors))
-
 		})
 
 		It("should report Go build errors and invalid files", func() {
@@ -262,7 +259,6 @@ var _ = Describe("Analyzer", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			nosecIssues, _, _ := customAnalyzer.Report()
 			Expect(nosecIssues).Should(HaveLen(sample.Errors))
-
 		})
 
 		It("should be possible to use an alternative nosec tag", func() {
@@ -286,7 +282,6 @@ var _ = Describe("Analyzer", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			nosecIssues, _, _ := customAnalyzer.Report()
 			Expect(nosecIssues).Should(HaveLen(0))
-
 		})
 
 		It("should ignore vulnerabilities when the default tag is found", func() {
@@ -310,7 +305,6 @@ var _ = Describe("Analyzer", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			nosecIssues, _, _ := customAnalyzer.Report()
 			Expect(nosecIssues).Should(HaveLen(0))
-
 		})
 
 		It("should be able to analyze Go test package", func() {
@@ -356,7 +350,6 @@ var _ = Describe("Analyzer", func() {
 	})
 
 	Context("when parsing errors from a package", func() {
-
 		It("should return no error when the error list is empty", func() {
 			pkg := &packages.Package{}
 			err := analyzer.ParseErrors(pkg)

@@ -27,9 +27,7 @@ func (m *mockrule) Match(n ast.Node, ctx *gosec.Context) (*gosec.Issue, error) {
 }
 
 var _ = Describe("Rule", func() {
-
 	Context("when using a ruleset", func() {
-
 		var (
 			ruleset        gosec.RuleSet
 			dummyErrorRule gosec.Rule
@@ -65,7 +63,6 @@ var _ = Describe("Rule", func() {
 			Expect(ruleset.RegisteredFor(unregisteredNode)).Should(BeEmpty())
 			Expect(ruleset.RegisteredFor(registeredNodeA)).Should(ContainElement(dummyIssueRule))
 			Expect(ruleset.RegisteredFor(registeredNodeB)).Should(ContainElement(dummyIssueRule))
-
 		})
 
 		It("should not register a rule when no ast.Nodes are specified", func() {
@@ -83,7 +80,5 @@ var _ = Describe("Rule", func() {
 			Expect(ruleset.RegisteredFor(registeredNode)).Should(ContainElement(dummyErrorRule))
 			Expect(ruleset.RegisteredFor(registeredNode)).Should(ContainElement(dummyIssueRule))
 		})
-
 	})
-
 })

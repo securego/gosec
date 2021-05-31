@@ -168,7 +168,6 @@ func GetCallInfo(n ast.Node, ctx *Context) (string, string, error) {
 							}
 						}
 					}
-
 				}
 			}
 		case *ast.Ident:
@@ -220,7 +219,6 @@ func GetIdentStringValues(ident *ast.Ident) []string {
 				}
 			}
 		}
-
 	}
 	return values
 }
@@ -298,7 +296,7 @@ func Gopath() []string {
 }
 
 // Getenv returns the values of the environment variable, otherwise
-//returns the default if variable is not set
+// returns the default if variable is not set
 func Getenv(key, userDefault string) string {
 	if val := os.Getenv(key); val != "" {
 		return val

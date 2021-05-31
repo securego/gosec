@@ -26,11 +26,13 @@ import (
 	"strings"
 )
 
-type command func(args ...string)
-type utilities struct {
-	commands map[string]command
-	call     []string
-}
+type (
+	command   func(args ...string)
+	utilities struct {
+		commands map[string]command
+		call     []string
+	}
+)
 
 // Custom commands / utilities to run instead of default analyzer
 func newUtils() *utilities {
@@ -58,7 +60,6 @@ func (u *utilities) String() string {
 func (u *utilities) Set(opt string) error {
 	if _, ok := u.commands[opt]; !ok {
 		return fmt.Errorf("valid tools are: %s", u.String())
-
 	}
 	u.call = append(u.call, opt)
 	return nil
@@ -171,7 +172,6 @@ func checkContext(ctx *context, file string) bool {
 }
 
 func dumpCallObj(files ...string) {
-
 	for _, file := range files {
 		if shouldSkip(file) {
 			continue
@@ -184,9 +184,9 @@ func dumpCallObj(files ...string) {
 			var obj types.Object
 			switch node := n.(type) {
 			case *ast.Ident:
-				obj = context.info.ObjectOf(node) //context.info.Uses[node]
+				obj = context.info.ObjectOf(node) // context.info.Uses[node]
 			case *ast.SelectorExpr:
-				obj = context.info.ObjectOf(node.Sel) //context.info.Uses[node.Sel]
+				obj = context.info.ObjectOf(node.Sel) // context.info.Uses[node.Sel]
 			default:
 				obj = nil
 			}

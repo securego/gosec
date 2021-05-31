@@ -12,7 +12,6 @@ import (
 func extractLineNumber(s string) int {
 	lineNumber, _ := strconv.Atoi(strings.Split(s, "-")[0])
 	return lineNumber
-
 }
 
 type sortBySeverity []*gosec.Issue

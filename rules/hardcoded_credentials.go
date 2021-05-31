@@ -121,7 +121,7 @@ func NewHardcodedCredentials(id string, conf gosec.Config) (gosec.Rule, []ast.No
 	entropyThreshold := 80.0
 	perCharThreshold := 3.0
 	ignoreEntropy := false
-	var truncateString = 16
+	truncateString := 16
 	if val, ok := conf["G101"]; ok {
 		conf := val.(map[string]interface{})
 		if configPattern, ok := conf["pattern"]; ok {

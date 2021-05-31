@@ -1,6 +1,6 @@
 package sonar
 
-//NewLocation instantiate a Location
+// NewLocation instantiate a Location
 func NewLocation(message string, filePath string, textRange *TextRange) *Location {
 	return &Location{
 		Message:   message,
@@ -9,7 +9,7 @@ func NewLocation(message string, filePath string, textRange *TextRange) *Locatio
 	}
 }
 
-//NewTextRange instantiate a TextRange
+// NewTextRange instantiate a TextRange
 func NewTextRange(startLine int, endLine int) *TextRange {
 	return &TextRange{
 		StartLine: startLine,
@@ -17,7 +17,7 @@ func NewTextRange(startLine int, endLine int) *TextRange {
 	}
 }
 
-//NewIssue instantiate an Issue
+// NewIssue instantiate an Issue
 func NewIssue(engineID string, ruleID string, primaryLocation *Location, issueType string, severity string, effortMinutes int) *Issue {
 	return &Issue{
 		EngineID:        engineID,

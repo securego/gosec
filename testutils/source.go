@@ -11,14 +11,16 @@ type CodeSample struct {
 
 var (
 	// SampleCodeG101 code snippets for hardcoded credentials
-	SampleCodeG101 = []CodeSample{{[]string{`
+	SampleCodeG101 = []CodeSample{
+		{[]string{`
 package main
 import "fmt"
 func main() {
 	username := "admin"
 	password := "f62e5bcda4fae4f82370da0c6f20697b8f8447ef"
 	fmt.Println("Doing something with: ", username, password)
-}`}, 1, gosec.NewConfig()}, {[]string{`
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
 // Entropy check should not report this error by default
 package main
 import "fmt"
@@ -26,21 +28,24 @@ func main() {
 	username := "admin"
 	password := "secret"
 	fmt.Println("Doing something with: ", username, password)
-}`}, 0, gosec.NewConfig()}, {[]string{`
+}`}, 0, gosec.NewConfig()},
+		{[]string{`
 package main
 import "fmt"
 var password = "f62e5bcda4fae4f82370da0c6f20697b8f8447ef"
 func main() {
 	username := "admin"
 	fmt.Println("Doing something with: ", username, password)
-}`}, 1, gosec.NewConfig()}, {[]string{`
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
 package main
 import "fmt"
 const password = "f62e5bcda4fae4f82370da0c6f20697b8f8447ef"
 func main() {
 	username := "admin"
 	fmt.Println("Doing something with: ", username, password)
-}`}, 1, gosec.NewConfig()}, {[]string{`
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
 package main
 import "fmt"
 const (
@@ -49,12 +54,14 @@ const (
 )
 func main() {
 	fmt.Println("Doing something with: ", username, password)
-}`}, 1, gosec.NewConfig()}, {[]string{`
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
 package main
 var password string
 func init() {
 	password = "f62e5bcda4fae4f82370da0c6f20697b8f8447ef"
-}`}, 1, gosec.NewConfig()}, {[]string{`
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
 package main
 const (
 	ATNStateSomethingElse = 1
@@ -62,7 +69,8 @@ const (
 )
 func main() {
 	println(ATNStateTokenStart)
-}`}, 0, gosec.NewConfig()}, {[]string{`
+}`}, 0, gosec.NewConfig()},
+		{[]string{`
 package main
 const (
 	ATNStateTokenStart = "f62e5bcda4fae4f82370da0c6f20697b8f8447ef"
@@ -96,7 +104,8 @@ func main() {
 	if p != "f62e5bcda4fae4f82370da0c6f20697b8f8447ef" {
 		fmt.Println("password equality")
 	}
-}`}, 0, gosec.NewConfig()}}
+}`}, 0, gosec.NewConfig()},
+	}
 
 	// SampleCodeG102 code snippets for network binding
 	SampleCodeG102 = []CodeSample{
@@ -201,7 +210,8 @@ func main() {
    	addressHolder := uintptr(unsafe.Pointer(intPtr)) + unsafe.Sizeof(intArray[0])
    	intPtr = (*int)(unsafe.Pointer(addressHolder))
    	fmt.Printf("\nintPtr=%p, *intPtr=%d.\n\n", intPtr, *intPtr)
-}`}, 3, gosec.NewConfig()}}
+}`}, 3, gosec.NewConfig()},
+	}
 
 	// SampleCodeG104 finds errors that aren't being handled
 	SampleCodeG104 = []CodeSample{
@@ -314,7 +324,8 @@ func main() {
 	createBuffer().WriteString("*bytes.Buffer")
 	b := createBuffer()
 	b.WriteString("*bytes.Buffer")
-}`}, 0, gosec.NewConfig()}}  // it shoudn't return any errors because all method calls are whitelisted by default
+}`}, 0, gosec.NewConfig()},
+	} // it shoudn't return any errors because all method calls are whitelisted by default
 
 	// SampleCodeG104Audit finds errors that aren't being handled in audit mode
 	SampleCodeG104Audit = []CodeSample{
@@ -372,7 +383,8 @@ func main() {
 }`, `
 package main
 func dummy(){}
-`}, 0, gosec.Config{gosec.Globals: map[gosec.GlobalOption]string{gosec.Audit: "enabled"}}}}
+`}, 0, gosec.Config{gosec.Globals: map[gosec.GlobalOption]string{gosec.Audit: "enabled"}}},
+	}
 
 	// SampleCodeG106 - ssh InsecureIgnoreHostKey
 	SampleCodeG106 = []CodeSample{{[]string{`
@@ -675,7 +687,8 @@ func main() {
 	}
 	v := int32(value)
 	fmt.Println(v)
-}`}, 0, gosec.NewConfig()}}
+}`}, 0, gosec.NewConfig()},
+	}
 
 	// SampleCodeG110 - potential DoS vulnerability via decompression bomb
 	SampleCodeG110 = []CodeSample{
@@ -791,7 +804,8 @@ func main() {
 	if  err != nil {
 		panic(err)
 	}
-}`}, 0, gosec.NewConfig()}}
+}`}, 0, gosec.NewConfig()},
+	}
 
 	// SampleCodeG201 - SQL injection via format string
 	SampleCodeG201 = []CodeSample{
@@ -971,7 +985,8 @@ import (
 
 func main(){
 	fmt.Sprintln()
-}`}, 0, gosec.NewConfig()}}
+}`}, 0, gosec.NewConfig()},
+	}
 
 	// SampleCodeG202 - SQL query string building via string concatenation
 	SampleCodeG202 = []CodeSample{
@@ -1125,7 +1140,8 @@ func main(){
 		}
 		defer rows.Close()
 }
-`}, 0, gosec.NewConfig()}}
+`}, 0, gosec.NewConfig()},
+	}
 
 	// SampleCodeG203 - Template checks
 	SampleCodeG203 = []CodeSample{
@@ -1163,7 +1179,8 @@ func main() {
 		"Body":     template.HTML(a),
 	}
 	t.Execute(os.Stdout, v)
-}`}, 1, gosec.NewConfig()}, {[]string{
+}`,
+		}, 1, gosec.NewConfig()}, {[]string{
 			`
 package main
 import (
@@ -1179,7 +1196,8 @@ func main() {
 		"Body":     template.JS(a),
 	}
 	t.Execute(os.Stdout, v)
-}`}, 1, gosec.NewConfig()}, {[]string{
+}`,
+		}, 1, gosec.NewConfig()}, {[]string{
 			`
 package main
 import (
@@ -1195,10 +1213,13 @@ func main() {
 		"Body":     template.URL(a),
 	}
 	t.Execute(os.Stdout, v)
-}`}, 1, gosec.NewConfig()}}
+}`,
+		}, 1, gosec.NewConfig()},
+	}
 
 	// SampleCodeG204 - Subprocess auditing
-	SampleCodeG204 = []CodeSample{{[]string{`
+	SampleCodeG204 = []CodeSample{
+		{[]string{`
 package main
 import (
 	"log"
@@ -1211,7 +1232,8 @@ func main() {
 		log.Fatal(err)
 	}
   	log.Printf("Command finished with error: %v", err)
-}`}, 0, gosec.NewConfig()}, {[]string{`
+}`}, 0, gosec.NewConfig()},
+		{[]string{`
 // Calling any function which starts a new process with using
 // command line arguments as it's arguments is considered dangerous
 package main
@@ -1227,7 +1249,8 @@ func main() {
 		log.Fatal(err)
 	}
 	log.Printf("Command finished with error: %v", err)
-}`}, 1, gosec.NewConfig()}, {[]string{`
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
 // Initializing a local variable using a environmental
 // variable is consider as a dangerous user input
 package main
@@ -1246,7 +1269,8 @@ func main() {
 	log.Printf("Waiting for command to finish...")
 	err = cmd.Wait()
 	log.Printf("Command finished with error: %v", err)
-}`}, 1, gosec.NewConfig()}, {[]string{`
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
 // gosec doesn't have enough context to decide that the
 // command argument of the RunCmd function is harcoded string
 // and that's why it's better to warn the user so he can audit it
@@ -1269,7 +1293,8 @@ func RunCmd(command string) {
 
 func main() {
 	RunCmd("sleep")
-}`}, 1, gosec.NewConfig()}, {[]string{`
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
 // syscall.Exec function called with harcoded arguments
 // shouldn't be consider as a command injection
 package main
@@ -1283,7 +1308,8 @@ func main() {
 		fmt.Printf("Error: %v\n", err)
 	}
 }`}, 0, gosec.NewConfig()},
-		{[]string{`
+		{
+			[]string{`
 package main
 
 import (
@@ -1302,7 +1328,8 @@ func main() {
 	RunCmd("sleep")
 }`}, 1, gosec.NewConfig(),
 		},
-		{[]string{`
+		{
+			[]string{`
 package main
 
 import (
@@ -1340,7 +1367,8 @@ func main() {
 	log.Printf("Waiting for command to finish...")
 	err = cmd.Wait()
 	log.Printf("Command finished with error: %v", err)
-}`}, 0, gosec.NewConfig()}}
+}`}, 0, gosec.NewConfig()},
+	}
 
 	// SampleCodeG301 - mkdir permission check
 	SampleCodeG301 = []CodeSample{{[]string{`
@@ -1855,7 +1883,8 @@ func main() {
 
 	w.Flush()
 
-}`}, 1, gosec.NewConfig()}}
+}`}, 1, gosec.NewConfig()},
+	}
 	// SampleCodeG307 - Unsafe defer of os.Close
 	SampleCodeG307 = []CodeSample{
 		{[]string{`package main
@@ -1904,7 +1933,8 @@ func main() {
 
 	w.Flush()
 
-}`}, 1, gosec.NewConfig()}}
+}`}, 1, gosec.NewConfig()},
+	}
 
 	// SampleCodeG401 - Use of weak crypto MD5
 	SampleCodeG401 = []CodeSample{
@@ -1937,7 +1967,8 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("%x", h.Sum(nil))
-}`}, 1, gosec.NewConfig()}}
+}`}, 1, gosec.NewConfig()},
+	}
 
 	// SampleCodeG401b - Use of weak crypto SHA1
 	SampleCodeG401b = []CodeSample{
@@ -1962,7 +1993,8 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("%x", h.Sum(nil))
-}`}, 1, gosec.NewConfig()}}
+}`}, 1, gosec.NewConfig()},
+	}
 
 	// SampleCodeG402 - TLS settings
 	SampleCodeG402 = []CodeSample{{[]string{`
@@ -2001,7 +2033,8 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
-}`}, 1, gosec.NewConfig()}, {[]string{`
+}`,
+	}, 1, gosec.NewConfig()}, {[]string{`
 // Insecure max version
 package main
 import (
@@ -2040,7 +2073,8 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
-}`}, 1, gosec.NewConfig()}, {[]string{`
+}`}, 1, gosec.NewConfig(),
+	}, {[]string{`
 // secure max version when min version is specified
 package main
 import (
@@ -2092,7 +2126,8 @@ func main() {
 		fmt.Println(err)
 	}
 	fmt.Println(pvk)
-}`}, 1, gosec.NewConfig()}}
+}`}, 1, gosec.NewConfig()},
+	}
 
 	// SampleCodeG404 - weak random number
 	SampleCodeG404 = []CodeSample{
@@ -2140,7 +2175,8 @@ import (
 func main() {
 	bad := rand.Intn(10)
 	println(bad)
-}`}, 1, gosec.NewConfig()}}
+}`}, 1, gosec.NewConfig()},
+	}
 
 	// SampleCodeG501 - Blocklisted import MD5
 	SampleCodeG501 = []CodeSample{
@@ -2155,7 +2191,8 @@ func main() {
 	for _, arg := range os.Args {
 		fmt.Printf("%x - %s\n", md5.Sum([]byte(arg)), arg)
 	}
-}`}, 1, gosec.NewConfig()}}
+}`}, 1, gosec.NewConfig()},
+	}
 
 	// SampleCodeG502 - Blocklisted import DES
 	SampleCodeG502 = []CodeSample{
@@ -2183,7 +2220,8 @@ func main() {
 	stream := cipher.NewCFBEncrypter(block, iv)
 	stream.XORKeyStream(ciphertext[des.BlockSize:], plaintext)
 	fmt.Println("Secret message is: %s", hex.EncodeToString(ciphertext))
-}`}, 1, gosec.NewConfig()}}
+}`}, 1, gosec.NewConfig()},
+	}
 
 	// SampleCodeG503 - Blocklisted import RC4
 	SampleCodeG503 = []CodeSample{{[]string{`
@@ -2227,11 +2265,13 @@ func main() {
 	for _, arg := range os.Args {
 		fmt.Printf("%x - %s\n", sha1.Sum([]byte(arg)), arg)
 	}
-}`}, 1, gosec.NewConfig()}}
+}`}, 1, gosec.NewConfig()},
+	}
 
 	// SampleCodeG601 - Implicit aliasing over range statement
 	SampleCodeG601 = []CodeSample{
-		{[]string{`
+		{[]string{
+			`
 package main
 
 import "fmt"
