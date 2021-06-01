@@ -16,7 +16,6 @@
       "schedule:weekly"
     ]
   },
-  "onboarding": true,
   "postUpdateOptions": [
     "gomodTidy",
     "gomodUpdateImportPaths"
