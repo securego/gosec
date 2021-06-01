@@ -1,5 +1,8 @@
 {
   "dependencyDashboard": true,
+  "vulnerabilityAlerts": {
+    "enabled": true
+  },
   "extends": [
     ":preserveSemverRanges",
     "group:all",
