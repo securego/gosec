@@ -1,5 +1,25 @@
 {
+  "dependencyDashboard": true,
+  "vulnerabilityAlerts": {
+    "enabled": true
+  },
   "extends": [
-    "config:base"
-  ]
+    ":preserveSemverRanges",
+    "group:all",
+    "schedule:weekly"
+  ],
+  "lockFileMaintenance": {
+    "commitMessageAction": "Update",
+    "enabled": true,
+    "extends": [
+      "group:all",
+      "schedule:weekly"
+    ]
+  },
+  "onboarding": true,
+  "postUpdateOptions": [
+    "gomodTidy",
+    "gomodUpdateImportPaths"
+  ],
+  "separateMajorMinor": false
 }
