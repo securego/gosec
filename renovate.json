@@ -1,7 +1,24 @@
 {
+  "dependencyDashboard": true,
+  "vulnerabilityAlerts": {
+    "enabled": true
+  },
+  "extends": [
+    ":preserveSemverRanges",
+    "group:all",
+    "schedule:weekly"
+  ],
+  "lockFileMaintenance": {
+    "commitMessageAction": "Update",
+    "enabled": true,
     "extends": [
-        "config:semverAllMonthly",
-        ":enableVulnerabilityAlertsWithLabel(vulnerablity)",
-        ":docker"
+      "group:all",
+      "schedule:weekly"
     ]
+  },
+  "postUpdateOptions": [
+    "gomodTidy",
+    "gomodUpdateImportPaths"
+  ],
+  "separateMajorMinor": false
 }
