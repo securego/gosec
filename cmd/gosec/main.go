@@ -208,12 +208,13 @@ func getRootPaths(paths []string) []string {
 	return rootPaths
 }
 
+// If verbose is defined it overwrites the defined format
+// Otherwise the actual format is used
 func getPrintedFormat(format string, verbose string) string {
-	fileFormat := format
-	if format != "" && verbose != "" {
-		fileFormat = verbose
+	if verbose != "" {
+		return verbose
 	}
-	return fileFormat
+	return format
 }
 
 func printReport(format string, color bool, rootPaths []string, reportInfo *gosec.ReportInfo) error {
@@ -384,7 +385,7 @@ func main() {
 	reportInfo := gosec.NewReportInfo(issues, metrics, errors).WithVersion(Version)
 
 	if *flagOutput == "" || *flagStdOut {
-		fileFormat := getPrintedFormat(*flagOutput, *flagVerbose)
+		fileFormat := getPrintedFormat(*flagFormat, *flagVerbose)
 		if err := printReport(fileFormat, *flagColor, rootPaths, reportInfo); err != nil {
 			logger.Fatal((err))
 		}
