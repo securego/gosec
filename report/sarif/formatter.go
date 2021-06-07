@@ -104,9 +104,9 @@ func buildSarifReportingDescriptorRelationship(weakness *cwe.Weakness) *Reportin
 }
 
 func buildCWETaxonomy(taxa []*ReportingDescriptor) *ToolComponent {
-	return NewToolComponent(cwe.Acronym, cwe.Version, cwe.InformationURI()).
+	return NewToolComponent(cwe.Acronym, cwe.Version, cwe.InformationURI).
 		WithReleaseDateUtc(cwe.ReleaseDateUtc).
-		WithDownloadURI(cwe.DownloadURI()).
+		WithDownloadURI(cwe.DownloadURI).
 		WithOrganization(cwe.Organization).
 		WithShortDescription(NewMultiformatMessageString(cwe.Description)).
 		WithIsComprehensive(true).

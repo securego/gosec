@@ -11,8 +11,8 @@ var _ = Describe("CWE Types", func() {
 	})
 	Context("when consulting cwe types", func() {
 		It("it should retrieves the information and download URIs", func() {
-			Expect(cwe.InformationURI()).To(Equal("https://cwe.mitre.org/data/published/cwe_v4.4.pdf/"))
-			Expect(cwe.DownloadURI()).To(Equal("https://cwe.mitre.org/data/xml/cwec_v4.4.xml.zip"))
+			Expect(cwe.InformationURI).To(Equal("https://cwe.mitre.org/data/published/cwe_v4.4.pdf/"))
+			Expect(cwe.DownloadURI).To(Equal("https://cwe.mitre.org/data/xml/cwec_v4.4.xml.zip"))
 		})
 
 		It("it should retrieves the weakness ID and URL", func() {
