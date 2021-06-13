@@ -32,13 +32,3 @@ func (w *Weakness) MarshalJSON() ([]byte, error) {
 		URL: w.SprintURL(),
 	})
 }
-
-// InformationURI link to the published CWE PDF
-func InformationURI() string {
-	return fmt.Sprintf("https://cwe.mitre.org/data/published/cwe_v%s.pdf/", Version)
-}
-
-// DownloadURI link to the zipped XML of the CWE list
-func DownloadURI() string {
-	return fmt.Sprintf("https://cwe.mitre.org/data/xml/cwec_v%s.xml.zip", Version)
-}

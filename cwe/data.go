@@ -1,5 +1,7 @@
 package cwe
 
+import "fmt"
+
 const (
 	// Acronym is the acronym of CWE
 	Acronym = "CWE"
@@ -14,6 +16,11 @@ const (
 )
 
 var (
+	// InformationURI link to the published CWE PDF
+	InformationURI = fmt.Sprintf("https://cwe.mitre.org/data/published/cwe_v%s.pdf/", Version)
+	// DownloadURI link to the zipped XML of the CWE list
+	DownloadURI = fmt.Sprintf("https://cwe.mitre.org/data/xml/cwec_v%s.xml.zip", Version)
+
 	data = map[string]*Weakness{}
 
 	weaknesses = []*Weakness{
