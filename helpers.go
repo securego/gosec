@@ -446,6 +446,6 @@ func ExcludedDirsRegExp(excludedDirs []string) []*regexp.Regexp {
 
 // RootPath returns the absolute root path of a scan
 func RootPath(root string) (string, error) {
-	root = strings.TrimPrefix(root, "...")
+	root = strings.TrimSuffix(root, "...")
 	return filepath.Abs(root)
 }
