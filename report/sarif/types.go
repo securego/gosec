@@ -1041,7 +1041,7 @@ type Run struct {
 	RedactionTokens []string `json:"redactionTokens,omitempty"`
 
 	// The set of results contained in an SARIF log. The results array can be omitted when a run is solely exporting rules metadata. It must be present (but may be empty) if a log file represents an actual scan.
-	Results []*Result `json:"results,omitempty"`
+	Results []*Result `json:"results"`
 
 	// Automation details that describe the aggregate of runs to which this run belongs.
 	RunAggregates []*RunAutomationDetails `json:"runAggregates,omitempty"`
