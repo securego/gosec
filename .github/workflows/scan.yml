@@ -4,6 +4,7 @@ name: "Security Scan"
 # The scheduled workflow runs every at 00:00 on Sunday UTC time.
 on:
   push:
+  pull_request:
   schedule:
   - cron: '0 0 * * 0'
 
