@@ -26,7 +26,6 @@ jobs:
         with:
           json: true
           output: bom.json
-          type: library
           version: latest
       - name: Release Binaries
         uses: goreleaser/goreleaser-action@v2
