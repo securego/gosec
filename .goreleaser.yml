@@ -2,6 +2,8 @@
 project_name: gosec
 
 release:
+  extra_files:
+    - glob: ./bom.json
   github:
     owner: securego
     name: gosec
