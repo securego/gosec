@@ -22,7 +22,7 @@ jobs:
         id: get_version
         run: echo ::set-env name=RELEASE_VERSION::$(echo ${GITHUB_REF:10})
       - name: Generate SBOM
-        uses: CycloneDX/gh-gomod-generate-sbom@v0.2.0
+        uses: CycloneDX/gh-gomod-generate-sbom@v0.3.0
         with:
           json: true
           output: bom.json
