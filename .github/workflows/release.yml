@@ -27,7 +27,7 @@ jobs:
           json: true
           output: bom.json
           resolve-licenses: true
-          version: latest
+          version: ^v0
       - name: Release Binaries
         uses: goreleaser/goreleaser-action@v2
         with:
