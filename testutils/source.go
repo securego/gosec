@@ -105,6 +105,82 @@ func main() {
 		fmt.Println("password equality")
 	}
 }`}, 0, gosec.NewConfig()},
+		{[]string{`
+package main
+import "fmt"
+const (
+	pw = "KjasdlkjapoIKLlka98098sdf012U/rL2sLdBqOHQUlt5Z6kCgKGDyCFA=="
+)
+func main() {
+	fmt.Println(pw)
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+import "fmt"
+var (
+	pw string
+)
+func main() {
+    pw = "KjasdlkjapoIKLlka98098sdf012U/rL2sLdBqOHQUlt5Z6kCgKGDyCFA=="
+	fmt.Println(pw)
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+import "fmt"
+const (
+	cred = "KjasdlkjapoIKLlka98098sdf012U/rL2sLdBqOHQUlt5Z6kCgKGDyCFA=="
+)
+func main() {
+	fmt.Println(cred)
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+import "fmt"
+var (
+	cred string
+)
+func main() {
+    cred = "KjasdlkjapoIKLlka98098sdf012U/rL2sLdBqOHQUlt5Z6kCgKGDyCFA=="
+	fmt.Println(cred)
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+import "fmt"
+const (
+	apiKey = "KjasdlkjapoIKLlka98098sdf012U"
+)
+func main() {
+	fmt.Println(apiKey)
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+import "fmt"
+var (
+	apiKey string
+)
+func main() {
+    apiKey = "KjasdlkjapoIKLlka98098sdf012U"
+	fmt.Println(apiKey)
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+import "fmt"
+const (
+	bearer = "Bearer: 2lkjdfoiuwer092834kjdwf09"
+)
+func main() {
+	fmt.Println(bearer)
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+import "fmt"
+var (
+	bearer string
+)
+func main() {
+    bearer = "Bearer: 2lkjdfoiuwer092834kjdwf09"
+	fmt.Println(bearer)
+}`}, 1, gosec.NewConfig()},
 	}
 
 	// SampleCodeG102 code snippets for network binding
