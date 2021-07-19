@@ -2128,7 +2128,33 @@ func main() {
 		fmt.Println(err)
 	}
 }`,
-	}, 1, gosec.NewConfig()}, {[]string{`
+	}, 1, gosec.NewConfig()},
+		{[]string{
+			`
+// Insecure minimum version
+package main
+
+import (
+	"crypto/tls"
+	"fmt"
+	"net/http"
+)
+
+var theValue uint16 = 0x0304
+
+func main() {
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{MinVersion: theValue},
+	}
+	client := &http.Client{Transport: tr}
+	_, err := client.Get("https://golang.org/")
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+`,
+		}, 0, gosec.NewConfig()},
+	{[]string{`
 // Insecure max version
 package main
 import (
