@@ -19,9 +19,10 @@ package rules
 import (
 	"crypto/tls"
 	"fmt"
-	"go/ast"
-
 	"github.com/securego/gosec/v2"
+	"go/ast"
+	"go/types"
+	"strconv"
 )
 
 type insecureConfigTLS struct {
@@ -86,9 +87,24 @@ func (t *insecureConfigTLS) processTLSConfVal(n *ast.KeyValueExpr, c *gosec.Cont
 
 		case "MinVersion":
 			if ident, ok := n.Value.(*ast.Ident); ok {
-				valueSpec, _ := ident.Obj.Decl.(*ast.ValueSpec)
-				if ival, ierr := gosec.GetInt(valueSpec.Values[0]); ierr == nil {
-					t.actualMinVersion = ival
+				if valueSpec, ok := ident.Obj.Decl.(*ast.ValueSpec); ok {
+					if ival, ok := valueSpec.Values[0].(*ast.SelectorExpr); ok {
+						x := ival.X.(*ast.Ident).Name
+						sel := ival.Sel.Name
+						fmt.Println(x, sel)
+
+						for _, imp := range c.Pkg.Imports() {
+							if imp.Name() == x {
+								typeObject := imp.Scope().Lookup(sel)
+								cnst, _ := typeObject.(*types.Const)
+								fmt.Print(cnst.Val().String())
+								t.actualMinVersion, _ = strconv.ParseInt(cnst.Val().String(), 10, 64)
+							}
+						}
+					}
+					if ival, ierr := gosec.GetInt(valueSpec.Values[0]); ierr == nil {
+						t.actualMinVersion = ival
+					}
 				}
 			} else if ival, ierr := gosec.GetInt(n.Value); ierr == nil {
 				t.actualMinVersion = ival
