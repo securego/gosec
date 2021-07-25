@@ -86,23 +86,25 @@ func (t *insecureConfigTLS) processTLSConfVal(n *ast.KeyValueExpr, c *gosec.Cont
 			}
 
 		case "MinVersion":
-			if ident, ok := n.Value.(*ast.Ident); ok {
-				if valueSpec, ok := ident.Obj.Decl.(*ast.ValueSpec); ok {
-					if ival, ok := valueSpec.Values[0].(*ast.SelectorExpr); ok {
-						x := ival.X.(*ast.Ident).Name
-						sel := ival.Sel.Name
-						fmt.Println(x, sel)
+			if d, ok := n.Value.(*ast.Ident); ok {
+				if vs, ok := d.Obj.Decl.(*ast.ValueSpec); ok {
+					if s, ok := vs.Values[0].(*ast.SelectorExpr); ok {
+						x := s.X.(*ast.Ident).Name
+						sel := s.Sel.Name
 
 						for _, imp := range c.Pkg.Imports() {
 							if imp.Name() == x {
-								typeObject := imp.Scope().Lookup(sel)
-								cnst, _ := typeObject.(*types.Const)
-								fmt.Print(cnst.Val().String())
-								t.actualMinVersion, _ = strconv.ParseInt(cnst.Val().String(), 10, 64)
+								tObj := imp.Scope().Lookup(sel)
+								if cst, ok := tObj.(*types.Const); ok {
+									// ..got the value check if this can be translated
+									if minVersion, err := strconv.ParseInt(cst.Val().String(), 10, 64); err == nil {
+										t.actualMinVersion = minVersion
+									}
+								}
 							}
 						}
 					}
-					if ival, ierr := gosec.GetInt(valueSpec.Values[0]); ierr == nil {
+					if ival, ierr := gosec.GetInt(vs.Values[0]); ierr == nil {
 						t.actualMinVersion = ival
 					}
 				}

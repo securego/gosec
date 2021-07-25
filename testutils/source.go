@@ -2127,8 +2127,90 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
-}`,
-	}, 1, gosec.NewConfig()},
+}`}, 1, gosec.NewConfig()}, {[]string{
+		`
+// Insecure minimum version
+package main
+import (
+	"crypto/tls"
+	"fmt"
+)
+
+func CaseNotError() *tls.Config {
+	var v uint16 = tls.VersionTLS13
+
+	return &tls.Config{
+		MinVersion: v,
+	}
+}
+
+func main() {
+    a := CaseNotError()
+	fmt.Printf("Debug: %v\n", a.MinVersion)
+}`}, 0, gosec.NewConfig()},
+		{[]string{
+			`
+// Insecure minimum version
+package main
+import (
+	"crypto/tls"
+	"fmt"
+)
+
+func CaseNotError() *tls.Config {
+	return &tls.Config{
+		MinVersion: tls.VersionTLS13,
+	}
+}
+
+func main() {
+    a := CaseNotError()
+	fmt.Printf("Debug: %v\n", a.MinVersion)
+}`}, 0, gosec.NewConfig()},
+		{[]string{
+			`
+// Insecure minimum version
+package main
+import (
+	"crypto/tls"
+	"fmt"
+)
+
+func CaseError() *tls.Config {
+	var v = &tls.Config{
+		MinVersion: 0,
+	}
+	return v
+}
+
+func main() {
+    a := CaseError()
+	fmt.Printf("Debug: %v\n", a.MinVersion)
+}`}, 1, gosec.NewConfig()},
+		{[]string{
+			`
+// Insecure minimum version
+package main
+import (
+	"crypto/tls"
+	"fmt"
+)
+
+func CaseError() *tls.Config {
+	var v = &tls.Config{
+		MinVersion: getVersion(),
+	}
+	return v
+}
+
+func getVersion() uint16 {
+	return tls.VersionTLS12
+}
+
+func main() {
+    a := CaseError()
+	fmt.Printf("Debug: %v\n", a.MinVersion)
+}`}, 1, gosec.NewConfig()},
 		{[]string{
 			`
 // Insecure minimum version
@@ -2154,7 +2236,7 @@ func main() {
 }
 `,
 		}, 0, gosec.NewConfig()},
-	{[]string{`
+		{[]string{`
 // Insecure max version
 package main
 import (
@@ -2173,7 +2255,7 @@ func main() {
 	}
 }
 `}, 1, gosec.NewConfig()}, {
-		[]string{`
+			[]string{`
 // Insecure ciphersuite selection
 package main
 import (
@@ -2194,7 +2276,7 @@ func main() {
 		fmt.Println(err)
 	}
 }`}, 1, gosec.NewConfig(),
-	}, {[]string{`
+		}, {[]string{`
 // secure max version when min version is specified
 package main
 import (
