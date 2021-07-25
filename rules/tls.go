@@ -19,10 +19,11 @@ package rules
 import (
 	"crypto/tls"
 	"fmt"
-	"github.com/securego/gosec/v2"
 	"go/ast"
 	"go/types"
 	"strconv"
+
+	"github.com/securego/gosec/v2"
 )
 
 type insecureConfigTLS struct {

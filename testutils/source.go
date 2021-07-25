@@ -2091,7 +2091,8 @@ func main() {
 	}
 
 	// SampleCodeG402 - TLS settings
-	SampleCodeG402 = []CodeSample{{[]string{`
+	SampleCodeG402 = []CodeSample{
+		{[]string{`
 // InsecureSkipVerify
 package main
 import (
@@ -2109,8 +2110,9 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
-}`}, 1, gosec.NewConfig()}, {[]string{
-		`
+}`}, 1, gosec.NewConfig()},
+		{[]string{
+			`
 // Insecure minimum version
 package main
 import (
@@ -2127,8 +2129,10 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
-}`}, 1, gosec.NewConfig()}, {[]string{
-		`
+}`,
+		}, 1, gosec.NewConfig()},
+		{[]string{
+			`
 // Insecure minimum version
 package main
 import (
@@ -2147,7 +2151,8 @@ func CaseNotError() *tls.Config {
 func main() {
     a := CaseNotError()
 	fmt.Printf("Debug: %v\n", a.MinVersion)
-}`}, 0, gosec.NewConfig()},
+}`,
+		}, 0, gosec.NewConfig()},
 		{[]string{
 			`
 // Insecure minimum version
@@ -2166,7 +2171,8 @@ func CaseNotError() *tls.Config {
 func main() {
     a := CaseNotError()
 	fmt.Printf("Debug: %v\n", a.MinVersion)
-}`}, 0, gosec.NewConfig()},
+}`,
+		}, 0, gosec.NewConfig()},
 		{[]string{
 			`
 // Insecure minimum version
@@ -2186,7 +2192,8 @@ func CaseError() *tls.Config {
 func main() {
     a := CaseError()
 	fmt.Printf("Debug: %v\n", a.MinVersion)
-}`}, 1, gosec.NewConfig()},
+}`,
+		}, 1, gosec.NewConfig()},
 		{[]string{
 			`
 // Insecure minimum version
@@ -2210,7 +2217,8 @@ func getVersion() uint16 {
 func main() {
     a := CaseError()
 	fmt.Printf("Debug: %v\n", a.MinVersion)
-}`}, 1, gosec.NewConfig()},
+}`,
+		}, 1, gosec.NewConfig()},
 		{[]string{
 			`
 // Insecure minimum version
@@ -2254,7 +2262,8 @@ func main() {
 		fmt.Println(err)
 	}
 }
-`}, 1, gosec.NewConfig()}, {
+`}, 1, gosec.NewConfig()},
+		{
 			[]string{`
 // Insecure ciphersuite selection
 package main
@@ -2276,7 +2285,8 @@ func main() {
 		fmt.Println(err)
 	}
 }`}, 1, gosec.NewConfig(),
-		}, {[]string{`
+		},
+		{[]string{`
 // secure max version when min version is specified
 package main
 import (
@@ -2293,7 +2303,8 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
-}`}, 0, gosec.NewConfig()}, {[]string{`
+}`}, 0, gosec.NewConfig()},
+		{[]string{`
 package p0
 
 import "crypto/tls"
@@ -2310,7 +2321,8 @@ import "crypto/tls"
 func TlsConfig1() *tls.Config {
    return &tls.Config{MinVersion: 0x0304}
 }
-`}, 1, gosec.NewConfig()}}
+`}, 1, gosec.NewConfig()},
+	}
 
 	// SampleCodeG403 - weak key strength
 	SampleCodeG403 = []CodeSample{
