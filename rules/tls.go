@@ -20,6 +20,8 @@ import (
 	"crypto/tls"
 	"fmt"
 	"go/ast"
+	"go/types"
+	"strconv"
 
 	"github.com/securego/gosec/v2"
 )
@@ -85,7 +87,29 @@ func (t *insecureConfigTLS) processTLSConfVal(n *ast.KeyValueExpr, c *gosec.Cont
 			}
 
 		case "MinVersion":
-			if ival, ierr := gosec.GetInt(n.Value); ierr == nil {
+			if d, ok := n.Value.(*ast.Ident); ok {
+				if vs, ok := d.Obj.Decl.(*ast.ValueSpec); ok {
+					if s, ok := vs.Values[0].(*ast.SelectorExpr); ok {
+						x := s.X.(*ast.Ident).Name
+						sel := s.Sel.Name
+
+						for _, imp := range c.Pkg.Imports() {
+							if imp.Name() == x {
+								tObj := imp.Scope().Lookup(sel)
+								if cst, ok := tObj.(*types.Const); ok {
+									// ..got the value check if this can be translated
+									if minVersion, err := strconv.ParseInt(cst.Val().String(), 10, 64); err == nil {
+										t.actualMinVersion = minVersion
+									}
+								}
+							}
+						}
+					}
+					if ival, ierr := gosec.GetInt(vs.Values[0]); ierr == nil {
+						t.actualMinVersion = ival
+					}
+				}
+			} else if ival, ierr := gosec.GetInt(n.Value); ierr == nil {
 				t.actualMinVersion = ival
 			} else {
 				if se, ok := n.Value.(*ast.SelectorExpr); ok {
