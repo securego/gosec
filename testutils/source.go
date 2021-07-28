@@ -1934,9 +1934,9 @@ func extractFile(f *tar.Header, tr *tar.Reader, destPath string) error {
 		{[]string{`package main
 
 import (
-	"bufio"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 )
 
@@ -1958,7 +1958,11 @@ func main() {
 	f, err := os.Create("/tmp/dat2")
 	check(err)
 
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Println(err)
+		}
+	}()
 
 	d2 := []byte{115, 111, 109, 101, 10}
 	n2, err := f.Write(d2)
@@ -2016,17 +2020,6 @@ func main() {
 	defer check(err)
 	fmt.Printf("wrote %d bytes\n", n2)
 
-	n3, err := f.WriteString("writes\n")
-	fmt.Printf("wrote %d bytes\n", n3)
-
-	f.Sync()
-
-	w := bufio.NewWriter(f)
-	n4, err := w.WriteString("buffered\n")
-	fmt.Printf("wrote %d bytes\n", n4)
-
-	w.Flush()
-
 }`}, 1, gosec.NewConfig()},
 		{[]string{`package main
 
@@ -2056,7 +2049,8 @@ func main() {
 	check(err)
 
 	defer func() {
-		if err := f.Close(); err != nil {
+		err := f.Close()
+		if err != nil {
 			log.Println(err)
 		}
 	}()
