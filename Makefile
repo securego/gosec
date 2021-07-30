@@ -2,7 +2,8 @@ GIT_TAG?= $(shell git describe --always --tags)
 BIN = gosec
 FMT_CMD = $(gofmt -s -l -w $(find . -type f -name '*.go' -not -path './vendor/*') | tee /dev/stderr)
 IMAGE_REPO = securego
-BUILDFLAGS := '-w -s'
+BUILD_DATE ?=  $(shell date +%Y-%m-%d)
+BUILDFLAGS := "-w -s -X 'main.Version=$(GIT_TAG)' -X 'main.GitTag=$(GIT_TAG)' -X 'main.BuildDate=$(BUILD_DATE)'"
 CGO_ENABLED = 0
 GO := GO111MODULE=on go
 GO_NOMOD :=GO111MODULE=off go
@@ -55,7 +56,7 @@ release:
 	goreleaser release
 
 build-linux:
-	CGO_ENABLED=$(CGO_ENABLED) GOOS=linux GOARCH=amd64 go build -ldflags $(BUILDFLAGS) -o $(BIN) ./cmd/gosec/
+	CGO_ENABLED=$(CGO_ENABLED) GOOS=linux GOARCH=amd64 go build -ldflags=$(BUILDFLAGS) -o $(BIN) ./cmd/gosec/
 
 image:
 	@echo "Building the Docker image..."
