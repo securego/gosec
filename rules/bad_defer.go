@@ -86,15 +86,6 @@ func (r *badDefer) checkStmt(n ast.Node, c *gosec.Context, subElem ast.Stmt, def
 	return nil
 }
 
-func (r *badDefer) checkAssignment(n ast.Node, c *gosec.Context, assignment *ast.AssignStmt, deferTyp deferType) *gosec.Issue {
-	for _, rh := range assignment.Rhs {
-		if e, isCallExp := rh.(*ast.CallExpr); isCallExp {
-			return r.checkChild(n, c, e, deferTyp)
-		}
-	}
-	return nil
-}
-
 // NewDeferredClosing detects unsafe defer of error returning methods
 func NewDeferredClosing(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 	return &badDefer{

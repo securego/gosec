@@ -1934,9 +1934,9 @@ func extractFile(f *tar.Header, tr *tar.Reader, destPath string) error {
 		{[]string{`package main
 
 import (
+	"bufio"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 )
 
@@ -1958,11 +1958,7 @@ func main() {
 	f, err := os.Create("/tmp/dat2")
 	check(err)
 
-	defer func() {
-		if err := f.Close(); err != nil {
-			log.Println(err)
-		}
-	}()
+	defer f.Close()
 
 	d2 := []byte{115, 111, 109, 101, 10}
 	n2, err := f.Write(d2)
@@ -1988,7 +1984,6 @@ func main() {
 		{[]string{`package main
 
 import (
-	"bufio"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -2049,6 +2044,46 @@ func main() {
 	check(err)
 
 	defer func() {
+		if err := f.Close(); err != nil {
+			log.Println(err)
+		}
+	}()
+
+	d2 := []byte{115, 111, 109, 101, 10}
+	n2, err := f.Write(d2)
+
+	defer check(err)
+	fmt.Printf("wrote %d bytes\n", n2)
+
+}`}, 1, gosec.NewConfig()},
+		{[]string{`package main
+
+import (
+	"fmt"
+	"io/ioutil"
+	"log"
+	"os"
+)
+
+func check(e error) {
+	if e != nil {
+		panic(e)
+	}
+}
+
+func main() {
+
+	d1 := []byte("hello\ngo\n")
+	err := ioutil.WriteFile("/tmp/dat1", d1, 0744)
+	check(err)
+
+	allowed := ioutil.WriteFile("/tmp/dat1", d1, 0600)
+	check(allowed)
+
+	f, err := os.Create("/tmp/dat2")
+	check(err)
+
+	defer func() {
 		err := f.Close()
 		if err != nil {
 			log.Println(err)
@@ -2062,6 +2097,50 @@ func main() {
 	fmt.Printf("wrote %d bytes\n", n2)
 
 }`}, 1, gosec.NewConfig()},
+		{[]string{`package main
+
+import (
+	"fmt"
+	"io/ioutil"
+	"log"
+	"os"
+)
+
+func check(e error) {
+	if e != nil {
+		panic(e)
+	}
+}
+
+func main() {
+
+	d1 := []byte("hello\ngo\n")
+	err := ioutil.WriteFile("/tmp/dat1", d1, 0744)
+	check(err)
+
+	allowed := ioutil.WriteFile("/tmp/dat1", d1, 0600)
+	check(allowed)
+
+	f, err := os.Create("/tmp/dat2")
+	check(err)
+
+	defer func() {
+		err := f.Close()
+		if err != nil {
+			log.Println(err)
+		}
+	}()
+
+	d2 := []byte{115, 111, 109, 101, 10}
+	n2, err := f.Write(d2)
+
+	err := f.Sync()
+	check(err)
+
+	defer check(err)
+	fmt.Printf("wrote %d bytes\n", n2)
+
+}`}, 0, gosec.NewConfig()},
 	}
 
 	// SampleCodeG401 - Use of weak crypto MD5
