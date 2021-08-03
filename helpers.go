@@ -402,7 +402,7 @@ func PackagePaths(root string, excludes []*regexp.Regexp) ([]string, error) {
 	err := filepath.Walk(root, func(path string, f os.FileInfo, err error) error {
 		if filepath.Ext(path) == ".go" {
 			path = filepath.Dir(path)
-			if isExcluded(path, excludes) {
+			if isExcluded(filepath.ToSlash(path), excludes) {
 				return nil
 			}
 			paths[path] = true
@@ -437,7 +437,7 @@ func isExcluded(str string, excludes []*regexp.Regexp) bool {
 func ExcludedDirsRegExp(excludedDirs []string) []*regexp.Regexp {
 	var exps []*regexp.Regexp
 	for _, excludedDir := range excludedDirs {
-		str := fmt.Sprintf(`([\\/])?%s([\\/])?`, excludedDir)
+		str := fmt.Sprintf(`([\\/])?%s([\\/])?`, strings.ReplaceAll(filepath.ToSlash(excludedDir), "/", `\/`))
 		r := regexp.MustCompile(str)
 		exps = append(exps, r)
 	}
