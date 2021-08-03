@@ -1369,7 +1369,7 @@ func RunCmd(command string) {
 
 func main() {
 	RunCmd("sleep")
-}`}, 1, gosec.NewConfig()},
+}`}, 0, gosec.NewConfig()},
 		{[]string{`
 // syscall.Exec function called with harcoded arguments
 // shouldn't be consider as a command injection
