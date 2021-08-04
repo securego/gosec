@@ -49,6 +49,18 @@ var _ = Describe("Helpers", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(paths).Should(Equal([]string{dir}))
 		})
+		It("should exclude folder with subpath", func() {
+			nested := dir + "/pkg/generated"
+			err := os.MkdirAll(nested, 0755)
+			Expect(err).ShouldNot(HaveOccurred())
+			_, err = os.Create(nested + "/test.go")
+			Expect(err).ShouldNot(HaveOccurred())
+			exclude, err := regexp.Compile(`([\\/])?/pkg\/generated([\\/])?`)
+			Expect(err).ShouldNot(HaveOccurred())
+			paths, err := gosec.PackagePaths(dir+"/...", []*regexp.Regexp{exclude})
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(paths).Should(Equal([]string{dir}))
+		})
 		It("should be empty when folder does not exist", func() {
 			nested := dir + "/test"
 			paths, err := gosec.PackagePaths(nested+"/...", nil)
@@ -66,7 +78,7 @@ var _ = Describe("Helpers", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(root).Should(Equal(filepath.Join(cwd, base)))
 		})
-		It("should retrun the absolute path from ellipsis path", func() {
+		It("should return the absolute path from ellipsis path", func() {
 			base := "test"
 			cwd, err := os.Getwd()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -82,6 +94,17 @@ var _ = Describe("Helpers", func() {
 			Expect(len(r)).Should(Equal(1))
 			match := r[0].MatchString("/home/go/src/project/test/pkg")
 			Expect(match).Should(BeTrue())
+			match = r[0].MatchString("/home/go/src/project/vendor/pkg")
+			Expect(match).Should(BeFalse())
+		})
+
+		It("should create a proper regexp for dir with subdir", func() {
+			r := gosec.ExcludedDirsRegExp([]string{`test/generated`})
+			Expect(len(r)).Should(Equal(1))
+			match := r[0].MatchString("/home/go/src/project/test/generated")
+			Expect(match).Should(BeTrue())
+			match = r[0].MatchString("/home/go/src/project/test/pkg")
+			Expect(match).Should(BeFalse())
 			match = r[0].MatchString("/home/go/src/project/vendor/pkg")
 			Expect(match).Should(BeFalse())
 		})
