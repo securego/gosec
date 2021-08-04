@@ -25,7 +25,7 @@ var _ = Describe("Analyzer", func() {
 	)
 	BeforeEach(func() {
 		logger, _ = testutils.NewLogger()
-		analyzer = gosec.NewAnalyzer(nil, tests, logger)
+		analyzer = gosec.NewAnalyzer(nil, tests, false, logger)
 	})
 
 	Context("when processing a package", func() {
@@ -246,7 +246,7 @@ var _ = Describe("Analyzer", func() {
 			// overwrite nosec option
 			nosecIgnoreConfig := gosec.NewConfig()
 			nosecIgnoreConfig.SetGlobal(gosec.Nosec, "true")
-			customAnalyzer := gosec.NewAnalyzer(nosecIgnoreConfig, tests, logger)
+			customAnalyzer := gosec.NewAnalyzer(nosecIgnoreConfig, tests, false, logger)
 			customAnalyzer.LoadRules(rules.Generate(rules.NewRuleFilter(false, "G401")).Builders())
 
 			nosecPackage := testutils.NewTestPackage()
@@ -269,7 +269,7 @@ var _ = Describe("Analyzer", func() {
 			// overwrite nosec option
 			nosecIgnoreConfig := gosec.NewConfig()
 			nosecIgnoreConfig.SetGlobal(gosec.NoSecAlternative, "#falsePositive")
-			customAnalyzer := gosec.NewAnalyzer(nosecIgnoreConfig, tests, logger)
+			customAnalyzer := gosec.NewAnalyzer(nosecIgnoreConfig, tests, false, logger)
 			customAnalyzer.LoadRules(rules.Generate(rules.NewRuleFilter(false, "G401")).Builders())
 
 			nosecPackage := testutils.NewTestPackage()
@@ -292,7 +292,7 @@ var _ = Describe("Analyzer", func() {
 			// overwrite nosec option
 			nosecIgnoreConfig := gosec.NewConfig()
 			nosecIgnoreConfig.SetGlobal(gosec.NoSecAlternative, "#falsePositive")
-			customAnalyzer := gosec.NewAnalyzer(nosecIgnoreConfig, tests, logger)
+			customAnalyzer := gosec.NewAnalyzer(nosecIgnoreConfig, tests, false, logger)
 			customAnalyzer.LoadRules(rules.Generate(rules.NewRuleFilter(false, "G401")).Builders())
 
 			nosecPackage := testutils.NewTestPackage()
@@ -308,7 +308,7 @@ var _ = Describe("Analyzer", func() {
 		})
 
 		It("should be able to analyze Go test package", func() {
-			customAnalyzer := gosec.NewAnalyzer(nil, true, logger)
+			customAnalyzer := gosec.NewAnalyzer(nil, true, false, logger)
 			customAnalyzer.LoadRules(rules.Generate().Builders())
 			pkg := testutils.NewTestPackage()
 			defer pkg.Close()
@@ -331,6 +331,48 @@ var _ = Describe("Analyzer", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			issues, _, _ := customAnalyzer.Report()
 			Expect(issues).Should(HaveLen(1))
+		})
+		It("should be able to scan generated files if NOT excluded", func() {
+			customAnalyzer := gosec.NewAnalyzer(nil, true, false, logger)
+			customAnalyzer.LoadRules(rules.Generate().Builders())
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("foo.go", `
+				package foo
+				// Code generated some-generator DO NOT EDIT.
+				func test() error {
+				  return nil
+				}
+				func TestFoo(t *testing.T){
+					test()
+				}`)
+			err := pkg.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = customAnalyzer.Process(buildTags, pkg.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			issues, _, _ := customAnalyzer.Report()
+			Expect(issues).Should(HaveLen(1))
+		})
+		It("should be able to skip generated files if excluded", func() {
+			customAnalyzer := gosec.NewAnalyzer(nil, true, true, logger)
+			customAnalyzer.LoadRules(rules.Generate().Builders())
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("foo.go", `
+				package foo
+				// Code generated some-generator DO NOT EDIT.
+				func test() error {
+				  return nil
+				}
+				func TestFoo(t *testing.T){
+					test()
+				}`)
+			err := pkg.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = customAnalyzer.Process(buildTags, pkg.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			issues, _, _ := customAnalyzer.Report()
+			Expect(issues).Should(HaveLen(0))
 		})
 	})
 	It("should be able to analyze Cgo files", func() {

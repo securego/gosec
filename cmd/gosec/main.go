@@ -93,6 +93,9 @@ var (
 	// rules to explicitly exclude
 	flagRulesExclude = flag.String("exclude", "", "Comma separated list of rules IDs to exclude. (see rule list)")
 
+	// rules to explicitly exclude
+	flagExcludeGenerated = flag.Bool("exclude-generated", false, "Exclude generated files")
+
 	// log to file or stderr
 	flagLogfile = flag.String("log", "", "Log messages to file rather than stderr")
 
@@ -335,7 +338,7 @@ func main() {
 	}
 
 	// Create the analyzer
-	analyzer := gosec.NewAnalyzer(config, *flagScanTests, logger)
+	analyzer := gosec.NewAnalyzer(config, *flagScanTests, *flagExcludeGenerated, logger)
 	analyzer.LoadRules(ruleDefinitions.Builders())
 
 	excludedDirs := gosec.ExcludedDirsRegExp(flagDirsExclude)
