@@ -300,7 +300,7 @@ gosec is able to pass your [Go build tags](https://golang.org/pkg/go/build/) to 
 They can be provided as a comma separated list as follows:
 
 ```bash
-gosec -tag debug,ignore ./...
+gosec -tags debug,ignore ./...
 ```
 
 ### Output formats
