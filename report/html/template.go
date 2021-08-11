@@ -92,7 +92,7 @@ const templateContent = `
           <div className="columns">
               <div className="column is-three-quarters">
                 <strong className="break-word">{ this.props.data.file } (line { this.props.data.line })</strong>
-                <p>{ this.props.data.details }</p>
+                <p>{this.props.data.rule_id} (CWE-{this.props.data.cwe.id}): { this.props.data.details }</p>
               </div>
               <div className="column is-one-quarter">
                 <div className="field is-grouped is-grouped-multiline">

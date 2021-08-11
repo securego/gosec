@@ -33,6 +33,7 @@ _testmain.go
 .DS_Store
 
 .vscode
+.idea
 
 # SBOMs generated during CI
 /bom.json
