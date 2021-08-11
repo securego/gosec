@@ -49,8 +49,11 @@ func (r *subprocess) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error) {
 			if ident, ok := arg.(*ast.Ident); ok {
 				obj := c.Info.ObjectOf(ident)
 
+				// need to cast and check whether it is for a variable ?
 				_, variable := obj.(*types.Var)
 
+				// .. indeed it is a variable then processing is different than a normal
+				// field assignment
 				if variable {
 					switch ident.Obj.Decl.(type) {
 					case *ast.AssignStmt:
