@@ -39,7 +39,7 @@ var _ = Describe("Helpers", func() {
 		})
 		It("should exclude folder", func() {
 			nested := dir + "/vendor"
-			err := os.Mkdir(nested, 0755)
+			err := os.Mkdir(nested, 0o755)
 			Expect(err).ShouldNot(HaveOccurred())
 			_, err = os.Create(nested + "/test.go")
 			Expect(err).ShouldNot(HaveOccurred())
@@ -51,7 +51,7 @@ var _ = Describe("Helpers", func() {
 		})
 		It("should exclude folder with subpath", func() {
 			nested := dir + "/pkg/generated"
-			err := os.MkdirAll(nested, 0755)
+			err := os.MkdirAll(nested, 0o755)
 			Expect(err).ShouldNot(HaveOccurred())
 			_, err = os.Create(nested + "/test.go")
 			Expect(err).ShouldNot(HaveOccurred())

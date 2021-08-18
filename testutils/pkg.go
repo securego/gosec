@@ -53,7 +53,7 @@ func (p *TestPackage) write() error {
 		return nil
 	}
 	for filename, content := range p.Files {
-		if e := ioutil.WriteFile(filename, []byte(content), 0644); e != nil {
+		if e := ioutil.WriteFile(filename, []byte(content), 0o644); e != nil {
 			return e
 		} // #nosec G306
 	}
