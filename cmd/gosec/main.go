@@ -72,6 +72,9 @@ var (
 	// #nosec flag
 	flagIgnoreNoSec = flag.Bool("nosec", false, "Ignores #nosec comments when set")
 
+	// show ignored
+	flagShowIgnored = flag.Bool("show-ignored", false, "If enabled, ignored issues are printed")
+
 	// format output
 	flagFormat = flag.String("fmt", "text", "Set output format. Valid options are: json, yaml, csv, junit-xml, html, sonarqube, golint, sarif or text")
 
@@ -173,6 +176,9 @@ func loadConfig(configFile string) (gosec.Config, error) {
 	if *flagIgnoreNoSec {
 		config.SetGlobal(gosec.Nosec, "true")
 	}
+	if *flagShowIgnored {
+		config.SetGlobal(gosec.ShowIgnored, "true")
+	}
 	if *flagAlternativeNoSec != "" {
 		config.SetGlobal(gosec.NoSecAlternative, *flagAlternativeNoSec)
 	}
@@ -200,7 +206,7 @@ func loadRules(include, exclude string) rules.RuleList {
 }
 
 func getRootPaths(paths []string) []string {
-	rootPaths := []string{}
+	rootPaths := make([]string, 0)
 	for _, path := range paths {
 		rootPath, err := gosec.RootPath(path)
 		if err != nil {
@@ -255,14 +261,18 @@ func convertToScore(severity string) (gosec.Score, error) {
 	}
 }
 
-func filterIssues(issues []*gosec.Issue, severity gosec.Score, confidence gosec.Score) []*gosec.Issue {
-	result := []*gosec.Issue{}
+func filterIssues(issues []*gosec.Issue, severity gosec.Score, confidence gosec.Score) ([]*gosec.Issue, int) {
+	result := make([]*gosec.Issue, 0)
+	trueIssues := 0
 	for _, issue := range issues {
 		if issue.Severity >= severity && issue.Confidence >= confidence {
 			result = append(result, issue)
+			if !issue.NoSec || !*flagShowIgnored {
+				trueIssues++
+			}
 		}
 	}
-	return result
+	return result, trueIssues
 }
 
 func main() {
@@ -372,9 +382,10 @@ func main() {
 	}
 
 	// Filter the issues by severity and confidence
-	issues = filterIssues(issues, failSeverity, failConfidence)
-	if metrics.NumFound != len(issues) {
-		metrics.NumFound = len(issues)
+	var trueIssues int
+	issues, trueIssues = filterIssues(issues, failSeverity, failConfidence)
+	if metrics.NumFound != trueIssues {
+		metrics.NumFound = trueIssues
 	}
 
 	// Exit quietly if nothing was found
@@ -390,7 +401,7 @@ func main() {
 	if *flagOutput == "" || *flagStdOut {
 		fileFormat := getPrintedFormat(*flagFormat, *flagVerbose)
 		if err := printReport(fileFormat, *flagColor, rootPaths, reportInfo); err != nil {
-			logger.Fatal((err))
+			logger.Fatal(err)
 		}
 	}
 	if *flagOutput != "" {

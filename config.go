@@ -20,6 +20,8 @@ type GlobalOption string
 const (
 	// Nosec global option for #nosec directive
 	Nosec GlobalOption = "nosec"
+	// ShowIgnored defines whether nosec issues are counted as finding or not
+	ShowIgnored GlobalOption = "show-ignored"
 	// Audit global option which indicates that gosec runs in audit mode
 	Audit GlobalOption = "audit"
 	// NoSecAlternative global option alternative for #nosec directive

@@ -62,6 +62,8 @@ const templateContent = `
           level += " is-warning";
         } else if (this.props.level === "LOW") {
           level += " is-info";
+        } else if (this.props.level === "WAIVED") {
+          level += " is-success";
         }
         level +=" is-rounded";
         return (
@@ -96,6 +98,7 @@ const templateContent = `
               </div>
               <div className="column is-one-quarter">
                 <div className="field is-grouped is-grouped-multiline">
+                  {this.props.data.nosec && <IssueTag label="NoSec" level="WAIVED"/>}
                   <IssueTag label="Severity" level={ this.props.data.severity }/>
                   <IssueTag label="Confidence" level={ this.props.data.confidence }/>
                 </div>

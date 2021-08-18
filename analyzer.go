@@ -82,6 +82,7 @@ type Analyzer struct {
 	errors           map[string][]Error // keys are file paths; values are the golang errors in those files
 	tests            bool
 	excludeGenerated bool
+	showIgnored      bool
 }
 
 // NewAnalyzer builds a new analyzer.
@@ -90,11 +91,16 @@ func NewAnalyzer(conf Config, tests bool, excludeGenerated bool, logger *log.Log
 	if enabled, err := conf.IsGlobalEnabled(Nosec); err == nil {
 		ignoreNoSec = enabled
 	}
+	showIgnored := false
+	if enabled, err := conf.IsGlobalEnabled(ShowIgnored); err == nil {
+		showIgnored = enabled
+	}
 	if logger == nil {
 		logger = log.New(os.Stderr, "[gosec]", log.LstdFlags)
 	}
 	return &Analyzer{
 		ignoreNosec:      ignoreNoSec,
+		showIgnored:      showIgnored,
 		ruleset:          make(RuleSet),
 		context:          &Context{},
 		config:           conf,
@@ -179,7 +185,7 @@ func (gosec *Analyzer) load(pkgPath string, conf *packages.Config) ([]*packages.
 	}
 
 	if gosec.tests {
-		testsFiles := []string{}
+		testsFiles := make([]string, 0)
 		testsFiles = append(testsFiles, basePackage.TestGoFiles...)
 		testsFiles = append(testsFiles, basePackage.XTestGoFiles...)
 		for _, filename := range testsFiles {
@@ -279,7 +285,7 @@ func (gosec *Analyzer) AppendError(file string, err error) {
 	if r.MatchString(err.Error()) {
 		return
 	}
-	errors := []Error{}
+	errors := make([]Error, 0)
 	if ferrs, ok := gosec.errors[file]; ok {
 		errors = ferrs
 	}
@@ -364,9 +370,8 @@ func (gosec *Analyzer) Visit(n ast.Node) ast.Visitor {
 	gosec.context.Imports.TrackImport(n)
 
 	for _, rule := range gosec.ruleset.RegisteredFor(n) {
-		if _, ok := ignores[rule.ID()]; ok {
-			continue
-		}
+		_, ignored := ignores[rule.ID()]
+
 		issue, err := rule.Match(n, gosec.context)
 		if err != nil {
 			file, line := GetLocation(n, gosec.context)
@@ -374,8 +379,15 @@ func (gosec *Analyzer) Visit(n ast.Node) ast.Visitor {
 			gosec.logger.Printf("Rule error: %v => %s (%s:%d)\n", reflect.TypeOf(rule), err, file, line)
 		}
 		if issue != nil {
-			gosec.issues = append(gosec.issues, issue)
-			gosec.stats.NumFound++
+			if gosec.showIgnored {
+				issue.NoSec = ignored
+			}
+			if !ignored || !gosec.showIgnored {
+				gosec.stats.NumFound++
+			}
+			if !ignored || gosec.showIgnored || gosec.ignoreNosec {
+				gosec.issues = append(gosec.issues, issue)
+			}
 		}
 	}
 	return gosec
