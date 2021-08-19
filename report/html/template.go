@@ -105,7 +105,7 @@ const templateContent = `
               </div>
             </div>
             <div className="highlight">
-              <Highlight code={ this.props.data.code }/>
+              <Highlight key={ this.props.data.file + this.props.data.line } code={ this.props.data.code }/>
             </div>
           </div>
         );
