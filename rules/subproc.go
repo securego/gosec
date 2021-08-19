@@ -77,7 +77,7 @@ func (r *subprocess) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error) {
 				}
 			} else if !gosec.TryResolve(arg, c) {
 				// the arg is not a constant or a variable but instead a function call or os.Args[i]
-				return gosec.NewIssue(c, n, r.ID(), "Subprocess launched with function call as argument or cmd arguments", gosec.Medium, gosec.High), nil
+				return gosec.NewIssue(c, n, r.ID(), "Subprocess launched with a potential tainted input or cmd arguments", gosec.Medium, gosec.High), nil
 			}
 		}
 	}
