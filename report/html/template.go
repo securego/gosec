@@ -41,6 +41,15 @@ const templateContent = `
   .tag {
     width: 80px;
   }
+  .summary-first {
+    padding: .75rem .75rem .1rem .75rem;
+  }
+  .summary-last {
+    padding: .1rem .75rem .75rem .75rem;
+  }
+  .summary {
+    padding: .1rem .75rem ;
+  }
   </style>
 </head>
 <body>
@@ -251,50 +260,89 @@ const templateContent = `
             );
           }.bind(this));
         return (
-          <nav className="panel">
-            <div className="panel-heading">Filters</div>
-            <div className="panel-block">
-              <div className="field is-horizontal">
-                <div className="field-label is-normal">
-                  <label className="label is-pulled-left">Severity</label>
-                </div>
-                <div className="field-body">
-                  <LevelSelector selected={ this.props.severity } available={ this.props.allSeverities } onChange={ this.updateSeverity } />
-                </div>
-             </div>
-            </div>
-            <div className="panel-block">
-              <div className="field is-horizontal">
-                <div className="field-label is-normal">
-                  <label className="label is-pulled-left">Confidence</label>
-                </div>
-                <div className="field-body">
-                  <LevelSelector selected={ this.props.confidence } available={ this.props.allConfidences } onChange={ this.updateConfidence } />
-                </div>
-              </div>
-            </div>
-            <div className="panel-block">
-              <div className="field is-horizontal">
-                <div className="field-label is-normal">
-                  <label className="label is-pulled-left">Issue type</label>
-                </div>
-                <div className="field-body">
-                  <div className="field">
-                    <div className="control">
-                      <div className="select is-fullwidth">
-                        <select onChange={ this.updateIssueType }>
-                          <option value="all" selected={ !this.props.issueType }>
-                            (all)
-                          </option>
-                          { issueTypes }
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </nav>
+          <div>
+			  <nav className="panel">
+				<div className="panel-heading">Filters</div>
+				<div className="panel-block">
+				  <div className="field is-horizontal">
+					<div className="field-label is-normal">
+					  <label className="label is-pulled-left">Severity</label>
+					</div>
+					<div className="field-body">
+					  <LevelSelector selected={ this.props.severity } available={ this.props.allSeverities } onChange={ this.updateSeverity } />
+					</div>
+				 </div>
+				</div>
+				<div className="panel-block">
+				  <div className="field is-horizontal">
+					<div className="field-label is-normal">
+					  <label className="label is-pulled-left">Confidence</label>
+					</div>
+					<div className="field-body">
+					  <LevelSelector selected={ this.props.confidence } available={ this.props.allConfidences } onChange={ this.updateConfidence } />
+					</div>
+				  </div>
+				</div>
+				<div className="panel-block">
+				  <div className="field is-horizontal">
+					<div className="field-label is-normal">
+					  <label className="label is-pulled-left">Issue type</label>
+					</div>
+					<div className="field-body">
+					  <div className="field">
+						<div className="control">
+						  <div className="select is-fullwidth">
+							<select onChange={ this.updateIssueType }>
+							  <option value="all" selected={ !this.props.issueType }>
+								(all)
+							  </option>
+							  { issueTypes }
+							</select>
+						  </div>
+						</div>
+					  </div>
+					</div>
+				  </div>
+				</div>
+              </nav>
+			  <nav className="panel">
+				<div className="panel-heading">Summary</div>
+				  <div className="panel-block">
+					  <div className="columns is-multiline">
+						  <div className="column is-half summary-first">
+							  <label className="label is-pulled-left">Gosec: </label>
+						  </div>
+						  <div className="column is-half summary-first">
+							  {this.props.data.GosecVersion}
+						  </div>
+						  <div className="column is-half summary">
+							  <label className="label is-pulled-left">Files: </label>
+						  </div>
+						  <div className="column is-half summary">
+							  {this.props.data.Stats.files.toLocaleString()}
+						  </div>
+						  <div className="column is-half summary">
+							  <label className="label is-pulled-left">Lines: </label>
+						  </div>
+						  <div className="column is-half summary">
+							  {this.props.data.Stats.lines.toLocaleString()}
+						  </div>
+						  <div className="column is-half summary">
+							  <label className="label is-pulled-left">Nosec: </label>
+						  </div>
+						  <div className="column is-half summary">
+							  {this.props.data.Stats.nosec.toLocaleString()}
+						  </div>
+						  <div className="column is-half summary-last">
+							  <label className="label is-pulled-left">Issues: </label>
+						  </div>
+						  <div className="column is-half summary-last">
+							  {this.props.data.Stats.found.toLocaleString()}
+						  </div>
+					  </div>
+				  </div>
+			  </nav>
+		  </div>
         );
       }
     });
@@ -375,6 +423,7 @@ const templateContent = `
             <div className="columns">
               <div className="column is-one-quarter">
                 <Navigation
+                  data={ this.props.data }
                   severity={ this.state.severity } 
                   confidence={ this.state.confidence }
                   issueType={ this.state.issueType }
