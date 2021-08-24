@@ -17,12 +17,13 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/securego/gosec/v2/cmd/vflag"
 	"io/ioutil"
 	"log"
 	"os"
 	"sort"
 	"strings"
+
+	"github.com/securego/gosec/v2/cmd/vflag"
 
 	"github.com/securego/gosec/v2"
 	"github.com/securego/gosec/v2/report"

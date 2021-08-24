@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-//ValidateFlag cli string type
+// ValidateFlag cli string type
 type ValidateFlag string
 
 func (f *ValidateFlag) String() string {
@@ -20,4 +20,3 @@ func (f *ValidateFlag) Set(value string) error {
 	}
 	return nil
 }
-
