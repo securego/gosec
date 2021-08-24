@@ -17,7 +17,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/securego/gosec/v2/cmd/validate"
+	"github.com/securego/gosec/v2/cmd/vflag"
 	"io/ioutil"
 	"log"
 	"os"
@@ -95,7 +95,7 @@ var (
 	flagRulesInclude = flag.String("include", "", "Comma separated list of rules IDs to include. (see rule list)")
 
 	// rules to explicitly exclude
-	flagRulesExclude = new (validate.ValidatedFlag)
+	flagRulesExclude = new(vflag.ValidateFlag)
 
 	// rules to explicitly exclude
 	flagExcludeGenerated = flag.Bool("exclude-generated", false, "Exclude generated files")

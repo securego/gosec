@@ -1,4 +1,4 @@
-package validate
+package vflag
 
 import (
 	"errors"
@@ -6,15 +6,15 @@ import (
 	"strings"
 )
 
-// ValidateFlag used for flag cli string type
-type ValidatedFlag string
+//ValidateFlag cli string type
+type ValidateFlag string
 
-func (f *ValidatedFlag) String() string {
+func (f *ValidateFlag) String() string {
 	return fmt.Sprint(*f)
 }
 
 // Set will be called for flag that is of validateFlag type
-func (f *ValidatedFlag) Set(value string) error {
+func (f *ValidateFlag) Set(value string) error {
 	if strings.Contains(value, "-") {
 		return errors.New("")
 	}
