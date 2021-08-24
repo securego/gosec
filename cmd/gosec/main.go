@@ -17,6 +17,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/securego/gosec/v2/cmd/validate"
 	"io/ioutil"
 	"log"
 	"os"
@@ -94,7 +95,7 @@ var (
 	flagRulesInclude = flag.String("include", "", "Comma separated list of rules IDs to include. (see rule list)")
 
 	// rules to explicitly exclude
-	flagRulesExclude = flag.String("exclude", "", "Comma separated list of rules IDs to exclude. (see rule list)")
+	flagRulesExclude = new (validate.ValidatedFlag)
 
 	// rules to explicitly exclude
 	flagExcludeGenerated = flag.Bool("exclude-generated", false, "Exclude generated files")
@@ -293,6 +294,9 @@ func main() {
 		fmt.Fprintf(os.Stderr, "\nError: failed to exclude the %q directory from scan", ".git")
 	}
 
+	// set for exclude
+	flag.Var(flagRulesExclude, "exclude", "Comma separated list of rules IDs to exclude. (see rule list)")
+
 	// Parse command line arguments
 	flag.Parse()
 
@@ -342,7 +346,7 @@ func main() {
 	}
 
 	// Load enabled rule definitions
-	ruleDefinitions := loadRules(*flagRulesInclude, *flagRulesExclude)
+	ruleDefinitions := loadRules(*flagRulesInclude, flagRulesExclude.String())
 	if len(ruleDefinitions) == 0 {
 		logger.Fatal("No rules are configured")
 	}
