@@ -6,6 +6,7 @@ import (
 	"strings"
 )
 
+// ValidateFlag used for flag cli string type
 type ValidatedFlag string
 
 func (f *ValidatedFlag) String() string {
