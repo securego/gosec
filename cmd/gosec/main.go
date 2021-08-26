@@ -96,14 +96,13 @@ var (
 	flagRulesInclude = flag.String("include", "", "Comma separated list of rules IDs to include. (see rule list)")
 
 	// rules to explicitly exclude
-	flagRulesExclude = new(vflag.ValidateFlag)
+	flagRulesExclude = vflag.ValidatedFlag{}
 
 	// rules to explicitly exclude
 	flagExcludeGenerated = flag.Bool("exclude-generated", false, "Exclude generated files")
 
 	// log to file or stderr
 	flagLogfile = flag.String("log", "", "Log messages to file rather than stderr")
-
 	// sort the issues by severity
 	flagSortIssues = flag.Bool("sort", true, "Sort issues by severity")
 
@@ -296,7 +295,7 @@ func main() {
 	}
 
 	// set for exclude
-	flag.Var(flagRulesExclude, "exclude", "Comma separated list of rules IDs to exclude. (see rule list)")
+	flag.Var(&flagRulesExclude, "exclude", "Comma separated list of rules IDs to exclude. (see rule list)")
 
 	// Parse command line arguments
 	flag.Parse()

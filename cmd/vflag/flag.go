@@ -2,21 +2,24 @@ package vflag
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 )
 
-// ValidateFlag cli string type
-type ValidateFlag string
+// ValidatedFlag cli string type
+type ValidatedFlag struct {
+	Value string
+}
 
-func (f *ValidateFlag) String() string {
-	return fmt.Sprint(*f)
+func (f *ValidatedFlag) String() string {
+	return f.Value
 }
 
 // Set will be called for flag that is of validateFlag type
-func (f *ValidateFlag) Set(value string) error {
+func (f *ValidatedFlag) Set(value string) error {
 	if strings.Contains(value, "-") {
-		return errors.New("")
+		return errors.New("flag value cannot start with -")
 	}
+
+	f.Value = value
 	return nil
 }
