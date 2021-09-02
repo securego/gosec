@@ -23,6 +23,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/securego/gosec/v2/cmd/vflag"
+
 	"github.com/securego/gosec/v2"
 	"github.com/securego/gosec/v2/report"
 	"github.com/securego/gosec/v2/rules"
@@ -94,14 +96,13 @@ var (
 	flagRulesInclude = flag.String("include", "", "Comma separated list of rules IDs to include. (see rule list)")
 
 	// rules to explicitly exclude
-	flagRulesExclude = flag.String("exclude", "", "Comma separated list of rules IDs to exclude. (see rule list)")
+	flagRulesExclude = vflag.ValidatedFlag{}
 
 	// rules to explicitly exclude
 	flagExcludeGenerated = flag.Bool("exclude-generated", false, "Exclude generated files")
 
 	// log to file or stderr
 	flagLogfile = flag.String("log", "", "Log messages to file rather than stderr")
-
 	// sort the issues by severity
 	flagSortIssues = flag.Bool("sort", true, "Sort issues by severity")
 
@@ -293,6 +294,9 @@ func main() {
 		fmt.Fprintf(os.Stderr, "\nError: failed to exclude the %q directory from scan", ".git")
 	}
 
+	// set for exclude
+	flag.Var(&flagRulesExclude, "exclude", "Comma separated list of rules IDs to exclude. (see rule list)")
+
 	// Parse command line arguments
 	flag.Parse()
 
@@ -342,7 +346,7 @@ func main() {
 	}
 
 	// Load enabled rule definitions
-	ruleDefinitions := loadRules(*flagRulesInclude, *flagRulesExclude)
+	ruleDefinitions := loadRules(*flagRulesInclude, flagRulesExclude.String())
 	if len(ruleDefinitions) == 0 {
 		logger.Fatal("No rules are configured")
 	}
