@@ -21,9 +21,9 @@ jobs:
     strategy:
       matrix:
         go_version:
-          - '1.14'
           - '1.15'
           - '1.16'
+          - '1.17'
     runs-on: ubuntu-latest
     env:
       GO111MODULE: on
@@ -51,7 +51,7 @@ jobs:
       - name: Setup go
         uses: actions/setup-go@v2
         with:
-          go-version: '1.16'
+          go-version: '1.17'
       - name: Checkout Source 
         uses: actions/checkout@v2
       - uses: actions/cache@v2
