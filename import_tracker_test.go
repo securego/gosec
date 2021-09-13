@@ -1,11 +1,10 @@
 package gosec_test
 
 import (
-	"github.com/securego/gosec/v2"
-	"github.com/securego/gosec/v2/testutils"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/securego/gosec/v2"
+	"github.com/securego/gosec/v2/testutils"
 )
 
 var _ = Describe("Import Tracker", func() {
