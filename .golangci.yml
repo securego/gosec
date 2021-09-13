@@ -7,7 +7,9 @@ linters:
   - dogsled
   - durationcheck
   - errcheck
+  - errorlint
   - exportloopref
+  - gci
   - gofmt
   - gofumpt
   - goimports

@@ -23,9 +23,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/securego/gosec/v2/cmd/vflag"
-
 	"github.com/securego/gosec/v2"
+	"github.com/securego/gosec/v2/cmd/vflag"
 	"github.com/securego/gosec/v2/report"
 	"github.com/securego/gosec/v2/rules"
 )
@@ -211,7 +210,7 @@ func getRootPaths(paths []string) []string {
 	for _, path := range paths {
 		rootPath, err := gosec.RootPath(path)
 		if err != nil {
-			logger.Fatal(fmt.Errorf("failed to get the root path of the projects: %s", err))
+			logger.Fatal(fmt.Errorf("failed to get the root path of the projects: %w", err))
 		}
 		rootPaths = append(rootPaths, rootPath)
 	}

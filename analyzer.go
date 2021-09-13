@@ -149,7 +149,7 @@ func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error
 			if pkg.Name != "" {
 				err := gosec.ParseErrors(pkg)
 				if err != nil {
-					return fmt.Errorf("parsing errors in pkg %q: %v", pkg.Name, err)
+					return fmt.Errorf("parsing errors in pkg %q: %w", pkg.Name, err)
 				}
 				gosec.Check(pkg)
 			}
@@ -173,7 +173,7 @@ func (gosec *Analyzer) load(pkgPath string, conf *packages.Config) ([]*packages.
 	buildD.BuildTags = conf.BuildFlags
 	basePackage, err := buildD.ImportDir(pkgPath, build.ImportComment)
 	if err != nil {
-		return []*packages.Package{}, fmt.Errorf("importing dir %q: %v", pkgPath, err)
+		return []*packages.Package{}, fmt.Errorf("importing dir %q: %w", pkgPath, err)
 	}
 
 	var packageFiles []string
@@ -197,7 +197,7 @@ func (gosec *Analyzer) load(pkgPath string, conf *packages.Config) ([]*packages.
 	conf.BuildFlags = nil
 	pkgs, err := packages.Load(conf, packageFiles...)
 	if err != nil {
-		return []*packages.Package{}, fmt.Errorf("loading files from package %q: %v", pkgPath, err)
+		return []*packages.Package{}, fmt.Errorf("loading files from package %q: %w", pkgPath, err)
 	}
 	return pkgs, nil
 }
@@ -257,13 +257,13 @@ func (gosec *Analyzer) ParseErrors(pkg *packages.Package) error {
 		var line int
 		if len(parts) > 1 {
 			if line, err = strconv.Atoi(parts[1]); err != nil {
-				return fmt.Errorf("parsing line: %v", err)
+				return fmt.Errorf("parsing line: %w", err)
 			}
 		}
 		var column int
 		if len(parts) > 2 {
 			if column, err = strconv.Atoi(parts[2]); err != nil {
-				return fmt.Errorf("parsing column: %v", err)
+				return fmt.Errorf("parsing column: %w", err)
 			}
 		}
 		msg := strings.TrimSpace(pkgErr.Msg)
