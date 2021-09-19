@@ -1,5 +1,6 @@
 {
   "dependencyDashboard": true,
+  "dependencyDashboardTitle" : "Renovate(bot) : dependency dashboard",
   "vulnerabilityAlerts": {
     "enabled": true
   },
