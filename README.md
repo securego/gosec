@@ -113,6 +113,14 @@ jobs:
 
 ### Local Installation
 
+#### Go 1.16+
+
+```bash
+go install github.com/securego/gosec/v2/cmd/gosec@latest
+```
+
+#### Go version < 1.16
+
 ```bash
 go get -u github.com/securego/gosec/v2/cmd/gosec
 ```
