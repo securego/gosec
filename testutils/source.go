@@ -1788,6 +1788,22 @@ func main() {
 package main
 
 import (
+"os"
+"log"
+)
+
+func main() {
+	f := os.Getenv("tainted_file")
+	body, err := os.ReadFile(f)
+	if err != nil {
+	log.Printf("Error: %v\n", err)
+	}
+	log.Print(body)
+
+}`}, 1, gosec.NewConfig()}, {[]string{`
+package main
+
+import (
 	"fmt"
 	"log"
 	"net/http"
