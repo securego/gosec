@@ -213,7 +213,7 @@ of functions which will be skipped when auditing the not checked errors:
 ```JSON
 {
     "G104": {
-        "io/ioutil": ["WriteFile"]
+        "ioutil": ["WriteFile"]
     }
 }
 ```
