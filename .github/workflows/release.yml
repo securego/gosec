@@ -22,12 +22,10 @@ jobs:
         id: get_version
         run: echo ::set-env name=RELEASE_VERSION::$(echo ${GITHUB_REF:10})
       - name: Generate SBOM
-        uses: CycloneDX/gh-gomod-generate-sbom@v1.0.0
+        uses: CycloneDX/gh-gomod-generate-sbom@v1
         with:
-          json: true
-          output: bom.json
-          resolve-licenses: true
-          version: ^v0
+          version: v1
+          args: mod -licenses -json -output bom.json
       - name: Release Binaries
         uses: goreleaser/goreleaser-action@v2
         with:
