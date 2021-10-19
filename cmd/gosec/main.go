@@ -247,9 +247,9 @@ func saveReport(filename, format string, rootPaths []string, reportInfo *gosec.R
 	return nil
 }
 
-func convertToScore(severity string) (gosec.Score, error) {
-	severity = strings.ToLower(severity)
-	switch severity {
+func convertToScore(value string) (gosec.Score, error) {
+	value = strings.ToLower(value)
+	switch value {
 	case "low":
 		return gosec.Low, nil
 	case "medium":
@@ -257,7 +257,7 @@ func convertToScore(severity string) (gosec.Score, error) {
 	case "high":
 		return gosec.High, nil
 	default:
-		return gosec.Low, fmt.Errorf("provided severity '%s' not valid. Valid options: low, medium, high", severity)
+		return gosec.Low, fmt.Errorf("provided value '%s' not valid. Valid options: low, medium, high", value)
 	}
 }
 
