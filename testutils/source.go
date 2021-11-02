@@ -1771,7 +1771,11 @@ func main() {
 	} else if err = f.Close(); err != nil {
 		fmt.Println("Error while closing!")
 	}
-}`}, 2, gosec.NewConfig()}}
+	err = os.WriteFile("/tmp/demo2", []byte("This is some data"), 0644)
+	if err != nil {
+		fmt.Println("Error while writing!")
+	}
+}`}, 3, gosec.NewConfig()}}
 
 	// SampleCodeG304 - potential file inclusion vulnerability
 	SampleCodeG304 = []CodeSample{{[]string{`
