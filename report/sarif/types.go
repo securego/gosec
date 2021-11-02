@@ -269,7 +269,7 @@ type ExternalProperties struct {
 	// An array of graph objects that will be merged with a separate run.
 	Graphs []*Graph `json:"graphs,omitempty"`
 
-	// A stable, unique identifer for this external properties object, in the form of a GUID.
+	// A stable, unique identifier for this external properties object, in the form of a GUID.
 	GUID string `json:"guid,omitempty"`
 
 	// Describes the invocation of the analysis tool that will be merged with a separate run.
@@ -287,7 +287,7 @@ type ExternalProperties struct {
 	// An array of result objects that will be merged with a separate run.
 	Results []*Result `json:"results,omitempty"`
 
-	// A stable, unique identifer for the run associated with this external properties object, in the form of a GUID.
+	// A stable, unique identifier for the run associated with this external properties object, in the form of a GUID.
 	RunGUID string `json:"runGuid,omitempty"`
 
 	// The URI of the JSON schema corresponding to the version of the external property file format.
@@ -315,7 +315,7 @@ type ExternalProperties struct {
 // ExternalPropertyFileReference Contains information that enables a SARIF consumer to locate the external property file that contains the value of an externalized property associated with the run.
 type ExternalPropertyFileReference struct {
 
-	// A stable, unique identifer for the external property file in the form of a GUID.
+	// A stable, unique identifier for the external property file in the form of a GUID.
 	GUID string `json:"guid,omitempty"`
 
 	// A non-negative integer specifying the number of items contained in the external property file.
@@ -801,7 +801,7 @@ type ReportingDescriptor struct {
 	// A description of the report. Should, as far as possible, provide details sufficient to enable resolution of any problem indicated by the result.
 	FullDescription *MultiformatMessageString `json:"fullDescription,omitempty"`
 
-	// A unique identifer for the reporting descriptor in the form of a GUID.
+	// A unique identifier for the reporting descriptor in the form of a GUID.
 	GUID string `json:"guid,omitempty"`
 
 	// Provides the primary documentation for the report, useful when there is no online documentation.
@@ -894,7 +894,7 @@ type Result struct {
 	// An array of zero or more unique graph objects associated with the result.
 	Graphs []*Graph `json:"graphs,omitempty"`
 
-	// A stable, unique identifer for the result in the form of a GUID.
+	// A stable, unique identifier for the result in the form of a GUID.
 	GUID string `json:"guid,omitempty"`
 
 	// An absolute URI at which the result can be viewed.
@@ -1080,7 +1080,7 @@ type RunAutomationDetails struct {
 	// A description of the identity and role played within the engineering system by this object's containing run object.
 	Description *Message `json:"description,omitempty"`
 
-	// A stable, unique identifer for this object's containing run object in the form of a GUID.
+	// A stable, unique identifier for this object's containing run object in the form of a GUID.
 	GUID string `json:"guid,omitempty"`
 
 	// A hierarchical string that uniquely identifies this object's containing run object.
@@ -1154,7 +1154,7 @@ type Report struct {
 // Suppression A suppression that is relevant to a result.
 type Suppression struct {
 
-	// A stable, unique identifer for the suprression in the form of a GUID.
+	// A stable, unique identifier for the suprression in the form of a GUID.
 	GUID string `json:"guid,omitempty"`
 
 	// A string representing the justification for the suppression.
@@ -1278,7 +1278,7 @@ type ToolComponent struct {
 	// A dictionary, each of whose keys is a resource identifier and each of whose values is a multiformatMessageString object, which holds message strings in plain text and (optionally) Markdown format. The strings can include placeholders, which can be used to construct a message in combination with an arbitrary number of additional string arguments.
 	GlobalMessageStrings map[string]*MultiformatMessageString `json:"globalMessageStrings,omitempty"`
 
-	// A unique identifer for the tool component in the form of a GUID.
+	// A unique identifier for the tool component in the form of a GUID.
 	GUID string `json:"guid,omitempty"`
 
 	// The absolute URI at which information about this version of the tool component can be found.

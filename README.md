@@ -358,7 +358,7 @@ Then generate the types with :
 schema-generate -i sarif-schema-2.1.0.json -o mypath/types.go
 ```
 
-Most of the MarshallJSON/UnmarshalJSON are removed except the one for PropertyBag which is handy to inline the additionnal properties. The rest can be removed.
+Most of the MarshallJSON/UnmarshalJSON are removed except the one for PropertyBag which is handy to inline the additional properties. The rest can be removed.
 The URI,ID, UUID, GUID were renamed so it fits the Golang convention defined [here](https://github.com/golang/lint/blob/master/lint.go#L700)
 
 ### Tests
