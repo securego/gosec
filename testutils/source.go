@@ -1757,6 +1757,7 @@ package samples
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 )
 
 func main() {
@@ -1764,7 +1765,17 @@ func main() {
 	if err != nil {
 		fmt.Println("Error while writing!")
 	}
-}`}, 1, gosec.NewConfig()}}
+	f, err := os.Create("/tmp/demo2")
+	if err != nil {
+		fmt.Println("Error while writing!")
+	} else if err = f.Close(); err != nil {
+		fmt.Println("Error while closing!")
+	}
+	err = os.WriteFile("/tmp/demo2", []byte("This is some data"), 0644)
+	if err != nil {
+		fmt.Println("Error while writing!")
+	}
+}`}, 3, gosec.NewConfig()}}
 
 	// SampleCodeG304 - potential file inclusion vulnerability
 	SampleCodeG304 = []CodeSample{{[]string{`

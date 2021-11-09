@@ -44,7 +44,7 @@ func (t *badTempFile) Match(n ast.Node, c *gosec.Context) (gi *gosec.Issue, err 
 func NewBadTempFile(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 	calls := gosec.NewCallList()
 	calls.Add("io/ioutil", "WriteFile")
-	calls.Add("os", "Create")
+	calls.AddAll("os", "Create", "WriteFile")
 	return &badTempFile{
 		calls: calls,
 		args:  regexp.MustCompile(`^/tmp/.*$|^/var/tmp/.*$`),
