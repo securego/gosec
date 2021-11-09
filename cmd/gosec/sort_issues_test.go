@@ -38,7 +38,7 @@ func firstIsGreater(less, greater *gosec.Issue) {
 }
 
 var _ = Describe("Sorting by Severity", func() {
-	It("sortes by severity", func() {
+	It("sorts by severity", func() {
 		less := createIssue()
 		less.Severity = gosec.Low
 		greater := createIssue()
@@ -46,8 +46,8 @@ var _ = Describe("Sorting by Severity", func() {
 		firstIsGreater(&less, &greater)
 	})
 
-	Context("Serverity is same", func() {
-		It("sortes by What", func() {
+	Context("Severity is same", func() {
+		It("sorts by What", func() {
 			less := createIssue()
 			less.What = "test1"
 			greater := createIssue()
@@ -56,8 +56,8 @@ var _ = Describe("Sorting by Severity", func() {
 		})
 	})
 
-	Context("Serverity and What is same", func() {
-		It("sortes by File", func() {
+	Context("Severity and What is same", func() {
+		It("sorts by File", func() {
 			less := createIssue()
 			less.File = "test1"
 			greater := createIssue()
@@ -67,8 +67,8 @@ var _ = Describe("Sorting by Severity", func() {
 		})
 	})
 
-	Context("Serverity, What and File is same", func() {
-		It("sortes by line number", func() {
+	Context("Severity, What and File is same", func() {
+		It("sorts by line number", func() {
 			less := createIssue()
 			less.Line = "1"
 			greater := createIssue()
