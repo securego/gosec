@@ -57,7 +57,7 @@ type Context struct {
 	Root         *ast.File
 	Config       Config
 	Imports      *ImportTracker
-	Ignores      []map[string]bool
+	Ignores      []map[string][]SuppressionInfo
 	PassedValues map[string]interface{}
 }
 
@@ -72,21 +72,27 @@ type Metrics struct {
 // Analyzer object is the main object of gosec. It has methods traverse an AST
 // and invoke the correct checking rules as on each node as required.
 type Analyzer struct {
-	ignoreNosec      bool
-	ruleset          RuleSet
-	context          *Context
-	config           Config
-	logger           *log.Logger
-	issues           []*Issue
-	stats            *Metrics
-	errors           map[string][]Error // keys are file paths; values are the golang errors in those files
-	tests            bool
-	excludeGenerated bool
-	showIgnored      bool
+	ignoreNosec       bool
+	ruleset           RuleSet
+	context           *Context
+	config            Config
+	logger            *log.Logger
+	issues            []*Issue
+	stats             *Metrics
+	errors            map[string][]Error // keys are file paths; values are the golang errors in those files
+	tests             bool
+	excludeGenerated  bool
+	showIgnored       bool
+	trackSuppressions bool
+}
+
+type SuppressionInfo struct {
+	Kind          string `json:"kind"`
+	Justification string `json:"justification"`
 }
 
 // NewAnalyzer builds a new analyzer.
-func NewAnalyzer(conf Config, tests bool, excludeGenerated bool, logger *log.Logger) *Analyzer {
+func NewAnalyzer(conf Config, tests bool, excludeGenerated bool, trackSuppressions bool, logger *log.Logger) *Analyzer {
 	ignoreNoSec := false
 	if enabled, err := conf.IsGlobalEnabled(Nosec); err == nil {
 		ignoreNoSec = enabled
@@ -99,17 +105,18 @@ func NewAnalyzer(conf Config, tests bool, excludeGenerated bool, logger *log.Log
 		logger = log.New(os.Stderr, "[gosec]", log.LstdFlags)
 	}
 	return &Analyzer{
-		ignoreNosec:      ignoreNoSec,
-		showIgnored:      showIgnored,
-		ruleset:          make(RuleSet),
-		context:          &Context{},
-		config:           conf,
-		logger:           logger,
-		issues:           make([]*Issue, 0, 16),
-		stats:            &Metrics{},
-		errors:           make(map[string][]Error),
-		tests:            tests,
-		excludeGenerated: excludeGenerated,
+		ignoreNosec:       ignoreNoSec,
+		showIgnored:       showIgnored,
+		ruleset:           make(RuleSet),
+		context:           &Context{},
+		config:            conf,
+		logger:            logger,
+		issues:            make([]*Issue, 0, 16),
+		stats:             &Metrics{},
+		errors:            make(map[string][]Error),
+		tests:             tests,
+		excludeGenerated:  excludeGenerated,
+		trackSuppressions: trackSuppressions,
 	}
 }
 
@@ -295,7 +302,7 @@ func (gosec *Analyzer) AppendError(file string, err error) {
 }
 
 // ignore a node (and sub-tree) if it is tagged with a nosec tag comment
-func (gosec *Analyzer) ignore(n ast.Node) ([]string, bool) {
+func (gosec *Analyzer) ignore(n ast.Node) (map[string]SuppressionInfo, bool) {
 	if groups, ok := gosec.context.Comments[n]; ok && !gosec.ignoreNosec {
 
 		// Checks if an alternative for #nosec is set and, if not, uses the default.
@@ -307,25 +314,37 @@ func (gosec *Analyzer) ignore(n ast.Node) ([]string, bool) {
 
 		for _, group := range groups {
 
-			foundDefaultTag := strings.Contains(group.Text(), noSecDefaultTag)
-			foundAlternativeTag := strings.Contains(group.Text(), noSecAlternativeTag)
+			foundDefaultTag := strings.HasPrefix(group.Text(), noSecDefaultTag)
+			foundAlternativeTag := strings.HasPrefix(group.Text(), noSecAlternativeTag)
 
 			if foundDefaultTag || foundAlternativeTag {
 				gosec.stats.NumNosec++
 
+				// Extract the directive and the justification.
+				justification := ""
+				commentParts := regexp.MustCompile(`-{2,}`).Split(group.Text(), 2)
+				directive := commentParts[0]
+				if len(commentParts) > 1 {
+					justification = strings.TrimSpace(strings.TrimRight(commentParts[1], "\n"))
+				}
+
 				// Pull out the specific rules that are listed to be ignored.
 				re := regexp.MustCompile(`(G\d{3})`)
-				matches := re.FindAllStringSubmatch(group.Text(), -1)
+				matches := re.FindAllStringSubmatch(directive, -1)
 
 				// If no specific rules were given, ignore everything.
 				if len(matches) == 0 {
 					return nil, true
 				}
 
+				suppression := new(SuppressionInfo)
+				suppression.Kind = "inSource"
+				suppression.Justification = justification
+
 				// Find the rule IDs to ignore.
-				var ignores []string
+				ignores := make(map[string]SuppressionInfo)
 				for _, v := range matches {
-					ignores = append(ignores, v[1])
+					ignores[v[1]] = *suppression
 				}
 				return ignores, false
 			}
@@ -352,25 +371,25 @@ func (gosec *Analyzer) Visit(n ast.Node) ast.Visitor {
 	}
 
 	// Now create the union of exclusions.
-	ignores := map[string]bool{}
+	ignores := map[string][]SuppressionInfo{}
 	if len(gosec.context.Ignores) > 0 {
 		for k, v := range gosec.context.Ignores[0] {
 			ignores[k] = v
 		}
 	}
 
-	for _, v := range ignoredRules {
-		ignores[v] = true
+	for ruleId, suppression := range ignoredRules {
+		ignores[ruleId] = append(ignores[ruleId], suppression)
 	}
 
 	// Push the new set onto the stack.
-	gosec.context.Ignores = append([]map[string]bool{ignores}, gosec.context.Ignores...)
+	gosec.context.Ignores = append([]map[string][]SuppressionInfo{ignores}, gosec.context.Ignores...)
 
 	// Track aliased and initialization imports
 	gosec.context.Imports.TrackImport(n)
 
 	for _, rule := range gosec.ruleset.RegisteredFor(n) {
-		_, ignored := ignores[rule.ID()]
+		suppressions, ignored := ignores[rule.ID()]
 
 		issue, err := rule.Match(n, gosec.context)
 		if err != nil {
@@ -385,7 +404,10 @@ func (gosec *Analyzer) Visit(n ast.Node) ast.Visitor {
 			if !ignored || !gosec.showIgnored {
 				gosec.stats.NumFound++
 			}
-			if !ignored || gosec.showIgnored || gosec.ignoreNosec {
+			if ignored && gosec.trackSuppressions {
+				issue.WithSuppressions(suppressions)
+				gosec.issues = append(gosec.issues, issue)
+			} else if !ignored || gosec.showIgnored || gosec.ignoreNosec {
 				gosec.issues = append(gosec.issues, issue)
 			}
 		}

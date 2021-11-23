@@ -132,6 +132,9 @@ var (
 	// overrides the output format when stdout the results while saving them in the output file
 	flagVerbose = flag.String("verbose", "", "Overrides the output format when stdout the results while saving them in the output file.\nValid options are: json, yaml, csv, junit-xml, html, sonarqube, golint, sarif or text")
 
+	// output suppression information for auditing purposes
+	flagTrackSuppressions = flag.Bool("track-suppressions", false, "Output suppression information, including its kind and justification")
+
 	// exlude the folders from scan
 	flagDirsExclude arrayFlags
 
@@ -267,7 +270,7 @@ func filterIssues(issues []*gosec.Issue, severity gosec.Score, confidence gosec.
 	for _, issue := range issues {
 		if issue.Severity >= severity && issue.Confidence >= confidence {
 			result = append(result, issue)
-			if !issue.NoSec || !*flagShowIgnored {
+			if (!issue.NoSec || !*flagShowIgnored) && len(issue.Suppressions) == 0 {
 				trueIssues++
 			}
 		}
@@ -351,7 +354,7 @@ func main() {
 	}
 
 	// Create the analyzer
-	analyzer := gosec.NewAnalyzer(config, *flagScanTests, *flagExcludeGenerated, logger)
+	analyzer := gosec.NewAnalyzer(config, *flagScanTests, *flagExcludeGenerated, *flagTrackSuppressions, logger)
 	analyzer.LoadRules(ruleDefinitions.Builders())
 
 	excludedDirs := gosec.ExcludedDirsRegExp(flagDirsExclude)
