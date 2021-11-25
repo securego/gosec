@@ -86,6 +86,8 @@ type Analyzer struct {
 	trackSuppressions bool
 }
 
+// SuppressionInfo object is to record the kind and the justification that used
+// to suppress violations.
 type SuppressionInfo struct {
 	Kind          string `json:"kind"`
 	Justification string `json:"justification"`
@@ -302,7 +304,7 @@ func (gosec *Analyzer) AppendError(file string, err error) {
 }
 
 // ignore a node (and sub-tree) if it is tagged with a nosec tag comment
-func (gosec *Analyzer) ignore(n ast.Node) (map[string]SuppressionInfo, bool) {
+func (gosec *Analyzer) ignore(n ast.Node) map[string]SuppressionInfo {
 	if groups, ok := gosec.context.Comments[n]; ok && !gosec.ignoreNosec {
 
 		// Checks if an alternative for #nosec is set and, if not, uses the default.
@@ -332,11 +334,6 @@ func (gosec *Analyzer) ignore(n ast.Node) (map[string]SuppressionInfo, bool) {
 				re := regexp.MustCompile(`(G\d{3})`)
 				matches := re.FindAllStringSubmatch(directive, -1)
 
-				// If no specific rules were given, ignore everything.
-				if len(matches) == 0 {
-					return nil, true
-				}
-
 				suppression := new(SuppressionInfo)
 				suppression.Kind = "inSource"
 				suppression.Justification = justification
@@ -346,11 +343,16 @@ func (gosec *Analyzer) ignore(n ast.Node) (map[string]SuppressionInfo, bool) {
 				for _, v := range matches {
 					ignores[v[1]] = *suppression
 				}
-				return ignores, false
+
+				// If no specific rules were given, ignore everything.
+				if len(matches) == 0 {
+					ignores["*"] = *suppression
+				}
+				return ignores
 			}
 		}
 	}
-	return nil, false
+	return nil
 }
 
 // Visit runs the gosec visitor logic over an AST created by parsing go code.
@@ -365,10 +367,7 @@ func (gosec *Analyzer) Visit(n ast.Node) ast.Visitor {
 	}
 
 	// Get any new rule exclusions.
-	ignoredRules, ignoreAll := gosec.ignore(n)
-	if ignoreAll {
-		return nil
-	}
+	ignoredRules := gosec.ignore(n)
 
 	// Now create the union of exclusions.
 	ignores := map[string][]SuppressionInfo{}
@@ -378,8 +377,8 @@ func (gosec *Analyzer) Visit(n ast.Node) ast.Visitor {
 		}
 	}
 
-	for ruleId, suppression := range ignoredRules {
-		ignores[ruleId] = append(ignores[ruleId], suppression)
+	for ruleID, suppression := range ignoredRules {
+		ignores[ruleID] = append(ignores[ruleID], suppression)
 	}
 
 	// Push the new set onto the stack.
@@ -389,7 +388,10 @@ func (gosec *Analyzer) Visit(n ast.Node) ast.Visitor {
 	gosec.context.Imports.TrackImport(n)
 
 	for _, rule := range gosec.ruleset.RegisteredFor(n) {
-		suppressions, ignored := ignores[rule.ID()]
+		suppressions, ignored := ignores["*"]
+		if !ignored {
+			suppressions, ignored = ignores[rule.ID()]
+		}
 
 		issue, err := rule.Match(n, gosec.context)
 		if err != nil {

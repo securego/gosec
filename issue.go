@@ -202,7 +202,8 @@ func NewIssue(ctx *Context, node ast.Node, ruleID, desc string, severity Score, 
 	}
 }
 
-func (issue *Issue) WithSuppressions(suppressions []SuppressionInfo) *Issue {
-	issue.Suppressions = suppressions
-	return issue
+// WithSuppressions set the suppressions of the issue
+func (i *Issue) WithSuppressions(suppressions []SuppressionInfo) *Issue {
+	i.Suppressions = suppressions
+	return i
 }
