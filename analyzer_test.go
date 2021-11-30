@@ -603,8 +603,8 @@ var _ = Describe("Analyzer", func() {
 			err = analyzer.Process(buildTags, nosecPackage.Path)
 			Expect(err).ShouldNot(HaveOccurred())
 			issues, _, _ := analyzer.Report()
-			Expect(len(issues)).To(Equal(1))
-			Expect(len(issues[0].Suppressions)).To(Equal(1))
+			Expect(issues).To(HaveLen(1))
+			Expect(issues[0].Suppressions).To(HaveLen(1))
 			Expect(issues[0].Suppressions[0].Kind).To(Equal("inSource"))
 			Expect(issues[0].Suppressions[0].Justification).To(Equal("Justification"))
 		})
@@ -623,10 +623,66 @@ var _ = Describe("Analyzer", func() {
 			err = analyzer.Process(buildTags, nosecPackage.Path)
 			Expect(err).ShouldNot(HaveOccurred())
 			issues, _, _ := analyzer.Report()
-			Expect(len(issues)).To(Equal(1))
-			Expect(len(issues[0].Suppressions)).To(Equal(1))
+			Expect(issues).To(HaveLen(1))
+			Expect(issues[0].Suppressions).To(HaveLen(1))
 			Expect(issues[0].Suppressions[0].Kind).To(Equal("inSource"))
 			Expect(issues[0].Suppressions[0].Justification).To(Equal(""))
+		})
+
+		It("should not report an error if the rule is not included", func() {
+			sample := testutils.SampleCodeG101[0]
+			source := sample.Code[0]
+			analyzer.LoadRules(rules.Generate(true, rules.NewRuleFilter(false, "G401")).RulesInfo())
+
+			controlPackage := testutils.NewTestPackage()
+			defer controlPackage.Close()
+			controlPackage.AddFile("pwd.go", source)
+			err := controlPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, controlPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			controlIssues, _, _ := analyzer.Report()
+			Expect(controlIssues).Should(HaveLen(sample.Errors))
+			Expect(controlIssues[0].Suppressions).To(HaveLen(1))
+			Expect(controlIssues[0].Suppressions[0].Kind).To(Equal("external"))
+			Expect(controlIssues[0].Suppressions[0].Justification).To(Equal("Globally suppressed."))
+		})
+
+		It("should not report an error if the rule is excluded", func() {
+			sample := testutils.SampleCodeG101[0]
+			source := sample.Code[0]
+			analyzer.LoadRules(rules.Generate(true, rules.NewRuleFilter(true, "G101")).RulesInfo())
+
+			controlPackage := testutils.NewTestPackage()
+			defer controlPackage.Close()
+			controlPackage.AddFile("pwd.go", source)
+			err := controlPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, controlPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			issues, _, _ := analyzer.Report()
+			Expect(issues).Should(HaveLen(sample.Errors))
+			Expect(issues[0].Suppressions).To(HaveLen(1))
+			Expect(issues[0].Suppressions[0].Kind).To(Equal("external"))
+			Expect(issues[0].Suppressions[0].Justification).To(Equal("Globally suppressed."))
+		})
+
+		It("should track multiple suppressions if the violation is multiply suppressed", func() {
+			sample := testutils.SampleCodeG101[0]
+			source := sample.Code[0]
+			analyzer.LoadRules(rules.Generate(true, rules.NewRuleFilter(true, "G101")).RulesInfo())
+
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecSource := strings.Replace(source, "}", "} // #nosec G101 -- Justification", 1)
+			nosecPackage.AddFile("pwd.go", nosecSource)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			issues, _, _ := analyzer.Report()
+			Expect(issues).Should(HaveLen(sample.Errors))
+			Expect(issues[0].Suppressions).To(HaveLen(2))
 		})
 	})
 })

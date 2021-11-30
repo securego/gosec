@@ -32,8 +32,8 @@ type RuleBuilder func(id string, c Config) (Rule, []ast.Node)
 // The analyzer will only invoke rules contained in the list associated with the
 // type of AST node it is currently visiting.
 type RuleSet struct {
-	rules             map[reflect.Type][]Rule
-	ruleSuppressedMap map[string]bool
+	Rules             map[reflect.Type][]Rule
+	RuleSuppressedMap map[string]bool
 }
 
 // NewRuleSet constructs a new RuleSet
@@ -46,19 +46,19 @@ func NewRuleSet() RuleSet {
 func (r RuleSet) Register(rule Rule, isSuppressed bool, nodes ...ast.Node) {
 	for _, n := range nodes {
 		t := reflect.TypeOf(n)
-		if rules, ok := r.rules[t]; ok {
-			r.rules[t] = append(rules, rule)
+		if rules, ok := r.Rules[t]; ok {
+			r.Rules[t] = append(rules, rule)
 		} else {
-			r.rules[t] = []Rule{rule}
+			r.Rules[t] = []Rule{rule}
 		}
 	}
-	r.ruleSuppressedMap[rule.ID()] = isSuppressed
+	r.RuleSuppressedMap[rule.ID()] = isSuppressed
 }
 
 // RegisteredFor will return all rules that are registered for a
 // specified ast node.
 func (r RuleSet) RegisteredFor(n ast.Node) []Rule {
-	if rules, found := r.rules[reflect.TypeOf(n)]; found {
+	if rules, found := r.Rules[reflect.TypeOf(n)]; found {
 		return rules
 	}
 	return []Rule{}
@@ -66,5 +66,5 @@ func (r RuleSet) RegisteredFor(n ast.Node) []Rule {
 
 // IsRuleSuppressed will return whether the rule is suppressed.
 func (r RuleSet) IsRuleSuppressed(ruleID string) bool {
-	return r.ruleSuppressedMap[ruleID]
+	return r.RuleSuppressedMap[ruleID]
 }
