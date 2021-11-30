@@ -29,7 +29,7 @@ var _ = Describe("gosec rules", func() {
 			for n, sample := range samples {
 				analyzer.Reset()
 				analyzer.SetConfig(sample.Config)
-				analyzer.LoadRules(rules.Generate(rules.NewRuleFilter(false, rule)).Builders())
+				analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, rule)).RulesInfo())
 				pkg := testutils.NewTestPackage()
 				defer pkg.Close()
 				for i, code := range sample.Code {

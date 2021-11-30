@@ -84,7 +84,6 @@ type Analyzer struct {
 	excludeGenerated  bool
 	showIgnored       bool
 	trackSuppressions bool
-	ruleSuppressed    map[string]bool
 }
 
 // SuppressionInfo object is to record the kind and the justification that used
@@ -95,7 +94,7 @@ type SuppressionInfo struct {
 }
 
 // NewAnalyzer builds a new analyzer.
-func NewAnalyzer(conf Config, tests bool, excludeGenerated bool, trackSuppressions bool, ruleSuppressedList map[string]bool, logger *log.Logger) *Analyzer {
+func NewAnalyzer(conf Config, tests bool, excludeGenerated bool, trackSuppressions bool, logger *log.Logger) *Analyzer {
 	ignoreNoSec := false
 	if enabled, err := conf.IsGlobalEnabled(Nosec); err == nil {
 		ignoreNoSec = enabled
@@ -110,7 +109,7 @@ func NewAnalyzer(conf Config, tests bool, excludeGenerated bool, trackSuppressio
 	return &Analyzer{
 		ignoreNosec:       ignoreNoSec,
 		showIgnored:       showIgnored,
-		ruleset:           make(RuleSet),
+		ruleset:           NewRuleSet(),
 		context:           &Context{},
 		config:            conf,
 		logger:            logger,
@@ -120,7 +119,6 @@ func NewAnalyzer(conf Config, tests bool, excludeGenerated bool, trackSuppressio
 		tests:             tests,
 		excludeGenerated:  excludeGenerated,
 		trackSuppressions: trackSuppressions,
-		ruleSuppressed:    ruleSuppressedList,
 	}
 }
 
@@ -136,10 +134,10 @@ func (gosec *Analyzer) Config() Config {
 
 // LoadRules instantiates all the rules to be used when analyzing source
 // packages
-func (gosec *Analyzer) LoadRules(ruleDefinitions map[string]RuleBuilder) {
+func (gosec *Analyzer) LoadRules(ruleDefinitions map[string]RuleBuilder, ruleSuppressed map[string]bool) {
 	for id, def := range ruleDefinitions {
 		r, nodes := def(id, gosec.config)
-		gosec.ruleset.Register(r, nodes...)
+		gosec.ruleset.Register(r, ruleSuppressed[id], nodes...)
 	}
 }
 
@@ -395,7 +393,7 @@ func (gosec *Analyzer) Visit(n ast.Node) ast.Visitor {
 			suppressions, ignored = ignores[rule.ID()]
 		}
 		// Track external suppressions.
-		if gosec.ruleSuppressed[rule.ID()] {
+		if gosec.ruleset.IsRuleSuppressed(rule.ID()) {
 			ignored = true
 			suppressions = append(suppressions, SuppressionInfo{
 				Kind:          "external",
