@@ -84,6 +84,7 @@ type Analyzer struct {
 	excludeGenerated  bool
 	showIgnored       bool
 	trackSuppressions bool
+	ruleSuppressed    map[string]bool
 }
 
 // SuppressionInfo object is to record the kind and the justification that used
@@ -94,7 +95,7 @@ type SuppressionInfo struct {
 }
 
 // NewAnalyzer builds a new analyzer.
-func NewAnalyzer(conf Config, tests bool, excludeGenerated bool, trackSuppressions bool, logger *log.Logger) *Analyzer {
+func NewAnalyzer(conf Config, tests bool, excludeGenerated bool, trackSuppressions bool, ruleSuppressedList map[string]bool, logger *log.Logger) *Analyzer {
 	ignoreNoSec := false
 	if enabled, err := conf.IsGlobalEnabled(Nosec); err == nil {
 		ignoreNoSec = enabled
@@ -119,6 +120,7 @@ func NewAnalyzer(conf Config, tests bool, excludeGenerated bool, trackSuppressio
 		tests:             tests,
 		excludeGenerated:  excludeGenerated,
 		trackSuppressions: trackSuppressions,
+		ruleSuppressed:    ruleSuppressedList,
 	}
 }
 
@@ -391,6 +393,14 @@ func (gosec *Analyzer) Visit(n ast.Node) ast.Visitor {
 		suppressions, ignored := ignores["*"]
 		if !ignored {
 			suppressions, ignored = ignores[rule.ID()]
+		}
+		// Track external suppressions.
+		if gosec.ruleSuppressed[rule.ID()] {
+			ignored = true
+			suppressions = append(suppressions, SuppressionInfo{
+				Kind:          "external",
+				Justification: "Globally suppressed.",
+			})
 		}
 
 		issue, err := rule.Match(n, gosec.context)

@@ -150,7 +150,7 @@ func usage() {
 	fmt.Fprint(os.Stderr, "\n\nRULES:\n\n")
 
 	// sorted rule list for ease of reading
-	rl := rules.Generate()
+	rl, _ := rules.Generate(false)
 	keys := make([]string, 0, len(rl))
 	for key := range rl {
 		keys = append(keys, key)
@@ -188,7 +188,7 @@ func loadConfig(configFile string) (gosec.Config, error) {
 	return config, nil
 }
 
-func loadRules(include, exclude string) rules.RuleList {
+func loadRules(include, exclude string) (rules.RuleList, map[string]bool) {
 	var filters []rules.RuleFilter
 	if include != "" {
 		logger.Printf("Including rules: %s", include)
@@ -205,7 +205,7 @@ func loadRules(include, exclude string) rules.RuleList {
 	} else {
 		logger.Println("Excluding rules: default")
 	}
-	return rules.Generate(filters...)
+	return rules.Generate(*flagTrackSuppressions, filters...)
 }
 
 func getRootPaths(paths []string) []string {
@@ -348,13 +348,13 @@ func main() {
 	}
 
 	// Load enabled rule definitions
-	ruleDefinitions := loadRules(*flagRulesInclude, flagRulesExclude.String())
+	ruleDefinitions, ruleSuppressedList := loadRules(*flagRulesInclude, flagRulesExclude.String())
 	if len(ruleDefinitions) == 0 {
 		logger.Fatal("No rules are configured")
 	}
 
 	// Create the analyzer
-	analyzer := gosec.NewAnalyzer(config, *flagScanTests, *flagExcludeGenerated, *flagTrackSuppressions, logger)
+	analyzer := gosec.NewAnalyzer(config, *flagScanTests, *flagExcludeGenerated, *flagTrackSuppressions, ruleSuppressedList, logger)
 	analyzer.LoadRules(ruleDefinitions.Builders())
 
 	excludedDirs := gosec.ExcludedDirsRegExp(flagDirsExclude)

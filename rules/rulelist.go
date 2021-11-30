@@ -56,7 +56,7 @@ func NewRuleFilter(action bool, ruleIDs ...string) RuleFilter {
 }
 
 // Generate the list of rules to use
-func Generate(filters ...RuleFilter) RuleList {
+func Generate(trackSuppressions bool, filters ...RuleFilter) (RuleList, map[string]bool) {
 	rules := []RuleDefinition{
 		// misc
 		{"G101", "Look for hardcoded credentials", NewHardcodedCredentials},
@@ -102,15 +102,20 @@ func Generate(filters ...RuleFilter) RuleList {
 	}
 
 	ruleMap := make(map[string]RuleDefinition)
+	ruleSuppressedMap := make(map[string]bool)
 
 RULES:
 	for _, rule := range rules {
+		ruleSuppressedMap[rule.ID] = false
 		for _, filter := range filters {
 			if filter(rule.ID) {
-				continue RULES
+				ruleSuppressedMap[rule.ID] = true
+				if !trackSuppressions {
+					continue RULES
+				}
 			}
 		}
 		ruleMap[rule.ID] = rule
 	}
-	return ruleMap
+	return ruleMap, ruleSuppressedMap
 }
