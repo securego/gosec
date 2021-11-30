@@ -31,15 +31,6 @@ type RuleList struct {
 	RuleSuppressed map[string]bool
 }
 
-// Builders returns all the create methods for a given rule list
-func (rl RuleList) Builders() map[string]gosec.RuleBuilder {
-	builders := make(map[string]gosec.RuleBuilder)
-	for _, def := range rl.Rules {
-		builders[def.ID] = def.Create
-	}
-	return builders
-}
-
 // RulesInfo returns all the create methods and the rule suppressed map for a
 // given list
 func (rl RuleList) RulesInfo() (map[string]gosec.RuleBuilder, map[string]bool) {
