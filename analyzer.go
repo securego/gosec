@@ -43,6 +43,8 @@ const LoadMode = packages.NeedName |
 	packages.NeedTypesInfo |
 	packages.NeedSyntax
 
+const externalSuppressionJustification = "Globally suppressed."
+
 var generatedCodePattern = regexp.MustCompile(`^// Code generated .* DO NOT EDIT\.$`)
 
 // The Context is populated with data parsed from the source code as it is scanned.
@@ -397,7 +399,7 @@ func (gosec *Analyzer) Visit(n ast.Node) ast.Visitor {
 			ignored = true
 			suppressions = append(suppressions, SuppressionInfo{
 				Kind:          "external",
-				Justification: "Globally suppressed.",
+				Justification: externalSuppressionJustification,
 			})
 		}
 
