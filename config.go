@@ -30,6 +30,8 @@ const (
 	ExcludeRules GlobalOption = "exclude"
 	// IncludeRules global option for  should be load
 	IncludeRules GlobalOption = "include"
+	// GrepFilename global option configures filename to grep in package
+	GrepFilename GlobalOption = "grep-filename"
 )
 
 // Config is used to provide configuration and customization to each of the rules.

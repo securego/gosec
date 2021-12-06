@@ -124,6 +124,16 @@ var (
 			Description: "The software constructs all or part of an SQL command using externally-influenced input from an upstream component, but it does not neutralize or incorrectly neutralizes special elements that could modify the intended SQL command when it is sent to a downstream component.",
 			Name:        "Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')",
 		},
+		{
+			ID:          "477",
+			Description: "The code uses deprecated or obsolete functions, which suggests that the code has not been actively reviewed or maintained.",
+			Name:        "Use of Obsolete Function",
+		},
+		{
+			ID:          "478",
+			Description: "The code does not have a default case in a switch statement, which might lead to complex logical errors and resultant weaknesses.",
+			Name:        "Missing Default Case in Switch Statement",
+		},
 	}
 )
 

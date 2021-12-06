@@ -64,6 +64,8 @@ var ruleToCWE = map[string]string{
 	"G109": "190",
 	"G110": "409",
 	"G111": "22",
+	"G112": "477",
+	"G113": "478",
 	"G201": "89",
 	"G202": "89",
 	"G203": "79",
@@ -85,6 +87,7 @@ var ruleToCWE = map[string]string{
 	"G504": "327",
 	"G505": "327",
 	"G601": "118",
+	"G602": "190",
 }
 
 // Issue is returned by a gosec rule if it discovers an issue with the scanned code.
@@ -130,8 +133,9 @@ func (c Score) String() string {
 		return "MEDIUM"
 	case Low:
 		return "LOW"
+	default:
+		return "UNDEFINED"
 	}
-	return "UNDEFINED"
 }
 
 // codeSnippet extracts a code snippet based on the ast reference
@@ -181,7 +185,7 @@ func NewIssue(ctx *Context, node ast.Node, ruleID, desc string, severity Score, 
 
 	var code string
 	if file, err := os.Open(fobj.Name()); err == nil {
-		defer file.Close() //#nosec
+		defer file.Close() // #nosec
 		s := codeSnippetStartLine(node, fobj)
 		e := codeSnippetEndLine(node, fobj)
 		code, err = codeSnippet(file, s, e, node)

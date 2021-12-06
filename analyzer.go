@@ -57,6 +57,7 @@ type Context struct {
 	FileSet      *token.FileSet
 	Comments     ast.CommentMap
 	Info         *types.Info
+	RawPkg       *packages.Package
 	Pkg          *types.Package
 	PkgFiles     []*ast.File
 	Root         *ast.File
@@ -64,6 +65,7 @@ type Context struct {
 	Imports      *ImportTracker
 	Ignores      []map[string][]SuppressionInfo
 	PassedValues map[string]interface{}
+	LoadPackages func(pkgPath string) ([]*packages.Package, error)
 }
 
 // Metrics used when reporting information about a scanning run.
@@ -155,6 +157,11 @@ func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error
 		BuildFlags: buildTags,
 		Tests:      gosec.tests,
 	}
+	if gosec.config == nil {
+		gosec.config = make(Config)
+		gosec.config[Globals] = make(map[GlobalOption]string)
+	}
+	gosec.config.Set("packages_config", config)
 
 	type result struct {
 		pkgPath string
@@ -172,7 +179,7 @@ func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error
 		for {
 			select {
 			case s := <-j:
-				packages, err := gosec.load(s, config)
+				packages, err := gosec.load(s)
 				select {
 				case r <- result{pkgPath: s, pkgs: packages, err: err}:
 				case <-quit:
@@ -224,37 +231,45 @@ func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error
 	return nil
 }
 
-func (gosec *Analyzer) load(pkgPath string, conf *packages.Config) ([]*packages.Package, error) {
+func (gosec *Analyzer) load(pkgPath string) ([]*packages.Package, error) {
+	confInterface, confErr := gosec.config.Get("packages_config")
+	if confErr != nil {
+		return []*packages.Package{}, fmt.Errorf("impossible to get build config: %w", confErr)
+	}
+	conf, confOk := confInterface.(*packages.Config)
+	if !confOk {
+		return []*packages.Package{}, fmt.Errorf("incorrect type of build config: %T", confInterface)
+	}
+
 	abspath, err := GetPkgAbsPath(pkgPath)
-	if err != nil {
-		gosec.logger.Printf("Skipping: %s. Path doesn't exist.", abspath)
-		return []*packages.Package{}, nil
-	}
-
-	gosec.logger.Println("Import directory:", abspath)
-	// step 1/3 create build context.
-	buildD := build.Default
-	// step 2/3: add build tags to get env dependent files into basePackage.
-	buildD.BuildTags = conf.BuildFlags
-	basePackage, err := buildD.ImportDir(pkgPath, build.ImportComment)
-	if err != nil {
-		return []*packages.Package{}, fmt.Errorf("importing dir %q: %w", pkgPath, err)
-	}
-
 	var packageFiles []string
-	for _, filename := range basePackage.GoFiles {
-		packageFiles = append(packageFiles, path.Join(pkgPath, filename))
-	}
-	for _, filename := range basePackage.CgoFiles {
-		packageFiles = append(packageFiles, path.Join(pkgPath, filename))
-	}
+	if err != nil {
+		packageFiles = []string{pkgPath}
+	} else {
+		gosec.logger.Println("Import directory:", abspath)
+		// step 1/3 create build context.
+		buildD := build.Default
+		// step 2/3: add build tags to get env dependent files into basePackage.
+		buildD.BuildTags = conf.BuildFlags
+		basePackage, err := buildD.ImportDir(pkgPath, build.ImportComment)
+		if err != nil {
+			return []*packages.Package{}, fmt.Errorf("importing dir %q: %w", pkgPath, err)
+		}
 
-	if gosec.tests {
-		testsFiles := make([]string, 0)
-		testsFiles = append(testsFiles, basePackage.TestGoFiles...)
-		testsFiles = append(testsFiles, basePackage.XTestGoFiles...)
-		for _, filename := range testsFiles {
+		for _, filename := range basePackage.GoFiles {
 			packageFiles = append(packageFiles, path.Join(pkgPath, filename))
+		}
+		for _, filename := range basePackage.CgoFiles {
+			packageFiles = append(packageFiles, path.Join(pkgPath, filename))
+		}
+
+		if gosec.tests {
+			testsFiles := make([]string, 0)
+			testsFiles = append(testsFiles, basePackage.TestGoFiles...)
+			testsFiles = append(testsFiles, basePackage.XTestGoFiles...)
+			for _, filename := range testsFiles {
+				packageFiles = append(packageFiles, path.Join(pkgPath, filename))
+			}
 		}
 	}
 
@@ -264,6 +279,16 @@ func (gosec *Analyzer) load(pkgPath string, conf *packages.Config) ([]*packages.
 	if err != nil {
 		return []*packages.Package{}, fmt.Errorf("loading files from package %q: %w", pkgPath, err)
 	}
+
+	for _, pkg := range pkgs {
+		if pkg.Name != "" {
+			err := gosec.ParseErrors(pkg)
+			if err != nil {
+				return []*packages.Package{}, fmt.Errorf("parsing errors in pkg %q: %w", pkg.Name, err)
+			}
+		}
+	}
+
 	return pkgs, nil
 }
 
@@ -277,6 +302,13 @@ func (gosec *Analyzer) Check(pkg *packages.Package) {
 			continue
 		}
 		checkedFile := fp.Name()
+
+		if filenameGrep, err := gosec.config.GetGlobal("grep-filename"); err == nil {
+			if !strings.Contains(checkedFile, filenameGrep) {
+				continue
+			}
+		}
+
 		// Skip the no-Go file from analysis (e.g. a Cgo files is expanded in 3 different files
 		// stored in the cache which do not need to by analyzed)
 		if filepath.Ext(checkedFile) != ".go" {
@@ -288,11 +320,13 @@ func (gosec *Analyzer) Check(pkg *packages.Package) {
 		}
 
 		gosec.logger.Println("Checking file:", checkedFile)
+		gosec.context.LoadPackages = gosec.load
 		gosec.context.FileSet = pkg.Fset
 		gosec.context.Config = gosec.config
 		gosec.context.Comments = ast.NewCommentMap(gosec.context.FileSet, file, file.Comments)
 		gosec.context.Root = file
 		gosec.context.Info = pkg.TypesInfo
+		gosec.context.RawPkg = pkg
 		gosec.context.Pkg = pkg.Types
 		gosec.context.PkgFiles = pkg.Syntax
 		gosec.context.Imports = NewImportTracker()

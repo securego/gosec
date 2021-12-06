@@ -74,6 +74,8 @@ func Generate(trackSuppressions bool, filters ...RuleFilter) RuleList {
 		{"G109", "Converting strconv.Atoi result to int32/int16", NewIntegerOverflowCheck},
 		{"G110", "Detect io.Copy instead of io.CopyN when decompression", NewDecompressionBombCheck},
 		{"G111", "Detect http.Dir('/') as a potential risk", NewDirectoryTraversal},
+		{"G112", "Detect deprecated functions", NewUsingDeprecated},
+		{"G113", "Detect the use of switch without default block", NewUsingSwitchNoDefault},
 
 		// injection
 		{"G201", "SQL query construction using format string", NewSQLStrFormat},
@@ -105,6 +107,7 @@ func Generate(trackSuppressions bool, filters ...RuleFilter) RuleList {
 
 		// memory safety
 		{"G601", "Implicit memory aliasing in RangeStmt", NewImplicitAliasing},
+		{"G602", "Usage of Rat.SetString in math/big with an overflow", NewUsingOldMathBig},
 	}
 
 	ruleMap := make(map[string]RuleDefinition)
