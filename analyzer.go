@@ -347,6 +347,7 @@ func (gosec *Analyzer) ignore(n ast.Node) map[string]SuppressionInfo {
 				}
 
 				// If no specific rules were given, ignore everything.
+				// Use "*" as ignoring all rules.
 				if len(matches) == 0 {
 					ignores["*"] = *suppression
 				}
@@ -390,6 +391,7 @@ func (gosec *Analyzer) Visit(n ast.Node) ast.Visitor {
 	gosec.context.Imports.TrackImport(n)
 
 	for _, rule := range gosec.ruleset.RegisteredFor(n) {
+		// Check if all rules are ignored.
 		suppressions, ignored := ignores["*"]
 		if !ignored {
 			suppressions, ignored = ignores[rule.ID()]
