@@ -269,7 +269,8 @@ gosec -exclude-generated ./...
 ### Annotating code
 
 As with all automated detection tools, there will be cases of false positives. In cases where gosec reports a failure that has been manually verified as being safe,
-it is possible to annotate the code with a `#nosec` comment.
+it is possible to annotate the code with a comment that starts with `#nosec`.
+The `#nosec` comment should have the format `#nosec [RuleList] [-- Justification]`.
 
 The annotation causes gosec to stop processing any further nodes within the
 AST so can apply to a whole block or more granularly to a single expression.
@@ -294,6 +295,10 @@ When a specific false positive has been identified and verified as safe, you may
 within a section of code, while continuing to scan for other problems. To do this, you can list the rule(s) to be suppressed within
 the `#nosec` annotation, e.g: `/* #nosec G401 */` or `// #nosec G201 G202 G203`
 
+You could put the description or justification text for the annotation. The
+justification should be after the rule(s) to suppress and start with two or
+more dashes, e.g: `// #nosec G101 G102 -- This is a false positive`
+
 In some cases you may also want to revisit places where `#nosec` annotations
 have been used. To run the scanner and ignore any `#nosec` annotations you
 can do the following:
@@ -301,6 +306,27 @@ can do the following:
 ```bash
 gosec -nosec=true ./...
 ```
+
+### Tracking suppressions
+
+As described above, we could suppress violations externally (using `-include`/
+`-exclude`) or inline (using `#nosec` annotations) in gosec. This suppression
+inflammation can be used to generate corresponding signals for auditing
+purposes.
+
+We could track suppressions by the `-track-suppressions` flag as follows:
+
+```bash
+gosec -track-suppressions -exclude=G101 -fmt=sarif -out=results.sarif ./...
+```
+
+- For external suppressions, gosec records suppression info where `kind` is
+`external` and `justification` is a certain sentence "Globally suppressed".
+- For inline suppressions, gosec records suppression info where `kind` is
+`inSource` and `justification` is the text after two or more dashes in the
+comment.
+
+**Note:** Only SARIF and JSON formats support tracking suppressions.
 
 ### Build tags
 

@@ -104,7 +104,7 @@ func dumpAst(files ...string) {
 			continue
 		}
 
-		// Print the AST. #nosec
+		// #nosec -- Print the AST.
 		ast.Print(fset, f)
 	}
 }

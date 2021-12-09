@@ -132,6 +132,9 @@ var (
 	// overrides the output format when stdout the results while saving them in the output file
 	flagVerbose = flag.String("verbose", "", "Overrides the output format when stdout the results while saving them in the output file.\nValid options are: json, yaml, csv, junit-xml, html, sonarqube, golint, sarif or text")
 
+	// output suppression information for auditing purposes
+	flagTrackSuppressions = flag.Bool("track-suppressions", false, "Output suppression information, including its kind and justification")
+
 	// exlude the folders from scan
 	flagDirsExclude arrayFlags
 
@@ -147,14 +150,14 @@ func usage() {
 	fmt.Fprint(os.Stderr, "\n\nRULES:\n\n")
 
 	// sorted rule list for ease of reading
-	rl := rules.Generate()
-	keys := make([]string, 0, len(rl))
-	for key := range rl {
+	rl := rules.Generate(*flagTrackSuppressions)
+	keys := make([]string, 0, len(rl.Rules))
+	for key := range rl.Rules {
 		keys = append(keys, key)
 	}
 	sort.Strings(keys)
 	for _, k := range keys {
-		v := rl[k]
+		v := rl.Rules[k]
 		fmt.Fprintf(os.Stderr, "\t%s: %s\n", k, v.Description)
 	}
 	fmt.Fprint(os.Stderr, "\n")
@@ -202,7 +205,7 @@ func loadRules(include, exclude string) rules.RuleList {
 	} else {
 		logger.Println("Excluding rules: default")
 	}
-	return rules.Generate(filters...)
+	return rules.Generate(*flagTrackSuppressions, filters...)
 }
 
 func getRootPaths(paths []string) []string {
@@ -267,7 +270,7 @@ func filterIssues(issues []*gosec.Issue, severity gosec.Score, confidence gosec.
 	for _, issue := range issues {
 		if issue.Severity >= severity && issue.Confidence >= confidence {
 			result = append(result, issue)
-			if !issue.NoSec || !*flagShowIgnored {
+			if (!issue.NoSec || !*flagShowIgnored) && len(issue.Suppressions) == 0 {
 				trueIssues++
 			}
 		}
@@ -345,14 +348,14 @@ func main() {
 	}
 
 	// Load enabled rule definitions
-	ruleDefinitions := loadRules(*flagRulesInclude, flagRulesExclude.String())
-	if len(ruleDefinitions) == 0 {
+	ruleList := loadRules(*flagRulesInclude, flagRulesExclude.String())
+	if len(ruleList.Rules) == 0 {
 		logger.Fatal("No rules are configured")
 	}
 
 	// Create the analyzer
-	analyzer := gosec.NewAnalyzer(config, *flagScanTests, *flagExcludeGenerated, logger)
-	analyzer.LoadRules(ruleDefinitions.Builders())
+	analyzer := gosec.NewAnalyzer(config, *flagScanTests, *flagExcludeGenerated, *flagTrackSuppressions, logger)
+	analyzer.LoadRules(ruleList.RulesInfo())
 
 	excludedDirs := gosec.ExcludedDirsRegExp(flagDirsExclude)
 	var packages []string

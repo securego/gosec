@@ -59,26 +59,36 @@ var _ = Describe("Rule", func() {
 			registeredNodeB := (*ast.AssignStmt)(nil)
 			unregisteredNode := (*ast.BinaryExpr)(nil)
 
-			ruleset.Register(dummyIssueRule, registeredNodeA, registeredNodeB)
+			ruleset.Register(dummyIssueRule, false, registeredNodeA, registeredNodeB)
 			Expect(ruleset.RegisteredFor(unregisteredNode)).Should(BeEmpty())
 			Expect(ruleset.RegisteredFor(registeredNodeA)).Should(ContainElement(dummyIssueRule))
 			Expect(ruleset.RegisteredFor(registeredNodeB)).Should(ContainElement(dummyIssueRule))
+			Expect(ruleset.IsRuleSuppressed(dummyIssueRule.ID())).Should(BeFalse())
 		})
 
 		It("should not register a rule when no ast.Nodes are specified", func() {
-			ruleset.Register(dummyErrorRule)
-			Expect(ruleset).Should(BeEmpty())
+			ruleset.Register(dummyErrorRule, false)
+			Expect(ruleset.Rules).Should(BeEmpty())
 		})
 
 		It("should be possible to retrieve a list of rules for a given node type", func() {
 			registeredNode := (*ast.CallExpr)(nil)
 			unregisteredNode := (*ast.AssignStmt)(nil)
-			ruleset.Register(dummyErrorRule, registeredNode)
-			ruleset.Register(dummyIssueRule, registeredNode)
+			ruleset.Register(dummyErrorRule, false, registeredNode)
+			ruleset.Register(dummyIssueRule, false, registeredNode)
 			Expect(ruleset.RegisteredFor(unregisteredNode)).Should(BeEmpty())
 			Expect(ruleset.RegisteredFor(registeredNode)).Should(HaveLen(2))
 			Expect(ruleset.RegisteredFor(registeredNode)).Should(ContainElement(dummyErrorRule))
 			Expect(ruleset.RegisteredFor(registeredNode)).Should(ContainElement(dummyIssueRule))
+		})
+
+		It("should register a suppressed rule", func() {
+			registeredNode := (*ast.CallExpr)(nil)
+			unregisteredNode := (*ast.AssignStmt)(nil)
+			ruleset.Register(dummyIssueRule, true, registeredNode)
+			Expect(ruleset.RegisteredFor(registeredNode)).Should(ContainElement(dummyIssueRule))
+			Expect(ruleset.RegisteredFor(unregisteredNode)).Should(BeEmpty())
+			Expect(ruleset.IsRuleSuppressed(dummyIssueRule.ID())).Should(BeTrue())
 		})
 	})
 })
