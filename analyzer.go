@@ -45,6 +45,8 @@ const LoadMode = packages.NeedName |
 
 const externalSuppressionJustification = "Globally suppressed."
 
+const aliasOfAllRules = "*"
+
 var generatedCodePattern = regexp.MustCompile(`^// Code generated .* DO NOT EDIT\.$`)
 
 // The Context is populated with data parsed from the source code as it is scanned.
@@ -336,20 +338,20 @@ func (gosec *Analyzer) ignore(n ast.Node) map[string]SuppressionInfo {
 				re := regexp.MustCompile(`(G\d{3})`)
 				matches := re.FindAllStringSubmatch(directive, -1)
 
-				suppression := new(SuppressionInfo)
-				suppression.Kind = "inSource"
-				suppression.Justification = justification
+				suppression := SuppressionInfo{
+					Kind:          "inSource",
+					Justification: justification,
+				}
 
 				// Find the rule IDs to ignore.
 				ignores := make(map[string]SuppressionInfo)
 				for _, v := range matches {
-					ignores[v[1]] = *suppression
+					ignores[v[1]] = suppression
 				}
 
 				// If no specific rules were given, ignore everything.
-				// Use "*" as ignoring all rules.
 				if len(matches) == 0 {
-					ignores["*"] = *suppression
+					ignores[aliasOfAllRules] = suppression
 				}
 				return ignores
 			}
@@ -392,7 +394,7 @@ func (gosec *Analyzer) Visit(n ast.Node) ast.Visitor {
 
 	for _, rule := range gosec.ruleset.RegisteredFor(n) {
 		// Check if all rules are ignored.
-		suppressions, ignored := ignores["*"]
+		suppressions, ignored := ignores[aliasOfAllRules]
 		if !ignored {
 			suppressions, ignored = ignores[rule.ID()]
 		}

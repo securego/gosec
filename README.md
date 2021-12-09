@@ -310,8 +310,8 @@ gosec -nosec=true ./...
 ### Tracking suppressions
 
 As described above, we could suppress violations externally (using `-include`/
-`-exclude`) or inline (using `#nosec` annotations) in gosec. These suppression
-info could be taken advantage to generate corresponding signals for auditing
+`-exclude`) or inline (using `#nosec` annotations) in gosec. This suppression
+inflammation can be used to generate corresponding signals for auditing
 purposes.
 
 We could track suppressions by the `-track-suppressions` flag as follows:

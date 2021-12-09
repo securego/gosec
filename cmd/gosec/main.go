@@ -150,7 +150,7 @@ func usage() {
 	fmt.Fprint(os.Stderr, "\n\nRULES:\n\n")
 
 	// sorted rule list for ease of reading
-	rl := rules.Generate(false)
+	rl := rules.Generate(*flagTrackSuppressions)
 	keys := make([]string, 0, len(rl.Rules))
 	for key := range rl.Rules {
 		keys = append(keys, key)

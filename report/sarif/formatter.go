@@ -48,7 +48,7 @@ func GenerateReport(rootPaths []string, data *gosec.ReportInfo) (*Report, error)
 			return nil, err
 		}
 
-		result := NewResult(r.rule.ID, r.index, getSarifLevel(issue.Severity.String()), issue.What, issue.Suppressions).
+		result := NewResult(r.rule.ID, r.index, getSarifLevel(issue.Severity.String()), issue.What, buildSarifSuppressions(issue.Suppressions)).
 			WithLocations(location)
 
 		results = append(results, result)
@@ -198,4 +198,12 @@ func getSarifLevel(s string) Level {
 	default:
 		return Note
 	}
+}
+
+func buildSarifSuppressions(suppressions []gosec.SuppressionInfo) []*Suppression {
+	var sarifSuppressionList []*Suppression
+	for _, s := range suppressions {
+		sarifSuppressionList = append(sarifSuppressionList, NewSuppression(s.Kind, s.Justification))
+	}
+	return sarifSuppressionList
 }

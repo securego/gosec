@@ -1,7 +1,5 @@
 package sarif
 
-import "github.com/securego/gosec/v2"
-
 // NewReport instantiate a SARIF Report
 func NewReport(version string, schema string) *Report {
 	return &Report{
@@ -81,13 +79,13 @@ func NewTool(driver *ToolComponent) *Tool {
 }
 
 // NewResult instantiate a Result
-func NewResult(ruleID string, ruleIndex int, level Level, message string, suppressions []gosec.SuppressionInfo) *Result {
+func NewResult(ruleID string, ruleIndex int, level Level, message string, suppressions []*Suppression) *Result {
 	return &Result{
 		RuleID:       ruleID,
 		RuleIndex:    ruleIndex,
 		Level:        level,
 		Message:      NewMessage(message),
-		Suppressions: NewSuppressions(suppressions),
+		Suppressions: suppressions,
 	}
 }
 
@@ -203,15 +201,10 @@ func NewToolComponentReference(name string) *ToolComponentReference {
 	}
 }
 
-// NewSuppressions instantiate a suppression list
-func NewSuppressions(suppressions []gosec.SuppressionInfo) []*Suppression {
-	var sarifSuppressionList []*Suppression
-	for _, s := range suppressions {
-		sarifSuppression := &Suppression{
-			Kind:          s.Kind,
-			Justification: s.Justification,
-		}
-		sarifSuppressionList = append(sarifSuppressionList, sarifSuppression)
+// NewSuppression instantiate a Suppression
+func NewSuppression(kind string, justification string) *Suppression {
+	return &Suppression{
+		Kind:          kind,
+		Justification: justification,
 	}
-	return sarifSuppressionList
 }

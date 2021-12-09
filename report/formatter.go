@@ -82,7 +82,7 @@ func CreateReport(w io.Writer, format string, enableColor bool, rootPaths []stri
 }
 
 func filterOutSuppressedIssues(issues []*gosec.Issue) []*gosec.Issue {
-	nonSuppressedIssues := make([]*gosec.Issue, 0)
+	nonSuppressedIssues := []*gosec.Issue{}
 	for _, issue := range issues {
 		if len(issue.Suppressions) == 0 {
 			nonSuppressedIssues = append(nonSuppressedIssues, issue)
