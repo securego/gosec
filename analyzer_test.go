@@ -139,7 +139,7 @@ var _ = Describe("Analyzer", func() {
 			}
 		})
 
-		It("should not report errors when a nosec comment is present", func() {
+		It("should not report errors when a nosec line comment is present", func() {
 			sample := testutils.SampleCodeG401[0]
 			source := sample.Code[0]
 			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G401")).RulesInfo())
@@ -147,6 +147,23 @@ var _ = Describe("Analyzer", func() {
 			nosecPackage := testutils.NewTestPackage()
 			defer nosecPackage.Close()
 			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() // #nosec", 1)
+			nosecPackage.AddFile("md5.go", nosecSource)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			nosecIssues, _, _ := analyzer.Report()
+			Expect(nosecIssues).Should(BeEmpty())
+		})
+
+		It("should not report errors when a nosec block comment is present", func() {
+			sample := testutils.SampleCodeG401[0]
+			source := sample.Code[0]
+			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G401")).RulesInfo())
+
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() /* #nosec */", 1)
 			nosecPackage.AddFile("md5.go", nosecSource)
 			err := nosecPackage.Build()
 			Expect(err).ShouldNot(HaveOccurred())
