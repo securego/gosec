@@ -319,16 +319,16 @@ func (gosec *Analyzer) ignore(n ast.Node) map[string]SuppressionInfo {
 		}
 
 		for _, group := range groups {
-
-			foundDefaultTag := strings.HasPrefix(group.Text(), noSecDefaultTag)
-			foundAlternativeTag := strings.HasPrefix(group.Text(), noSecAlternativeTag)
+			comment := strings.TrimSpace(group.Text())
+			foundDefaultTag := strings.HasPrefix(comment, noSecDefaultTag)
+			foundAlternativeTag := strings.HasPrefix(comment, noSecAlternativeTag)
 
 			if foundDefaultTag || foundAlternativeTag {
 				gosec.stats.NumNosec++
 
 				// Extract the directive and the justification.
 				justification := ""
-				commentParts := regexp.MustCompile(`-{2,}`).Split(group.Text(), 2)
+				commentParts := regexp.MustCompile(`-{2,}`).Split(comment, 2)
 				directive := commentParts[0]
 				if len(commentParts) > 1 {
 					justification = strings.TrimSpace(strings.TrimRight(commentParts[1], "\n"))
