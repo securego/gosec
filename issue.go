@@ -180,7 +180,7 @@ func NewIssue(ctx *Context, node ast.Node, ruleID, desc string, severity Score, 
 
 	var code string
 	if file, err := os.Open(fobj.Name()); err == nil {
-		defer file.Close() // #nosec
+		defer file.Close() //#nosec
 		s := codeSnippetStartLine(node, fobj)
 		e := codeSnippetEndLine(node, fobj)
 		code, err = codeSnippet(file, s, e, node)
