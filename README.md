@@ -277,7 +277,7 @@ AST so can apply to a whole block or more granularly to a single expression.
 
 ```go
 
-import "md5" // #nosec
+import "md5" //#nosec
 
 
 func main(){
@@ -293,11 +293,11 @@ func main(){
 
 When a specific false positive has been identified and verified as safe, you may wish to suppress only that single rule (or a specific set of rules)
 within a section of code, while continuing to scan for other problems. To do this, you can list the rule(s) to be suppressed within
-the `#nosec` annotation, e.g: `/* #nosec G401 */` or `// #nosec G201 G202 G203`
+the `#nosec` annotation, e.g: `/* #nosec G401 */` or `//#nosec G201 G202 G203`
 
 You could put the description or justification text for the annotation. The
 justification should be after the rule(s) to suppress and start with two or
-more dashes, e.g: `// #nosec G101 G102 -- This is a false positive`
+more dashes, e.g: `//#nosec G101 G102 -- This is a false positive`
 
 In some cases you may also want to revisit places where `#nosec` annotations
 have been used. To run the scanner and ignore any `#nosec` annotations you

@@ -146,7 +146,7 @@ var _ = Describe("Analyzer", func() {
 
 			nosecPackage := testutils.NewTestPackage()
 			defer nosecPackage.Close()
-			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() // #nosec", 1)
+			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() //#nosec", 1)
 			nosecPackage.AddFile("md5.go", nosecSource)
 			err := nosecPackage.Build()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -181,7 +181,7 @@ var _ = Describe("Analyzer", func() {
 
 			nosecPackage := testutils.NewTestPackage()
 			defer nosecPackage.Close()
-			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() // #nosec G401", 1)
+			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() //#nosec G401", 1)
 			nosecPackage.AddFile("md5.go", nosecSource)
 			err := nosecPackage.Build()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -198,7 +198,7 @@ var _ = Describe("Analyzer", func() {
 
 			nosecPackage := testutils.NewTestPackage()
 			defer nosecPackage.Close()
-			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() // #nosec G301", 1)
+			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() //#nosec G301", 1)
 			nosecPackage.AddFile("md5.go", nosecSource)
 			err := nosecPackage.Build()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -215,7 +215,7 @@ var _ = Describe("Analyzer", func() {
 
 			nosecPackage := testutils.NewTestPackage()
 			defer nosecPackage.Close()
-			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() // #nosec G301 G401", 1)
+			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() //#nosec G301 G401", 1)
 			nosecPackage.AddFile("md5.go", nosecSource)
 			err := nosecPackage.Build()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -267,7 +267,7 @@ var _ = Describe("Analyzer", func() {
 
 			nosecPackage := testutils.NewTestPackage()
 			defer nosecPackage.Close()
-			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() // #nosec", 1)
+			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() //#nosec", 1)
 			nosecPackage.AddFile("md5.go", nosecSource)
 			err := nosecPackage.Build()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -291,7 +291,7 @@ var _ = Describe("Analyzer", func() {
 
 			nosecPackage := testutils.NewTestPackage()
 			defer nosecPackage.Close()
-			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() // #nosec", 1)
+			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() //#nosec", 1)
 			nosecPackage.AddFile("md5.go", nosecSource)
 			err := nosecPackage.Build()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -339,7 +339,7 @@ var _ = Describe("Analyzer", func() {
 
 			nosecPackage := testutils.NewTestPackage()
 			defer nosecPackage.Close()
-			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() // #nosec", 1)
+			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() //#nosec", 1)
 			nosecPackage.AddFile("md5.go", nosecSource)
 			err := nosecPackage.Build()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -613,7 +613,7 @@ var _ = Describe("Analyzer", func() {
 
 			nosecPackage := testutils.NewTestPackage()
 			defer nosecPackage.Close()
-			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() // #nosec G401 -- Justification", 1)
+			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() //#nosec G401 -- Justification", 1)
 			nosecPackage.AddFile("md5.go", nosecSource)
 			err := nosecPackage.Build()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -633,7 +633,7 @@ var _ = Describe("Analyzer", func() {
 
 			nosecPackage := testutils.NewTestPackage()
 			defer nosecPackage.Close()
-			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() // #nosec", 1)
+			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() //#nosec", 1)
 			nosecPackage.AddFile("md5.go", nosecSource)
 			err := nosecPackage.Build()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -691,7 +691,7 @@ var _ = Describe("Analyzer", func() {
 
 			nosecPackage := testutils.NewTestPackage()
 			defer nosecPackage.Close()
-			nosecSource := strings.Replace(source, "}", "} // #nosec G101 -- Justification", 1)
+			nosecSource := strings.Replace(source, "}", "} //#nosec G101 -- Justification", 1)
 			nosecPackage.AddFile("pwd.go", nosecSource)
 			err := nosecPackage.Build()
 			Expect(err).ShouldNot(HaveOccurred())
