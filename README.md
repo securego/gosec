@@ -445,3 +445,9 @@ This will generate the `rules/tls_config.go` file which will contain the current
 ## Who is using gosec?
 
 This is a [list](USERS.md) with some of the gosec's users.
+
+## Sponsors
+
+Support this project by becoming a sponsor. Your logo will show up here with a link to your website
+
+<a href="https://github.com/Daimler" target="_blank"><img src="https://avatars.githubusercontent.com/u/34240465?s=80&v=4"></a>
