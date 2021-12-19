@@ -28,6 +28,8 @@ const (
 	NoSecAlternative GlobalOption = "#nosec"
 	// ExcludeRules global option for some rules  should not be load
 	ExcludeRules GlobalOption = "exclude"
+	// ExcludeRules global option for  should be load
+	IncludeRules GlobalOption = "include"
 )
 
 // Config is used to provide configuration and customization to each of the rules.
