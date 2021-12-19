@@ -26,6 +26,8 @@ const (
 	Audit GlobalOption = "audit"
 	// NoSecAlternative global option alternative for #nosec directive
 	NoSecAlternative GlobalOption = "#nosec"
+	// ExcludeRules global option for some rules  should not be load
+	ExcludeRules GlobalOption = "exclude"
 )
 
 // Config is used to provide configuration and customization to each of the rules.
