@@ -28,7 +28,7 @@ const (
 	NoSecAlternative GlobalOption = "#nosec"
 	// ExcludeRules global option for some rules  should not be load
 	ExcludeRules GlobalOption = "exclude"
-	// ExcludeRules global option for  should be load
+	// IncludeRules global option for  should be load
 	IncludeRules GlobalOption = "include"
 )
 
