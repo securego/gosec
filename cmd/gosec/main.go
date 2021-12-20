@@ -185,6 +185,14 @@ func loadConfig(configFile string) (gosec.Config, error) {
 	if *flagAlternativeNoSec != "" {
 		config.SetGlobal(gosec.NoSecAlternative, *flagAlternativeNoSec)
 	}
+	// set global option IncludeRules ,when flag set or global option IncludeRules  is nil
+	if v, _ := config.GetGlobal(gosec.IncludeRules); *flagRulesInclude != "" || v == "" {
+		config.SetGlobal(gosec.IncludeRules, *flagRulesInclude)
+	}
+	// set global option ExcludeRules ,when flag set or global option IncludeRules  is nil
+	if v, _ := config.GetGlobal(gosec.ExcludeRules); flagRulesExclude.String() != "" || v == "" {
+		config.SetGlobal(gosec.ExcludeRules, flagRulesExclude.String())
+	}
 	return config, nil
 }
 
@@ -348,7 +356,16 @@ func main() {
 	}
 
 	// Load enabled rule definitions
-	ruleList := loadRules(*flagRulesInclude, flagRulesExclude.String())
+	excludeRules, err := config.GetGlobal(gosec.ExcludeRules)
+	if err != nil {
+		logger.Fatal(err)
+	}
+	includeRules, err := config.GetGlobal(gosec.IncludeRules)
+	if err != nil {
+		logger.Fatal(err)
+	}
+	// get a bug
+	ruleList := loadRules(includeRules, excludeRules)
 	if len(ruleList.Rules) == 0 {
 		logger.Fatal("No rules are configured")
 	}
