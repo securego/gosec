@@ -361,7 +361,7 @@ var _ = Describe("Analyzer", func() {
 
 			nosecPackage := testutils.NewTestPackage()
 			defer nosecPackage.Close()
-			nosecSource := strings.Replace(source, "h := md5.New()", "//#nosec //G301\n//#nosec\nh := md5.New()", 1)
+			nosecSource := strings.Replace(source, "h := md5.New()", "//#nosec\n//G301\n//#nosec\nh := md5.New()", 1)
 			nosecPackage.AddFile("md5.go", nosecSource)
 			err := nosecPackage.Build()
 			Expect(err).ShouldNot(HaveOccurred())
