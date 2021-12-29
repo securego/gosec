@@ -219,7 +219,12 @@ func (gosec *Analyzer) load(pkgPath string, conf *packages.Config) ([]*packages.
 func (gosec *Analyzer) Check(pkg *packages.Package) {
 	gosec.logger.Println("Checking package:", pkg.Name)
 	for _, file := range pkg.Syntax {
-		checkedFile := pkg.Fset.File(file.Pos()).Name()
+		fp := pkg.Fset.File(file.Pos())
+		if fp == nil {
+			// skip files which cannot be located
+			continue
+		}
+		checkedFile := fp.Name()
 		// Skip the no-Go file from analysis (e.g. a Cgo files is expanded in 3 different files
 		// stored in the cache which do not need to by analyzed)
 		if filepath.Ext(checkedFile) != ".go" {
@@ -394,10 +399,13 @@ func (gosec *Analyzer) Visit(n ast.Node) ast.Visitor {
 
 	for _, rule := range gosec.ruleset.RegisteredFor(n) {
 		// Check if all rules are ignored.
-		suppressions, ignored := ignores[aliasOfAllRules]
-		if !ignored {
-			suppressions, ignored = ignores[rule.ID()]
-		}
+		generalSuppressions, generalIgnored := ignores[aliasOfAllRules]
+		// Check if the specific rule is ignored
+		ruleSuppressions, ruleIgnored := ignores[rule.ID()]
+
+		ignored := generalIgnored || ruleIgnored
+		suppressions := append(generalSuppressions, ruleSuppressions...)
+
 		// Track external suppressions.
 		if gosec.ruleset.IsRuleSuppressed(rule.ID()) {
 			ignored = true
