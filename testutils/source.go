@@ -1758,6 +1758,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path"
 )
 
 func main() {
@@ -1775,7 +1776,23 @@ func main() {
 	if err != nil {
 		fmt.Println("Error while writing!")
 	}
-}`}, 3, gosec.NewConfig()}}
+	err = os.WriteFile("/tmp/" + "demo2", []byte("This is some data"), 0644)
+	if err != nil {
+		fmt.Println("Error while writing!")
+	}
+	err = os.WriteFile(os.TempDir() + "/demo2", []byte("This is some data"), 0644)
+	if err != nil {
+		fmt.Println("Error while writing!")
+	}
+	err = os.WriteFile(path.Join("/var/tmp", "demo2"), []byte("This is some data"), 0644)
+	if err != nil {
+		fmt.Println("Error while writing!")
+	}
+	err = os.WriteFile(path.Join(os.TempDir(), "demo2"), []byte("This is some data"), 0644)
+	if err != nil {
+		fmt.Println("Error while writing!")
+	}
+}`}, 7, gosec.NewConfig()}}
 
 	// SampleCodeG304 - potential file inclusion vulnerability
 	SampleCodeG304 = []CodeSample{{[]string{`
