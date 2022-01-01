@@ -73,7 +73,7 @@ func NewBadTempFile(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 	nestedCalls.Add("path", "Join")
 	return &badTempFile{
 		calls:       calls,
-		args:        regexp.MustCompile(`^(/var)?/tmp(/.*)?$`),
+		args:        regexp.MustCompile(`^(/(usr|var))?/tmp(/.*)?$`),
 		argCalls:    argCalls,
 		nestedCalls: nestedCalls,
 		MetaData: gosec.MetaData{

@@ -1776,6 +1776,10 @@ func main() {
 	if err != nil {
 		fmt.Println("Error while writing!")
 	}
+	err = os.WriteFile("/usr/tmp/demo2", []byte("This is some data"), 0644)
+	if err != nil {
+		fmt.Println("Error while writing!")
+	}
 	err = os.WriteFile("/tmp/" + "demo2", []byte("This is some data"), 0644)
 	if err != nil {
 		fmt.Println("Error while writing!")
@@ -1792,7 +1796,7 @@ func main() {
 	if err != nil {
 		fmt.Println("Error while writing!")
 	}
-}`}, 7, gosec.NewConfig()}}
+}`}, 8, gosec.NewConfig()}}
 
 	// SampleCodeG304 - potential file inclusion vulnerability
 	SampleCodeG304 = []CodeSample{{[]string{`
