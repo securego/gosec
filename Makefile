@@ -12,18 +12,18 @@ GOBIN ?= $(GOPATH)/bin
 GOLINT ?= $(GOBIN)/golint
 GOSEC ?= $(GOBIN)/gosec
 GINKGO ?= $(GOBIN)/ginkgo
-GO_VERSION = 1.15
+GO_VERSION = 1.17
 
 default:
 	$(MAKE) build
 
 install-test-deps:
-	$(GO_NOMOD) get -u github.com/onsi/ginkgo/ginkgo
+	go install github.com/onsi/ginkgo/v2/ginkgo@latest
 	$(GO_NOMOD) get -u golang.org/x/crypto/ssh
 	$(GO_NOMOD) get -u github.com/lib/pq
 
 test: install-test-deps build fmt lint sec
-	$(GINKGO) -r -v
+	$(GINKGO) -v --fail-fast
 
 fmt:
 	@echo "FORMATTING"
