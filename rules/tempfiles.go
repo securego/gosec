@@ -71,6 +71,7 @@ func NewBadTempFile(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 	argCalls.Add("os", "TempDir")
 	nestedCalls := gosec.NewCallList()
 	nestedCalls.Add("path", "Join")
+	nestedCalls.Add("path/filepath", "Join")
 	return &badTempFile{
 		calls:       calls,
 		args:        regexp.MustCompile(`^(/(usr|var))?/tmp(/.*)?$`),
