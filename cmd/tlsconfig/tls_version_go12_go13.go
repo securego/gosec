@@ -1,3 +1,4 @@
+//go:build go1.12 && !go1.14
 // +build go1.12,!go1.14
 
 // This file can be removed once go1.13 is no longer supported

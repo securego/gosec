@@ -325,11 +325,18 @@ func (gosec *Analyzer) ignore(n ast.Node) map[string]SuppressionInfo {
 
 		for _, group := range groups {
 			comment := strings.TrimSpace(group.Text())
-			foundDefaultTag := strings.HasPrefix(comment, noSecDefaultTag)
-			foundAlternativeTag := strings.HasPrefix(comment, noSecAlternativeTag)
+			foundDefaultTag := strings.HasPrefix(comment, noSecDefaultTag) || regexp.MustCompile("\n *"+noSecDefaultTag).Match([]byte(comment))
+			foundAlternativeTag := strings.HasPrefix(comment, noSecAlternativeTag) || regexp.MustCompile("\n *"+noSecAlternativeTag).Match([]byte(comment))
 
 			if foundDefaultTag || foundAlternativeTag {
 				gosec.stats.NumNosec++
+
+				// Discard what's in front of the nosec tag.
+				if foundDefaultTag {
+					comment = strings.SplitN(comment, noSecDefaultTag, 2)[1]
+				} else {
+					comment = strings.SplitN(comment, noSecAlternativeTag, 2)[1]
+				}
 
 				// Extract the directive and the justification.
 				justification := ""
