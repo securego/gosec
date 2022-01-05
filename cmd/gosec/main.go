@@ -364,7 +364,7 @@ func main() {
 	if err != nil {
 		logger.Fatal(err)
 	}
-	// get a bug
+
 	ruleList := loadRules(includeRules, excludeRules)
 	if len(ruleList.Rules) == 0 {
 		logger.Fatal("No rules are configured")

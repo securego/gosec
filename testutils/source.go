@@ -1168,7 +1168,28 @@ import (
 
 func main(){
 	fmt.Sprintln()
-}`}, 0, gosec.NewConfig()},
+}`}, 0, gosec.NewConfig()}, {[]string{`
+// Format string with \n\r
+package main
+
+import (
+	"database/sql"
+	"fmt"
+	"os"
+)
+
+func main(){
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	q := fmt.Sprintf("SELECT * FROM foo where\n name = '%s'", os.Args[1])
+	rows, err := db.Query(q)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}`}, 1, gosec.NewConfig()},
 	}
 
 	// SampleCodeG202 - SQL query string building via string concatenation
