@@ -1891,7 +1891,8 @@ func main() {
 }`}, 9, gosec.NewConfig()}}
 
 	// SampleCodeG304 - potential file inclusion vulnerability
-	SampleCodeG304 = []CodeSample{{[]string{`
+	SampleCodeG304 = []CodeSample{
+		{[]string{`
 package main
 
 import (
