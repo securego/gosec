@@ -246,7 +246,7 @@ func printReport(format string, color bool, rootPaths []string, reportInfo *gose
 }
 
 func saveReport(filename, format string, rootPaths []string, reportInfo *gosec.ReportInfo) error {
-	outfile, err := os.Create(filename)
+	outfile, err := os.Create(filename) //#nosec G304
 	if err != nil {
 		return err
 	}

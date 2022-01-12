@@ -1891,7 +1891,8 @@ func main() {
 }`}, 9, gosec.NewConfig()}}
 
 	// SampleCodeG304 - potential file inclusion vulnerability
-	SampleCodeG304 = []CodeSample{{[]string{`
+	SampleCodeG304 = []CodeSample{
+		{[]string{`
 package main
 
 import (
@@ -2086,7 +2087,38 @@ func main() {
     }
 }
 
-`}, 0, gosec.NewConfig()}}
+`}, 0, gosec.NewConfig()}, {[]string{`
+package main
+
+import (
+	"io"
+	"os"
+)
+
+func createFile(file string) *os.File {
+	f, err := os.Create(file)
+	if err != nil {
+		panic(err)
+	}
+	return f
+}
+
+func main() {
+	s, err := os.Open("src")
+	if err != nil {
+		panic(err)
+	}
+	defer s.Close()
+
+	d := createFile("dst")
+	defer d.Close()
+
+	_, err = io.Copy(d, s)
+	if  err != nil {
+		panic(err)
+	}
+}`}, 1, gosec.NewConfig()},
+	}
 
 	// SampleCodeG305 - File path traversal when extracting zip/tar archives
 	SampleCodeG305 = []CodeSample{{[]string{`
