@@ -992,7 +992,7 @@ func createFile(file string) *os.File {
 	if err != nil {
 		panic(err)
 	}
-	retun f
+	return f
 }
 
 func main() {
@@ -1002,7 +1002,7 @@ func main() {
 	}
 	defer s.Close()
 
-    d = createFile("dst")
+	d := createFile("dst")
 	defer d.Close()
 
 	_, err = io.Copy(d, s)
