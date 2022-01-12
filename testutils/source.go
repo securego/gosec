@@ -1189,7 +1189,6 @@ func main(){
 		panic(err)
 	}
 	defer rows.Close()
-<<<<<<< HEAD
 }`}, 1, gosec.NewConfig()}, {[]string{`
 // Format string with \n\r
 package main
@@ -1256,8 +1255,6 @@ func main() {
 		panic(err)
 	}
 	defer db.Close()
-=======
->>>>>>> 58058af0c8275f11249a71f18fc548bbd7b97ccc
 }`}, 1, gosec.NewConfig()},
 	}
 
