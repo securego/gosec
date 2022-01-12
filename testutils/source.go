@@ -979,7 +979,37 @@ func main() {
 	if  err != nil {
 		panic(err)
 	}
-}`}, 0, gosec.NewConfig()},
+}`}, 0, gosec.NewConfig()}, {[]string{`
+package main
+
+import (
+	"io"
+	"os"
+)
+
+func createFile(file string) *os.File {
+	f, err := os.Create(file)
+	if err != nil {
+		panic(err)
+	}
+	retun f
+}
+
+func main() {
+	s, err := os.Open("src")
+	if err != nil {
+		panic(err)
+	}
+	defer s.Close()
+
+    d = createFile("dst")
+	defer d.Close()
+
+	_, err = io.Copy(d, s)
+	if  err != nil {
+		panic(err)
+	}
+}`}, 1, gosec.NewConfig()},
 	}
 
 	// SampleCodeG201 - SQL injection via format string
