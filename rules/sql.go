@@ -261,6 +261,19 @@ func (s *sqlStrFormat) Match(n ast.Node, ctx *gosec.Context) (*gosec.Issue, erro
 	switch stmt := n.(type) {
 	case *ast.AssignStmt:
 		for _, expr := range stmt.Rhs {
+			if call, ok := expr.(*ast.CallExpr); ok {
+				selector, ok := call.Fun.(*ast.SelectorExpr)
+				if !ok {
+					continue
+				}
+				sqlQueryCall, ok := selector.X.(*ast.CallExpr)
+				if ok && s.ContainsCallExpr(sqlQueryCall, ctx) != nil {
+					issue, err := s.checkQuery(sqlQueryCall, ctx)
+					if err == nil && issue != nil {
+						return issue, err
+					}
+				}
+			}
 			if sqlQueryCall, ok := expr.(*ast.CallExpr); ok && s.ContainsCallExpr(expr, ctx) != nil {
 				return s.checkQuery(sqlQueryCall, ctx)
 			}

@@ -1189,6 +1189,72 @@ func main(){
 		panic(err)
 	}
 	defer rows.Close()
+}`}, 1, gosec.NewConfig()}, {[]string{`
+// Format string with \n\r
+package main
+
+import (
+	"database/sql"
+	"fmt"
+	"os"
+)
+
+func main(){
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	q := fmt.Sprintf("SELECT * FROM foo where\nname = '%s'", os.Args[1])
+	rows, err := db.Query(q)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}`}, 1, gosec.NewConfig()}, {[]string{`
+// SQLI by db.Query(some).Scan(&other)
+package main
+
+import (
+	"database/sql"
+	"fmt"
+	"os"
+)
+
+func main() {
+	var name string
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	q := fmt.Sprintf("SELECT name FROM users where id = '%s'", os.Args[1])
+	row := db.QueryRow(q)
+	err = row.Scan(&name)
+	if err != nil {
+		panic(err)
+	}
+	defer db.Close()
+}`}, 1, gosec.NewConfig()}, {[]string{`
+// SQLI by db.Query(some).Scan(&other)
+package main
+
+import (
+	"database/sql"
+	"fmt"
+	"os"
+)
+
+func main() {
+	var name string
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	q := fmt.Sprintf("SELECT name FROM users where id = '%s'", os.Args[1])
+	err = db.QueryRow(q).Scan(&name)
+	if err != nil {
+		panic(err)
+	}
+	defer db.Close()
 }`}, 1, gosec.NewConfig()},
 	}
 
