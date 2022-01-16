@@ -137,8 +137,8 @@ func NewSQLStrConcat(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 		},
 	}
 
-	rule.AddAll("*database/sql.DB", "Query", "QueryContext", "QueryRow", "QueryRowContext")
-	rule.AddAll("*database/sql.Tx", "Query", "QueryContext", "QueryRow", "QueryRowContext")
+	rule.AddAll("*database/sql.DB", "Query", "QueryContext", "QueryRow", "QueryRowContext", "Exec", "ExecContext", "Prepare", "PrepareContext")
+	rule.AddAll("*database/sql.Tx", "Query", "QueryContext", "QueryRow", "QueryRowContext", "Exec", "ExecContext", "Prepare", "PrepareContext")
 	return rule, []ast.Node{(*ast.AssignStmt)(nil), (*ast.ExprStmt)(nil)}
 }
 
@@ -306,8 +306,8 @@ func NewSQLStrFormat(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 			},
 		},
 	}
-	rule.AddAll("*database/sql.DB", "Query", "QueryContext", "QueryRow", "QueryRowContext")
-	rule.AddAll("*database/sql.Tx", "Query", "QueryContext", "QueryRow", "QueryRowContext")
+	rule.AddAll("*database/sql.DB", "Query", "QueryContext", "QueryRow", "QueryRowContext", "Exec", "ExecContext", "Prepare", "PrepareContext")
+	rule.AddAll("*database/sql.Tx", "Query", "QueryContext", "QueryRow", "QueryRowContext", "Exec", "ExecContext", "Prepare", "PrepareContext")
 	rule.fmtCalls.AddAll("fmt", "Sprint", "Sprintf", "Sprintln", "Fprintf")
 	rule.noIssue.AddAll("os", "Stdout", "Stderr")
 	rule.noIssueQuoted.Add("github.com/lib/pq", "QuoteIdentifier")
