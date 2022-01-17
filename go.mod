@@ -8,7 +8,7 @@ require (
 	github.com/nbutton23/zxcvbn-go v0.0.0-20210217022336-fa2cb2858354
 	github.com/onsi/ginkgo/v2 v2.0.0
 	github.com/onsi/gomega v1.17.0
-	golang.org/x/crypto v0.0.0-20211215153901-e495a2d5b3d3
+	golang.org/x/crypto v0.0.0-20220112180741-5e0467b6c7ce
 	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616
 	golang.org/x/text v0.3.7
 	golang.org/x/tools v0.1.8
