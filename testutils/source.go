@@ -2838,6 +2838,27 @@ func TlsConfig1() *tls.Config {
    return &tls.Config{MinVersion: 0x0304}
 }
 `}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import (
+	"crypto/tls"
+	"fmt"
+)
+
+func main() {
+	cfg := tls.Config{
+		MinVersion: MinVer,
+	}
+	fmt.Println("tls min version", cfg.MinVersion)
+}
+`, `
+package main
+
+import "crypto/tls"
+
+const MinVer = tls.VersionTLS13
+`}, 0, gosec.NewConfig()},
 	}
 
 	// SampleCodeG403 - weak key strength
