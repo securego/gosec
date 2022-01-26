@@ -71,9 +71,14 @@ func GenerateReport(rootPaths []string, data *gosec.ReportInfo) (*Report, error)
 
 // parseSarifRule return SARIF rule field struct
 func parseSarifRule(issue *gosec.Issue) *ReportingDescriptor {
+	cwe := gosec.GetCweByRule(issue.RuleID)
+	name := issue.RuleID
+	if cwe != nil {
+		name = cwe.Name
+	}
 	return &ReportingDescriptor{
 		ID:               issue.RuleID,
-		Name:             issue.What,
+		Name:             name,
 		ShortDescription: NewMultiformatMessageString(issue.What),
 		FullDescription:  NewMultiformatMessageString(issue.What),
 		Help: NewMultiformatMessageString(fmt.Sprintf("%s\nSeverity: %s\nConfidence: %s\n",
