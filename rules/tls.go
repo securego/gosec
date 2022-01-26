@@ -87,8 +87,17 @@ func (t *insecureConfigTLS) processTLSConfVal(n *ast.KeyValueExpr, c *gosec.Cont
 			}
 
 		case "MinVersion":
-			if d, ok := n.Value.(*ast.Ident); ok && d.Obj != nil {
-				if vs, ok := d.Obj.Decl.(*ast.ValueSpec); ok && len(vs.Values) > 0 {
+			if d, ok := n.Value.(*ast.Ident); ok {
+				obj := d.Obj
+				if obj == nil {
+					for _, f := range c.PkgFiles {
+						obj = f.Scope.Lookup(d.Name)
+						if obj != nil {
+							break
+						}
+					}
+				}
+				if vs, ok := obj.Decl.(*ast.ValueSpec); ok && len(vs.Values) > 0 {
 					if s, ok := vs.Values[0].(*ast.SelectorExpr); ok {
 						x := s.X.(*ast.Ident).Name
 						sel := s.Sel.Name
