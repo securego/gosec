@@ -6,9 +6,9 @@ require (
 	github.com/lib/pq v1.10.4
 	github.com/mozilla/tls-observatory v0.0.0-20210609171429-7bc42856d2e5
 	github.com/nbutton23/zxcvbn-go v0.0.0-20210217022336-fa2cb2858354
-	github.com/onsi/ginkgo/v2 v2.1.0
-	github.com/onsi/gomega v1.18.0
-	golang.org/x/crypto v0.0.0-20220126234351-aa10faf2a1f8
+	github.com/onsi/ginkgo/v2 v2.1.1
+	github.com/onsi/gomega v1.18.1
+	golang.org/x/crypto v0.0.0-20220128200615-198e4374d7ed
 	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616
 	golang.org/x/text v0.3.7
 	golang.org/x/tools v0.1.9
