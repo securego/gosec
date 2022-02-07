@@ -450,4 +450,4 @@ This is a [list](USERS.md) with some of the gosec's users.
 
 Support this project by becoming a sponsor. Your logo will show up here with a link to your website
 
-<a href="https://github.com/Daimler" target="_blank"><img src="https://avatars.githubusercontent.com/u/34240465?s=80&v=4"></a>
+<a href="https://github.com/mercedes-benz" target="_blank"><img src="https://avatars.githubusercontent.com/u/34240465?s=80&v=4"></a>
