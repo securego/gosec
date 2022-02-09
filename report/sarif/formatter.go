@@ -188,7 +188,24 @@ func parseSarifRegion(issue *gosec.Issue) (*Region, error) {
 	if err != nil {
 		return nil, err
 	}
-	snippet := NewArtifactContent(issue.Code)
+	var code string
+	line := startLine
+	codeLines := strings.Split(issue.Code, "\n")
+	for _, codeLine := range codeLines {
+		lineStart := fmt.Sprintf("%d:", line)
+		if strings.HasPrefix(codeLine, lineStart) {
+			code += strings.TrimSpace(
+				strings.TrimPrefix(codeLine, lineStart))
+			if endLine > startLine {
+				code += "\n"
+			}
+			line++
+			if line > endLine {
+				break
+			}
+		}
+	}
+	snippet := NewArtifactContent(code)
 	return NewRegion(startLine, endLine, col, col, "go").WithSnippet(snippet), nil
 }
 
