@@ -24,7 +24,7 @@ var _ = Describe("Analyzer", func() {
 	)
 	BeforeEach(func() {
 		logger, _ = testutils.NewLogger()
-		analyzer = gosec.NewAnalyzer(nil, tests, false, false, logger)
+		analyzer = gosec.NewAnalyzer(nil, tests, false, false, 1, logger)
 	})
 
 	Context("when processing a package", func() {
@@ -74,6 +74,29 @@ var _ = Describe("Analyzer", func() {
 			err = analyzer.Process(buildTags, pkg.Path)
 			Expect(err).ShouldNot(HaveOccurred())
 			_, metrics, _ := analyzer.Report()
+			Expect(metrics.NumFiles).To(Equal(2))
+		})
+
+		It("should be able to analyze multiple Go files concurrently", func() {
+			customAnalyzer := gosec.NewAnalyzer(nil, true, true, false, 32, logger)
+			customAnalyzer.LoadRules(rules.Generate(false).RulesInfo())
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("foo.go", `
+				package main
+				func main(){
+					bar()
+				}`)
+			pkg.AddFile("bar.go", `
+				package main
+				func bar(){
+					println("package has two files!")
+				}`)
+			err := pkg.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = customAnalyzer.Process(buildTags, pkg.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			_, metrics, _ := customAnalyzer.Report()
 			Expect(metrics.NumFiles).To(Equal(2))
 		})
 
@@ -262,7 +285,7 @@ var _ = Describe("Analyzer", func() {
 			// overwrite nosec option
 			nosecIgnoreConfig := gosec.NewConfig()
 			nosecIgnoreConfig.SetGlobal(gosec.Nosec, "true")
-			customAnalyzer := gosec.NewAnalyzer(nosecIgnoreConfig, tests, false, false, logger)
+			customAnalyzer := gosec.NewAnalyzer(nosecIgnoreConfig, tests, false, false, 1, logger)
 			customAnalyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G401")).RulesInfo())
 
 			nosecPackage := testutils.NewTestPackage()
@@ -286,7 +309,7 @@ var _ = Describe("Analyzer", func() {
 			nosecIgnoreConfig := gosec.NewConfig()
 			nosecIgnoreConfig.SetGlobal(gosec.Nosec, "true")
 			nosecIgnoreConfig.SetGlobal(gosec.ShowIgnored, "true")
-			customAnalyzer := gosec.NewAnalyzer(nosecIgnoreConfig, tests, false, false, logger)
+			customAnalyzer := gosec.NewAnalyzer(nosecIgnoreConfig, tests, false, false, 1, logger)
 			customAnalyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G401")).RulesInfo())
 
 			nosecPackage := testutils.NewTestPackage()
@@ -379,7 +402,7 @@ var _ = Describe("Analyzer", func() {
 			// overwrite nosec option
 			nosecIgnoreConfig := gosec.NewConfig()
 			nosecIgnoreConfig.SetGlobal(gosec.NoSecAlternative, "#falsePositive")
-			customAnalyzer := gosec.NewAnalyzer(nosecIgnoreConfig, tests, false, false, logger)
+			customAnalyzer := gosec.NewAnalyzer(nosecIgnoreConfig, tests, false, false, 1, logger)
 			customAnalyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G401")).RulesInfo())
 
 			nosecPackage := testutils.NewTestPackage()
@@ -402,7 +425,7 @@ var _ = Describe("Analyzer", func() {
 			// overwrite nosec option
 			nosecIgnoreConfig := gosec.NewConfig()
 			nosecIgnoreConfig.SetGlobal(gosec.NoSecAlternative, "#falsePositive")
-			customAnalyzer := gosec.NewAnalyzer(nosecIgnoreConfig, tests, false, false, logger)
+			customAnalyzer := gosec.NewAnalyzer(nosecIgnoreConfig, tests, false, false, 1, logger)
 			customAnalyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G401")).RulesInfo())
 
 			nosecPackage := testutils.NewTestPackage()
@@ -418,7 +441,7 @@ var _ = Describe("Analyzer", func() {
 		})
 
 		It("should be able to analyze Go test package", func() {
-			customAnalyzer := gosec.NewAnalyzer(nil, true, false, false, logger)
+			customAnalyzer := gosec.NewAnalyzer(nil, true, false, false, 1, logger)
 			customAnalyzer.LoadRules(rules.Generate(false).RulesInfo())
 			pkg := testutils.NewTestPackage()
 			defer pkg.Close()
@@ -443,7 +466,7 @@ var _ = Describe("Analyzer", func() {
 			Expect(issues).Should(HaveLen(1))
 		})
 		It("should be able to scan generated files if NOT excluded", func() {
-			customAnalyzer := gosec.NewAnalyzer(nil, true, false, false, logger)
+			customAnalyzer := gosec.NewAnalyzer(nil, true, false, false, 1, logger)
 			customAnalyzer.LoadRules(rules.Generate(false).RulesInfo())
 			pkg := testutils.NewTestPackage()
 			defer pkg.Close()
@@ -464,7 +487,7 @@ var _ = Describe("Analyzer", func() {
 			Expect(issues).Should(HaveLen(1))
 		})
 		It("should be able to skip generated files if excluded", func() {
-			customAnalyzer := gosec.NewAnalyzer(nil, true, true, false, logger)
+			customAnalyzer := gosec.NewAnalyzer(nil, true, true, false, 1, logger)
 			customAnalyzer.LoadRules(rules.Generate(false).RulesInfo())
 			pkg := testutils.NewTestPackage()
 			defer pkg.Close()
@@ -671,7 +694,7 @@ var _ = Describe("Analyzer", func() {
 
 	Context("when tracking suppressions", func() {
 		BeforeEach(func() {
-			analyzer = gosec.NewAnalyzer(nil, tests, false, true, logger)
+			analyzer = gosec.NewAnalyzer(nil, tests, false, true, 1, logger)
 		})
 
 		It("should not report an error if the violation is suppressed", func() {

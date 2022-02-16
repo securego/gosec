@@ -24,7 +24,7 @@ var _ = Describe("gosec rules", func() {
 	BeforeEach(func() {
 		logger, _ = testutils.NewLogger()
 		config = gosec.NewConfig()
-		analyzer = gosec.NewAnalyzer(config, tests, false, false, logger)
+		analyzer = gosec.NewAnalyzer(config, tests, false, false, 1, logger)
 		runner = func(rule string, samples []testutils.CodeSample) {
 			for n, sample := range samples {
 				analyzer.Reset()
