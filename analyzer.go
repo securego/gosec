@@ -166,7 +166,6 @@ func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error
 	jobs := make(chan string)
 
 	var wg sync.WaitGroup
-	wg.Add(gosec.concurrency)
 
 	worker := func(j chan string, r chan result) {
 		for s := range j {
@@ -177,6 +176,7 @@ func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error
 	}
 
 	for i := 0; i < gosec.concurrency; i++ {
+		wg.Add(1)
 		go worker(jobs, results)
 	}
 
