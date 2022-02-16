@@ -163,30 +163,41 @@ func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error
 	}
 
 	results := make(chan result)
-	jobs := make(chan string)
+	jobs := make(chan string, len(packagePaths))
+	quit := make(chan struct{})
 
 	var wg sync.WaitGroup
 
-	worker := func(j chan string, r chan result) {
-		for s := range j {
-			packages, err := gosec.load(s, config)
-			r <- result{pkgPath: s, pkgs: packages, err: err}
+	worker := func(j chan string, r chan result, quit chan struct{}) {
+		for {
+			select {
+			case s := <-j:
+				packages, err := gosec.load(s, config)
+				select {
+				case r <- result{pkgPath: s, pkgs: packages, err: err}:
+				case <-quit:
+					// we've been told to stop, probably an error while
+					// processing a previous result.
+					wg.Done()
+					return
+				}
+			default:
+				// j is empty and there are no jobs left
+				wg.Done()
+				return
+			}
 		}
-		wg.Done()
+	}
+
+	// fill the buffer
+	for _, pkgPath := range packagePaths {
+		jobs <- pkgPath
 	}
 
 	for i := 0; i < gosec.concurrency; i++ {
 		wg.Add(1)
-		go worker(jobs, results)
+		go worker(jobs, results, quit)
 	}
-
-	go func() {
-		for _, pkgPath := range packagePaths {
-			jobs <- pkgPath
-		}
-
-		close(jobs)
-	}()
 
 	go func() {
 		wg.Wait()
@@ -201,6 +212,8 @@ func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error
 			if pkg.Name != "" {
 				err := gosec.ParseErrors(pkg)
 				if err != nil {
+					close(quit)
+					wg.Wait() // wait for the goroutines to stop
 					return fmt.Errorf("parsing errors in pkg %q: %w", pkg.Name, err)
 				}
 				gosec.Check(pkg)
