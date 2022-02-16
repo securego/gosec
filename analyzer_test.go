@@ -77,6 +77,29 @@ var _ = Describe("Analyzer", func() {
 			Expect(metrics.NumFiles).To(Equal(2))
 		})
 
+		It("should be able to analyze multiple Go files concurrently", func() {
+			customAnalyzer := gosec.NewAnalyzer(nil, true, true, false, 32, logger)
+			customAnalyzer.LoadRules(rules.Generate(false).RulesInfo())
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("foo.go", `
+				package main
+				func main(){
+					bar()
+				}`)
+			pkg.AddFile("bar.go", `
+				package main
+				func bar(){
+					println("package has two files!")
+				}`)
+			err := pkg.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = customAnalyzer.Process(buildTags, pkg.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			_, metrics, _ := customAnalyzer.Report()
+			Expect(metrics.NumFiles).To(Equal(2))
+		})
+
 		It("should be able to analyze multiple Go packages", func() {
 			analyzer.LoadRules(rules.Generate(false).RulesInfo())
 			pkg1 := testutils.NewTestPackage()
