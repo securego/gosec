@@ -3,9 +3,7 @@ package text
 import (
 	"bufio"
 	"bytes"
-
-	// use go embed to import template
-	_ "embed"
+	_ "embed" // use go embed to import template
 	"fmt"
 	"io"
 	"strconv"
