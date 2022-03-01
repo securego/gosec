@@ -90,6 +90,10 @@ var _ = Describe("gosec rules", func() {
 			runner("G110", testutils.SampleCodeG110)
 		})
 
+		It("should detect potential directory traversal", func() {
+			runner("G111", testutils.SampleCodeG111)
+		})
+
 		It("should detect sql injection via format strings", func() {
 			runner("G201", testutils.SampleCodeG201)
 		})
