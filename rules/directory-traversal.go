@@ -26,10 +26,14 @@ func (r *traversal) Match(n ast.Node, ctx *gosec.Context) (*gosec.Issue, error) 
 
 func (r *traversal) matchCallExpr(assign *ast.CallExpr, ctx *gosec.Context) (*gosec.Issue, error) {
 	for _, i := range assign.Args {
-		if basiclit, ok := i.(*ast.BasicLit); ok {
-			functionCall := assign.Fun.(*ast.SelectorExpr).X.(*ast.Ident).Name + "." + assign.Fun.(*ast.SelectorExpr).Sel.Name + "(" + basiclit.Value + ")"
-			if r.pattern.MatchString(functionCall) {
-				return gosec.NewIssue(ctx, assign, r.ID(), r.What, r.Severity, r.Confidence), nil
+		if basiclit, ok1 := i.(*ast.BasicLit); ok1 {
+			if fun, ok2 := assign.Fun.(*ast.SelectorExpr); ok2 {
+				if x, ok3 := fun.X.(*ast.Ident); ok3 {
+					string := x.Name + "." + fun.Sel.Name + "(" + basiclit.Value + ")"
+					if r.pattern.MatchString(string) {
+						return gosec.NewIssue(ctx, assign, r.ID(), r.What, r.Severity, r.Confidence), nil
+					}
+				}
 			}
 		}
 	}
