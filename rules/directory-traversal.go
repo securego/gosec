@@ -2,11 +2,13 @@ package rules
 
 import (
 	"go/ast"
+	"regexp"
 
 	"github.com/securego/gosec/v2"
 )
 
 type traversal struct {
+	pattern          *regexp.Regexp
 	gosec.MetaData
 }
 
@@ -15,13 +17,38 @@ func (r *traversal) ID() string {
 }
 
 func (r *traversal) Match(n ast.Node, ctx *gosec.Context) (*gosec.Issue, error) {
-	return gosec.NewIssue(ctx, n, r.ID(), r.What, r.Severity, r.Confidence), nil
+	switch node := n.(type) {
+	case *ast.CallExpr:
+		return r.matchCallExpr(node, ctx)
+	}
+	return nil, nil
 }
 
-// NewDirectoryTraversal attempts to find the use of Http.Dir("/")
+func (r *traversal) matchCallExpr(assign *ast.CallExpr, ctx *gosec.Context) (*gosec.Issue, error) {
+	for _, i := range assign.Args {
+		if ident, ok := i.(*ast.Ident); ok {
+			if r.pattern.MatchString(ident.Name) {
+				return gosec.NewIssue(ctx, assign, r.ID(), r.What, r.Severity, r.Confidence), nil
+			}
+		}
+	}
+	return nil, nil
+}
+
+// NewDirectoryTraversal attempts to find the use of http.Dir("/")
 func NewDirectoryTraversal(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
-	//	pattern := `Http.Dir`
+	pattern := `http\.Dir\("\/"\)|http\.Dir\('\/'\)`
+	if val, ok := conf["G101"]; ok {
+		conf := val.(map[string]interface{})
+		if configPattern, ok := conf["pattern"]; ok {
+			if cfgPattern, ok := configPattern.(string); ok {
+				pattern = cfgPattern
+			}
+		}
+	}
+
 	return &traversal{
+		pattern:        regexp.MustCompile(pattern),
 		MetaData: gosec.MetaData{
 			ID:         id,
 			What:       "Potential directory traversal",
