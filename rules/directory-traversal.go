@@ -26,8 +26,9 @@ func (r *traversal) Match(n ast.Node, ctx *gosec.Context) (*gosec.Issue, error) 
 
 func (r *traversal) matchCallExpr(assign *ast.CallExpr, ctx *gosec.Context) (*gosec.Issue, error) {
 	for _, i := range assign.Args {
-		if ident, ok := i.(*ast.Ident); ok {
-			if r.pattern.MatchString(ident.Name) {
+		if basiclit, ok := i.(*ast.BasicLit); ok {
+			functionCall := assign.Fun.(*ast.SelectorExpr).X.(*ast.Ident).Name + "." + assign.Fun.(*ast.SelectorExpr).Sel.Name + "(" + basiclit.Value + ")"
+			if r.pattern.MatchString(functionCall) {
 				return gosec.NewIssue(ctx, assign, r.ID(), r.What, r.Severity, r.Confidence), nil
 			}
 		}
@@ -55,5 +56,5 @@ func NewDirectoryTraversal(id string, conf gosec.Config) (gosec.Rule, []ast.Node
 			Confidence: gosec.Medium,
 			Severity:   gosec.Medium,
 		},
-	}, []ast.Node{(*ast.AssignStmt)(nil), (*ast.ValueSpec)(nil), (*ast.BinaryExpr)(nil)}
+	}, []ast.Node{(*ast.CallExpr)(nil)}
 }
