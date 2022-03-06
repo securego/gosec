@@ -133,6 +133,9 @@ var (
 	// print the text report with color, this is enabled by default
 	flagColor = flag.Bool("color", true, "Prints the text format report with colorization when it goes in the stdout")
 
+	// append ./... to the target dir.
+	flagRecursive = flag.Bool("r", false, "Appends \"./...\" to the target dir.")
+
 	// overrides the output format when stdout the results while saving them in the output file
 	flagVerbose = flag.String("verbose", "", "Overrides the output format when stdout the results while saving them in the output file.\nValid options are: json, yaml, csv, junit-xml, html, sonarqube, golint, sarif or text")
 
@@ -319,9 +322,9 @@ func main() {
 		os.Exit(0)
 	}
 
-	// Ensure at least one file was specified
-	if flag.NArg() == 0 {
-		fmt.Fprintf(os.Stderr, "\nError: FILE [FILE...] or './...' expected\n") //#nosec
+	// Ensure at least one file was specified or that the recursive -r flag was set.
+	if flag.NArg() == 0 && !*flagRecursive {
+		fmt.Fprintf(os.Stderr, "\nError: FILE [FILE...] or './...' or -r expected\n") //#nosec
 		flag.Usage()
 		os.Exit(1)
 	}
@@ -380,13 +383,24 @@ func main() {
 
 	excludedDirs := gosec.ExcludedDirsRegExp(flagDirsExclude)
 	var packages []string
-	for _, path := range flag.Args() {
+
+	if len(flag.Args()) == 0 {
+		path := "./..."
 		pcks, err := gosec.PackagePaths(path, excludedDirs)
 		if err != nil {
 			logger.Fatal(err)
 		}
 		packages = append(packages, pcks...)
+	} else {
+		for _, path := range flag.Args() {
+			pcks, err := gosec.PackagePaths(path, excludedDirs)
+			if err != nil {
+				logger.Fatal(err)
+			}
+			packages = append(packages, pcks...)
+		}
 	}
+
 	if len(packages) == 0 {
 		logger.Fatal("No packages found")
 	}
