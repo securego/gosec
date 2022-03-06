@@ -982,6 +982,29 @@ func main() {
 }`}, 0, gosec.NewConfig()},
 	}
 
+	// SampleCodeG111 - potential directory traversal
+	SampleCodeG111 = []CodeSample{
+		{[]string{`
+package main
+
+import (
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	http.Handle("/bad/", http.StripPrefix("/bad/", http.FileServer(http.Dir("/"))))
+	http.HandleFunc("/", HelloServer)
+	log.Fatal(http.ListenAndServe(":"+os.Getenv("PORT"), nil))
+}
+
+func HelloServer(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "Hello, %s!", r.URL.Path[1:])
+}`}, 1, gosec.NewConfig()},
+	}
+
 	// SampleCodeG201 - SQL injection via format string
 	SampleCodeG201 = []CodeSample{
 		{[]string{`
