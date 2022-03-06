@@ -384,21 +384,16 @@ func main() {
 	excludedDirs := gosec.ExcludedDirsRegExp(flagDirsExclude)
 	var packages []string
 
-	if len(flag.Args()) == 0 {
-		path := "./..."
+	paths := flag.Args()
+	if len(paths) == 0 {
+		paths = append(paths, "./...")
+	}
+	for _, path := range paths {
 		pcks, err := gosec.PackagePaths(path, excludedDirs)
 		if err != nil {
 			logger.Fatal(err)
 		}
 		packages = append(packages, pcks...)
-	} else {
-		for _, path := range flag.Args() {
-			pcks, err := gosec.PackagePaths(path, excludedDirs)
-			if err != nil {
-				logger.Fatal(err)
-			}
-			packages = append(packages, pcks...)
-		}
 	}
 
 	if len(packages) == 0 {
