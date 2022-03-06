@@ -8,7 +8,7 @@ import (
 )
 
 type traversal struct {
-	pattern          *regexp.Regexp
+	pattern *regexp.Regexp
 	gosec.MetaData
 }
 
@@ -53,7 +53,7 @@ func NewDirectoryTraversal(id string, conf gosec.Config) (gosec.Rule, []ast.Node
 	}
 
 	return &traversal{
-		pattern:        regexp.MustCompile(pattern),
+		pattern: regexp.MustCompile(pattern),
 		MetaData: gosec.MetaData{
 			ID:         id,
 			What:       "Potential directory traversal",
