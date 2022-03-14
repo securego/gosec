@@ -11,9 +11,9 @@ jobs:
     name: lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v2
+        uses: golangci/golangci-lint-action@v3
         with:
           version: latest
   test:
@@ -28,11 +28,11 @@ jobs:
       GO111MODULE: on
     steps:
       - name: Setup go ${{ matrix.go_version }} 
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v3
         with:
           go-version: ${{ matrix.go_version }}
       - name: Checkout Source 
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - uses: actions/cache@v2
         with:
           path: ~/go/pkg/mod
@@ -48,11 +48,11 @@ jobs:
       GO111MODULE: on
     steps:
       - name: Setup go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v3
         with:
           go-version: '1.17'
       - name: Checkout Source 
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - uses: actions/cache@v2
         with:
           path: ~/go/pkg/mod
