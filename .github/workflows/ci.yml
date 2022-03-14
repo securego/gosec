@@ -7,17 +7,7 @@ on:
     branches:
       - master
 jobs:
-  golangci:
-    name: lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v3
-        with:
-          version: latest
   test:
-    needs: [golangci]
     strategy:
       matrix:
         go_version:
@@ -39,6 +29,10 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
+      - name: lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: latest
       - name: Run Tests
         run: make test
   coverage:
