@@ -12,7 +12,7 @@ GOBIN ?= $(GOPATH)/bin
 GOLINT ?= $(GOBIN)/golint
 GOSEC ?= $(GOBIN)/gosec
 GINKGO ?= $(GOBIN)/ginkgo
-GO_VERSION = 1.17
+GO_VERSION = 1.18
 
 default:
 	$(MAKE) build
