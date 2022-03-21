@@ -1,6 +1,3 @@
-//go:build go1.12
-// +build go1.12
-
 package main
 
 import (
@@ -14,9 +11,10 @@ import (
 	"log"
 	"net/http"
 	"path/filepath"
-	"strings"
 
 	"github.com/mozilla/tls-observatory/constants"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 var (
@@ -82,7 +80,8 @@ func getTLSConfFromURL(url string) (*ServerSideTLSJson, error) {
 }
 
 func getGoCipherConfig(name string, sstls ServerSideTLSJson) (goCipherConfiguration, error) {
-	cipherConf := goCipherConfiguration{Name: strings.Title(name)}
+	caser := cases.Title(language.English)
+	cipherConf := goCipherConfiguration{Name: caser.String(name)}
 	conf, ok := sstls.Configurations[name]
 	if !ok {
 		return cipherConf, fmt.Errorf("TLS configuration '%s' not found", name)

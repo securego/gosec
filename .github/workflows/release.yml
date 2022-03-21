@@ -17,11 +17,11 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v3
         with:
-          go-version: 1.17
+          go-version: 1.18
       - name: Install Cosign
         uses: sigstore/cosign-installer@main
         with:
-          cosign-release: 'v1.5.2'
+          cosign-release: 'v1.6.0'
       - name: Store Cosign private key in a file
         run: 'echo "$COSIGN_KEY" > /tmp/cosign.key'
         shell: bash
@@ -66,7 +66,7 @@ jobs:
           tags: ${{steps.meta.outputs.tags}}
           labels: ${{steps.meta.outputs.labels}}
           push: true
-          build-args: GO_VERSION=1.17
+          build-args: GO_VERSION=1.18
       - name: Sign Docker Image
         run: cosign sign -key /tmp/cosign.key ${TAGS}
         env:
