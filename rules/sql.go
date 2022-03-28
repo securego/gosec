@@ -95,7 +95,7 @@ func (s *sqlStrConcat) checkQuery(call *ast.CallExpr, ctx *gosec.Context) (*gose
 				if op, ok := op.(*ast.Ident); ok && s.checkObject(op, ctx) {
 					continue
 				}
-				return gosec.NewIssue(ctx, be, s.ID(), s.What, s.Severity, s.Confidence), nil
+				return gosec.NewIssue(ctx, query, s.ID(), s.What, s.Severity, s.Confidence), nil
 			}
 		}
 	}
@@ -186,7 +186,7 @@ func (s *sqlStrFormat) checkQuery(call *ast.CallExpr, ctx *gosec.Context) (*gose
 		decl := ident.Obj.Decl
 		if assign, ok := decl.(*ast.AssignStmt); ok {
 			for _, expr := range assign.Rhs {
-				issue := s.checkFormatting(expr, ctx)
+				issue := s.checkFormatting(expr, ctx, query)
 				if issue != nil {
 					return issue, err
 				}
@@ -197,7 +197,7 @@ func (s *sqlStrFormat) checkQuery(call *ast.CallExpr, ctx *gosec.Context) (*gose
 	return nil, nil
 }
 
-func (s *sqlStrFormat) checkFormatting(n ast.Node, ctx *gosec.Context) *gosec.Issue {
+func (s *sqlStrFormat) checkFormatting(n ast.Node, ctx *gosec.Context, query ast.Node) *gosec.Issue {
 	// argIndex changes the function argument which gets matched to the regex
 	argIndex := 0
 	if node := s.fmtCalls.ContainsPkgCallExpr(n, ctx, false); node != nil {
@@ -250,7 +250,7 @@ func (s *sqlStrFormat) checkFormatting(n ast.Node, ctx *gosec.Context) *gosec.Is
 			}
 		}
 		if s.MatchPatterns(formatter) {
-			return gosec.NewIssue(ctx, n, s.ID(), s.What, s.Severity, s.Confidence)
+			return gosec.NewIssue(ctx, query, s.ID(), s.What, s.Severity, s.Confidence)
 		}
 	}
 	return nil
