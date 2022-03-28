@@ -95,7 +95,7 @@ func (s *sqlStrConcat) checkQuery(call *ast.CallExpr, ctx *gosec.Context) (*gose
 				if op, ok := op.(*ast.Ident); ok && s.checkObject(op, ctx) {
 					continue
 				}
-				return gosec.NewIssue(ctx, query, s.ID(), s.What, s.Severity, s.Confidence), nil
+				return gosec.NewIssueMultipleNodes(ctx, []ast.Node{query, call}, s.ID(), s.What, s.Severity, s.Confidence), nil
 			}
 		}
 	}
@@ -250,7 +250,7 @@ func (s *sqlStrFormat) checkFormatting(n ast.Node, ctx *gosec.Context, query ast
 			}
 		}
 		if s.MatchPatterns(formatter) {
-			return gosec.NewIssue(ctx, query, s.ID(), s.What, s.Severity, s.Confidence)
+			return gosec.NewIssueMultipleNodes(ctx, []ast.Node{query, n}, s.ID(), s.What, s.Severity, s.Confidence)
 		}
 	}
 	return nil

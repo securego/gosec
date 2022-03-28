@@ -126,6 +126,10 @@ func main() {
 			Expect(issue.Col).Should(Equal("10"))
 		})
 
+		It("should support multiple nodes", func() {
+			Skip("Not implemented")
+		})
+
 		It("should maintain the provided severity score", func() {
 			Skip("Not implemented")
 		})

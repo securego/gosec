@@ -23,6 +23,7 @@ import (
 	"go/token"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/securego/gosec/v2/cwe"
 )
@@ -170,24 +171,54 @@ func codeSnippetEndLine(node ast.Node, fobj *token.File) int64 {
 
 // NewIssue creates a new Issue
 func NewIssue(ctx *Context, node ast.Node, ruleID, desc string, severity Score, confidence Score) *Issue {
-	fobj := ctx.FileSet.File(node.Pos())
-	name := fobj.Name()
-	start, end := fobj.Line(node.Pos()), fobj.Line(node.End())
-	line := strconv.Itoa(start)
-	if start != end {
-		line = fmt.Sprintf("%d-%d", start, end)
-	}
-	col := strconv.Itoa(fobj.Position(node.Pos()).Column)
+	return newIssue(ctx, []ast.Node{node}, ruleID, desc, severity, confidence)
+}
 
-	var code string
-	if file, err := os.Open(fobj.Name()); err == nil {
-		defer file.Close() //#nosec
-		s := codeSnippetStartLine(node, fobj)
-		e := codeSnippetEndLine(node, fobj)
-		code, err = codeSnippet(file, s, e, node)
-		if err != nil {
-			code = err.Error()
+// NewIssueMultipleNodes creates a new Issue with multiple nodes used for the code snippet
+func NewIssueMultipleNodes(ctx *Context, nodes []ast.Node, ruleID, desc string, severity Score, confidence Score) *Issue {
+	return newIssue(ctx, nodes, ruleID, desc, severity, confidence)
+}
+
+func newIssue(ctx *Context, nodes []ast.Node, ruleID, desc string, severity Score, confidence Score) *Issue {
+	var (
+		name string
+		line string
+		col string
+		code string
+		codeSnippets []string
+	)
+
+	for i, node := range nodes {
+		fmt.Printf("node[%d]: \n", i)
+		fobj := ctx.FileSet.File(node.Pos())
+
+		// we use some of the info from the first node in the general summary of the issue
+		if i == 0 {
+			start, end := fobj.Line(node.Pos()), fobj.Line(node.End())
+			name = fobj.Name()
+			line = strconv.Itoa(start)
+			if start != end {
+				line = fmt.Sprintf("%d-%d", start, end)
+			}
+			col = strconv.Itoa(fobj.Position(node.Pos()).Column)
 		}
+
+		if file, err := os.Open(fobj.Name()); err == nil {
+			defer file.Close() // #nosec
+			s := codeSnippetStartLine(node, fobj)
+			e := codeSnippetEndLine(node, fobj)
+			code, err := codeSnippet(file, s, e, node)
+			if err != nil {
+				code = err.Error()
+			}
+			codeSnippets = append(codeSnippets, code)
+		}
+	}
+
+	if len(codeSnippets) == 1 {
+		code = codeSnippets[0]
+	} else if len(codeSnippets) > 1 {
+		code = strings.Join(codeSnippets, "\n\n")
 	}
 
 	return &Issue{
