@@ -219,7 +219,7 @@ of functions which will be skipped when auditing the not checked errors:
 }
 ```
 
-You can also configure the hard-coded credentials rule `G101` with additional patters, or adjust the entropy threshold:
+You can also configure the hard-coded credentials rule `G101` with additional patterns, or adjust the entropy threshold:
 
 ```JSON
 {
