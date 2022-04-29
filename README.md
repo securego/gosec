@@ -144,6 +144,7 @@ directory you can supply `./...` as the input argument.
 - G109: Potential Integer overflow made by strconv.Atoi result conversion to int16/32
 - G110: Potential DoS vulnerability via decompression bomb
 - G111: Potential directory traversal
+- G112: Potential slowloris attack
 - G201: SQL query construction using format string
 - G202: SQL query construction using string concatenation
 - G203: Use of unescaped data in HTML templates
