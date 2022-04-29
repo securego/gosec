@@ -1005,6 +1005,53 @@ func HelloServer(w http.ResponseWriter, r *http.Request) {
 }`}, 1, gosec.NewConfig()},
 	}
 
+	// SampleCodeG112 - potential slowloris attack
+	SampleCodeG112 = []CodeSample{
+		{[]string{`
+		package main
+
+		import (
+			"fmt"
+			"net/http"
+		)
+		
+		func main() {
+			http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+				fmt.Fprintf(w, "Hello, %s!", r.URL.Path[1:])
+			})
+			err := (&http.Server{
+				Addr: ":1234",
+			}).ListenAndServe()
+			if err != nil {
+				panic(err)
+			}
+		}
+		`}, 1, gosec.NewConfig()},
+		{[]string{`
+		package main
+
+		import (
+			"fmt"
+			"time"
+			"net/http"
+		)
+		
+		func main() {
+			http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+				fmt.Fprintf(w, "Hello, %s!", r.URL.Path[1:])
+			})
+			server := &http.Server{
+				Addr:              ":1234",
+				ReadHeaderTimeout: 3 * time.Second,
+			}
+			err := server.ListenAndServe()
+			if err != nil {
+				panic(err)
+			}
+		}
+		`}, 0, gosec.NewConfig()},
+	}
+
 	// SampleCodeG201 - SQL injection via format string
 	SampleCodeG201 = []CodeSample{
 		{[]string{`
