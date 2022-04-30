@@ -27,6 +27,8 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+
+	"golang.org/x/tools/go/packages"
 )
 
 // MatchCallByPackage ensures that the specified package is imported,
@@ -176,6 +178,80 @@ func GetCallInfo(n ast.Node, ctx *Context) (string, string, error) {
 	}
 
 	return "", "", fmt.Errorf("unable to determine call info")
+}
+
+// GetFuncDecl return FuncDecl node from file
+func GetFuncDecl(file *ast.File, funcName string, ctx *Context) (*ast.FuncDecl, error) {
+	for _, n := range file.Decls {
+		switch node := n.(type) {
+		case *ast.FuncDecl:
+			if node.Name.Name == funcName {
+				return node, nil
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("unable to determine function declaration")
+}
+
+// FindFuncDecl return FuncDecl node by call expression
+func FindFuncDecl(callExpr *ast.CallExpr, ctx *Context) (*ast.FuncDecl, error) {
+	packageName, callName, callInfoOk := GetCallInfo(callExpr, ctx)
+	if callInfoOk != nil {
+		return nil, fmt.Errorf("impossible to get info about call at")
+	}
+
+	packageNameParts := strings.Split(packageName, "/")
+	packageName = packageNameParts[len(packageNameParts)-1]
+	packageNameParts = strings.Split(packageName, ".")
+	packageName = packageNameParts[0]
+	structName := ""
+	if len(packageNameParts) > 1 {
+		structName = packageNameParts[1]
+	}
+
+	var packagesList []*packages.Package
+	if packageName == ctx.RawPkg.Name {
+		packagesList = []*packages.Package{ctx.RawPkg}
+	} else {
+		importedPath, importedFound := GetImportPath(packageName, ctx)
+		if !importedFound {
+			return nil, fmt.Errorf("impossible to find package with name %s in imports", packageName)
+		}
+		loadedPackages, pkgLoadErr := ctx.LoadPackages(importedPath)
+		if pkgLoadErr != nil {
+			return nil, fmt.Errorf("impossible to load package %s: %w", packageName, pkgLoadErr)
+		}
+		packagesList = loadedPackages
+	}
+
+	for _, pkg := range packagesList {
+		for _, file := range pkg.Syntax {
+			funcDecl, funcErr := GetFuncDecl(file, callName, ctx)
+			if funcErr != nil {
+				continue
+			}
+			if structName != "" {
+				if len(funcDecl.Recv.List) < 1 {
+					continue
+				}
+				funcStructName := ""
+				switch t := funcDecl.Recv.List[0].Type.(type) {
+				case *ast.StarExpr:
+					if i, ok := t.X.(*ast.Ident); ok {
+						funcStructName = i.Name
+					}
+				case *ast.Ident:
+					funcStructName = t.Name
+				}
+				if funcStructName != structName {
+					continue
+				}
+			}
+			return funcDecl, nil
+		}
+	}
+	return nil, fmt.Errorf("impossible to find function declaration")
 }
 
 // GetCallStringArgsValues returns the values of strings arguments if they can be resolved

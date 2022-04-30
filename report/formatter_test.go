@@ -279,7 +279,8 @@ var _ = Describe("Formatter", func() {
 			"G101", "G102", "G103", "G104", "G106", "G107", "G109",
 			"G110", "G111", "G112", "G201", "G202", "G203", "G204", "G301",
 			"G302", "G303", "G304", "G305", "G401", "G402", "G403",
-			"G404", "G501", "G502", "G503", "G504", "G505",
+			"G404", "G501", "G502", "G503", "G504", "G505", "G601",
+			"G602",
 		}
 
 		It("csv formatted report should contain the CWE mapping", func() {

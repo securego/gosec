@@ -106,6 +106,7 @@ func Generate(trackSuppressions bool, filters ...RuleFilter) RuleList {
 
 		// memory safety
 		{"G601", "Implicit memory aliasing in RangeStmt", NewImplicitAliasing},
+		{"G602", "Usage of Rat.SetString in math/big with an overflow", NewUsingOldMathBig},
 	}
 
 	ruleMap := make(map[string]RuleDefinition)

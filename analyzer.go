@@ -58,12 +58,14 @@ type Context struct {
 	Comments     ast.CommentMap
 	Info         *types.Info
 	Pkg          *types.Package
+	RawPkg       *packages.Package
 	PkgFiles     []*ast.File
 	Root         *ast.File
 	Config       Config
 	Imports      *ImportTracker
 	Ignores      []map[string][]SuppressionInfo
 	PassedValues map[string]interface{}
+	LoadPackages func(pkgPath string) ([]*packages.Package, error)
 }
 
 // Metrics used when reporting information about a scanning run.
@@ -155,6 +157,11 @@ func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error
 		BuildFlags: buildTags,
 		Tests:      gosec.tests,
 	}
+	if gosec.config == nil {
+		gosec.config = make(Config)
+		gosec.config[Globals] = make(map[GlobalOption]string)
+	}
+	gosec.config.Set("packages_config", config)
 
 	type result struct {
 		pkgPath string
@@ -172,7 +179,7 @@ func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error
 		for {
 			select {
 			case s := <-j:
-				packages, err := gosec.load(s, config)
+				packages, err := gosec.load(s)
 				select {
 				case r <- result{pkgPath: s, pkgs: packages, err: err}:
 				case <-quit:
@@ -224,21 +231,18 @@ func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error
 	return nil
 }
 
-func (gosec *Analyzer) load(pkgPath string, conf *packages.Config) ([]*packages.Package, error) {
+func (gosec *Analyzer) getPackageFiles(pkgPath string, conf *packages.Config) ([]string, error) {
 	abspath, err := GetPkgAbsPath(pkgPath)
 	if err != nil {
-		gosec.logger.Printf("Skipping: %s. Path doesn't exist.", abspath)
-		return []*packages.Package{}, nil
+		return []string{pkgPath}, nil
 	}
 
 	gosec.logger.Println("Import directory:", abspath)
-	// step 1/3 create build context.
 	buildD := build.Default
-	// step 2/3: add build tags to get env dependent files into basePackage.
 	buildD.BuildTags = conf.BuildFlags
 	basePackage, err := buildD.ImportDir(pkgPath, build.ImportComment)
 	if err != nil {
-		return []*packages.Package{}, fmt.Errorf("importing dir %q: %w", pkgPath, err)
+		return nil, fmt.Errorf("importing dir %q: %w", pkgPath, err)
 	}
 
 	var packageFiles []string
@@ -258,12 +262,32 @@ func (gosec *Analyzer) load(pkgPath string, conf *packages.Config) ([]*packages.
 		}
 	}
 
-	// step 3/3 remove build tags from conf to proceed build correctly.
+	return packageFiles, nil
+}
+
+func (gosec *Analyzer) load(pkgPath string) ([]*packages.Package, error) {
+	confInterface, confErr := gosec.config.Get("packages_config")
+	if confErr != nil {
+		return []*packages.Package{}, fmt.Errorf("impossible to get build config: %w", confErr)
+	}
+	conf, confOk := confInterface.(*packages.Config)
+	if !confOk {
+		return []*packages.Package{}, fmt.Errorf("incorrect type of build config: %T", confInterface)
+	}
+
+	// step 1/2 add build tags to get env dependent files into basePackage.
+	packageFiles, err := gosec.getPackageFiles(pkgPath, conf)
+	if err != nil {
+		return []*packages.Package{}, err
+	}
+
+	// step 2/2 remove build tags from conf to proceed build correctly.
 	conf.BuildFlags = nil
 	pkgs, err := packages.Load(conf, packageFiles...)
 	if err != nil {
 		return []*packages.Package{}, fmt.Errorf("loading files from package %q: %w", pkgPath, err)
 	}
+
 	return pkgs, nil
 }
 
@@ -288,12 +312,14 @@ func (gosec *Analyzer) Check(pkg *packages.Package) {
 		}
 
 		gosec.logger.Println("Checking file:", checkedFile)
+		gosec.context.LoadPackages = gosec.load
 		gosec.context.FileSet = pkg.Fset
 		gosec.context.Config = gosec.config
 		gosec.context.Comments = ast.NewCommentMap(gosec.context.FileSet, file, file.Comments)
 		gosec.context.Root = file
 		gosec.context.Info = pkg.TypesInfo
 		gosec.context.Pkg = pkg.Types
+		gosec.context.RawPkg = pkg
 		gosec.context.PkgFiles = pkg.Syntax
 		gosec.context.Imports = NewImportTracker()
 		gosec.context.Imports.TrackFile(file)

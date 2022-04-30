@@ -3166,6 +3166,25 @@ func main() {
 }`}, 0, gosec.NewConfig()},
 	}
 
+	// SampleCodeG602 - Usage of Rat.SetString in math/big with an overflow
+	SampleCodeG602 = []CodeSample{
+		{[]string{
+			`
+package main
+
+import (
+        "math/big"
+)
+
+func main() {
+        r := big.Rat{}
+        r.SetString("13e-9223372036854775808")
+
+		fmt.Println(r)
+}`,
+		}, 1, gosec.NewConfig()},
+	}
+
 	// SampleCodeBuildTag - G601 build tags
 	SampleCodeBuildTag = []CodeSample{{[]string{`
 // +build tag

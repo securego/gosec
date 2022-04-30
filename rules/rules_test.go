@@ -3,6 +3,9 @@ package rules_test
 import (
 	"fmt"
 	"log"
+	"runtime"
+	"strconv"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -185,5 +188,14 @@ var _ = Describe("gosec rules", func() {
 		It("should detect implicit aliasing in ForRange", func() {
 			runner("G601", testutils.SampleCodeG601)
 		})
+
+		versionParts := strings.Split(runtime.Version(), ".")
+		minor, _ := strconv.Atoi(versionParts[1])
+		build, _ := strconv.Atoi(versionParts[2])
+		if versionParts[0] == "go1" && (minor == 16 && build < 14 || minor == 17 && build < 7) {
+			It("should detect usage of Rat.SetString in math/big with an overflow", func() {
+				runner("G602", testutils.SampleCodeG602)
+			})
+		}
 	})
 })

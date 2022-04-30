@@ -166,6 +166,7 @@ directory you can supply `./...` as the input argument.
 - G504: Import blocklist: net/http/cgi
 - G505: Import blocklist: crypto/sha1
 - G601: Implicit memory aliasing of items from a range statement
+- G602: Usage of Rat.SetString in math/big with an overflow (CVE-2022-23772)
 
 ### Retired rules
 

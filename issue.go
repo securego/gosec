@@ -86,6 +86,7 @@ var ruleToCWE = map[string]string{
 	"G504": "327",
 	"G505": "327",
 	"G601": "118",
+	"G602": "190",
 }
 
 // Issue is returned by a gosec rule if it discovers an issue with the scanned code.
@@ -182,7 +183,7 @@ func NewIssue(ctx *Context, node ast.Node, ruleID, desc string, severity Score, 
 
 	var code string
 	if file, err := os.Open(fobj.Name()); err == nil {
-		defer file.Close() //#nosec
+		defer file.Close() // #nosec
 		s := codeSnippetStartLine(node, fobj)
 		e := codeSnippetEndLine(node, fobj)
 		code, err = codeSnippet(file, s, e, node)
