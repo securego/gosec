@@ -98,6 +98,10 @@ var _ = Describe("gosec rules", func() {
 			runner("G112", testutils.SampleCodeG112)
 		})
 
+		It("should detect potential uncontrolled memory consumption in Rat.SetString", func() {
+			runner("G113", testutils.SampleCodeG113)
+		})
+
 		It("should detect sql injection via format strings", func() {
 			runner("G201", testutils.SampleCodeG201)
 		})
