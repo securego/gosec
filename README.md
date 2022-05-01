@@ -145,6 +145,7 @@ directory you can supply `./...` as the input argument.
 - G110: Potential DoS vulnerability via decompression bomb
 - G111: Potential directory traversal
 - G112: Potential slowloris attack
+- G113: Usage of Rat.SetString in math/big with an overflow (CVE-2022-23772)
 - G201: SQL query construction using format string
 - G202: SQL query construction using string concatenation
 - G203: Use of unescaped data in HTML templates
@@ -166,7 +167,6 @@ directory you can supply `./...` as the input argument.
 - G504: Import blocklist: net/http/cgi
 - G505: Import blocklist: crypto/sha1
 - G601: Implicit memory aliasing of items from a range statement
-- G602: Usage of Rat.SetString in math/big with an overflow (CVE-2022-23772)
 
 ### Retired rules
 

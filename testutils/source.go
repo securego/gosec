@@ -1052,6 +1052,25 @@ func HelloServer(w http.ResponseWriter, r *http.Request) {
 		`}, 0, gosec.NewConfig()},
 	}
 
+	// SampleCodeG113 - Usage of Rat.SetString in math/big with an overflow
+	SampleCodeG113 = []CodeSample{
+		{[]string{
+			`
+package main
+
+import (
+        "math/big"
+)
+
+func main() {
+        r := big.Rat{}
+        r.SetString("13e-9223372036854775808")
+
+		fmt.Println(r)
+}`,
+		}, 1, gosec.NewConfig()},
+	}
+
 	// SampleCodeG201 - SQL injection via format string
 	SampleCodeG201 = []CodeSample{
 		{[]string{`
@@ -3164,25 +3183,6 @@ func main() {
         fmt.Println(sampleString)
     }
 }`}, 0, gosec.NewConfig()},
-	}
-
-	// SampleCodeG602 - Usage of Rat.SetString in math/big with an overflow
-	SampleCodeG602 = []CodeSample{
-		{[]string{
-			`
-package main
-
-import (
-        "math/big"
-)
-
-func main() {
-        r := big.Rat{}
-        r.SetString("13e-9223372036854775808")
-
-		fmt.Println(r)
-}`,
-		}, 1, gosec.NewConfig()},
 	}
 
 	// SampleCodeBuildTag - G601 build tags
