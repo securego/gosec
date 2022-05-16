@@ -350,7 +350,7 @@ file. The output format is controlled by the `-fmt` flag, and the output file is
 $ gosec -fmt=json -out=results.json *.go
 ```
 
-Results will be reported to stdout as well as to the provided output file by `-stdout` flag. The `-verbose` flag overrides the 
+Results will be reported to stdout as well as to the provided output file by `-stdout` flag. The `-verbose` flag overrides the
 output format when stdout the results while saving them in the output file
 ```bash
 # Write output in json format to results.json as well as stdout
@@ -360,7 +360,17 @@ $ gosec -fmt=json -out=results.json -stdout *.go
 $ gosec -fmt=json -out=results.json -stdout -verbose=text *.go
 ```
 
+
+
 **Note:** gosec generates the [generic issue import format](https://docs.sonarqube.org/latest/analysis/generic-issue/) for SonarQube, and a report has to be imported into SonarQube using `sonar.externalIssuesReportPaths=path/to/gosec-report.json`.
+
+Two output formats (json + any of the other valid formats) from one run can be achieved by providing the `-convert` flag which takes two arguments separated by a comma: \<format>,\<file>.
+```bash
+# Write output in json format to log.json as well as output in text format to log.txt
+$ gosec -fmt=json -out=log.json -convert=text,log.txt ./...
+
+```
+
 
 ## Development
 
@@ -409,14 +419,14 @@ git push origin v1.0.0
 The GitHub [release workflow](.github/workflows/release.yml) triggers immediately after the tag is pushed upstream. This flow will
 release the binaries using the [goreleaser](https://goreleaser.com/actions/) action and then it will build and publish the docker image into Docker Hub.
 
-The released artifacts are signed using [cosign](https://docs.sigstore.dev/). You can use the public key from [cosign.pub](cosign.pub) 
+The released artifacts are signed using [cosign](https://docs.sigstore.dev/). You can use the public key from [cosign.pub](cosign.pub)
 file to verify the signature of docker image and binaries files.
 
 The docker image signature can be verified with the following command:
 ```
 cosign verify --key cosign.pub securego/gosec:<TAG>
 ```
- 
+
 The binary files signature can be verified with the following command:
 ```
 cosign verify-blob --key cosign.pub --signature gosec_<VERSION>_darwin_amd64.tar.gz.sig  gosec_<VERSION>_darwin_amd64.tar.gz

@@ -83,6 +83,9 @@ var (
 	//#nosec alternative tag
 	flagAlternativeNoSec = flag.String("nosec-tag", "", "Set an alternative string for #nosec. Some examples: #dontanalyze, #falsepositive")
 
+	// flag indicating whether log should be converted from json to some other format
+	flagLogShouldBeConvertedTo = flag.String("convert", "text",
+		"Convert json output format to some other format. Usage: convert-<format>,<filename>. Ex: convert-text,test.txt creates an output file named test.txt with text format. Valid format options are yaml, csv, junit-xml, html, sonarqube, golint, sarif or text")
 	// output file
 	flagOutput = flag.String("out", "", "Set output file for results")
 
@@ -440,9 +443,34 @@ func main() {
 			logger.Fatal(err)
 		}
 	}
+
 	if *flagOutput != "" {
+		// Save the report with the desired format to flagOutPut file.
 		if err := saveReport(*flagOutput, *flagFormat, rootPaths, reportInfo); err != nil {
 			logger.Fatal(err)
+		}
+		// This checks that the convert flag has been used.
+		if *flagLogShouldBeConvertedTo != "" {
+			// Split the convert flag arguments
+			res := strings.Split(*flagLogShouldBeConvertedTo, ",")
+
+			// Checks that 2 arguments were provided
+			if (len(res) != 2) || (res[0] == "") || (res[1] == "") {
+				logger.Println("Finished writing to the output file", *flagOutput, "but could not finish the other output file.")
+				logger.Println("Expected two arguments for the convert flag separated by a comma, ex: text,test.txt")
+				os.Exit(0)
+			}
+
+			// Flagformat should be json since that's what we're converting from
+			if *flagFormat != "json" {
+				logger.Println("Finished writing to the file", *flagOutput, "but could not finish the file", res[1])
+				logger.Fatal("Can only convert from json to either yaml, csv, junit-xml, html, sonarqube, golint, sarif or text.")
+				os.Exit(0)
+			}
+
+			if err := saveReport(res[1], res[0], rootPaths, reportInfo); err != nil {
+				logger.Fatal(err)
+			}
 		}
 	}
 
