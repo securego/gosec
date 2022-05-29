@@ -11,7 +11,7 @@ require (
 	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e
 	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616
 	golang.org/x/text v0.3.7
-	golang.org/x/tools v0.1.10
+	golang.org/x/tools v0.1.11-0.20220502222022-556c550a3816
 	gopkg.in/yaml.v2 v2.4.0
 )
 
