@@ -8,6 +8,7 @@ import (
 
 type usingOldMathBig struct {
 	gosec.MetaData
+	calls gosec.CallList
 }
 
 func (r *usingOldMathBig) ID() string {
@@ -15,17 +16,7 @@ func (r *usingOldMathBig) ID() string {
 }
 
 func (r *usingOldMathBig) Match(node ast.Node, ctx *gosec.Context) (gi *gosec.Issue, err error) {
-	callExpr, callExprOk := node.(*ast.CallExpr)
-	if !callExprOk {
-		return nil, nil
-	}
-
-	packageName, callName, callInfoOk := gosec.GetCallInfo(callExpr, ctx)
-	if callInfoOk != nil {
-		return nil, nil
-	}
-
-	if packageName != "math/big.Rat" || callName != "SetString" {
+	if callExpr := r.calls.ContainsPkgCallExpr(node, ctx, false); callExpr == nil {
 		return nil, nil
 	}
 
@@ -40,7 +31,10 @@ func (r *usingOldMathBig) Match(node ast.Node, ctx *gosec.Context) (gi *gosec.Is
 
 // NewUsingOldMathBig rule detects the use of Rat.SetString from math/big.
 func NewUsingOldMathBig(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
+	calls := gosec.NewCallList()
+	calls.Add("math/big.Rat", "SetString")
 	return &usingOldMathBig{
+		calls: calls,
 		MetaData: gosec.MetaData{
 			ID:       id,
 			What:     "Potential uncontrolled memory consumption in Rat.SetString (CVE-2022-23772)",
