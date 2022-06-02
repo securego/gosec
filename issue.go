@@ -65,6 +65,7 @@ var ruleToCWE = map[string]string{
 	"G110": "409",
 	"G111": "22",
 	"G112": "400",
+	"G113": "190",
 	"G201": "89",
 	"G202": "89",
 	"G203": "79",
@@ -182,7 +183,7 @@ func NewIssue(ctx *Context, node ast.Node, ruleID, desc string, severity Score, 
 
 	var code string
 	if file, err := os.Open(fobj.Name()); err == nil {
-		defer file.Close() //#nosec
+		defer file.Close() // #nosec
 		s := codeSnippetStartLine(node, fobj)
 		e := codeSnippetEndLine(node, fobj)
 		code, err = codeSnippet(file, s, e, node)

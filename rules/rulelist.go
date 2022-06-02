@@ -75,6 +75,7 @@ func Generate(trackSuppressions bool, filters ...RuleFilter) RuleList {
 		{"G110", "Detect io.Copy instead of io.CopyN when decompression", NewDecompressionBombCheck},
 		{"G111", "Detect http.Dir('/') as a potential risk", NewDirectoryTraversal},
 		{"G112", "Detect ReadHeaderTimeout not configured as a potential risk", NewSlowloris},
+		{"G113", "Usage of Rat.SetString in math/big with an overflow", NewUsingOldMathBig},
 
 		// injection
 		{"G201", "SQL query construction using format string", NewSQLStrFormat},

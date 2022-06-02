@@ -1052,6 +1052,26 @@ func HelloServer(w http.ResponseWriter, r *http.Request) {
 		`}, 0, gosec.NewConfig()},
 	}
 
+	// SampleCodeG113 - Usage of Rat.SetString in math/big with an overflow
+	SampleCodeG113 = []CodeSample{
+		{[]string{
+			`
+package main
+
+import (
+	"math/big"
+	"fmt"
+)
+
+func main() {
+	r := big.Rat{}
+	r.SetString("13e-9223372036854775808")
+
+	fmt.Println(r)
+}`,
+		}, 1, gosec.NewConfig()},
+	}
+
 	// SampleCodeG201 - SQL injection via format string
 	SampleCodeG201 = []CodeSample{
 		{[]string{`
