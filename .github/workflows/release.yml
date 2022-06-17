@@ -10,7 +10,7 @@ jobs:
       GO111MODULE: on
       ACTIONS_ALLOW_UNSECURE_COMMANDS: true
     steps:
-      - name: Checkout Source 
+      - name: Checkout Source
         uses: actions/checkout@v3
       - name: Unshallow
         run: git fetch --prune --unshallow
@@ -19,7 +19,7 @@ jobs:
         with:
           go-version: 1.18
       - name: Install Cosign
-        uses: sigstore/cosign-installer@main
+        uses: sigstore/cosign-installer@v2
         with:
           cosign-release: 'v1.6.0'
       - name: Store Cosign private key in a file
