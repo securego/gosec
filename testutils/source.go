@@ -795,7 +795,8 @@ func main() {
 	}
 	value := int32(bigValue)
 	fmt.Println(value)
-}`}, 1, gosec.NewConfig()}, {[]string{`
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
 package main
 
 import (
@@ -811,7 +812,8 @@ func main() {
 	if int16(bigValue) < 0 {
 		fmt.Println(bigValue)
 	}
-}`}, 1, gosec.NewConfig()}, {[]string{`
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
 package main
 
 import (
@@ -825,7 +827,8 @@ func main() {
 		panic(err)
 	}
 	fmt.Println(bigValue)
-}`}, 0, gosec.NewConfig()}, {[]string{`
+}`}, 0, gosec.NewConfig()},
+		{[]string{`
 package main
 
 import (
@@ -846,7 +849,8 @@ func test() {
 	bigValue := 30
 	value := int32(bigValue)
 	fmt.Println(value)
-}`}, 0, gosec.NewConfig()}, {[]string{`
+}`}, 0, gosec.NewConfig()},
+		{[]string{`
 package main
 
 import (
@@ -862,6 +866,17 @@ func main() {
 	}
 	v := int32(value)
 	fmt.Println(v)
+}`}, 0, gosec.NewConfig()},
+		{[]string{`
+package main
+import (
+    "fmt"
+    "strconv"
+)
+func main() {
+    a, err := strconv.Atoi("a")
+    b := int32(a) //#nosec G109
+    fmt.Println(b, err)
 }`}, 0, gosec.NewConfig()},
 	}
 
