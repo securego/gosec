@@ -3,6 +3,8 @@ module github.com/securego/gosec/v2
 require (
 	github.com/google/uuid v1.3.0
 	github.com/gookit/color v1.5.1
+	github.com/jackc/pgconn v1.12.1
+	github.com/jackc/pgx/v4 v4.16.1
 	github.com/lib/pq v1.10.6
 	github.com/mozilla/tls-observatory v0.0.0-20210609171429-7bc42856d2e5
 	github.com/nbutton23/zxcvbn-go v0.0.0-20210217022336-fa2cb2858354

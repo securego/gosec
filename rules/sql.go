@@ -51,6 +51,49 @@ var sqlCallIdents = map[string]map[string]int{
 		"Prepare":         0,
 		"PrepareContext":  1,
 	},
+	"*github.com/jackc/pgconn.Batch": {
+		"ExecParams": 0,
+	},
+	"*github.com/jackc/pgconn.PgConn": {
+		"CopyFrom":   2,
+		"CopyTo":     2,
+		"Exec":       1,
+		"ExecParams": 1,
+		"Prepare":    2,
+	},
+	"*github.com/jackc/pgx/v4.Batch": {
+		"Queue": 0,
+	},
+	"*github.com/jackc/pgx/v4.Conn": {
+		"Exec":      1,
+		"Prepare":   2,
+		"Query":     1,
+		"QueryFunc": 1,
+		"QueryRow":  1,
+	},
+	"github.com/jackc/pgx/v4.Tx": {
+		"Exec":      1,
+		"Prepare":   2,
+		"Query":     1,
+		"QueryFunc": 1,
+		"QueryRow":  1,
+	},
+	"*github.com/jackc/pgx/v4/pgxpool.Conn": {
+		"Exec":     1,
+		"Query":    1,
+		"QueryRow": 1,
+	},
+	"*github.com/jackc/pgx/v4/pgxpool.Pool": {
+		"Exec":     1,
+		"Query":    1,
+		"QueryRow": 1,
+	},
+	"*github.com/jackc/pgx/v4/pgxpool.Tx": {
+		"Exec":     1,
+		"Prepare":  2,
+		"Query":    1,
+		"QueryRow": 1,
+	},
 }
 
 // findQueryArg locates the argument taking raw SQL

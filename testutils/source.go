@@ -1479,7 +1479,54 @@ func main() {
 	}
 	defer stmt.Close()
 }
-`}, 0, gosec.NewConfig()},
+`}, 0, gosec.NewConfig()}, {[]string{`
+// Format string without proper quoting, *pgx.Conn.Query
+package main
+import (
+	"context"
+	"fmt"
+	"os"
+	"github.com/jackc/pgx/v4"
+)
+func main(){
+ctx := context.Background()
+conn, err := pgx.Connect(ctx, os.Getenv("DATABASE_URL"))
+if err != nil {
+	panic(err)
+}
+	q := fmt.Sprintf("SELECT * FROM foo where name = '%s'", os.Args[1])
+	rows, err := conn.Query(ctx, q)
+	if err != nil {
+		panic(err)
+	}
+defer rows.Close()
+}`}, 1, gosec.NewConfig()}, {[]string{`
+// Format string without proper quoting, pgx.Tx.Query
+package main
+import (
+	"context"
+	"fmt"
+	"os"
+	"github.com/jackc/pgx/v4"
+)
+func main(){
+	ctx := context.Background()
+	conn, err := pgx.Connect(ctx, os.Getenv("DATABASE_URL"))
+	if err != nil {
+		panic(err)
+	}
+	tx, err := conn.Begin(ctx)
+	if err != nil {
+		panic(err)
+	}
+	defer tx.Rollback(ctx)
+	q := fmt.Sprintf("SELECT * FROM foo where name = '%s'", os.Args[1])
+	rows, err := tx.Query(ctx, q)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}`}, 1, gosec.NewConfig()},
 	}
 
 	// SampleCodeG202 - SQL query string building via string concatenation
