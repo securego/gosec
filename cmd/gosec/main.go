@@ -293,6 +293,19 @@ func filterIssues(issues []*gosec.Issue, severity gosec.Score, confidence gosec.
 	return result, trueIssues
 }
 
+func exit(issues []*gosec.Issue, errors map[string][]gosec.Error, noFail bool) {
+	nsi := 0
+	for _, issue := range issues {
+		if len(issue.Suppressions) == 0 {
+			nsi++
+		}
+	}
+	if (nsi > 0 || len(errors) > 0) && !*flagNoFail {
+		os.Exit(1)
+	}
+	os.Exit(0)
+}
+
 func main() {
 	// Makes sure some version information is set
 	prepareVersionInfo()
@@ -449,8 +462,5 @@ func main() {
 	// Finalize logging
 	logWriter.Close() //#nosec
 
-	// Do we have an issue? If so exit 1 unless NoFail is set
-	if (len(issues) > 0 || len(errors) > 0) && !*flagNoFail {
-		os.Exit(1)
-	}
+	exit(issues, errors, *flagNoFail)
 }
