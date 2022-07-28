@@ -300,7 +300,7 @@ func exit(issues []*gosec.Issue, errors map[string][]gosec.Error, noFail bool) {
 			nsi++
 		}
 	}
-	if (nsi > 0 || len(errors) > 0) && !*flagNoFail {
+	if (nsi > 0 || len(errors) > 0) && !noFail {
 		os.Exit(1)
 	}
 	os.Exit(0)
