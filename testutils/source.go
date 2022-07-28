@@ -3009,6 +3009,19 @@ import "crypto/tls"
 
 const MinVer = tls.VersionTLS13
 `}, 0, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import (
+	"crypto/tls"
+	cryptotls "crypto/tls"
+)
+
+func main() {
+	_ = tls.Config{MinVersion: tls.VersionTLS12}
+	_ = cryptotls.Config{MinVersion: cryptotls.VersionTLS12}
+}
+`}, 0, gosec.NewConfig()},
 	}
 
 	// SampleCodeG403 - weak key strength
