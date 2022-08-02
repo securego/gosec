@@ -102,6 +102,10 @@ var _ = Describe("gosec rules", func() {
 			runner("G113", testutils.SampleCodeG113)
 		})
 
+		It("should detect uses of net/http serve functions that have no support for setting timeouts", func() {
+			runner("G114", testutils.SampleCodeG114)
+		})
+
 		It("should detect sql injection via format strings", func() {
 			runner("G201", testutils.SampleCodeG201)
 		})
