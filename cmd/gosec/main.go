@@ -71,7 +71,7 @@ func (a *arrayFlags) Set(value string) error {
 }
 
 var (
-	//#nosec flag
+	// #nosec flag
 	flagIgnoreNoSec = flag.Bool("nosec", false, "Ignores #nosec comments when set")
 
 	// show ignored
@@ -80,7 +80,7 @@ var (
 	// format output
 	flagFormat = flag.String("fmt", "text", "Set output format. Valid options are: json, yaml, csv, junit-xml, html, sonarqube, golint, sarif or text")
 
-	//#nosec alternative tag
+	// #nosec alternative tag
 	flagAlternativeNoSec = flag.String("nosec-tag", "", "Set an alternative string for #nosec. Some examples: #dontanalyze, #falsepositive")
 
 	// output file
@@ -148,7 +148,7 @@ var (
 	logger *log.Logger
 )
 
-//#nosec
+// #nosec
 func usage() {
 	usageText := fmt.Sprintf(usageText, Version, GitTag, BuildDate)
 	fmt.Fprintln(os.Stderr, usageText)
@@ -173,12 +173,12 @@ func usage() {
 func loadConfig(configFile string) (gosec.Config, error) {
 	config := gosec.NewConfig()
 	if configFile != "" {
-		//#nosec
+		// #nosec
 		file, err := os.Open(configFile)
 		if err != nil {
 			return nil, err
 		}
-		defer file.Close() //#nosec G307
+		defer file.Close() // #nosec G307
 		if _, err := config.ReadFrom(file); err != nil {
 			return nil, err
 		}
@@ -253,11 +253,11 @@ func printReport(format string, color bool, rootPaths []string, reportInfo *gose
 }
 
 func saveReport(filename, format string, rootPaths []string, reportInfo *gosec.ReportInfo) error {
-	outfile, err := os.Create(filename) //#nosec G304
+	outfile, err := os.Create(filename) // #nosec G304
 	if err != nil {
 		return err
 	}
-	defer outfile.Close() //#nosec G307
+	defer outfile.Close() // #nosec G307
 	err = report.CreateReport(outfile, format, false, rootPaths, reportInfo)
 	if err != nil {
 		return err
@@ -337,7 +337,7 @@ func main() {
 
 	// Ensure at least one file was specified or that the recursive -r flag was set.
 	if flag.NArg() == 0 && !*flagRecursive {
-		fmt.Fprintf(os.Stderr, "\nError: FILE [FILE...] or './...' or -r expected\n") //#nosec
+		fmt.Fprintf(os.Stderr, "\nError: FILE [FILE...] or './...' or -r expected\n") // #nosec
 		flag.Usage()
 		os.Exit(1)
 	}
@@ -460,7 +460,7 @@ func main() {
 	}
 
 	// Finalize logging
-	logWriter.Close() //#nosec
+	logWriter.Close() // #nosec
 
 	exit(issues, errors, *flagNoFail)
 }
