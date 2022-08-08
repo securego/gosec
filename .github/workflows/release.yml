@@ -17,7 +17,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v3
         with:
-          go-version: 1.18
+          go-version: 1.19
       - name: Install Cosign
         uses: sigstore/cosign-installer@v2
         with:
@@ -66,7 +66,7 @@ jobs:
           tags: ${{steps.meta.outputs.tags}}
           labels: ${{steps.meta.outputs.labels}}
           push: true
-          build-args: GO_VERSION=1.18
+          build-args: GO_VERSION=1.19
       - name: Sign Docker Image
         run: cosign sign -key /tmp/cosign.key ${TAGS}
         env:
