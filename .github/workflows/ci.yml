@@ -13,6 +13,7 @@ jobs:
         go_version:
           - '1.17'
           - '1.18'
+          - '1.19'
     runs-on: ubuntu-latest
     env:
       GO111MODULE: on
@@ -44,7 +45,7 @@ jobs:
       - name: Setup go
         uses: actions/setup-go@v3
         with:
-          go-version: '1.18'
+          go-version: '1.19'
       - name: Checkout Source 
         uses: actions/checkout@v3
       - uses: actions/cache@v3
