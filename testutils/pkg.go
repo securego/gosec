@@ -3,7 +3,6 @@ package testutils
 import (
 	"fmt"
 	"go/build"
-	"io/ioutil"
 	"log"
 	"os"
 	"path"
@@ -30,7 +29,7 @@ type TestPackage struct {
 // NewTestPackage will create a new and empty package. Must call Close() to cleanup
 // auxiliary files
 func NewTestPackage() *TestPackage {
-	workingDir, err := ioutil.TempDir("", "gosecs_test")
+	workingDir, err := os.MkdirTemp("", "gosecs_test")
 	if err != nil {
 		return nil
 	}
@@ -53,7 +52,7 @@ func (p *TestPackage) write() error {
 		return nil
 	}
 	for filename, content := range p.Files {
-		if e := ioutil.WriteFile(filename, []byte(content), 0o644); e != nil {
+		if e := os.WriteFile(filename, []byte(content), 0o644); e != nil {
 			return e
 		} //#nosec G306
 	}
