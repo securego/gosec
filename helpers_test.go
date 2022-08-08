@@ -2,7 +2,6 @@ package gosec_test
 
 import (
 	"go/ast"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -18,9 +17,9 @@ var _ = Describe("Helpers", func() {
 		var dir string
 		JustBeforeEach(func() {
 			var err error
-			dir, err = ioutil.TempDir("", "gosec")
+			dir, err = os.MkdirTemp("", "gosec")
 			Expect(err).ShouldNot(HaveOccurred())
-			_, err = ioutil.TempFile(dir, "test*.go")
+			_, err = os.MkdirTemp(dir, "test*.go")
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 		AfterEach(func() {

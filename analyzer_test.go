@@ -2,7 +2,6 @@ package gosec_test
 
 import (
 	"errors"
-	"io/ioutil"
 	"log"
 	"os"
 	"strings"
@@ -30,7 +29,7 @@ var _ = Describe("Analyzer", func() {
 	Context("when processing a package", func() {
 		It("should not report an error if the package contains no Go files", func() {
 			analyzer.LoadRules(rules.Generate(false).RulesInfo())
-			dir, err := ioutil.TempDir("", "empty")
+			dir, err := os.MkdirTemp("", "empty")
 			defer os.RemoveAll(dir)
 			Expect(err).ShouldNot(HaveOccurred())
 			err = analyzer.Process(buildTags, dir)

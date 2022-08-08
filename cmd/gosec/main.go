@@ -17,7 +17,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"os"
 	"runtime"
@@ -354,7 +354,7 @@ func main() {
 	}
 
 	if *flagQuiet {
-		logger = log.New(ioutil.Discard, "", 0)
+		logger = log.New(io.Discard, "", 0)
 	} else {
 		logger = log.New(logWriter, "[gosec] ", log.LstdFlags)
 	}
