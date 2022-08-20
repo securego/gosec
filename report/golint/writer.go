@@ -15,7 +15,7 @@ func WriteReport(w io.Writer, data *gosec.ReportInfo) error {
 
 	for _, issue := range data.Issues {
 		what := issue.What
-		if issue.Cwe.ID != "" {
+		if issue.Cwe != nil && issue.Cwe.ID != "" {
 			what = fmt.Sprintf("[%s] %s", issue.Cwe.SprintID(), issue.What)
 		}
 

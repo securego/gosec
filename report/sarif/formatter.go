@@ -27,12 +27,14 @@ func GenerateReport(rootPaths []string, data *gosec.ReportInfo) (*Report, error)
 	weaknesses := make(map[string]*cwe.Weakness)
 
 	for _, issue := range data.Issues {
-		_, ok := weaknesses[issue.Cwe.ID]
-		if !ok {
-			weakness := cwe.Get(issue.Cwe.ID)
-			weaknesses[issue.Cwe.ID] = weakness
-			cweTaxon := parseSarifTaxon(weakness)
-			cweTaxa = append(cweTaxa, cweTaxon)
+		if issue.Cwe != nil {
+			_, ok := weaknesses[issue.Cwe.ID]
+			if !ok {
+				weakness := cwe.Get(issue.Cwe.ID)
+				weaknesses[issue.Cwe.ID] = weakness
+				cweTaxon := parseSarifTaxon(weakness)
+				cweTaxa = append(cweTaxa, cweTaxon)
+			}
 		}
 
 		r, ok := rulesIndices[issue.RuleID]
@@ -97,6 +99,9 @@ func parseSarifRule(issue *gosec.Issue) *ReportingDescriptor {
 }
 
 func buildSarifReportingDescriptorRelationship(weakness *cwe.Weakness) *ReportingDescriptorRelationship {
+	if weakness == nil {
+		return nil
+	}
 	return &ReportingDescriptorRelationship{
 		Target: &ReportingDescriptorReference{
 			ID:            weakness.ID,

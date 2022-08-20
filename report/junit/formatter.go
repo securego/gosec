@@ -8,11 +8,15 @@ import (
 )
 
 func generatePlaintext(issue *gosec.Issue) string {
+	cweID := "CWE"
+	if issue.Cwe != nil {
+		cweID = issue.Cwe.ID
+	}
 	return "Results:\n" +
 		"[" + issue.File + ":" + issue.Line + "] - " +
 		issue.What + " (Confidence: " + strconv.Itoa(int(issue.Confidence)) +
 		", Severity: " + strconv.Itoa(int(issue.Severity)) +
-		", CWE: " + issue.Cwe.ID + ")\n" + "> " + html.EscapeString(issue.Code)
+		", CWE: " + cweID + ")\n" + "> " + html.EscapeString(issue.Code)
 }
 
 // GenerateReport Convert a gosec report to a JUnit Report
