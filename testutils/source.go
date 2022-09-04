@@ -3180,6 +3180,22 @@ func main() {
 	bad := rand.Intn(10)
 	println(bad)
 }`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import (
+	"crypto/rand"
+	"math/big"
+	rnd "math/rand"
+)
+
+func main() {
+	good, _ := rand.Int(rand.Reader, big.NewInt(int64(2)))
+	println(good)
+	bad := rnd.Intn(2)
+	println(bad)
+}
+`}, 1, gosec.NewConfig()},
 	}
 
 	// SampleCodeG501 - Blocklisted import MD5

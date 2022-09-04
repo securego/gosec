@@ -37,9 +37,9 @@ import (
 //
 //	node, matched := MatchCallByPackage(n, ctx, "math/rand", "Read")
 func MatchCallByPackage(n ast.Node, c *Context, pkg string, names ...string) (*ast.CallExpr, bool) {
-	importedName, found := GetImportedName(pkg, c)
+	importedName, found := GetAliasedName(pkg, c)
 	if !found {
-		importedName, found = GetAliasedName(pkg, c)
+		importedName, found = GetImportedName(pkg, c)
 		if !found {
 			return nil, false
 		}
