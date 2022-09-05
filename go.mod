@@ -2,13 +2,13 @@ module github.com/securego/gosec/v2
 
 require (
 	github.com/google/uuid v1.3.0
-	github.com/gookit/color v1.5.1
+	github.com/gookit/color v1.5.2
 	github.com/lib/pq v1.10.6
 	github.com/mozilla/tls-observatory v0.0.0-20210609171429-7bc42856d2e5
 	github.com/nbutton23/zxcvbn-go v0.0.0-20210217022336-fa2cb2858354
-	github.com/onsi/ginkgo/v2 v2.1.4
-	github.com/onsi/gomega v1.20.1
-	golang.org/x/crypto v0.0.0-20220826181053-bd7e27e6170d
+	github.com/onsi/ginkgo/v2 v2.1.6
+	github.com/onsi/gomega v1.20.2
+	golang.org/x/crypto v0.0.0-20220829220503-c86fa9a7ed90
 	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616
 	golang.org/x/text v0.3.7
 	golang.org/x/tools v0.1.12
