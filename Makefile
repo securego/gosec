@@ -22,7 +22,10 @@ install-test-deps:
 	$(GO_NOMOD) get -u golang.org/x/crypto/ssh
 	$(GO_NOMOD) get -u github.com/lib/pq
 
-test: install-test-deps build fmt lint sec
+install-govulncheck:
+	go install golang.org/x/vuln/cmd/govulncheck@latest
+
+test: install-test-deps build fmt lint sec govulncheck
 	$(GINKGO) -v --fail-fast
 
 fmt:
@@ -44,6 +47,10 @@ golangci:
 sec:
 	@echo "SECURITY SCANNING"
 	./$(BIN) ./...
+
+govulncheck: install-govulncheck
+	@echo "CHECKING VULNERABILITIES"
+	govulncheck ./...
 
 test-coverage: install-test-deps
 	go test -race -v -count=1 -coverprofile=coverage.out ./...
