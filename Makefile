@@ -25,7 +25,9 @@ install-test-deps:
 	$(GO_NOMOD) get -u github.com/lib/pq
 
 install-govulncheck:
-	go install golang.org/x/vuln/cmd/govulncheck@latest
+	@if [ $(GO_MINOR_VERSION) -gt $(GOVULN_MIN_VERSION) ]; then \
+		go install golang.org/x/vuln/cmd/govulncheck@latest; \
+	fi
 
 test: install-test-deps build fmt lint sec govulncheck
 	$(GINKGO) -v --fail-fast
