@@ -12,6 +12,8 @@ GOBIN ?= $(GOPATH)/bin
 GOLINT ?= $(GOBIN)/golint
 GOSEC ?= $(GOBIN)/gosec
 GINKGO ?= $(GOBIN)/ginkgo
+GO_MINOR_VERSION = $(shell $(GO) version | cut -c 14- | cut -d' ' -f1 | cut -d'.' -f2)
+GOVULN_MIN_VERSION = 17
 GO_VERSION = 1.18
 
 default:
@@ -50,7 +52,9 @@ sec:
 
 govulncheck: install-govulncheck
 	@echo "CHECKING VULNERABILITIES"
-	govulncheck ./...
+	@if [ $(GO_MINOR_VERSION) -gt $(GOVULN_MIN_VERSION) ]; then \
+		govulncheck ./...; \
+	fi
 
 test-coverage: install-test-deps
 	go test -race -v -count=1 -coverprofile=coverage.out ./...
