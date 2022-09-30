@@ -92,3 +92,10 @@ func NewBlocklistedImportSHA1(id string, conf gosec.Config) (gosec.Rule, []ast.N
 		"crypto/sha1": "Blocklisted import crypto/sha1: weak cryptographic primitive",
 	})
 }
+
+// NewBlocklistedImportSHA1 fails if SHA1 is imported
+func NewBlocklistedImportXCRYPTO(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
+	return NewBlocklistedImports(id, conf, map[string]string{
+		"crypto/*": "Blocklisted import crypto/*: weak cryptographic primitive",
+	})
+}
