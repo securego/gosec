@@ -93,9 +93,38 @@ func NewBlocklistedImportSHA1(id string, conf gosec.Config) (gosec.Rule, []ast.N
 	})
 }
 
-// NewBlocklistedImportSHA1 fails if SHA1 is imported
-func NewBlocklistedImportXCRYPTO(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
+/// @thorrsson
+// NewBlocklistedImportSHA256 fails if crypto is imported
+func NewBlocklistedImportSHA256(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 	return NewBlocklistedImports(id, conf, map[string]string{
-		"crypto/*": "Blocklisted import crypto/*: weak cryptographic primitive",
+		"crypto/sha256": "Blocklisted import crypto/*: weak cryptographic primitive",
+	})
+}
+
+// NewBlocklistedImportBlake2s fails if crypto is imported
+func NewBlocklistedImportBlake2s(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
+	return NewBlocklistedImports(id, conf, map[string]string{
+		"golang.org/x/crypto/blake2s": "Blocklisted import golang.org/x/crypto/blake2s: weak cryptographic primitive",
+	})
+}
+
+// NewBlocklistedImportBlake2b fails if crypto is imported
+func NewBlocklistedImportBlake2b(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
+	return NewBlocklistedImports(id, conf, map[string]string{
+		"golang.org/x/crypto/blake2b": "Blocklisted import golang.org/x/crypto/blake2b: weak cryptographic primitive",
+	})
+}
+
+// NewBlocklistedImportHMAC fails if crypto is imported
+func NewBlocklistedImportHMAC(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
+	return NewBlocklistedImports(id, conf, map[string]string{
+		"crypto/hmac": "Blocklisted import crypto/hmac: weak cryptographic primitive",
+	})
+}
+
+// NewBlocklistedImportRAND fails if crypto is imported
+func NewBlocklistedImportRAND(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
+	return NewBlocklistedImports(id, conf, map[string]string{
+		"crypto/rand": "Blocklisted import crypto/rand: weak cryptographic primitive",
 	})
 }

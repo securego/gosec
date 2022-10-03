@@ -45,6 +45,12 @@ func NewUsesWeakCryptography(id string, conf gosec.Config) (gosec.Rule, []ast.No
 	calls["crypto/md5"] = []string{"New", "Sum"}
 	calls["crypto/sha1"] = []string{"New", "Sum"}
 	calls["crypto/rc4"] = []string{"NewCipher"}
+	calls["crypto/sha256"] = []string{"New", "New224", "Sum224", "Sum256"}
+	calls["golang.org/x/crypto/blake2b"] = []string{"New", "New224", "Sum224", "Sum256"}
+	calls["golang.org/x/crypto/blake2s"] = []string{"New", "New224", "Sum224", "Sum256"}
+	calls["crypto/hmac"] = []string{"New"}
+	calls["crypto/rand"] = []string{"Int", "Prime", "Read"}
+
 	rule := &usesWeakCryptography{
 		blocklist: calls,
 		MetaData: gosec.MetaData{

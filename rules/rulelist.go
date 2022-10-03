@@ -105,7 +105,12 @@ func Generate(trackSuppressions bool, filters ...RuleFilter) RuleList {
 		{"G503", "Import blocklist: crypto/rc4", NewBlocklistedImportRC4},
 		{"G504", "Import blocklist: net/http/cgi", NewBlocklistedImportCGI},
 		{"G505", "Import blocklist: crypto/sha1", NewBlocklistedImportSHA1},
-		{"G506", "Import blocklist: crypto/*", NewBlocklistedImportXCRYPTO},
+		{"G506", "Import blocklist: crypto/sha256", NewBlocklistedImportSHA256},
+		{"G514", "Import blocklist: golang.org/x/crypto/blake2b", NewBlocklistedImportBlake2b},
+		{"G515", "Import blocklist: golang.org/x/crypto/blake2s", NewBlocklistedImportBlake2s},
+		{"G516", "Import blocklist: crypto/sha256", NewBlocklistedImportSHA256},
+		{"G517", "Import blocklist: crypto/hmac", NewBlocklistedImportHMAC},
+		{"G518", "Import blocklist: crypto/rand", NewBlocklistedImportRAND},
 
 		// memory safety
 		{"G601", "Implicit memory aliasing in RangeStmt", NewImplicitAliasing},
