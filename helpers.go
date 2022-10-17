@@ -37,12 +37,9 @@ import (
 //
 //	node, matched := MatchCallByPackage(n, ctx, "math/rand", "Read")
 func MatchCallByPackage(n ast.Node, c *Context, pkg string, names ...string) (*ast.CallExpr, bool) {
-	importedName, found := GetAliasedName(pkg, c)
+	importedNames, found := GetImportedNames(pkg, c)
 	if !found {
-		importedName, found = GetImportedName(pkg, c)
-		if !found {
-			return nil, false
-		}
+		return nil, false
 	}
 
 	if callExpr, ok := n.(*ast.CallExpr); ok {
@@ -50,7 +47,10 @@ func MatchCallByPackage(n ast.Node, c *Context, pkg string, names ...string) (*a
 		if err != nil {
 			return nil, false
 		}
-		if packageName == importedName {
+		for _, in := range importedNames {
+			if packageName != in {
+				continue
+			}
 			for _, name := range names {
 				if callName == name {
 					return callExpr, true
@@ -247,48 +247,23 @@ func GetBinaryExprOperands(be *ast.BinaryExpr) []ast.Node {
 	return result
 }
 
-// GetImportedName returns the name used for the package within the
-// code. It will ignore initialization only imports.
-func GetImportedName(path string, ctx *Context) (string, bool) {
-	importName, imported := ctx.Imports.Imported[path]
-	if !imported {
-		return "", false
-	}
-
-	if _, initonly := ctx.Imports.InitOnly[path]; initonly {
-		return "", false
-	}
-
-	return importName, true
-}
-
-// GetAliasedName returns the aliased name used for the package within the
-// code. It will ignore initialization only imports.
-func GetAliasedName(path string, ctx *Context) (string, bool) {
-	importName, imported := ctx.Imports.Aliased[path]
-	if !imported {
-		return "", false
-	}
-
-	if _, initonly := ctx.Imports.InitOnly[path]; initonly {
-		return "", false
-	}
-
-	return importName, true
+// GetImportedNames returns the name(s)/alias(es) used for the package within
+// the code. It ignores initialization-only imports.
+func GetImportedNames(path string, ctx *Context) (names []string, found bool) {
+	importNames, imported := ctx.Imports.Imported[path]
+	return importNames, imported
 }
 
 // GetImportPath resolves the full import path of an identifier based on
 // the imports in the current context(including aliases).
 func GetImportPath(name string, ctx *Context) (string, bool) {
 	for path := range ctx.Imports.Imported {
-		if imported, ok := GetImportedName(path, ctx); ok && imported == name {
-			return path, true
-		}
-	}
-
-	for path := range ctx.Imports.Aliased {
-		if imported, ok := GetAliasedName(path, ctx); ok && imported == name {
-			return path, true
+		if imported, ok := GetImportedNames(path, ctx); ok {
+			for _, n := range imported {
+				if n == name {
+					return path, true
+				}
+			}
 		}
 	}
 
