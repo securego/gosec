@@ -7,8 +7,8 @@ require (
 	github.com/mozilla/tls-observatory v0.0.0-20210609171429-7bc42856d2e5
 	github.com/nbutton23/zxcvbn-go v0.0.0-20210217022336-fa2cb2858354
 	github.com/onsi/ginkgo/v2 v2.3.1
-	github.com/onsi/gomega v1.22.0
-	golang.org/x/crypto v0.0.0-20221005025214-4161e89ecf1b
+	github.com/onsi/gomega v1.22.1
+	golang.org/x/crypto v0.0.0-20221012134737-56aed061732a
 	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616
 	golang.org/x/text v0.3.8
 	golang.org/x/tools v0.1.12
