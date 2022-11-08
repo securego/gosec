@@ -11,8 +11,8 @@ jobs:
     strategy:
       matrix:
         go_version:
-          - '1.18.7' # TODO: remove this once actions/setup-go@v3 uses latest as latest; see https://github.com/securego/gosec/pull/880
-          - '1.19.2' # TODO: remove this once actions/setup-go@v3 uses latest as latest; see https://github.com/securego/gosec/pull/880
+          - '1.18.8' # TODO: remove this once actions/setup-go@v3 uses latest as latest; see https://github.com/securego/gosec/pull/880
+          - '1.19.3' # TODO: remove this once actions/setup-go@v3 uses latest as latest; see https://github.com/securego/gosec/pull/880
     runs-on: ubuntu-latest
     env:
       GO111MODULE: on
