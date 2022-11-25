@@ -18,10 +18,9 @@ import (
 	"go/ast"
 	"go/types"
 
+	"github.com/securego/gosec/v2"
 	"golang.org/x/tools/go/ast/astutil"
 	"golang.org/x/tools/go/ssa"
-
-	"github.com/securego/gosec/v2"
 )
 
 type noErrorCheck struct {

@@ -31,10 +31,9 @@ import (
 	"strings"
 	"sync"
 
+	"golang.org/x/tools/go/packages"
 	"golang.org/x/tools/go/ssa"
 	"golang.org/x/tools/go/ssa/ssautil"
-
-	"golang.org/x/tools/go/packages"
 )
 
 // LoadMode controls the amount of details to return when loading the packages
