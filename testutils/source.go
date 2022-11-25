@@ -2756,7 +2756,23 @@ func main() {
 	n4, err := w.WriteString("buffered\n")
 	fmt.Printf("wrote %d bytes\n", n4)
 	w.Flush()
-}`}, 1, gosec.NewConfig()},
+}`}, 1, gosec.NewConfig()}, {[]string{`
+package main
+
+import (
+	"net"
+	"net/http"
+)
+
+func main() {
+	response, _ := http.Get("https://127.0.0.1")
+
+	defer response.Body.Close() // io.ReadCloser
+
+	conn, _ := net.Dial("tcp", "127.0.0.1:8080")
+	defer conn.Close() // net.Conn
+
+}`}, 2, gosec.NewConfig()},
 	}
 
 	// SampleCodeG401 - Use of weak crypto MD5
