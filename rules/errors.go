@@ -17,6 +17,8 @@ package rules
 import (
 	"go/ast"
 	"go/types"
+	"golang.org/x/tools/go/ast/astutil"
+	"golang.org/x/tools/go/ssa"
 
 	"github.com/securego/gosec/v2"
 )
@@ -53,6 +55,8 @@ func (r *noErrorCheck) Match(n ast.Node, ctx *gosec.Context) (*gosec.Issue, erro
 	switch stmt := n.(type) {
 	case *ast.AssignStmt:
 		cfg := ctx.Config
+		path, _ := astutil.PathEnclosingInterval(ctx.Root, stmt.Pos(), stmt.End())
+		encFn := ssa.EnclosingFunction(ctx.SsaPkg, path)
 		if enabled, err := cfg.IsGlobalEnabled(gosec.Audit); err == nil && enabled {
 			for _, expr := range stmt.Rhs {
 				if callExpr, ok := expr.(*ast.CallExpr); ok && r.whitelist.ContainsCallExpr(expr, ctx) == nil {
@@ -60,6 +64,14 @@ func (r *noErrorCheck) Match(n ast.Node, ctx *gosec.Context) (*gosec.Issue, erro
 					if pos < 0 || pos >= len(stmt.Lhs) {
 						return nil, nil
 					}
+
+					if encFn != nil {
+						expVal, _ := encFn.ValueForExpr(stmt.Lhs[pos])
+						if expVal != nil && gosec.OnlyDebugRef(expVal) {
+							return gosec.NewIssue(ctx, n, r.ID(), r.What, r.Severity, r.Confidence), nil
+						}
+					}
+
 					if id, ok := stmt.Lhs[pos].(*ast.Ident); ok && id.Name == "_" {
 						return gosec.NewIssue(ctx, n, r.ID(), r.What, r.Severity, r.Confidence), nil
 					}

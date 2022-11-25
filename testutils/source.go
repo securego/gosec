@@ -556,7 +556,31 @@ func main() {
 package main
 
 func dummy(){}
-`}, 0, gosec.Config{gosec.Globals: map[gosec.GlobalOption]string{gosec.Audit: "enabled"}}},
+`}, 0, gosec.Config{gosec.Globals: map[gosec.GlobalOption]string{gosec.Audit: "enabled"}}}, {[]string{`
+package main
+
+import (
+	"io"
+	"log"
+	"os"
+)
+
+func main() {
+	_, _ = io.WriteString(os.Stdout, "Hello World") // # this is ok
+
+	_, err := io.WriteString(os.Stdout, "Hello World")
+	if err != nil { // good
+		log.Fatal(err)
+	}
+
+	_, err = io.WriteString(os.Stdout, "Hello World") // # this err will not be checked
+	_, err = io.WriteString(os.Stdout, "Hello World") // # this err will be checked
+
+	if err != nil { // checking the second err but not the first one
+		log.Fatal(err)
+	}
+
+}`}, 2, gosec.Config{gosec.Globals: map[gosec.GlobalOption]string{gosec.Audit: "enabled"}}},
 	}
 
 	// SampleCodeG106 - ssh InsecureIgnoreHostKey

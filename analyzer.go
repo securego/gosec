@@ -21,6 +21,8 @@ import (
 	"go/build"
 	"go/token"
 	"go/types"
+	"golang.org/x/tools/go/ssa"
+	"golang.org/x/tools/go/ssa/ssautil"
 	"log"
 	"os"
 	"path"
@@ -58,6 +60,7 @@ type Context struct {
 	Comments     ast.CommentMap
 	Info         *types.Info
 	Pkg          *types.Package
+	SsaPkg       *ssa.Package
 	PkgFiles     []*ast.File
 	Root         *ast.File
 	Config       Config
@@ -270,6 +273,15 @@ func (gosec *Analyzer) load(pkgPath string, conf *packages.Config) ([]*packages.
 // Check runs analysis on the given package
 func (gosec *Analyzer) Check(pkg *packages.Package) {
 	gosec.logger.Println("Checking package:", pkg.Name)
+
+	ssaprog, ssapkgs := ssautil.AllPackages([]*packages.Package{pkg}, ssa.InstantiateGenerics)
+	for _, ssapkg := range ssapkgs {
+		if ssapkg != nil {
+			ssapkg.SetDebugMode(true)
+			ssapkg.Build()
+		}
+	}
+
 	for _, file := range pkg.Syntax {
 		fp := pkg.Fset.File(file.Pos())
 		if fp == nil {
@@ -294,6 +306,7 @@ func (gosec *Analyzer) Check(pkg *packages.Package) {
 		gosec.context.Root = file
 		gosec.context.Info = pkg.TypesInfo
 		gosec.context.Pkg = pkg.Types
+		gosec.context.SsaPkg = ssaprog.Package(pkg.Types)
 		gosec.context.PkgFiles = pkg.Syntax
 		gosec.context.Imports = NewImportTracker()
 		gosec.context.PassedValues = make(map[string]interface{})

@@ -142,6 +142,9 @@ var (
 	// output suppression information for auditing purposes
 	flagTrackSuppressions = flag.Bool("track-suppressions", false, "Output suppression information, including its kind and justification")
 
+	// audit flag
+	flagAudit = flag.Bool("audit", false, "Audit mode")
+
 	// exlude the folders from scan
 	flagDirsExclude arrayFlags
 
@@ -191,6 +194,9 @@ func loadConfig(configFile string) (gosec.Config, error) {
 	}
 	if *flagAlternativeNoSec != "" {
 		config.SetGlobal(gosec.NoSecAlternative, *flagAlternativeNoSec)
+	}
+	if *flagAudit {
+		config.SetGlobal(gosec.Audit, "true")
 	}
 	// set global option IncludeRules ,when flag set or global option IncludeRules  is nil
 	if v, _ := config.GetGlobal(gosec.IncludeRules); *flagRulesInclude != "" || v == "" {

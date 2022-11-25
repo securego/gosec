@@ -20,6 +20,7 @@ import (
 	"go/ast"
 	"go/token"
 	"go/types"
+	"golang.org/x/tools/go/ssa"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -470,4 +471,18 @@ func parseGoVersion(version string) (int, int, int) {
 	build, _ := strconv.Atoi(parts[3])
 
 	return major, minor, build
+}
+
+// OnlyDebugRef returns true if ssa.Value has only DebugRefs
+func OnlyDebugRef(value ssa.Value) bool {
+	onlyDbgRef := true
+	if value.Referrers() != nil {
+		for _, ref := range *value.Referrers() {
+			if _, ok := ref.(*ssa.DebugRef); !ok {
+				onlyDbgRef = false
+				break
+			}
+		}
+	}
+	return onlyDbgRef
 }
