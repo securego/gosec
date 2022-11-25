@@ -20,7 +20,6 @@ import (
 	"go/ast"
 	"go/token"
 	"go/types"
-	"golang.org/x/tools/go/ssa"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -28,6 +27,8 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+
+	"golang.org/x/tools/go/ssa"
 )
 
 // MatchCallByPackage ensures that the specified package is imported,

@@ -17,6 +17,7 @@ package rules
 import (
 	"go/ast"
 	"go/types"
+
 	"golang.org/x/tools/go/ast/astutil"
 	"golang.org/x/tools/go/ssa"
 

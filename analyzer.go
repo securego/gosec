@@ -21,8 +21,6 @@ import (
 	"go/build"
 	"go/token"
 	"go/types"
-	"golang.org/x/tools/go/ssa"
-	"golang.org/x/tools/go/ssa/ssautil"
 	"log"
 	"os"
 	"path"
@@ -32,6 +30,9 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"golang.org/x/tools/go/ssa"
+	"golang.org/x/tools/go/ssa/ssautil"
 
 	"golang.org/x/tools/go/packages"
 )
