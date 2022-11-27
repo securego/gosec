@@ -50,7 +50,7 @@ func GenerateReport(rootPaths []string, data *gosec.ReportInfo) (*Report, error)
 			return nil, err
 		}
 
-		result := NewResult(r.rule.ID, r.index, getSarifLevel(issue.Severity.String()), issue.What, buildSarifSuppressions(issue.Suppressions)).
+		result := NewResult(r.rule.ID, r.index, getSarifLevel(issue.Severity.String()), issue.What, buildSarifSuppressions(issue.Suppressions), strings.ToLower(issue.Severity.String())).
 			WithLocations(location)
 
 		results = append(results, result)
@@ -88,6 +88,7 @@ func parseSarifRule(issue *gosec.Issue) *ReportingDescriptor {
 		Properties: &PropertyBag{
 			"tags":      []string{"security", issue.Severity.String()},
 			"precision": strings.ToLower(issue.Confidence.String()),
+			"severity":  strings.ToLower(issue.Severity.String()),
 		},
 		DefaultConfiguration: &ReportingConfiguration{
 			Level: getSarifLevel(issue.Severity.String()),
