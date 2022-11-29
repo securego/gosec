@@ -68,7 +68,7 @@ func getTLSConfFromURL(url string) (*ServerSideTLSJson, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer r.Body.Close()
+	defer r.Body.Close() //#nosec G307
 
 	var sstls ServerSideTLSJson
 	err = json.NewDecoder(r.Body).Decode(&sstls)
