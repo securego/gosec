@@ -107,7 +107,7 @@ func (t *insecureConfigTLS) processTLSConfVal(n *ast.KeyValueExpr, c *gosec.Cont
 								tObj := imp.Scope().Lookup(sel)
 								if cst, ok := tObj.(*types.Const); ok {
 									// ..got the value check if this can be translated
-									if minVersion, err := strconv.ParseInt(cst.Val().String(), 10, 64); err == nil {
+									if minVersion, err := strconv.ParseInt(cst.Val().String(), 0, 64); err == nil {
 										t.actualMinVersion = minVersion
 									}
 								}
