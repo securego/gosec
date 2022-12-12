@@ -21,7 +21,7 @@ You may obtain a copy of the License [here](http://www.apache.org/licenses/LICEN
 [![Docs](https://readthedocs.org/projects/docs/badge/?version=latest)](https://securego.io/)
 [![Downloads](https://img.shields.io/github/downloads/securego/gosec/total.svg)](https://github.com/securego/gosec/releases)
 [![Docker Pulls](https://img.shields.io/docker/pulls/securego/gosec.svg)](https://hub.docker.com/r/securego/gosec/tags)
-[![Slack](http://securego.herokuapp.com/badge.svg)](http://securego.herokuapp.com)
+[![Slack](https://img.shields.io/badge/Slack-4A154B?style=for-the-badge&logo=slack&logoColor=white)](http://securego.slack.com)
 
 ## Install
 
