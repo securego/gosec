@@ -2860,6 +2860,18 @@ func main() {
 		fmt.Println(err)
 	}
 }`}, 1, gosec.NewConfig()},
+		{[]string{`
+// InsecureSkipVerify from variable
+package main
+
+import (
+	"crypto/tls"
+)
+
+func main() {
+	var conf tls.Config
+	conf.InsecureSkipVerify = true
+}`}, 1, gosec.NewConfig()},
 		{[]string{
 			`
 // Insecure minimum version

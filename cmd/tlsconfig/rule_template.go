@@ -15,6 +15,6 @@ func New{{.Name}}TLSCheck(id string, conf gosec.Config) (gosec.Rule, []ast.Node)
 {{range $cipherName := .Ciphers }} "{{$cipherName}}",
 {{end}}
 		},
-	}, []ast.Node{(*ast.CompositeLit)(nil)}
+	}, []ast.Node{(*ast.CompositeLit)(nil), (*ast.AssignStmt)(nil)}
 }
 `))
