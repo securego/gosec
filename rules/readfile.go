@@ -59,9 +59,19 @@ func (r *readfile) isJoinFunc(n ast.Node, c *gosec.Context) bool {
 }
 
 // isFilepathClean checks if there is a filepath.Clean for given variable
-func (r *readfile) isFilepathClean(n *ast.Ident) bool {
+func (r *readfile) isFilepathClean(n *ast.Ident, c *gosec.Context) bool {
 	if _, ok := r.cleanedVar[n.Obj.Decl]; ok {
 		return true
+	}
+	if n.Obj.Kind != ast.Var {
+		return false
+	}
+	if node, ok := n.Obj.Decl.(*ast.AssignStmt); ok {
+		if call, ok := node.Rhs[0].(*ast.CallExpr); ok {
+			if clean := r.clean.ContainsPkgCallExpr(call, c, false); clean != nil {
+				return true
+			}
+		}
 	}
 	return false
 }
@@ -101,7 +111,7 @@ func (r *readfile) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error) {
 				obj := c.Info.ObjectOf(ident)
 				if _, ok := obj.(*types.Var); ok &&
 					!gosec.TryResolve(ident, c) &&
-					!r.isFilepathClean(ident) {
+					!r.isFilepathClean(ident, c) {
 					return gosec.NewIssue(c, n, r.ID(), r.What, r.Severity, r.Confidence), nil
 				}
 			}
