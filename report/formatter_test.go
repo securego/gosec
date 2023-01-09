@@ -12,7 +12,7 @@ import (
 	"github.com/securego/gosec/v2/cwe"
 	"github.com/securego/gosec/v2/report/junit"
 	"github.com/securego/gosec/v2/report/sonar"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 func createIssueWithFileWhat(file, what string) *gosec.Issue {
