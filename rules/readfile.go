@@ -59,7 +59,7 @@ func (r *readfile) isJoinFunc(n ast.Node, c *gosec.Context) bool {
 }
 
 // isFilepathClean checks if there is a filepath.Clean for given variable
-func (r *readfile) isFilepathClean(n *ast.Ident, c *gosec.Context) bool {
+func (r *readfile) isFilepathClean(n *ast.Ident) bool {
 	if _, ok := r.cleanedVar[n.Obj.Decl]; ok {
 		return true
 	}
@@ -67,7 +67,7 @@ func (r *readfile) isFilepathClean(n *ast.Ident, c *gosec.Context) bool {
 }
 
 // trackFilepathClean tracks back the declaration of variable from filepath.Clean argument
-func (r *readfile) trackFilepathClean(n ast.Node, c *gosec.Context) {
+func (r *readfile) trackFilepathClean(n ast.Node) {
 	if clean, ok := n.(*ast.CallExpr); ok && len(clean.Args) > 0 {
 		if ident, ok := clean.Args[0].(*ast.Ident); ok {
 			r.cleanedVar[ident.Obj.Decl] = n
@@ -78,7 +78,7 @@ func (r *readfile) trackFilepathClean(n ast.Node, c *gosec.Context) {
 // Match inspects AST nodes to determine if the match the methods `os.Open` or `ioutil.ReadFile`
 func (r *readfile) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error) {
 	if node := r.clean.ContainsPkgCallExpr(n, c, false); node != nil {
-		r.trackFilepathClean(n, c)
+		r.trackFilepathClean(n)
 		return nil, nil
 	} else if node := r.ContainsPkgCallExpr(n, c, false); node != nil {
 		for _, arg := range node.Args {
@@ -101,7 +101,7 @@ func (r *readfile) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error) {
 				obj := c.Info.ObjectOf(ident)
 				if _, ok := obj.(*types.Var); ok &&
 					!gosec.TryResolve(ident, c) &&
-					!r.isFilepathClean(ident, c) {
+					!r.isFilepathClean(ident) {
 					return gosec.NewIssue(c, n, r.ID(), r.What, r.Severity, r.Confidence), nil
 				}
 			}
