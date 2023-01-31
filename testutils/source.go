@@ -115,7 +115,29 @@ import "fmt"
 
 func main() {
 	var password string
+	if "f62e5bcda4fae4f82370da0c6f20697b8f8447ef" == password {
+		fmt.Println("password equality")
+	}
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	var password string
 	if password != "f62e5bcda4fae4f82370da0c6f20697b8f8447ef" {
+		fmt.Println("password equality")
+	}
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	var password string
+	if "f62e5bcda4fae4f82370da0c6f20697b8f8447ef" != password {
 		fmt.Println("password equality")
 	}
 }`}, 1, gosec.NewConfig()},
@@ -127,6 +149,17 @@ import "fmt"
 func main() {
 	var p string
 	if p != "f62e5bcda4fae4f82370da0c6f20697b8f8447ef" {
+		fmt.Println("password equality")
+	}
+}`}, 0, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	var p string
+	if "f62e5bcda4fae4f82370da0c6f20697b8f8447ef" != p {
 		fmt.Println("password equality")
 	}
 }`}, 0, gosec.NewConfig()},
