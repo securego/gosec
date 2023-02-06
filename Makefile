@@ -14,7 +14,6 @@ GO := GO111MODULE=on go
 GO_NOMOD :=GO111MODULE=off go
 GOPATH ?= $(shell $(GO) env GOPATH)
 GOBIN ?= $(GOPATH)/bin
-GOLINT ?= $(GOBIN)/golint
 GOSEC ?= $(GOBIN)/gosec
 GINKGO ?= $(GOBIN)/ginkgo
 GO_MINOR_VERSION = $(shell $(GO) version | cut -c 14- | cut -d' ' -f1 | cut -d'.' -f2)
@@ -34,7 +33,7 @@ install-govulncheck:
 		go install golang.org/x/vuln/cmd/govulncheck@latest; \
 	fi
 
-test: install-test-deps build fmt lint sec govulncheck
+test: install-test-deps build fmt vet sec govulncheck
 	$(GINKGO) -v --fail-fast
 
 fmt:
@@ -42,10 +41,7 @@ fmt:
 	@FORMATTED=`$(GO) fmt ./...`
 	@([ ! -z "$(FORMATTED)" ] && printf "Fixed unformatted files:\n$(FORMATTED)") || true
 
-lint:
-	@echo "LINTING: golint"
-	$(GO_NOMOD) get -u golang.org/x/lint/golint
-	$(GOLINT) -set_exit_status ./...
+vet:
 	@echo "VETTING"
 	$(GO) vet ./...
 
