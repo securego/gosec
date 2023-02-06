@@ -1,7 +1,6 @@
 package html
 
 import (
-	// use go embed to import template
 	_ "embed"
 	"html/template"
 	"io"
