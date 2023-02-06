@@ -10,17 +10,15 @@ jobs:
   test:
     strategy:
       matrix:
-        go_version:
-          - '1.19.5' # TODO: remove this once actions/setup-go@v3 uses latest as latest; see https://github.com/securego/gosec/pull/880
-          - '1.20'
+        version: [{go: '1.19.5', golangci: '1.50.1'}, {go: '1.20', golangci: 'latest'}]
     runs-on: ubuntu-latest
     env:
       GO111MODULE: on
     steps:
-      - name: Setup go ${{ matrix.go_version }} 
+      - name: Setup go ${{ matrix.version.go }} 
         uses: actions/setup-go@v3
         with:
-          go-version: ${{ matrix.go_version }}
+          go-version: ${{ matrix.version.go }}
       - name: Checkout Source 
         uses: actions/checkout@v3
       - uses: actions/cache@v3
@@ -32,7 +30,7 @@ jobs:
       - name: lint
         uses: golangci/golangci-lint-action@v3
         with:
-          version: latest
+          version: ${{ matrix.version.golangci }}
       - name: Run Tests
         run: make test
   coverage:
