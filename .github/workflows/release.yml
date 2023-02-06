@@ -21,7 +21,7 @@ jobs:
       - name: Install Cosign
         uses: sigstore/cosign-installer@v2
         with:
-          cosign-release: 'v1.6.0'
+          cosign-release: 'v1.13.1'
       - name: Store Cosign private key in a file
         run: 'echo "$COSIGN_KEY" > /tmp/cosign.key'
         shell: bash
@@ -55,7 +55,7 @@ jobs:
         uses: goreleaser/goreleaser-action@v4
         with:
           version: latest
-          args: release --rm-dist
+          args: release --clean
         env:
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
           COSIGN_PASSWORD: ${{secrets.COSIGN_PASSWORD}}
