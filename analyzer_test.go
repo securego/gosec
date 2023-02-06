@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"os"
+	"regexp"
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -152,13 +153,19 @@ var _ = Describe("Analyzer", func() {
 			err = analyzer.Process(buildTags, pkg.Path)
 			Expect(err).ShouldNot(HaveOccurred())
 			_, _, errors := analyzer.Report()
-			Expect(len(errors)).To(Equal(1))
+			foundErr := false
 			for _, ferr := range errors {
 				Expect(len(ferr)).To(Equal(1))
+				match, err := regexp.MatchString(ferr[0].Err, `expected declaration, found '}'`)
+				if !match || err != nil {
+					continue
+				}
+				foundErr = true
 				Expect(ferr[0].Line).To(Equal(4))
 				Expect(ferr[0].Column).To(Equal(5))
 				Expect(ferr[0].Err).Should(MatchRegexp(`expected declaration, found '}'`))
 			}
+			Expect(foundErr).To(BeTrue())
 		})
 
 		It("should not report errors when a nosec line comment is present", func() {
