@@ -72,6 +72,7 @@ jobs:
       - name: Run Gosec Security Scanner
         uses: securego/gosec@master
         with:
+          version: 'latest'
           args: ./...
 ```
 
