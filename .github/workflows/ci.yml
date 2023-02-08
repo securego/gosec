@@ -34,7 +34,6 @@ jobs:
       - name: Run Gosec Security Scanner
         uses: securego/gosec@master
         with:
-          version: '2.15.0'
           args: ./...
       - name: Run Tests
         run: make test
