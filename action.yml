@@ -3,10 +3,6 @@ description: 'Runs the gosec security checker'
 author: '@ccojocar'
 
 inputs:
-  version:
-    description: 'Version of gosec to use (e.g. 2.15.0)'
-    required: false
-    default: 'latest'
   args:
     description: 'Arguments for gosec'
     required: true
@@ -14,7 +10,7 @@ inputs:
 
 runs:
     using: 'docker'
-    image: 'docker://securego/gosec'
+    image: 'docker://securego/gosec:2.15.0'
     args:
       - ${{ inputs.args }}
 
