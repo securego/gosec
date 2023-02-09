@@ -29,6 +29,8 @@ const (
 	ExcludeRules GlobalOption = "exclude"
 	// IncludeRules global option for  should be load
 	IncludeRules GlobalOption = "include"
+	// SSA global option to enable go analysis framework with SSA support
+	SSA GlobalOption = "ssa"
 )
 
 // Config is used to provide configuration and customization to each of the rules.
