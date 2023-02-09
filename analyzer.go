@@ -31,6 +31,9 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/securego/gosec/v2/analyzers"
+	"golang.org/x/tools/go/analysis"
+	"golang.org/x/tools/go/analysis/passes/buildssa"
 	"golang.org/x/tools/go/packages"
 )
 
@@ -42,7 +45,10 @@ const LoadMode = packages.NeedName |
 	packages.NeedTypes |
 	packages.NeedTypesSizes |
 	packages.NeedTypesInfo |
-	packages.NeedSyntax
+	packages.NeedSyntax |
+	packages.NeedModule |
+	packages.NeedEmbedFiles |
+	packages.NeedEmbedPatterns
 
 const externalSuppressionJustification = "Globally suppressed."
 
@@ -60,8 +66,8 @@ type Context struct {
 	Pkg          *types.Package
 	PkgFiles     []*ast.File
 	Root         *ast.File
-	Config       Config
 	Imports      *ImportTracker
+	Config       Config
 	Ignores      []map[string][]SuppressionInfo
 	PassedValues map[string]interface{}
 }
@@ -90,6 +96,7 @@ type Analyzer struct {
 	showIgnored       bool
 	trackSuppressions bool
 	concurrency       int
+	analyzerList      []*analysis.Analyzer
 }
 
 // SuppressionInfo object is to record the kind and the justification that used
@@ -126,6 +133,7 @@ func NewAnalyzer(conf Config, tests bool, excludeGenerated bool, trackSuppressio
 		concurrency:       concurrency,
 		excludeGenerated:  excludeGenerated,
 		trackSuppressions: trackSuppressions,
+		analyzerList:      analyzers.BuildDefaultAnalyzers(),
 	}
 }
 
@@ -216,7 +224,10 @@ func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error
 					wg.Wait() // wait for the goroutines to stop
 					return fmt.Errorf("parsing errors in pkg %q: %w", pkg.Name, err)
 				}
-				gosec.Check(pkg)
+				gosec.CheckRules(pkg)
+				if on, err := gosec.config.IsGlobalEnabled(SSA); err == nil && on {
+					gosec.CheckAnalyzers(pkg)
+				}
 			}
 		}
 	}
@@ -267,8 +278,8 @@ func (gosec *Analyzer) load(pkgPath string, conf *packages.Config) ([]*packages.
 	return pkgs, nil
 }
 
-// Check runs analysis on the given package
-func (gosec *Analyzer) Check(pkg *packages.Package) {
+// CheckRules runs analysis on the given package
+func (gosec *Analyzer) CheckRules(pkg *packages.Package) {
 	gosec.logger.Println("Checking package:", pkg.Name)
 	for _, file := range pkg.Syntax {
 		fp := pkg.Fset.File(file.Pos())
@@ -300,6 +311,70 @@ func (gosec *Analyzer) Check(pkg *packages.Package) {
 		ast.Walk(gosec, file)
 		gosec.stats.NumFiles++
 		gosec.stats.NumLines += pkg.Fset.File(file.Pos()).LineCount()
+	}
+}
+
+// CheckAnalyzers runs analyzers on a given package
+func (gosec *Analyzer) CheckAnalyzers(pkg *packages.Package) {
+	ssaPass := &analysis.Pass{
+		Analyzer:          buildssa.Analyzer,
+		Fset:              pkg.Fset,
+		Files:             pkg.Syntax,
+		OtherFiles:        pkg.OtherFiles,
+		IgnoredFiles:      pkg.IgnoredFiles,
+		Pkg:               pkg.Types,
+		TypesInfo:         pkg.TypesInfo,
+		TypesSizes:        pkg.TypesSizes,
+		ResultOf:          nil,
+		Report:            nil,
+		ImportObjectFact:  nil,
+		ExportObjectFact:  nil,
+		ImportPackageFact: nil,
+		ExportPackageFact: nil,
+		AllObjectFacts:    nil,
+		AllPackageFacts:   nil,
+	}
+	ssaResult, err := ssaPass.Analyzer.Run(ssaPass)
+	if err != nil {
+		gosec.logger.Printf("Error running SSA analyser on package %q: %s", pkg.Name, err)
+		return
+	}
+	resultMap := map[*analysis.Analyzer]interface{}{
+		buildssa.Analyzer: &analyzers.SSAAnalyzerResult{
+			Config: gosec.Config(),
+			Logger: gosec.logger,
+			SSA:    ssaResult.(*buildssa.SSA),
+		},
+	}
+	for _, analyzer := range gosec.analyzerList {
+		pass := &analysis.Pass{
+			Analyzer:          analyzer,
+			Fset:              pkg.Fset,
+			Files:             pkg.Syntax,
+			OtherFiles:        pkg.OtherFiles,
+			IgnoredFiles:      pkg.IgnoredFiles,
+			Pkg:               pkg.Types,
+			TypesInfo:         pkg.TypesInfo,
+			TypesSizes:        pkg.TypesSizes,
+			ResultOf:          resultMap,
+			Report:            func(d analysis.Diagnostic) {},
+			ImportObjectFact:  nil,
+			ExportObjectFact:  nil,
+			ImportPackageFact: nil,
+			ExportPackageFact: nil,
+			AllObjectFacts:    nil,
+			AllPackageFacts:   nil,
+		}
+		result, err := pass.Analyzer.Run(pass)
+		if err != nil {
+			gosec.logger.Printf("Error running analyzer %s: %s\n", analyzer.Name, err)
+			continue
+		}
+		if result != nil {
+			if issue, ok := result.(*analyzers.Issue); ok {
+				gosec.updateIssues(toGosecIssue(issue), false, []SuppressionInfo{})
+			}
+		}
 	}
 }
 
@@ -426,20 +501,37 @@ func (gosec *Analyzer) ignore(n ast.Node) map[string]SuppressionInfo {
 // Visit runs the gosec visitor logic over an AST created by parsing go code.
 // Rule methods added with AddRule will be invoked as necessary.
 func (gosec *Analyzer) Visit(n ast.Node) ast.Visitor {
-	// If we've reached the end of this branch, pop off the ignores stack.
+	ignores, ok := gosec.updateIgnoredRules(n)
+	if !ok {
+		return gosec
+	}
+
+	// Using ast.File instead of ast.ImportSpec, so that we can track all imports at once.
+	switch i := n.(type) {
+	case *ast.File:
+		gosec.context.Imports.TrackFile(i)
+	}
+
+	for _, rule := range gosec.ruleset.RegisteredFor(n) {
+		suppressions, ignored := gosec.updateSuppressions(rule.ID(), ignores)
+		issue, err := rule.Match(n, gosec.context)
+		if err != nil {
+			file, line := GetLocation(n, gosec.context)
+			file = path.Base(file)
+			gosec.logger.Printf("Rule error: %v => %s (%s:%d)\n", reflect.TypeOf(rule), err, file, line)
+		}
+		gosec.updateIssues(issue, ignored, suppressions)
+	}
+	return gosec
+}
+
+func (gosec *Analyzer) updateIgnoredRules(n ast.Node) (map[string][]SuppressionInfo, bool) {
 	if n == nil {
 		if len(gosec.context.Ignores) > 0 {
 			gosec.context.Ignores = gosec.context.Ignores[1:]
 		}
-		return gosec
+		return nil, false
 	}
-	switch i := n.(type) {
-	case *ast.File:
-		// Using ast.File instead of ast.ImportSpec, so that we can track
-		// all imports at once.
-		gosec.context.Imports.TrackFile(i)
-	}
-
 	// Get any new rule exclusions.
 	ignoredRules := gosec.ignore(n)
 
@@ -458,46 +550,56 @@ func (gosec *Analyzer) Visit(n ast.Node) ast.Visitor {
 	// Push the new set onto the stack.
 	gosec.context.Ignores = append([]map[string][]SuppressionInfo{ignores}, gosec.context.Ignores...)
 
-	for _, rule := range gosec.ruleset.RegisteredFor(n) {
-		// Check if all rules are ignored.
-		generalSuppressions, generalIgnored := ignores[aliasOfAllRules]
-		// Check if the specific rule is ignored
-		ruleSuppressions, ruleIgnored := ignores[rule.ID()]
+	return ignores, true
+}
 
-		ignored := generalIgnored || ruleIgnored
-		suppressions := append(generalSuppressions, ruleSuppressions...)
+func (gosec *Analyzer) updateSuppressions(id string, ignores map[string][]SuppressionInfo) ([]SuppressionInfo, bool) {
+	// Check if all rules are ignored.
+	generalSuppressions, generalIgnored := ignores[aliasOfAllRules]
+	// Check if the specific rule is ignored
+	ruleSuppressions, ruleIgnored := ignores[id]
 
-		// Track external suppressions.
-		if gosec.ruleset.IsRuleSuppressed(rule.ID()) {
-			ignored = true
-			suppressions = append(suppressions, SuppressionInfo{
-				Kind:          "external",
-				Justification: externalSuppressionJustification,
-			})
+	ignored := generalIgnored || ruleIgnored
+	suppressions := append(generalSuppressions, ruleSuppressions...)
+
+	// Track external suppressions.
+	if gosec.ruleset.IsRuleSuppressed(id) {
+		ignored = true
+		suppressions = append(suppressions, SuppressionInfo{
+			Kind:          "external",
+			Justification: externalSuppressionJustification,
+		})
+	}
+	return suppressions, ignored
+}
+
+func (gosec *Analyzer) updateIssues(issue *Issue, ignored bool, suppressions []SuppressionInfo) {
+	if issue != nil {
+		if gosec.showIgnored {
+			issue.NoSec = ignored
 		}
-
-		issue, err := rule.Match(n, gosec.context)
-		if err != nil {
-			file, line := GetLocation(n, gosec.context)
-			file = path.Base(file)
-			gosec.logger.Printf("Rule error: %v => %s (%s:%d)\n", reflect.TypeOf(rule), err, file, line)
+		if !ignored || !gosec.showIgnored {
+			gosec.stats.NumFound++
 		}
-		if issue != nil {
-			if gosec.showIgnored {
-				issue.NoSec = ignored
-			}
-			if !ignored || !gosec.showIgnored {
-				gosec.stats.NumFound++
-			}
-			if ignored && gosec.trackSuppressions {
-				issue.WithSuppressions(suppressions)
-				gosec.issues = append(gosec.issues, issue)
-			} else if !ignored || gosec.showIgnored || gosec.ignoreNosec {
-				gosec.issues = append(gosec.issues, issue)
-			}
+		if ignored && gosec.trackSuppressions {
+			issue.WithSuppressions(suppressions)
+			gosec.issues = append(gosec.issues, issue)
+		} else if !ignored || gosec.showIgnored || gosec.ignoreNosec {
+			gosec.issues = append(gosec.issues, issue)
 		}
 	}
-	return gosec
+}
+
+func toGosecIssue(issue *analyzers.Issue) *Issue {
+	return &Issue{
+		File:       issue.File,
+		Line:       issue.Line,
+		Col:        issue.Col,
+		RuleID:     issue.AnalyzerID,
+		What:       issue.What,
+		Confidence: Score(issue.Confidence),
+		Severity:   Score(issue.Severity),
+	}
 }
 
 // Report returns the current issues discovered and the metrics about the scan
