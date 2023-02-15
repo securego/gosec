@@ -144,11 +144,8 @@ func (c Score) String() string {
 	return "UNDEFINED"
 }
 
-// codeSnippet extracts a code snippet based on the ast reference
-func codeSnippet(file *os.File, start int64, end int64, n ast.Node) (string, error) {
-	if n == nil {
-		return "", fmt.Errorf("invalid AST node provided")
-	}
+// CodeSnippet extracts a code snippet based on the ast reference
+func CodeSnippet(file *os.File, start int64, end int64) (string, error) {
 	var pos int64
 	var buf bytes.Buffer
 	scanner := bufio.NewScanner(file)
@@ -189,11 +186,14 @@ func New(fobj *token.File, node ast.Node, ruleID, desc string, severity, confide
 	col := strconv.Itoa(fobj.Position(node.Pos()).Column)
 
 	var code string
-	if file, err := os.Open(fobj.Name()); err == nil {
+	if node == nil {
+		code = "invalid AST node provided"
+	}
+	if file, err := os.Open(fobj.Name()); err == nil && node != nil {
 		defer file.Close() // #nosec
 		s := codeSnippetStartLine(node, fobj)
 		e := codeSnippetEndLine(node, fobj)
-		code, err = codeSnippet(file, s, e, node)
+		code, err = CodeSnippet(file, s, e)
 		if err != nil {
 			code = err.Error()
 		}

@@ -15,6 +15,7 @@
 package analyzers
 
 import (
+	"github.com/securego/gosec/v2/issue"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/buildssa"
 	"golang.org/x/tools/go/ssa"
@@ -45,7 +46,7 @@ func runSSRF(pass *analysis.Pass) (interface{}, error) {
 						ssaResult.Logger.Printf("callee: %s\n", callee)
 						return newIssue(pass.Analyzer.Name,
 							"not implemeted",
-							pass.Fset, instr.Call.Pos(), Low, High), nil
+							pass.Fset, instr.Call.Pos(), issue.Low, issue.High), nil
 					}
 				}
 			}
