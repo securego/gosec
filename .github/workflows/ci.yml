@@ -10,7 +10,7 @@ jobs:
   test:
     strategy:
       matrix:
-        version: [{go: '1.19.5', golangci: 'v1.50.1'}, {go: '1.20', golangci: 'latest'}]
+        version: [{go: '1.19.6', golangci: 'v1.50.1'}, {go: '1.20.1', golangci: 'latest'}]
     runs-on: ubuntu-latest
     env:
       GO111MODULE: on
@@ -46,7 +46,7 @@ jobs:
       - name: Setup go
         uses: actions/setup-go@v3
         with:
-          go-version: '1.20'
+          go-version: '1.20.1'
       - name: Checkout Source 
         uses: actions/checkout@v3
       - uses: actions/cache@v3
