@@ -5,10 +5,11 @@ import (
 	"go/types"
 
 	"github.com/securego/gosec/v2"
+	"github.com/securego/gosec/v2/issue"
 )
 
 type archive struct {
-	gosec.MetaData
+	issue.MetaData
 	calls    gosec.CallList
 	argTypes []string
 }
@@ -18,7 +19,7 @@ func (a *archive) ID() string {
 }
 
 // Match inspects AST nodes to determine if the filepath.Joins uses any argument derived from type zip.File or tar.Header
-func (a *archive) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error) {
+func (a *archive) Match(n ast.Node, c *gosec.Context) (*issue.Issue, error) {
 	if node := a.calls.ContainsPkgCallExpr(n, c, false); node != nil {
 		for _, arg := range node.Args {
 			var argType types.Type
@@ -38,7 +39,7 @@ func (a *archive) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error) {
 			if argType != nil {
 				for _, t := range a.argTypes {
 					if argType.String() == t {
-						return gosec.NewIssue(c, n, a.ID(), a.What, a.Severity, a.Confidence), nil
+						return c.NewIssue(n, a.ID(), a.What, a.Severity, a.Confidence), nil
 					}
 				}
 			}
@@ -55,10 +56,10 @@ func NewArchive(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 	return &archive{
 		calls:    calls,
 		argTypes: []string{"*archive/zip.File", "*archive/tar.Header"},
-		MetaData: gosec.MetaData{
+		MetaData: issue.MetaData{
 			ID:         id,
-			Severity:   gosec.Medium,
-			Confidence: gosec.High,
+			Severity:   issue.Medium,
+			Confidence: issue.High,
 			What:       "File traversal when extracting zip/tar archive",
 		},
 	}, []ast.Node{(*ast.CallExpr)(nil)}

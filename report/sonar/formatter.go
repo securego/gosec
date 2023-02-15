@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/securego/gosec/v2"
+	"github.com/securego/gosec/v2/issue"
 )
 
 const (
@@ -36,7 +37,7 @@ func GenerateReport(rootPaths []string, data *gosec.ReportInfo) (*Report, error)
 	return si, nil
 }
 
-func parseFilePath(issue *gosec.Issue, rootPaths []string) string {
+func parseFilePath(issue *issue.Issue, rootPaths []string) string {
 	var sonarFilePath string
 	for _, rootPath := range rootPaths {
 		if strings.HasPrefix(issue.File, rootPath) {
@@ -46,7 +47,7 @@ func parseFilePath(issue *gosec.Issue, rootPaths []string) string {
 	return sonarFilePath
 }
 
-func parseTextRange(issue *gosec.Issue) (*TextRange, error) {
+func parseTextRange(issue *issue.Issue) (*TextRange, error) {
 	lines := strings.Split(issue.Line, "-")
 	startLine, err := strconv.Atoi(lines[0])
 	if err != nil {

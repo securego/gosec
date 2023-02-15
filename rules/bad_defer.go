@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/securego/gosec/v2"
+	"github.com/securego/gosec/v2/issue"
 )
 
 type deferType struct {
@@ -14,7 +15,7 @@ type deferType struct {
 }
 
 type badDefer struct {
-	gosec.MetaData
+	issue.MetaData
 	types []deferType
 }
 
@@ -35,12 +36,12 @@ func contains(methods []string, method string) bool {
 	return false
 }
 
-func (r *badDefer) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error) {
+func (r *badDefer) Match(n ast.Node, c *gosec.Context) (*issue.Issue, error) {
 	if deferStmt, ok := n.(*ast.DeferStmt); ok {
 		for _, deferTyp := range r.types {
 			if typ, method, err := gosec.GetCallInfo(deferStmt.Call, c); err == nil {
 				if normalize(typ) == deferTyp.typ && contains(deferTyp.methods, method) {
-					return gosec.NewIssue(c, n, r.ID(), fmt.Sprintf(r.What, method, typ), r.Severity, r.Confidence), nil
+					return c.NewIssue(n, r.ID(), fmt.Sprintf(r.What, method, typ), r.Severity, r.Confidence), nil
 				}
 			}
 		}
@@ -86,10 +87,10 @@ func NewDeferredClosing(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 				methods: []string{"Close"},
 			},
 		},
-		MetaData: gosec.MetaData{
+		MetaData: issue.MetaData{
 			ID:         id,
-			Severity:   gosec.Medium,
-			Confidence: gosec.High,
+			Severity:   issue.Medium,
+			Confidence: issue.High,
 			What:       "Deferring unsafe method %q on type %q",
 		},
 	}, []ast.Node{(*ast.DeferStmt)(nil)}

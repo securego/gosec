@@ -18,6 +18,7 @@ import (
 	"io"
 
 	"github.com/securego/gosec/v2"
+	"github.com/securego/gosec/v2/issue"
 	"github.com/securego/gosec/v2/report/csv"
 	"github.com/securego/gosec/v2/report/golint"
 	"github.com/securego/gosec/v2/report/html"
@@ -81,8 +82,8 @@ func CreateReport(w io.Writer, format string, enableColor bool, rootPaths []stri
 	return err
 }
 
-func filterOutSuppressedIssues(issues []*gosec.Issue) []*gosec.Issue {
-	nonSuppressedIssues := []*gosec.Issue{}
+func filterOutSuppressedIssues(issues []*issue.Issue) []*issue.Issue {
+	nonSuppressedIssues := []*issue.Issue{}
 	for _, issue := range issues {
 		if len(issue.Suppressions) == 0 {
 			nonSuppressedIssues = append(nonSuppressedIssues, issue)

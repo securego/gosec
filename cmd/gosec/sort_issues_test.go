@@ -5,22 +5,22 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/securego/gosec/v2"
+	"github.com/securego/gosec/v2/issue"
 )
 
-var defaultIssue = gosec.Issue{
+var defaultIssue = issue.Issue{
 	File:       "/home/src/project/test.go",
 	Line:       "1",
 	Col:        "1",
 	RuleID:     "ruleID",
 	What:       "test",
-	Confidence: gosec.High,
-	Severity:   gosec.High,
+	Confidence: issue.High,
+	Severity:   issue.High,
 	Code:       "1: testcode",
-	Cwe:        gosec.GetCweByRule("G101"),
+	Cwe:        issue.GetCweByRule("G101"),
 }
 
-func createIssue() gosec.Issue {
+func createIssue() issue.Issue {
 	return defaultIssue
 }
 
@@ -29,8 +29,8 @@ func TestRules(t *testing.T) {
 	RunSpecs(t, "Sort issues Suite")
 }
 
-func firstIsGreater(less, greater *gosec.Issue) {
-	slice := []*gosec.Issue{less, greater}
+func firstIsGreater(less, greater *issue.Issue) {
+	slice := []*issue.Issue{less, greater}
 
 	sortIssues(slice)
 
@@ -40,9 +40,9 @@ func firstIsGreater(less, greater *gosec.Issue) {
 var _ = Describe("Sorting by Severity", func() {
 	It("sorts by severity", func() {
 		less := createIssue()
-		less.Severity = gosec.Low
+		less.Severity = issue.Low
 		greater := createIssue()
-		less.Severity = gosec.High
+		less.Severity = issue.High
 		firstIsGreater(&less, &greater)
 	})
 

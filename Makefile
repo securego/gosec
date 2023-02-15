@@ -87,4 +87,7 @@ image-push: image
 	docker push $(IMAGE_REPO)/$(BIN):$(GIT_TAG)
 	docker push $(IMAGE_REPO)/$(BIN):latest
 
-.PHONY: test build clean release image image-push
+tlsconfig:
+	go generate ./...
+	
+.PHONY: test build clean release image image-push tlsconfig

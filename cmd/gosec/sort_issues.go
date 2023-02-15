@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/securego/gosec/v2"
+	"github.com/securego/gosec/v2/issue"
 )
 
 // handle ranges
@@ -14,7 +14,7 @@ func extractLineNumber(s string) int {
 	return lineNumber
 }
 
-type sortBySeverity []*gosec.Issue
+type sortBySeverity []*issue.Issue
 
 func (s sortBySeverity) Len() int { return len(s) }
 
@@ -34,6 +34,6 @@ func (s sortBySeverity) Less(i, j int) bool {
 func (s sortBySeverity) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
 
 // sortIssues sorts the issues by severity in descending order
-func sortIssues(issues []*gosec.Issue) {
+func sortIssues(issues []*issue.Issue) {
 	sort.Sort(sortBySeverity(issues))
 }
