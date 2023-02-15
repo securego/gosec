@@ -73,7 +73,7 @@ type Context struct {
 	PassedValues map[string]interface{}
 }
 
-// getFileAtNodePos returns the file at the node position in the file set available in the context.
+// GetFileAtNodePos returns the file at the node position in the file set available in the context.
 func (ctx *Context) GetFileAtNodePos(node ast.Node) *token.File {
 	return ctx.FileSet.File(node.Pos())
 }
