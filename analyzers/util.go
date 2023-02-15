@@ -56,7 +56,8 @@ func getSSAResult(pass *analysis.Pass) (*SSAAnalyzerResult, error) {
 
 // newIssue creates a new gosec issue
 func newIssue(analyzerID string, desc string, fileSet *token.FileSet,
-	pos token.Pos, severity, confidence issue.Score) *issue.Issue {
+	pos token.Pos, severity, confidence issue.Score,
+) *issue.Issue {
 	file := fileSet.File(pos)
 	line := file.Line(pos)
 	col := file.Position(pos).Column
