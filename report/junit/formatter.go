@@ -5,9 +5,10 @@ import (
 	"strconv"
 
 	"github.com/securego/gosec/v2"
+	"github.com/securego/gosec/v2/issue"
 )
 
-func generatePlaintext(issue *gosec.Issue) string {
+func generatePlaintext(issue *issue.Issue) string {
 	cweID := "CWE"
 	if issue.Cwe != nil {
 		cweID = issue.Cwe.ID

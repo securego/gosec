@@ -12,6 +12,7 @@ import (
 
 	"github.com/gookit/color"
 	"github.com/securego/gosec/v2"
+	"github.com/securego/gosec/v2/issue"
 )
 
 var (
@@ -49,7 +50,7 @@ func plainTextFuncMap(enableColor bool) template.FuncMap {
 
 	// by default those functions return the given content untouched
 	return template.FuncMap{
-		"highlight": func(t string, s gosec.Score, ignored bool) string {
+		"highlight": func(t string, s issue.Score, ignored bool) string {
 			return t
 		},
 		"danger":    fmt.Sprint,
@@ -60,14 +61,14 @@ func plainTextFuncMap(enableColor bool) template.FuncMap {
 }
 
 // highlight returns content t colored based on Score
-func highlight(t string, s gosec.Score, ignored bool) string {
+func highlight(t string, s issue.Score, ignored bool) string {
 	if ignored {
 		return defaultTheme.Sprint(t)
 	}
 	switch s {
-	case gosec.High:
+	case issue.High:
 		return errorTheme.Sprint(t)
-	case gosec.Medium:
+	case issue.Medium:
 		return warningTheme.Sprint(t)
 	default:
 		return defaultTheme.Sprint(t)
@@ -75,7 +76,7 @@ func highlight(t string, s gosec.Score, ignored bool) string {
 }
 
 // printCodeSnippet prints the code snippet from the issue by adding a marker to the affected line
-func printCodeSnippet(issue *gosec.Issue) string {
+func printCodeSnippet(issue *issue.Issue) string {
 	start, end := parseLine(issue.Line)
 	scanner := bufio.NewScanner(strings.NewReader(issue.Code))
 	var buf bytes.Buffer

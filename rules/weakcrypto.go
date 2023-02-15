@@ -18,10 +18,11 @@ import (
 	"go/ast"
 
 	"github.com/securego/gosec/v2"
+	"github.com/securego/gosec/v2/issue"
 )
 
 type usesWeakCryptography struct {
-	gosec.MetaData
+	issue.MetaData
 	blocklist map[string][]string
 }
 
@@ -29,10 +30,10 @@ func (r *usesWeakCryptography) ID() string {
 	return r.MetaData.ID
 }
 
-func (r *usesWeakCryptography) Match(n ast.Node, c *gosec.Context) (*gosec.Issue, error) {
+func (r *usesWeakCryptography) Match(n ast.Node, c *gosec.Context) (*issue.Issue, error) {
 	for pkg, funcs := range r.blocklist {
 		if _, matched := gosec.MatchCallByPackage(n, c, pkg, funcs...); matched {
-			return gosec.NewIssue(c, n, r.ID(), r.What, r.Severity, r.Confidence), nil
+			return c.NewIssue(n, r.ID(), r.What, r.Severity, r.Confidence), nil
 		}
 	}
 	return nil, nil
@@ -47,10 +48,10 @@ func NewUsesWeakCryptography(id string, conf gosec.Config) (gosec.Rule, []ast.No
 	calls["crypto/rc4"] = []string{"NewCipher"}
 	rule := &usesWeakCryptography{
 		blocklist: calls,
-		MetaData: gosec.MetaData{
+		MetaData: issue.MetaData{
 			ID:         id,
-			Severity:   gosec.Medium,
-			Confidence: gosec.High,
+			Severity:   issue.Medium,
+			Confidence: issue.High,
 			What:       "Use of weak cryptographic primitive",
 		},
 	}

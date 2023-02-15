@@ -7,10 +7,11 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/securego/gosec/v2"
+	"github.com/securego/gosec/v2/issue"
 )
 
 type mockrule struct {
-	issue    *gosec.Issue
+	issue    *issue.Issue
 	err      error
 	callback func(n ast.Node, ctx *gosec.Context) bool
 }
@@ -19,7 +20,7 @@ func (m *mockrule) ID() string {
 	return "MOCK"
 }
 
-func (m *mockrule) Match(n ast.Node, ctx *gosec.Context) (*gosec.Issue, error) {
+func (m *mockrule) Match(n ast.Node, ctx *gosec.Context) (*issue.Issue, error) {
 	if m.callback(n, ctx) {
 		return m.issue, nil
 	}
@@ -42,9 +43,9 @@ var _ = Describe("Rule", func() {
 				callback: func(n ast.Node, ctx *gosec.Context) bool { return false },
 			}
 			dummyIssueRule = &mockrule{
-				issue: &gosec.Issue{
-					Severity:   gosec.High,
-					Confidence: gosec.High,
+				issue: &issue.Issue{
+					Severity:   issue.High,
+					Confidence: issue.High,
 					What:       `Some explanation of the thing`,
 					File:       "main.go",
 					Code:       `#include <stdio.h> int main(){ puts("hello world"); }`,

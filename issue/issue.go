@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package gosec
+package issue
 
 import (
 	"bufio"
@@ -105,8 +105,15 @@ type Issue struct {
 	Suppressions []SuppressionInfo `json:"suppressions"` // Suppression info of the issue
 }
 
+// SuppressionInfo object is to record the kind and the justification that used
+// to suppress violations.
+type SuppressionInfo struct {
+	Kind          string `json:"kind"`
+	Justification string `json:"justification"`
+}
+
 // FileLocation point out the file path and line number in file
-func (i Issue) FileLocation() string {
+func (i *Issue) FileLocation() string {
 	return fmt.Sprintf("%s:%s", i.File, i.Line)
 }
 
@@ -171,9 +178,8 @@ func codeSnippetEndLine(node ast.Node, fobj *token.File) int64 {
 	return e + SnippetOffset
 }
 
-// NewIssue creates a new Issue
-func NewIssue(ctx *Context, node ast.Node, ruleID, desc string, severity Score, confidence Score) *Issue {
-	fobj := ctx.FileSet.File(node.Pos())
+// New creates a new Issue
+func New(fobj *token.File, node ast.Node, ruleID, desc string, severity, confidence Score) *Issue {
 	name := fobj.Name()
 	start, end := fobj.Line(node.Pos()), fobj.Line(node.End())
 	line := strconv.Itoa(start)

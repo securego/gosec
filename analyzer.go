@@ -32,6 +32,7 @@ import (
 	"sync"
 
 	"github.com/securego/gosec/v2/analyzers"
+	"github.com/securego/gosec/v2/issue"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/buildssa"
 	"golang.org/x/tools/go/packages"
@@ -68,8 +69,19 @@ type Context struct {
 	Root         *ast.File
 	Imports      *ImportTracker
 	Config       Config
-	Ignores      []map[string][]SuppressionInfo
+	Ignores      []map[string][]issue.SuppressionInfo
 	PassedValues map[string]interface{}
+}
+
+// getFileAtNodePos returns the file at the node position in the file set available in the context.
+func (ctx *Context) GetFileAtNodePos(node ast.Node) *token.File {
+	return ctx.FileSet.File(node.Pos())
+}
+
+// NewIssue creates a new issue
+func (ctx *Context) NewIssue(node ast.Node, ruleID, desc string,
+	severity, confidence issue.Score) *issue.Issue {
+	return issue.New(ctx.GetFileAtNodePos(node), node, ruleID, desc, severity, confidence)
 }
 
 // Metrics used when reporting information about a scanning run.
@@ -88,7 +100,7 @@ type Analyzer struct {
 	context           *Context
 	config            Config
 	logger            *log.Logger
-	issues            []*Issue
+	issues            []*issue.Issue
 	stats             *Metrics
 	errors            map[string][]Error // keys are file paths; values are the golang errors in those files
 	tests             bool
@@ -97,13 +109,6 @@ type Analyzer struct {
 	trackSuppressions bool
 	concurrency       int
 	analyzerList      []*analysis.Analyzer
-}
-
-// SuppressionInfo object is to record the kind and the justification that used
-// to suppress violations.
-type SuppressionInfo struct {
-	Kind          string `json:"kind"`
-	Justification string `json:"justification"`
 }
 
 // NewAnalyzer builds a new analyzer.
@@ -126,7 +131,7 @@ func NewAnalyzer(conf Config, tests bool, excludeGenerated bool, trackSuppressio
 		context:           &Context{},
 		config:            conf,
 		logger:            logger,
-		issues:            make([]*Issue, 0, 16),
+		issues:            make([]*issue.Issue, 0, 16),
 		stats:             &Metrics{},
 		errors:            make(map[string][]Error),
 		tests:             tests,
@@ -371,8 +376,8 @@ func (gosec *Analyzer) CheckAnalyzers(pkg *packages.Package) {
 			continue
 		}
 		if result != nil {
-			if issue, ok := result.(*analyzers.Issue); ok {
-				gosec.updateIssues(toGosecIssue(issue), false, []SuppressionInfo{})
+			if aissue, ok := result.(*analyzers.Issue); ok {
+				gosec.updateIssues(toGosecIssue(aissue), false, []issue.SuppressionInfo{})
 			}
 		}
 	}
@@ -439,7 +444,7 @@ func (gosec *Analyzer) AppendError(file string, err error) {
 }
 
 // ignore a node (and sub-tree) if it is tagged with a nosec tag comment
-func (gosec *Analyzer) ignore(n ast.Node) map[string]SuppressionInfo {
+func (gosec *Analyzer) ignore(n ast.Node) map[string]issue.SuppressionInfo {
 	if groups, ok := gosec.context.Comments[n]; ok && !gosec.ignoreNosec {
 
 		// Checks if an alternative for #nosec is set and, if not, uses the default.
@@ -476,13 +481,13 @@ func (gosec *Analyzer) ignore(n ast.Node) map[string]SuppressionInfo {
 				re := regexp.MustCompile(`(G\d{3})`)
 				matches := re.FindAllStringSubmatch(directive, -1)
 
-				suppression := SuppressionInfo{
+				suppression := issue.SuppressionInfo{
 					Kind:          "inSource",
 					Justification: justification,
 				}
 
 				// Find the rule IDs to ignore.
-				ignores := make(map[string]SuppressionInfo)
+				ignores := make(map[string]issue.SuppressionInfo)
 				for _, v := range matches {
 					ignores[v[1]] = suppression
 				}
@@ -525,7 +530,7 @@ func (gosec *Analyzer) Visit(n ast.Node) ast.Visitor {
 	return gosec
 }
 
-func (gosec *Analyzer) updateIgnoredRules(n ast.Node) (map[string][]SuppressionInfo, bool) {
+func (gosec *Analyzer) updateIgnoredRules(n ast.Node) (map[string][]issue.SuppressionInfo, bool) {
 	if n == nil {
 		if len(gosec.context.Ignores) > 0 {
 			gosec.context.Ignores = gosec.context.Ignores[1:]
@@ -536,7 +541,7 @@ func (gosec *Analyzer) updateIgnoredRules(n ast.Node) (map[string][]SuppressionI
 	ignoredRules := gosec.ignore(n)
 
 	// Now create the union of exclusions.
-	ignores := map[string][]SuppressionInfo{}
+	ignores := map[string][]issue.SuppressionInfo{}
 	if len(gosec.context.Ignores) > 0 {
 		for k, v := range gosec.context.Ignores[0] {
 			ignores[k] = v
@@ -548,12 +553,12 @@ func (gosec *Analyzer) updateIgnoredRules(n ast.Node) (map[string][]SuppressionI
 	}
 
 	// Push the new set onto the stack.
-	gosec.context.Ignores = append([]map[string][]SuppressionInfo{ignores}, gosec.context.Ignores...)
+	gosec.context.Ignores = append([]map[string][]issue.SuppressionInfo{ignores}, gosec.context.Ignores...)
 
 	return ignores, true
 }
 
-func (gosec *Analyzer) updateSuppressions(id string, ignores map[string][]SuppressionInfo) ([]SuppressionInfo, bool) {
+func (gosec *Analyzer) updateSuppressions(id string, ignores map[string][]issue.SuppressionInfo) ([]issue.SuppressionInfo, bool) {
 	// Check if all rules are ignored.
 	generalSuppressions, generalIgnored := ignores[aliasOfAllRules]
 	// Check if the specific rule is ignored
@@ -565,7 +570,7 @@ func (gosec *Analyzer) updateSuppressions(id string, ignores map[string][]Suppre
 	// Track external suppressions.
 	if gosec.ruleset.IsRuleSuppressed(id) {
 		ignored = true
-		suppressions = append(suppressions, SuppressionInfo{
+		suppressions = append(suppressions, issue.SuppressionInfo{
 			Kind:          "external",
 			Justification: externalSuppressionJustification,
 		})
@@ -573,7 +578,7 @@ func (gosec *Analyzer) updateSuppressions(id string, ignores map[string][]Suppre
 	return suppressions, ignored
 }
 
-func (gosec *Analyzer) updateIssues(issue *Issue, ignored bool, suppressions []SuppressionInfo) {
+func (gosec *Analyzer) updateIssues(issue *issue.Issue, ignored bool, suppressions []issue.SuppressionInfo) {
 	if issue != nil {
 		if gosec.showIgnored {
 			issue.NoSec = ignored
@@ -590,27 +595,27 @@ func (gosec *Analyzer) updateIssues(issue *Issue, ignored bool, suppressions []S
 	}
 }
 
-func toGosecIssue(issue *analyzers.Issue) *Issue {
-	return &Issue{
-		File:       issue.File,
-		Line:       issue.Line,
-		Col:        issue.Col,
-		RuleID:     issue.AnalyzerID,
-		What:       issue.What,
-		Confidence: Score(issue.Confidence),
-		Severity:   Score(issue.Severity),
+func toGosecIssue(aissue *analyzers.Issue) *issue.Issue {
+	return &issue.Issue{
+		File:       aissue.File,
+		Line:       aissue.Line,
+		Col:        aissue.Col,
+		RuleID:     aissue.AnalyzerID,
+		What:       aissue.What,
+		Confidence: issue.Score(aissue.Confidence),
+		Severity:   issue.Score(aissue.Severity),
 	}
 }
 
 // Report returns the current issues discovered and the metrics about the scan
-func (gosec *Analyzer) Report() ([]*Issue, *Metrics, map[string][]Error) {
+func (gosec *Analyzer) Report() ([]*issue.Issue, *Metrics, map[string][]Error) {
 	return gosec.issues, gosec.stats, gosec.errors
 }
 
 // Reset clears state such as context, issues and metrics from the configured analyzer
 func (gosec *Analyzer) Reset() {
 	gosec.context = &Context{}
-	gosec.issues = make([]*Issue, 0, 16)
+	gosec.issues = make([]*issue.Issue, 0, 16)
 	gosec.stats = &Metrics{}
 	gosec.ruleset = NewRuleSet()
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/securego/gosec/v2"
 	"github.com/securego/gosec/v2/cwe"
+	"github.com/securego/gosec/v2/issue"
 )
 
 // GenerateReport Convert a gosec report to a Sarif Report
@@ -72,28 +73,28 @@ func GenerateReport(rootPaths []string, data *gosec.ReportInfo) (*Report, error)
 }
 
 // parseSarifRule return SARIF rule field struct
-func parseSarifRule(issue *gosec.Issue) *ReportingDescriptor {
-	cwe := gosec.GetCweByRule(issue.RuleID)
-	name := issue.RuleID
+func parseSarifRule(i *issue.Issue) *ReportingDescriptor {
+	cwe := issue.GetCweByRule(i.RuleID)
+	name := i.RuleID
 	if cwe != nil {
 		name = cwe.Name
 	}
 	return &ReportingDescriptor{
-		ID:               issue.RuleID,
+		ID:               i.RuleID,
 		Name:             name,
-		ShortDescription: NewMultiformatMessageString(issue.What),
-		FullDescription:  NewMultiformatMessageString(issue.What),
+		ShortDescription: NewMultiformatMessageString(i.What),
+		FullDescription:  NewMultiformatMessageString(i.What),
 		Help: NewMultiformatMessageString(fmt.Sprintf("%s\nSeverity: %s\nConfidence: %s\n",
-			issue.What, issue.Severity.String(), issue.Confidence.String())),
+			i.What, i.Severity.String(), i.Confidence.String())),
 		Properties: &PropertyBag{
-			"tags":      []string{"security", issue.Severity.String()},
-			"precision": strings.ToLower(issue.Confidence.String()),
+			"tags":      []string{"security", i.Severity.String()},
+			"precision": strings.ToLower(i.Confidence.String()),
 		},
 		DefaultConfiguration: &ReportingConfiguration{
-			Level: getSarifLevel(issue.Severity.String()),
+			Level: getSarifLevel(i.Severity.String()),
 		},
 		Relationships: []*ReportingDescriptorRelationship{
-			buildSarifReportingDescriptorRelationship(issue.Cwe),
+			buildSarifReportingDescriptorRelationship(i.Cwe),
 		},
 	}
 }
@@ -157,27 +158,27 @@ func uuid3(value string) string {
 }
 
 // parseSarifLocation return SARIF location struct
-func parseSarifLocation(issue *gosec.Issue, rootPaths []string) (*Location, error) {
-	region, err := parseSarifRegion(issue)
+func parseSarifLocation(i *issue.Issue, rootPaths []string) (*Location, error) {
+	region, err := parseSarifRegion(i)
 	if err != nil {
 		return nil, err
 	}
-	artifactLocation := parseSarifArtifactLocation(issue, rootPaths)
+	artifactLocation := parseSarifArtifactLocation(i, rootPaths)
 	return NewLocation(NewPhysicalLocation(artifactLocation, region)), nil
 }
 
-func parseSarifArtifactLocation(issue *gosec.Issue, rootPaths []string) *ArtifactLocation {
+func parseSarifArtifactLocation(i *issue.Issue, rootPaths []string) *ArtifactLocation {
 	var filePath string
 	for _, rootPath := range rootPaths {
-		if strings.HasPrefix(issue.File, rootPath) {
-			filePath = strings.Replace(issue.File, rootPath+"/", "", 1)
+		if strings.HasPrefix(i.File, rootPath) {
+			filePath = strings.Replace(i.File, rootPath+"/", "", 1)
 		}
 	}
 	return NewArtifactLocation(filePath)
 }
 
-func parseSarifRegion(issue *gosec.Issue) (*Region, error) {
-	lines := strings.Split(issue.Line, "-")
+func parseSarifRegion(i *issue.Issue) (*Region, error) {
+	lines := strings.Split(i.Line, "-")
 	startLine, err := strconv.Atoi(lines[0])
 	if err != nil {
 		return nil, err
@@ -189,13 +190,13 @@ func parseSarifRegion(issue *gosec.Issue) (*Region, error) {
 			return nil, err
 		}
 	}
-	col, err := strconv.Atoi(issue.Col)
+	col, err := strconv.Atoi(i.Col)
 	if err != nil {
 		return nil, err
 	}
 	var code string
 	line := startLine
-	codeLines := strings.Split(issue.Code, "\n")
+	codeLines := strings.Split(i.Code, "\n")
 	for _, codeLine := range codeLines {
 		lineStart := fmt.Sprintf("%d:", line)
 		if strings.HasPrefix(codeLine, lineStart) {
@@ -227,7 +228,7 @@ func getSarifLevel(s string) Level {
 	}
 }
 
-func buildSarifSuppressions(suppressions []gosec.SuppressionInfo) []*Suppression {
+func buildSarifSuppressions(suppressions []issue.SuppressionInfo) []*Suppression {
 	var sarifSuppressionList []*Suppression
 	for _, s := range suppressions {
 		sarifSuppressionList = append(sarifSuppressionList, NewSuppression(s.Kind, s.Justification))
