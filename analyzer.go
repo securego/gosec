@@ -80,7 +80,8 @@ func (ctx *Context) GetFileAtNodePos(node ast.Node) *token.File {
 
 // NewIssue creates a new issue
 func (ctx *Context) NewIssue(node ast.Node, ruleID, desc string,
-	severity, confidence issue.Score) *issue.Issue {
+	severity, confidence issue.Score,
+) *issue.Issue {
 	return issue.New(ctx.GetFileAtNodePos(node), node, ruleID, desc, severity, confidence)
 }
 
