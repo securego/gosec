@@ -377,8 +377,8 @@ func (gosec *Analyzer) CheckAnalyzers(pkg *packages.Package) {
 			continue
 		}
 		if result != nil {
-			if aissue, ok := result.(*analyzers.Issue); ok {
-				gosec.updateIssues(toGosecIssue(aissue), false, []issue.SuppressionInfo{})
+			if aissue, ok := result.(*issue.Issue); ok {
+				gosec.updateIssues(aissue, false, []issue.SuppressionInfo{})
 			}
 		}
 	}
@@ -593,18 +593,6 @@ func (gosec *Analyzer) updateIssues(issue *issue.Issue, ignored bool, suppressio
 		} else if !ignored || gosec.showIgnored || gosec.ignoreNosec {
 			gosec.issues = append(gosec.issues, issue)
 		}
-	}
-}
-
-func toGosecIssue(aissue *analyzers.Issue) *issue.Issue {
-	return &issue.Issue{
-		File:       aissue.File,
-		Line:       aissue.Line,
-		Col:        aissue.Col,
-		RuleID:     aissue.AnalyzerID,
-		What:       aissue.What,
-		Confidence: issue.Score(aissue.Confidence),
-		Severity:   issue.Score(aissue.Severity),
 	}
 }
 

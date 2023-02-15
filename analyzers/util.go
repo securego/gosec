@@ -18,8 +18,10 @@ import (
 	"fmt"
 	"go/token"
 	"log"
+	"os"
 	"strconv"
 
+	"github.com/securego/gosec/v2/issue"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/buildssa"
 )
@@ -30,32 +32,6 @@ type SSAAnalyzerResult struct {
 	Config map[string]interface{}
 	Logger *log.Logger
 	SSA    *buildssa.SSA
-}
-
-// Score type used by severity and confidence values
-// TODO: remove this duplicated type
-type Score int
-
-const (
-	// Low severity or confidence
-	Low Score = iota
-	// Medium severity or confidence
-	Medium
-	// High severity or confidence
-	High
-)
-
-// Issue is returned by a gosec rule if it discovers an issue with the scanned code.
-// TODO: remove this duplicated type
-type Issue struct {
-	Severity   Score  `json:"severity"`    // issue severity (how problematic it is)
-	Confidence Score  `json:"confidence"`  // issue confidence (how sure we are we found it)
-	AnalyzerID string `json:"analyzer_id"` // Human readable explanation
-	What       string `json:"details"`     // Human readable explanation
-	File       string `json:"file"`        // File name we found it in
-	Code       string `json:"code"`        // Impacted code line
-	Line       string `json:"line"`        // Line number in file
-	Col        string `json:"column"`      // Column number in line
 }
 
 // BuildDefaultAnalyzers returns the default list of analyzers
@@ -78,18 +54,43 @@ func getSSAResult(pass *analysis.Pass) (*SSAAnalyzerResult, error) {
 	return ssaResult, nil
 }
 
-func newIssue(analyzerID string, desc string, fileSet *token.FileSet, pos token.Pos, severity Score, confidence Score) *Issue {
+// newIssue creates a new gosec issue
+func newIssue(analyzerID string, desc string, fileSet *token.FileSet,
+	pos token.Pos, severity, confidence issue.Score) *issue.Issue {
 	file := fileSet.File(pos)
 	line := file.Line(pos)
 	col := file.Position(pos).Column
-	// TODO: extract the code snippet and map the CWE
-	return &Issue{
+
+	return &issue.Issue{
+		RuleID:     analyzerID,
 		File:       file.Name(),
 		Line:       strconv.Itoa(line),
 		Col:        strconv.Itoa(col),
 		Severity:   severity,
 		Confidence: confidence,
-		AnalyzerID: analyzerID,
 		What:       desc,
+		Cwe:        issue.GetCweByRule(analyzerID),
+		Code:       issueCodeSnippet(fileSet, pos),
 	}
+}
+
+func issueCodeSnippet(fileSet *token.FileSet, pos token.Pos) string {
+	file := fileSet.File(pos)
+
+	start := (int64)(file.Line(pos))
+	if start-issue.SnippetOffset > 0 {
+		start = start - issue.SnippetOffset
+	}
+	end := (int64)(file.Line(pos))
+	end = end + issue.SnippetOffset
+
+	var code string
+	if file, err := os.Open(file.Name()); err == nil {
+		defer file.Close() // #nosec
+		code, err = issue.CodeSnippet(file, start, end)
+		if err != nil {
+			return err.Error()
+		}
+	}
+	return code
 }
