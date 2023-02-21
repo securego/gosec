@@ -111,5 +111,65 @@ var _ = Describe("Sarif Formatter", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(sarifReport.Runs[0].Results[0].Locations[0].PhysicalLocation.Region.Snippet.Text).Should(Equal(expectedCode))
 		})
+		It("sarif formatted report should have proper rule index", func() {
+			rules := []string{"G404", "G101", "G102", "G103"}
+			issues := []*issue.Issue{}
+			for _, rule := range rules {
+				cwe := issue.GetCweByRule(rule)
+				newissue := issue.Issue{
+					File:       "/home/src/project/test.go",
+					Line:       "69-70",
+					Col:        "14",
+					RuleID:     rule,
+					What:       "test",
+					Confidence: issue.High,
+					Severity:   issue.High,
+					Cwe:        cwe,
+					Suppressions: []issue.SuppressionInfo{
+						{
+							Kind:          "kind",
+							Justification: "justification",
+						},
+					},
+				}
+				issues = append(issues, &newissue)
+
+			}
+			dupRules := []string{"G102", "G404"}
+			for _, rule := range dupRules {
+				cwe := issue.GetCweByRule(rule)
+				newissue := issue.Issue{
+					File:       "/home/src/project/test.go",
+					Line:       "69-70",
+					Col:        "14",
+					RuleID:     rule,
+					What:       "test",
+					Confidence: issue.High,
+					Severity:   issue.High,
+					Cwe:        cwe,
+					Suppressions: []issue.SuppressionInfo{
+						{
+							Kind:          "kind",
+							Justification: "justification",
+						},
+					},
+				}
+				issues = append(issues, &newissue)
+			}
+			reportInfo := gosec.NewReportInfo(issues, &gosec.Metrics{}, map[string][]gosec.Error{}).WithVersion("v2.7.0")
+
+			sarifReport, err := sarif.GenerateReport([]string{}, reportInfo)
+
+			Expect(err).ShouldNot(HaveOccurred())
+			resultRuleIdexes := map[string]int{}
+			for _, result := range sarifReport.Runs[0].Results {
+				resultRuleIdexes[result.RuleID] = result.RuleIndex
+			}
+			driverRuleIndexes := map[string]int{}
+			for ruleIndex, rule := range sarifReport.Runs[0].Tool.Driver.Rules {
+				driverRuleIndexes[rule.ID] = ruleIndex
+			}
+			Expect(resultRuleIdexes).Should(Equal(driverRuleIndexes))
+		})
 	})
 })
