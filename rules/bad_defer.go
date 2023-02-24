@@ -52,14 +52,12 @@ func (r *badDefer) Match(n ast.Node, c *gosec.Context) (*issue.Issue, error) {
 
 // NewDeferredClosing detects unsafe defer of error returning methods
 func NewDeferredClosing(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
+	// Unhandled error in defer statement is only unsafe in writable files
+	// See for moe details: https://www.joeshaw.org/dont-defer-close-on-writable-files/
 	return &badDefer{
 		types: []deferType{
 			{
 				typ:     "os.File",
-				methods: []string{"Close"},
-			},
-			{
-				typ:     "io.ReadCloser",
 				methods: []string{"Close"},
 			},
 			{
@@ -68,10 +66,6 @@ func NewDeferredClosing(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 			},
 			{
 				typ:     "io.ReadWriteCloser",
-				methods: []string{"Close"},
-			},
-			{
-				typ:     "io.ReadSeekCloser",
 				methods: []string{"Close"},
 			},
 			{
