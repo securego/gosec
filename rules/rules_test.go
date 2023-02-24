@@ -146,10 +146,6 @@ var _ = Describe("gosec rules", func() {
 			runner("G306", testutils.SampleCodeG306)
 		})
 
-		It("should detect unsafe defer of os.Close", func() {
-			runner("G307", testutils.SampleCodeG307)
-		})
-
 		It("should detect weak crypto algorithms", func() {
 			runner("G401", testutils.SampleCodeG401)
 		})
