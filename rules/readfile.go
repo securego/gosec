@@ -81,6 +81,8 @@ func (r *readfile) isFilepathClean(n *ast.Ident, c *gosec.Context) bool {
 func (r *readfile) trackFilepathClean(n ast.Node) {
 	if clean, ok := n.(*ast.CallExpr); ok && len(clean.Args) > 0 {
 		if ident, ok := clean.Args[0].(*ast.Ident); ok {
+			// ident.Obj may be nil if the referenced declaration is in another file. It also may be incorrect.
+			// if it is nil, do not follow it.
 			if ident.Obj != nil {
 				r.cleanedVar[ident.Obj.Decl] = n
 			}
