@@ -2330,7 +2330,8 @@ func main() {
 	}
 	log.Print(body)
 
-}`}, 1, gosec.NewConfig()}, {[]string{`
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
 package main
 
 import (
@@ -2346,7 +2347,8 @@ func main() {
 	}
 	log.Print(body)
 
-}`}, 1, gosec.NewConfig()}, {[]string{`
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
 package main
 
 import (
@@ -2370,7 +2372,8 @@ func main() {
 		fmt.Fprintf(w, "%s", body)
 	})
 	log.Fatal(http.ListenAndServe(":3000", nil))
-}`}, 1, gosec.NewConfig()}, {[]string{`
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
 package main
 
 import (
@@ -2394,7 +2397,8 @@ func main() {
 		fmt.Fprintf(w, "%s", body)
 	})
 	log.Fatal(http.ListenAndServe(":3000", nil))
-}`}, 1, gosec.NewConfig()}, {[]string{`
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
 package main
 
 import (
@@ -2410,7 +2414,8 @@ import (
 		log.Printf("Error: %v\n", err)
 	  }
 		log.Print(body)
- }`}, 1, gosec.NewConfig()}, {[]string{`
+ }`}, 1, gosec.NewConfig()},
+		{[]string{`
  package main
 
  import (
@@ -2434,7 +2439,8 @@ func main() {
 		fmt.Printf("Error: %v\n", err)
 	}
   fmt.Println(string(contents))
-}`}, 1, gosec.NewConfig()}, {[]string{`
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
 package main
 
 import (
@@ -2453,7 +2459,8 @@ func main() {
 		log.Printf("Error: %v\n", err)
 	}
 	log.Print(body)
-}`}, 1, gosec.NewConfig()}, {[]string{`
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
 package main
 
 import (
@@ -2469,7 +2476,8 @@ func main() {
         panic(err)
     }
 }
-`}, 0, gosec.NewConfig()}, {[]string{`
+`}, 0, gosec.NewConfig()},
+		{[]string{`
 package main
 
 import (
@@ -2488,7 +2496,8 @@ func main() {
     repoFile := "path_of_file"
 	openFile(repoFile)
 }
-`}, 0, gosec.NewConfig()}, {[]string{`
+`}, 0, gosec.NewConfig()},
+		{[]string{`
 package main
 
 import (
@@ -2510,7 +2519,8 @@ func main() {
 	dir := "path_of_dir"
 	openFile(dir, repoFile)
 }
-`}, 0, gosec.NewConfig()}, {[]string{`
+`}, 0, gosec.NewConfig()},
+		{[]string{`
 package main
 
 import (
@@ -2530,7 +2540,8 @@ func main() {
     }
 }
 
-`}, 0, gosec.NewConfig()}, {[]string{`
+`}, 0, gosec.NewConfig()},
+		{[]string{`
 package main
 
 import (
@@ -2561,6 +2572,38 @@ func main() {
 		panic(err)
 	}
 }`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import (
+	"fmt"
+	"path/filepath"
+)
+
+type foo struct {
+}
+
+func (f *foo) doSomething(silly string) error {
+	whoCares, err := filepath.Rel(THEWD, silly)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("%s", whoCares)
+	return nil
+}
+
+func main() {
+	f := &foo{}
+
+	if err := f.doSomething("irrelevant"); err != nil {
+		panic(err)
+	}
+}
+`, `
+package main
+
+var THEWD string
+`}, 0, gosec.NewConfig()},
 	}
 
 	// SampleCodeG305 - File path traversal when extracting zip/tar archives
