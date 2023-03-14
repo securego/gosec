@@ -16,6 +16,7 @@ require (
 )
 
 require (
+	github.com/actions-go/toolkit v0.0.0-20220621154146-07e42146078c // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/xo/terminfo v0.0.0-20210125001918-ca9a967f8778 // indirect

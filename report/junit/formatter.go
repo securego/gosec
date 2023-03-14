@@ -4,6 +4,7 @@ import (
 	"html"
 	"strconv"
 
+	"github.com/actions-go/toolkit/core"
 	"github.com/securego/gosec/v2"
 	"github.com/securego/gosec/v2/issue"
 )
@@ -13,6 +14,11 @@ func generatePlaintext(issue *issue.Issue) string {
 	if issue.Cwe != nil {
 		cweID = issue.Cwe.ID
 	}
+	core.Info("Results:\n" +
+		"[" + issue.File + ":" + issue.Line + "] - " +
+		issue.What + " (Confidence: " + strconv.Itoa(int(issue.Confidence)) +
+		", Severity: " + strconv.Itoa(int(issue.Severity)) +
+		", CWE: " + cweID + ")\n" + "> " + html.EscapeString(issue.Code))
 	return "Results:\n" +
 		"[" + issue.File + ":" + issue.Line + "] - " +
 		issue.What + " (Confidence: " + strconv.Itoa(int(issue.Confidence)) +
