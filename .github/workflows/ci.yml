@@ -16,7 +16,7 @@ jobs:
       GO111MODULE: on
     steps:
       - name: Setup go ${{ matrix.version.go }} 
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version: ${{ matrix.version.go }}
       - name: Checkout Source 
@@ -44,7 +44,7 @@ jobs:
       GO111MODULE: on
     steps:
       - name: Setup go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version: '1.20.1'
       - name: Checkout Source 
