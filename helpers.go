@@ -182,7 +182,7 @@ func GetCallInfo(n ast.Node, ctx *Context) (string, string, error) {
 }
 
 // GetCallStringArgsValues returns the values of strings arguments if they can be resolved
-func GetCallStringArgsValues(n ast.Node, ctx *Context) []string {
+func GetCallStringArgsValues(n ast.Node, _ *Context) []string {
 	values := []string{}
 	switch node := n.(type) {
 	case *ast.CallExpr:

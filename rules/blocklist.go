@@ -28,9 +28,9 @@ type blocklistedImport struct {
 }
 
 func unquote(original string) string {
-	copy := strings.TrimSpace(original)
-	copy = strings.TrimLeft(copy, `"`)
-	return strings.TrimRight(copy, `"`)
+	cleaned := strings.TrimSpace(original)
+	cleaned = strings.TrimLeft(cleaned, `"`)
+	return strings.TrimRight(cleaned, `"`)
 }
 
 func (r *blocklistedImport) ID() string {
@@ -48,7 +48,7 @@ func (r *blocklistedImport) Match(n ast.Node, c *gosec.Context) (*issue.Issue, e
 
 // NewBlocklistedImports reports when a blocklisted import is being used.
 // Typically when a deprecated technology is being used.
-func NewBlocklistedImports(id string, conf gosec.Config, blocklist map[string]string) (gosec.Rule, []ast.Node) {
+func NewBlocklistedImports(id string, _ gosec.Config, blocklist map[string]string) (gosec.Rule, []ast.Node) {
 	return &blocklistedImport{
 		MetaData: issue.MetaData{
 			ID:         id,

@@ -126,7 +126,7 @@ func (r *readfile) Match(n ast.Node, c *gosec.Context) (*issue.Issue, error) {
 }
 
 // NewReadFile detects cases where we read files
-func NewReadFile(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
+func NewReadFile(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	rule := &readfile{
 		pathJoin: gosec.NewCallList(),
 		clean:    gosec.NewCallList(),

@@ -67,7 +67,7 @@ func (r *bindsToAllNetworkInterfaces) Match(n ast.Node, c *gosec.Context) (*issu
 
 // NewBindsToAllNetworkInterfaces detects socket connections that are setup to
 // listen on all network interfaces.
-func NewBindsToAllNetworkInterfaces(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
+func NewBindsToAllNetworkInterfaces(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	calls := gosec.NewCallList()
 	calls.Add("net", "Listen")
 	calls.Add("crypto/tls", "Listen")

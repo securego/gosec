@@ -90,7 +90,7 @@ func (r *implicitAliasing) Match(n ast.Node, c *gosec.Context) (*issue.Issue, er
 }
 
 // NewImplicitAliasing detects implicit memory aliasing of type: for blah := SomeCall() {... SomeOtherCall(&blah) ...}
-func NewImplicitAliasing(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
+func NewImplicitAliasing(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	return &implicitAliasing{
 		aliases:         make(map[*ast.Object]struct{}),
 		rightBrace:      token.NoPos,

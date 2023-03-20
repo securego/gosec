@@ -161,7 +161,7 @@ func (s *sqlStrConcat) Match(n ast.Node, ctx *gosec.Context) (*issue.Issue, erro
 }
 
 // NewSQLStrConcat looks for cases where we are building SQL strings via concatenation
-func NewSQLStrConcat(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
+func NewSQLStrConcat(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	rule := &sqlStrConcat{
 		sqlStatement: sqlStatement{
 			patterns: []*regexp.Regexp{
@@ -324,7 +324,7 @@ func (s *sqlStrFormat) Match(n ast.Node, ctx *gosec.Context) (*issue.Issue, erro
 }
 
 // NewSQLStrFormat looks for cases where we're building SQL query strings using format strings
-func NewSQLStrFormat(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
+func NewSQLStrFormat(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	rule := &sqlStrFormat{
 		CallList:      gosec.NewCallList(),
 		fmtCalls:      gosec.NewCallList(),

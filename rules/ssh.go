@@ -25,7 +25,7 @@ func (r *sshHostKey) Match(n ast.Node, c *gosec.Context) (gi *issue.Issue, err e
 }
 
 // NewSSHHostKey rule detects the use of insecure ssh HostKeyCallback.
-func NewSSHHostKey(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
+func NewSSHHostKey(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	return &sshHostKey{
 		pkg:   "golang.org/x/crypto/ssh",
 		calls: []string{"InsecureIgnoreHostKey"},

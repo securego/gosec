@@ -30,8 +30,8 @@ func (r *traversal) matchCallExpr(assign *ast.CallExpr, ctx *gosec.Context) (*is
 		if basiclit, ok1 := i.(*ast.BasicLit); ok1 {
 			if fun, ok2 := assign.Fun.(*ast.SelectorExpr); ok2 {
 				if x, ok3 := fun.X.(*ast.Ident); ok3 {
-					string := x.Name + "." + fun.Sel.Name + "(" + basiclit.Value + ")"
-					if r.pattern.MatchString(string) {
+					str := x.Name + "." + fun.Sel.Name + "(" + basiclit.Value + ")"
+					if r.pattern.MatchString(str) {
 						return ctx.NewIssue(assign, r.ID(), r.What, r.Severity, r.Confidence), nil
 					}
 				}

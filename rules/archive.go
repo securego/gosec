@@ -49,7 +49,7 @@ func (a *archive) Match(n ast.Node, c *gosec.Context) (*issue.Issue, error) {
 }
 
 // NewArchive creates a new rule which detects the file traversal when extracting zip/tar archives
-func NewArchive(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
+func NewArchive(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	calls := gosec.NewCallList()
 	calls.Add("path/filepath", "Join")
 	calls.Add("path", "Join")

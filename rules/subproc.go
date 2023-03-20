@@ -110,7 +110,7 @@ func (r *subprocess) isContext(n ast.Node, ctx *gosec.Context) bool {
 }
 
 // NewSubproc detects cases where we are forking out to an external process
-func NewSubproc(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
+func NewSubproc(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	rule := &subprocess{issue.MetaData{ID: id}, gosec.NewCallList()}
 	rule.Add("os/exec", "Command")
 	rule.Add("os/exec", "CommandContext")

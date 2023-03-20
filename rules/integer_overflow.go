@@ -75,7 +75,7 @@ func (i *integerOverflowCheck) Match(node ast.Node, ctx *gosec.Context) (*issue.
 }
 
 // NewIntegerOverflowCheck detects if there is potential Integer OverFlow
-func NewIntegerOverflowCheck(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
+func NewIntegerOverflowCheck(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	calls := gosec.NewCallList()
 	calls.Add("strconv", "Atoi")
 	return &integerOverflowCheck{

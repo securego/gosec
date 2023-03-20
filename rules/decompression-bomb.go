@@ -83,7 +83,7 @@ func (d *decompressionBombCheck) Match(node ast.Node, ctx *gosec.Context) (*issu
 }
 
 // NewDecompressionBombCheck detects if there is potential DoS vulnerability via decompression bomb
-func NewDecompressionBombCheck(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
+func NewDecompressionBombCheck(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	readerCalls := gosec.NewCallList()
 	readerCalls.Add("compress/gzip", "NewReader")
 	readerCalls.AddAll("compress/zlib", "NewReader", "NewReaderDict")

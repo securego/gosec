@@ -40,7 +40,7 @@ func (r *usingUnsafe) Match(n ast.Node, c *gosec.Context) (gi *issue.Issue, err 
 
 // NewUsingUnsafe rule detects the use of the unsafe package. This is only
 // really useful for auditing purposes.
-func NewUsingUnsafe(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
+func NewUsingUnsafe(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	return &usingUnsafe{
 		pkg:   "unsafe",
 		calls: []string{"Alignof", "Offsetof", "Sizeof", "Pointer"},

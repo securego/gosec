@@ -40,7 +40,7 @@ func (r *usesWeakCryptography) Match(n ast.Node, c *gosec.Context) (*issue.Issue
 }
 
 // NewUsesWeakCryptography detects uses of des.* md5.* or rc4.*
-func NewUsesWeakCryptography(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
+func NewUsesWeakCryptography(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	calls := make(map[string][]string)
 	calls["crypto/des"] = []string{"NewCipher", "NewTripleDESCipher"}
 	calls["crypto/md5"] = []string{"New", "Sum"}
