@@ -32,7 +32,7 @@ func GenerateReport(rootPaths []string, data *gosec.ReportInfo) (*Report, error)
 		}
 
 		rule := parseSarifRule(issue)
-		ruleIndex := 0
+		var ruleIndex int
 		rules, ruleIndex = addRuleInOrder(rules, rule)
 
 		location, err := parseSarifLocation(issue, rootPaths)
