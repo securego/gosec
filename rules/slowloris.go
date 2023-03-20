@@ -59,7 +59,7 @@ func (r *slowloris) Match(n ast.Node, ctx *gosec.Context) (*issue.Issue, error) 
 }
 
 // NewSlowloris attempts to find the http.Server struct and check if the ReadHeaderTimeout is configured.
-func NewSlowloris(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
+func NewSlowloris(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	return &slowloris{
 		MetaData: issue.MetaData{
 			ID:         id,

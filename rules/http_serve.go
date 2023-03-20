@@ -25,7 +25,7 @@ func (r *httpServeWithoutTimeouts) Match(n ast.Node, c *gosec.Context) (gi *issu
 }
 
 // NewHTTPServeWithoutTimeouts detects use of net/http serve functions that have no support for setting timeouts.
-func NewHTTPServeWithoutTimeouts(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
+func NewHTTPServeWithoutTimeouts(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	return &httpServeWithoutTimeouts{
 		pkg:   "net/http",
 		calls: []string{"ListenAndServe", "ListenAndServeTLS", "Serve", "ServeTLS"},

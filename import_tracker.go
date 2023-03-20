@@ -51,9 +51,7 @@ func (t *ImportTracker) TrackPackages(pkgs ...*types.Package) {
 func (t *ImportTracker) TrackImport(imported *ast.ImportSpec) {
 	importPath := strings.Trim(imported.Path.Value, `"`)
 	if imported.Name != nil {
-		if imported.Name.Name == "_" {
-			// Initialization only import
-		} else {
+		if imported.Name.Name != "_" {
 			// Aliased import
 			t.Imported[importPath] = append(t.Imported[importPath], imported.Name.String())
 		}

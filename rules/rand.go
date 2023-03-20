@@ -42,7 +42,7 @@ func (w *weakRand) Match(n ast.Node, c *gosec.Context) (*issue.Issue, error) {
 }
 
 // NewWeakRandCheck detects the use of random number generator that isn't cryptographically secure
-func NewWeakRandCheck(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
+func NewWeakRandCheck(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	return &weakRand{
 		funcNames: []string{
 			"New", "Read", "Float32", "Float64", "Int", "Int31",

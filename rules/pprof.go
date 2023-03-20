@@ -29,7 +29,7 @@ func (p *pprofCheck) Match(n ast.Node, c *gosec.Context) (*issue.Issue, error) {
 }
 
 // NewPprofCheck detects when the profiling endpoint is automatically exposed
-func NewPprofCheck(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
+func NewPprofCheck(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	return &pprofCheck{
 		MetaData: issue.MetaData{
 			ID:         id,

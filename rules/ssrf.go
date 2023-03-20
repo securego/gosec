@@ -52,7 +52,7 @@ func (r *ssrf) Match(n ast.Node, c *gosec.Context) (*issue.Issue, error) {
 }
 
 // NewSSRFCheck detects cases where HTTP requests are sent
-func NewSSRFCheck(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
+func NewSSRFCheck(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	rule := &ssrf{
 		CallList: gosec.NewCallList(),
 		MetaData: issue.MetaData{

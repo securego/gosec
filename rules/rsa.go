@@ -42,7 +42,7 @@ func (w *weakKeyStrength) Match(n ast.Node, c *gosec.Context) (*issue.Issue, err
 }
 
 // NewWeakKeyStrength builds a rule that detects RSA keys < 2048 bits
-func NewWeakKeyStrength(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
+func NewWeakKeyStrength(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	calls := gosec.NewCallList()
 	calls.Add("crypto/rsa", "GenerateKey")
 	bits := 2048
