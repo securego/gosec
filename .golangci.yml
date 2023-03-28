@@ -31,3 +31,6 @@ linters:
   - unused
   - varcheck
   - wastedassign
+
+run:
+  timeout: 5m
