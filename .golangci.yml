@@ -2,7 +2,6 @@ linters:
   enable:
   - asciicheck
   - bodyclose
-  - deadcode
   - depguard
   - dogsled
   - durationcheck
@@ -24,12 +23,10 @@ linters:
   - nolintlint
   - revive
   - staticcheck
-  - structcheck
   - typecheck
   - unconvert
   - unparam
   - unused
-  - varcheck
   - wastedassign
 
 run:
