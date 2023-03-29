@@ -3,8 +3,9 @@ package yaml
 import (
 	"io"
 
-	"github.com/securego/gosec/v2"
 	"gopkg.in/yaml.v3"
+
+	"github.com/securego/gosec/v2"
 )
 
 // WriteReport write a report in yaml format to the output writer

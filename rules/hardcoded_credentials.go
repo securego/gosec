@@ -21,6 +21,7 @@ import (
 	"strconv"
 
 	zxcvbn "github.com/nbutton23/zxcvbn-go"
+
 	"github.com/securego/gosec/v2"
 	"github.com/securego/gosec/v2/issue"
 )

@@ -8,12 +8,13 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"gopkg.in/yaml.v3"
+
 	"github.com/securego/gosec/v2"
 	"github.com/securego/gosec/v2/cwe"
 	"github.com/securego/gosec/v2/issue"
 	"github.com/securego/gosec/v2/report/junit"
 	"github.com/securego/gosec/v2/report/sonar"
-	"gopkg.in/yaml.v3"
 )
 
 func createIssueWithFileWhat(file, what string) *issue.Issue {

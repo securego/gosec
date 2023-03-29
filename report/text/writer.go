@@ -11,6 +11,7 @@ import (
 	"text/template"
 
 	"github.com/gookit/color"
+
 	"github.com/securego/gosec/v2"
 	"github.com/securego/gosec/v2/issue"
 )
