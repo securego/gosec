@@ -21,9 +21,10 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/securego/gosec/v2/issue"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/buildssa"
+
+	"github.com/securego/gosec/v2/issue"
 )
 
 // SSAAnalyzerResult contains various information returned by the
