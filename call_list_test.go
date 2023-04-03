@@ -21,7 +21,7 @@ var _ = Describe("Call List", func() {
 	})
 
 	It("should be possible to add a single call", func() {
-		Expect(calls).Should(HaveLen(0))
+		Expect(calls).Should(BeEmpty())
 		calls.Add("foo", "bar")
 		Expect(calls).Should(HaveLen(1))
 
@@ -32,7 +32,7 @@ var _ = Describe("Call List", func() {
 	})
 
 	It("should be possible to add multiple calls at once", func() {
-		Expect(calls).Should(HaveLen(0))
+		Expect(calls).Should(BeEmpty())
 		calls.AddAll("fmt", "Sprint", "Sprintf", "Printf", "Println")
 
 		expected := map[string]bool{
@@ -46,14 +46,14 @@ var _ = Describe("Call List", func() {
 	})
 
 	It("should be possible to add pointer call", func() {
-		Expect(calls).Should(HaveLen(0))
+		Expect(calls).Should(BeEmpty())
 		calls.Add("*bytes.Buffer", "WriteString")
 		actual := calls.ContainsPointer("*bytes.Buffer", "WriteString")
 		Expect(actual).Should(BeTrue())
 	})
 
 	It("should be possible to check pointer call", func() {
-		Expect(calls).Should(HaveLen(0))
+		Expect(calls).Should(BeEmpty())
 		calls.Add("bytes.Buffer", "WriteString")
 		actual := calls.ContainsPointer("*bytes.Buffer", "WriteString")
 		Expect(actual).Should(BeTrue())

@@ -77,7 +77,7 @@ var _ = Describe("Configuration", func() {
 	Context("when using global configuration options", func() {
 		It("should have a default global section", func() {
 			settings, err := configuration.Get("global")
-			Expect(err).Should(BeNil())
+			Expect(err).ShouldNot(HaveOccurred())
 			expectedType := make(map[gosec.GlobalOption]string)
 			Expect(settings).Should(BeAssignableToTypeOf(expectedType))
 		})
@@ -85,7 +85,7 @@ var _ = Describe("Configuration", func() {
 		It("should save global settings to correct section", func() {
 			configuration.SetGlobal(gosec.Nosec, "enabled")
 			settings, err := configuration.Get("global")
-			Expect(err).Should(BeNil())
+			Expect(err).ShouldNot(HaveOccurred())
 			if globals, ok := settings.(map[gosec.GlobalOption]string); ok {
 				Expect(globals["nosec"]).Should(MatchRegexp("enabled"))
 			} else {
@@ -93,14 +93,14 @@ var _ = Describe("Configuration", func() {
 			}
 
 			setValue, err := configuration.GetGlobal(gosec.Nosec)
-			Expect(err).Should(BeNil())
+			Expect(err).ShouldNot(HaveOccurred())
 			Expect(setValue).Should(MatchRegexp("enabled"))
 		})
 
 		It("should find global settings which are enabled", func() {
 			configuration.SetGlobal(gosec.Nosec, "enabled")
 			enabled, err := configuration.IsGlobalEnabled(gosec.Nosec)
-			Expect(err).Should(BeNil())
+			Expect(err).ShouldNot(HaveOccurred())
 			Expect(enabled).Should(BeTrue())
 		})
 
@@ -113,10 +113,10 @@ var _ = Describe("Configuration", func() {
 			}`
 			cfg := gosec.NewConfig()
 			_, err := cfg.ReadFrom(strings.NewReader(config))
-			Expect(err).Should(BeNil())
+			Expect(err).ShouldNot(HaveOccurred())
 
 			value, err := cfg.GetGlobal(gosec.Nosec)
-			Expect(err).Should(BeNil())
+			Expect(err).ShouldNot(HaveOccurred())
 			Expect(value).Should(Equal("enabled"))
 		})
 		It("should parse the global settings of other types from file", func() {
@@ -128,10 +128,10 @@ var _ = Describe("Configuration", func() {
 			}`
 			cfg := gosec.NewConfig()
 			_, err := cfg.ReadFrom(strings.NewReader(config))
-			Expect(err).Should(BeNil())
+			Expect(err).ShouldNot(HaveOccurred())
 
 			value, err := cfg.GetGlobal(gosec.Nosec)
-			Expect(err).Should(BeNil())
+			Expect(err).ShouldNot(HaveOccurred())
 			Expect(value).Should(Equal("true"))
 		})
 	})

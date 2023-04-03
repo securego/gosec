@@ -91,7 +91,7 @@ var _ = Describe("Helpers", func() {
 	Context("when excluding the dirs", func() {
 		It("should create a proper regexp", func() {
 			r := gosec.ExcludedDirsRegExp([]string{"test"})
-			Expect(len(r)).Should(Equal(1))
+			Expect(r).Should(HaveLen(1))
 			match := r[0].MatchString("/home/go/src/project/test/pkg")
 			Expect(match).Should(BeTrue())
 			match = r[0].MatchString("/home/go/src/project/vendor/pkg")
@@ -100,7 +100,7 @@ var _ = Describe("Helpers", func() {
 
 		It("should create a proper regexp for dir with subdir", func() {
 			r := gosec.ExcludedDirsRegExp([]string{`test/generated`})
-			Expect(len(r)).Should(Equal(1))
+			Expect(r).Should(HaveLen(1))
 			match := r[0].MatchString("/home/go/src/project/test/generated")
 			Expect(match).Should(BeTrue())
 			match = r[0].MatchString("/home/go/src/project/test/pkg")
@@ -111,9 +111,9 @@ var _ = Describe("Helpers", func() {
 
 		It("should create no regexp when dir list is empty", func() {
 			r := gosec.ExcludedDirsRegExp(nil)
-			Expect(len(r)).Should(Equal(0))
+			Expect(r).Should(BeEmpty())
 			r = gosec.ExcludedDirsRegExp([]string{})
-			Expect(len(r)).Should(Equal(0))
+			Expect(r).Should(BeEmpty())
 		})
 	})
 
@@ -281,7 +281,7 @@ var _ = Describe("Helpers", func() {
 			ast.Walk(visitor, ctx.Root)
 
 			operands := gosec.GetBinaryExprOperands(be)
-			Expect(len(operands)).Should(Equal(2))
+			Expect(operands).Should(HaveLen(2))
 		})
 		It("should return all operands of complex binary expression", func() {
 			pkg := testutils.NewTestPackage()
@@ -313,7 +313,7 @@ var _ = Describe("Helpers", func() {
 			ast.Walk(visitor, ctx.Root)
 
 			operands := gosec.GetBinaryExprOperands(be)
-			Expect(len(operands)).Should(Equal(4))
+			Expect(operands).Should(HaveLen(4))
 		})
 	})
 })

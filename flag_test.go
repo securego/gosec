@@ -18,7 +18,7 @@ var _ = Describe("Cli", func() {
 			flag.Var(&f, "test1", "")
 			flag.CommandLine.Init("test1", flag.ContinueOnError)
 			flag.Parse()
-			Expect(flag.Parsed()).Should(Equal(true))
+			Expect(flag.Parsed()).Should(BeTrue())
 			Expect(f.Value).Should(Equal(``))
 		})
 		It("value must be empty as parameter value contains invalid character without equal sign", func() {
@@ -27,7 +27,7 @@ var _ = Describe("Cli", func() {
 			flag.Var(&f, "test2", "")
 			flag.CommandLine.Init("test2", flag.ContinueOnError)
 			flag.Parse()
-			Expect(flag.Parsed()).Should(Equal(true))
+			Expect(flag.Parsed()).Should(BeTrue())
 			Expect(f.Value).Should(Equal(``))
 		})
 		It("value must not be empty as parameter value contains valid character", func() {
@@ -36,7 +36,7 @@ var _ = Describe("Cli", func() {
 			flag.Var(&f, "test3", "")
 			flag.CommandLine.Init("test3", flag.ContinueOnError)
 			flag.Parse()
-			Expect(flag.Parsed()).Should(Equal(true))
+			Expect(flag.Parsed()).Should(BeTrue())
 			Expect(f.Value).Should(Equal(`correct`))
 		})
 	})
