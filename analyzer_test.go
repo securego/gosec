@@ -36,7 +36,7 @@ var _ = Describe("Analyzer", func() {
 			err = analyzer.Process(buildTags, dir)
 			Expect(err).ShouldNot(HaveOccurred())
 			_, _, errors := analyzer.Report()
-			Expect(len(errors)).To(Equal(0))
+			Expect(errors).To(BeEmpty())
 		})
 
 		It("should report an error if the package fails to build", func() {
@@ -49,9 +49,9 @@ var _ = Describe("Analyzer", func() {
 			err = analyzer.Process(buildTags, pkg.Path)
 			Expect(err).ShouldNot(HaveOccurred())
 			_, _, errors := analyzer.Report()
-			Expect(len(errors)).To(Equal(1))
+			Expect(errors).To(HaveLen(1))
 			for _, ferr := range errors {
-				Expect(len(ferr)).To(Equal(1))
+				Expect(ferr).To(HaveLen(1))
 			}
 		})
 
@@ -155,7 +155,7 @@ var _ = Describe("Analyzer", func() {
 			_, _, errors := analyzer.Report()
 			foundErr := false
 			for _, ferr := range errors {
-				Expect(len(ferr)).To(Equal(1))
+				Expect(ferr).To(HaveLen(1))
 				match, err := regexp.MatchString(ferr[0].Err, `expected declaration, found '}'`)
 				if !match || err != nil {
 					continue
@@ -420,7 +420,7 @@ var _ = Describe("Analyzer", func() {
 			err = customAnalyzer.Process(buildTags, nosecPackage.Path)
 			Expect(err).ShouldNot(HaveOccurred())
 			nosecIssues, _, _ := customAnalyzer.Report()
-			Expect(nosecIssues).Should(HaveLen(0))
+			Expect(nosecIssues).Should(BeEmpty())
 		})
 
 		It("should ignore vulnerabilities when the default tag is found", func() {
@@ -443,7 +443,7 @@ var _ = Describe("Analyzer", func() {
 			err = customAnalyzer.Process(buildTags, nosecPackage.Path)
 			Expect(err).ShouldNot(HaveOccurred())
 			nosecIssues, _, _ := customAnalyzer.Report()
-			Expect(nosecIssues).Should(HaveLen(0))
+			Expect(nosecIssues).Should(BeEmpty())
 		})
 
 		It("should be able to analyze Go test package", func() {
@@ -511,7 +511,7 @@ var _ = Describe("Analyzer", func() {
 			err = customAnalyzer.Process(buildTags, pkg.Path)
 			Expect(err).ShouldNot(HaveOccurred())
 			issues, _, _ := customAnalyzer.Report()
-			Expect(issues).Should(HaveLen(0))
+			Expect(issues).Should(BeEmpty())
 		})
 	})
 	It("should be able to analyze Cgo files", func() {
@@ -527,7 +527,7 @@ var _ = Describe("Analyzer", func() {
 		err = analyzer.Process(buildTags, testPackage.Path)
 		Expect(err).ShouldNot(HaveOccurred())
 		issues, _, _ := analyzer.Report()
-		Expect(issues).Should(HaveLen(0))
+		Expect(issues).Should(BeEmpty())
 	})
 
 	Context("when parsing errors from a package", func() {
@@ -549,9 +549,9 @@ var _ = Describe("Analyzer", func() {
 			err := analyzer.ParseErrors(pkg)
 			Expect(err).ShouldNot(HaveOccurred())
 			_, _, errors := analyzer.Report()
-			Expect(len(errors)).To(Equal(1))
+			Expect(errors).To(HaveLen(1))
 			for _, ferr := range errors {
-				Expect(len(ferr)).To(Equal(1))
+				Expect(ferr).To(HaveLen(1))
 				Expect(ferr[0].Line).To(Equal(1))
 				Expect(ferr[0].Column).To(Equal(2))
 				Expect(ferr[0].Err).Should(MatchRegexp(`build error`))
@@ -570,9 +570,9 @@ var _ = Describe("Analyzer", func() {
 			err := analyzer.ParseErrors(pkg)
 			Expect(err).ShouldNot(HaveOccurred())
 			_, _, errors := analyzer.Report()
-			Expect(len(errors)).To(Equal(1))
+			Expect(errors).To(HaveLen(1))
 			for _, ferr := range errors {
-				Expect(len(ferr)).To(Equal(1))
+				Expect(ferr).To(HaveLen(1))
 				Expect(ferr[0].Line).To(Equal(0))
 				Expect(ferr[0].Column).To(Equal(0))
 				Expect(ferr[0].Err).Should(MatchRegexp(`build error`))
@@ -591,9 +591,9 @@ var _ = Describe("Analyzer", func() {
 			err := analyzer.ParseErrors(pkg)
 			Expect(err).ShouldNot(HaveOccurred())
 			_, _, errors := analyzer.Report()
-			Expect(len(errors)).To(Equal(1))
+			Expect(errors).To(HaveLen(1))
 			for _, ferr := range errors {
-				Expect(len(ferr)).To(Equal(1))
+				Expect(ferr).To(HaveLen(1))
 				Expect(ferr[0].Line).To(Equal(0))
 				Expect(ferr[0].Column).To(Equal(0))
 				Expect(ferr[0].Err).Should(MatchRegexp(`build error`))
@@ -642,9 +642,9 @@ var _ = Describe("Analyzer", func() {
 			err := analyzer.ParseErrors(pkg)
 			Expect(err).ShouldNot(HaveOccurred())
 			_, _, errors := analyzer.Report()
-			Expect(len(errors)).To(Equal(1))
+			Expect(errors).To(HaveLen(1))
 			for _, ferr := range errors {
-				Expect(len(ferr)).To(Equal(2))
+				Expect(ferr).To(HaveLen(2))
 				Expect(ferr[0].Line).To(Equal(1))
 				Expect(ferr[0].Column).To(Equal(2))
 				Expect(ferr[0].Err).Should(MatchRegexp(`error1`))
@@ -675,7 +675,7 @@ var _ = Describe("Analyzer", func() {
 		It("should skip error for non-buildable packages", func() {
 			analyzer.AppendError("test", errors.New(`loading file from package "pkg/test": no buildable Go source files in pkg/test`))
 			_, _, errors := analyzer.Report()
-			Expect(len(errors)).To(Equal(0))
+			Expect(errors).To(BeEmpty())
 		})
 
 		It("should add a new error", func() {
@@ -691,9 +691,9 @@ var _ = Describe("Analyzer", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			analyzer.AppendError("file", errors.New("file build error"))
 			_, _, errors := analyzer.Report()
-			Expect(len(errors)).To(Equal(1))
+			Expect(errors).To(HaveLen(1))
 			for _, ferr := range errors {
-				Expect(len(ferr)).To(Equal(2))
+				Expect(ferr).To(HaveLen(2))
 			}
 		})
 	})
