@@ -26,6 +26,11 @@ builds:
 signs:
 - cmd: cosign
   stdin: '{{ .Env.COSIGN_PASSWORD}}'
-  args: ["sign-blob", "--key=/tmp/cosign.key", "--output=${signature}", "${artifact}"]
+  args:
+  - "sign-blob"
+  - "--key=/tmp/cosign.key"
+  - "--output=${signature}"
+  - "${artifact}"
+  - "--yes"
   artifacts: all
 
