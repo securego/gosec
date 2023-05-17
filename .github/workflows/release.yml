@@ -68,7 +68,7 @@ jobs:
           push: true
           build-args: GO_VERSION=1.20
       - name: Sign Docker Image
-        run: cosign sign --yes --key /tmp/cosign.key ${TAGS}
+        run: cosign sign --yes --key /tmp/cosign.key ${DIGEST}
         env:
           TAGS: ${{steps.meta.outputs.tags}}
           COSIGN_PASSWORD: ${{secrets.COSIGN_PASSWORD}}
