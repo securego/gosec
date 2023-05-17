@@ -21,7 +21,7 @@ jobs:
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3
         with:
-          cosign-release: 'v1.13.1'
+          cosign-release: 'v2.0.2'
       - name: Store Cosign private key in a file
         run: 'echo "$COSIGN_KEY" > /tmp/cosign.key'
         shell: bash
@@ -68,7 +68,9 @@ jobs:
           push: true
           build-args: GO_VERSION=1.20
       - name: Sign Docker Image
-        run: cosign sign -key /tmp/cosign.key ${TAGS}
+        run: cosign sign --yes --key /tmp/cosign.key ${TAGS}
         env:
           TAGS: ${{steps.meta.outputs.tags}}
           COSIGN_PASSWORD: ${{secrets.COSIGN_PASSWORD}}
+          COSIGN_PRIVATE_KEY: /tmp/cosign.key
+          DIGEST: ${{steps.build-push-action.outputs.digest}}
