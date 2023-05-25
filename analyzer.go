@@ -449,10 +449,12 @@ func (gosec *Analyzer) ignore(n ast.Node) map[string]issue.SuppressionInfo {
 	if groups, ok := gosec.context.Comments[n]; ok && !gosec.ignoreNosec {
 
 		// Checks if an alternative for #nosec is set and, if not, uses the default.
-		noSecDefaultTag := "#nosec"
+		noSecDefaultTag := NoSecTag(string(Nosec))
 		noSecAlternativeTag, err := gosec.config.GetGlobal(NoSecAlternative)
 		if err != nil {
 			noSecAlternativeTag = noSecDefaultTag
+		} else {
+			noSecAlternativeTag = NoSecTag(noSecAlternativeTag)
 		}
 
 		for _, group := range groups {

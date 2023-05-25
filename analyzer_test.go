@@ -407,7 +407,7 @@ var _ = Describe("Analyzer", func() {
 
 			// overwrite nosec option
 			nosecIgnoreConfig := gosec.NewConfig()
-			nosecIgnoreConfig.SetGlobal(gosec.NoSecAlternative, "#falsePositive")
+			nosecIgnoreConfig.SetGlobal(gosec.NoSecAlternative, "falsePositive")
 			customAnalyzer := gosec.NewAnalyzer(nosecIgnoreConfig, tests, false, false, 1, logger)
 			customAnalyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G401")).RulesInfo())
 
@@ -430,7 +430,7 @@ var _ = Describe("Analyzer", func() {
 
 			// overwrite nosec option
 			nosecIgnoreConfig := gosec.NewConfig()
-			nosecIgnoreConfig.SetGlobal(gosec.NoSecAlternative, "#falsePositive")
+			nosecIgnoreConfig.SetGlobal(gosec.NoSecAlternative, "falsePositive")
 			customAnalyzer := gosec.NewAnalyzer(nosecIgnoreConfig, tests, false, false, 1, logger)
 			customAnalyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G401")).RulesInfo())
 
