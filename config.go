@@ -33,6 +33,11 @@ const (
 	SSA GlobalOption = "ssa"
 )
 
+// NoSecTag returns the tag used to disable gosec for a line of code.
+func NoSecTag(tag string) string {
+	return fmt.Sprintf("%s%s", "#", tag)
+}
+
 // Config is used to provide configuration and customization to each of the rules.
 type Config map[string]interface{}
 
