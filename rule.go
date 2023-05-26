@@ -43,7 +43,7 @@ func NewRuleSet() RuleSet {
 	return RuleSet{make(map[reflect.Type][]Rule), make(map[string]bool)}
 }
 
-// Register adds a trigger for the supplied rule for the the
+// Register adds a trigger for the supplied rule for the
 // specified ast nodes.
 func (r RuleSet) Register(rule Rule, isSuppressed bool, nodes ...ast.Node) {
 	for _, n := range nodes {

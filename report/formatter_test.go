@@ -188,7 +188,7 @@ var _ = Describe("Formatter", func() {
 			Expect(*issues).To(Equal(*want))
 		})
 
-		It("it should parse the report info for multiple projects projects", func() {
+		It("it should parse the report info for multiple projects", func() {
 			data := &gosec.ReportInfo{
 				Errors: map[string][]gosec.Error{},
 				Issues: []*issue.Issue{

@@ -301,7 +301,7 @@ func Getenv(key, userDefault string) string {
 	return userDefault
 }
 
-// GetPkgRelativePath returns the Go relative relative path derived
+// GetPkgRelativePath returns the Go relative path derived
 // form the given path
 func GetPkgRelativePath(path string) (string, error) {
 	abspath, err := filepath.Abs(path)
