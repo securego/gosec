@@ -46,7 +46,7 @@ func runSSRF(pass *analysis.Pass) (interface{}, error) {
 					if callee != nil {
 						ssaResult.Logger.Printf("callee: %s\n", callee)
 						return newIssue(pass.Analyzer.Name,
-							"not implemeted",
+							"not implemented",
 							pass.Fset, instr.Call.Pos(), issue.Low, issue.High), nil
 					}
 				}

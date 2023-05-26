@@ -143,7 +143,7 @@ var (
 	// output suppression information for auditing purposes
 	flagTrackSuppressions = flag.Bool("track-suppressions", false, "Output suppression information, including its kind and justification")
 
-	// exlude the folders from scan
+	// exclude the folders from scan
 	flagDirsExclude arrayFlags
 
 	logger *log.Logger

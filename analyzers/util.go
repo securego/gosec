@@ -28,7 +28,7 @@ import (
 )
 
 // SSAAnalyzerResult contains various information returned by the
-// SSA analysis along with some configuraion
+// SSA analysis along with some configuration
 type SSAAnalyzerResult struct {
 	Config map[string]interface{}
 	Logger *log.Logger
@@ -42,7 +42,7 @@ func BuildDefaultAnalyzers() []*analysis.Analyzer {
 	}
 }
 
-// getSSAResult retrives the SSA result from analysis pass
+// getSSAResult retrieves the SSA result from analysis pass
 func getSSAResult(pass *analysis.Pass) (*SSAAnalyzerResult, error) {
 	result, ok := pass.ResultOf[buildssa.Analyzer]
 	if !ok {

@@ -32,7 +32,7 @@ var _ = Describe("Helpers", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(paths).Should(Equal([]string{dir}))
 		})
-		It("should return the package package path", func() {
+		It("should return the package path", func() {
 			paths, err := gosec.PackagePaths(dir+"/...", nil)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(paths).Should(Equal([]string{dir}))

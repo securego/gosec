@@ -162,15 +162,15 @@ var _ = Describe("Sarif Formatter", func() {
 			sarifReport, err := sarif.GenerateReport([]string{}, reportInfo)
 
 			Expect(err).ShouldNot(HaveOccurred())
-			resultRuleIdexes := map[string]int{}
+			resultRuleIndexes := map[string]int{}
 			for _, result := range sarifReport.Runs[0].Results {
-				resultRuleIdexes[result.RuleID] = result.RuleIndex
+				resultRuleIndexes[result.RuleID] = result.RuleIndex
 			}
 			driverRuleIndexes := map[string]int{}
 			for ruleIndex, rule := range sarifReport.Runs[0].Tool.Driver.Rules {
 				driverRuleIndexes[rule.ID] = ruleIndex
 			}
-			Expect(resultRuleIdexes).Should(Equal(driverRuleIndexes))
+			Expect(resultRuleIndexes).Should(Equal(driverRuleIndexes))
 		})
 	})
 })
