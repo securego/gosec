@@ -3444,6 +3444,70 @@ func main() {
         fmt.Println(sampleString)
     }
 }`}, 0, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import (
+	"fmt"
+)
+
+type sampleStruct struct {
+	name string
+}
+
+func main() {
+	samples := []sampleStruct{
+		{name: "a"},
+		{name: "b"},
+	}
+	for _, sample := range samples {
+		fmt.Println(sample.name)
+	}
+}`}, 0, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import (
+	"fmt"
+)
+
+type sampleStruct struct {
+	name string
+}
+
+func main() {
+	samples := []sampleStruct{
+		{name: "a"},
+		{name: "b"},
+	}
+	for _, sample := range samples {
+		fmt.Println(&sample.name)
+	}
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import (
+	"fmt"
+)
+
+type subStruct struct {
+	name string
+}
+
+type sampleStruct struct {
+	sub subStruct
+}
+
+func main() {
+	samples := []sampleStruct{
+		{sub: subStruct{name: "a"}},
+		{sub: subStruct{name: "b"}},
+	}
+	for _, sample := range samples {
+		fmt.Println(&sample.sub.name)
+	}
+}`}, 1, gosec.NewConfig()},
 	}
 
 	// SampleCodeBuildTag - G601 build tags

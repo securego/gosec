@@ -28,6 +28,26 @@ func containsUnary(exprs []*ast.UnaryExpr, expr *ast.UnaryExpr) bool {
 	return false
 }
 
+func getIdentExpr(expr ast.Expr) *ast.Ident {
+	switch node := expr.(type) {
+	case *ast.Ident:
+		return node
+	case *ast.SelectorExpr:
+		return getIdentExpr(node.X)
+	case *ast.UnaryExpr:
+		switch e := node.X.(type) {
+		case *ast.Ident:
+			return e
+		case *ast.SelectorExpr:
+			return getIdentExpr(e.X)
+		default:
+			return nil
+		}
+	default:
+		return nil
+	}
+}
+
 func (r *implicitAliasing) Match(n ast.Node, c *gosec.Context) (*issue.Issue, error) {
 	switch node := n.(type) {
 	case *ast.RangeStmt:
@@ -72,8 +92,8 @@ func (r *implicitAliasing) Match(n ast.Node, c *gosec.Context) (*issue.Issue, er
 		}
 
 		// If we find a unary op of & (reference) of an object within r.aliases, complain.
-		if ident, ok := node.X.(*ast.Ident); ok && node.Op.String() == "&" {
-			if _, contains := r.aliases[ident.Obj]; contains {
+		if identExpr := getIdentExpr(node); identExpr != nil && node.Op.String() == "&" {
+			if _, contains := r.aliases[identExpr.Obj]; contains {
 				return c.NewIssue(n, r.ID(), r.What, r.Severity, r.Confidence), nil
 			}
 		}
