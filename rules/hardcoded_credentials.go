@@ -98,6 +98,7 @@ func (r *credentials) matchAssign(assign *ast.AssignStmt, ctx *gosec.Context) (*
 }
 
 func (r *credentials) matchValueSpec(valueSpec *ast.ValueSpec, ctx *gosec.Context) (*issue.Issue, error) {
+	// Match name
 	for index, ident := range valueSpec.Names {
 		if r.pattern.MatchString(ident.Name) && valueSpec.Values != nil {
 			// const foo, bar = "same value"
@@ -111,6 +112,18 @@ func (r *credentials) matchValueSpec(valueSpec *ast.ValueSpec, ctx *gosec.Contex
 			}
 		}
 	}
+
+	// Match values
+	for _, ident := range valueSpec.Values {
+		if val, err := gosec.GetString(ident); err == nil {
+			if r.patternValue.MatchString(val) {
+				if r.ignoreEntropy || (!r.ignoreEntropy && r.isHighEntropyString(val)) {
+					return ctx.NewIssue(valueSpec, r.ID(), r.What, r.Severity, r.Confidence), nil
+				}
+			}
+		}
+	}
+
 	return nil, nil
 }
 
