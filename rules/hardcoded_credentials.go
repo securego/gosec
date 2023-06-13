@@ -116,6 +116,12 @@ func (r *credentials) matchValueSpec(valueSpec *ast.ValueSpec, ctx *gosec.Contex
 
 func (r *credentials) matchEqualityCheck(binaryExpr *ast.BinaryExpr, ctx *gosec.Context) (*issue.Issue, error) {
 	if binaryExpr.Op == token.EQL || binaryExpr.Op == token.NEQ {
+		identStrConst, okLit := binaryExpr.X.(*ast.BasicLit)
+		if !okLit {
+			identStrConst, okLit = binaryExpr.Y.(*ast.BasicLit)
+		}
+
+		// Match for Ident Name
 		ident, ok := binaryExpr.X.(*ast.Ident)
 		if !ok {
 			ident, _ = binaryExpr.Y.(*ast.Ident)
@@ -132,6 +138,14 @@ func (r *credentials) matchEqualityCheck(binaryExpr *ast.BinaryExpr, ctx *gosec.
 				}
 			}
 		}
+		if okLit { // Match for literals
+			s, err := gosec.GetString(identStrConst)
+			if err == nil &&  r.patternValue.MatchString(s) {
+				if r.ignoreEntropy || (!r.ignoreEntropy && r.isHighEntropyString(s)) {
+					return ctx.NewIssue(binaryExpr, r.ID(), r.What, r.Severity, r.Confidence), nil
+				}
+			}
+		}
 	}
 	return nil, nil
 }
@@ -140,7 +154,7 @@ func (r *credentials) matchEqualityCheck(binaryExpr *ast.BinaryExpr, ctx *gosec.
 // assigned to variables that appear to be related to credentials.
 func NewHardcodedCredentials(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 	pattern := `(?i)passwd|pass|password|pwd|secret|token|pw|apiKey|bearer|cred`
-	patternValue := "(?i)[a-f0-9]{64}"
+	patternValue := "^(?i)[a-f0-9]{64}$"
 	entropyThreshold := 80.0
 	perCharThreshold := 3.0
 	ignoreEntropy := false
