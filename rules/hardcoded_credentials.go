@@ -29,6 +29,7 @@ import (
 type credentials struct {
 	issue.MetaData
 	pattern          *regexp.Regexp
+	patternValue	 *regexp.Regexp // Pattern for matching string values (LHS on assign statements)
 	entropyThreshold float64
 	perCharThreshold float64
 	truncate         int
@@ -70,9 +71,21 @@ func (r *credentials) Match(n ast.Node, ctx *gosec.Context) (*issue.Issue, error
 func (r *credentials) matchAssign(assign *ast.AssignStmt, ctx *gosec.Context) (*issue.Issue, error) {
 	for _, i := range assign.Lhs {
 		if ident, ok := i.(*ast.Ident); ok {
+			// Match the variable name
 			if r.pattern.MatchString(ident.Name) {
 				for _, e := range assign.Rhs {
 					if val, err := gosec.GetString(e); err == nil {
+						if r.ignoreEntropy || (!r.ignoreEntropy && r.isHighEntropyString(val)) {
+							return ctx.NewIssue(assign, r.ID(), r.What, r.Severity, r.Confidence), nil
+						}
+					}
+				}
+			}
+
+			// Match the value assigned
+			for _, e := range assign.Rhs {
+				if val, err := gosec.GetString(e); err == nil {
+					if r.patternValue.MatchString(val) {
 						if r.ignoreEntropy || (!r.ignoreEntropy && r.isHighEntropyString(val)) {
 							return ctx.NewIssue(assign, r.ID(), r.What, r.Severity, r.Confidence), nil
 						}
@@ -127,6 +140,7 @@ func (r *credentials) matchEqualityCheck(binaryExpr *ast.BinaryExpr, ctx *gosec.
 // assigned to variables that appear to be related to credentials.
 func NewHardcodedCredentials(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 	pattern := `(?i)passwd|pass|password|pwd|secret|token|pw|apiKey|bearer|cred`
+	patternValue := "(?i)[a-f0-9]{64}"
 	entropyThreshold := 80.0
 	perCharThreshold := 3.0
 	ignoreEntropy := false
@@ -138,6 +152,13 @@ func NewHardcodedCredentials(id string, conf gosec.Config) (gosec.Rule, []ast.No
 				pattern = cfgPattern
 			}
 		}
+
+		if configPatternValue, ok := conf["patternValue"]; ok {
+			if cfgPatternValue, ok := configPatternValue.(string); ok {
+				patternValue = cfgPatternValue
+			}
+		}
+
 		if configIgnoreEntropy, ok := conf["ignore_entropy"]; ok {
 			if cfgIgnoreEntropy, ok := configIgnoreEntropy.(bool); ok {
 				ignoreEntropy = cfgIgnoreEntropy
@@ -168,6 +189,7 @@ func NewHardcodedCredentials(id string, conf gosec.Config) (gosec.Rule, []ast.No
 
 	return &credentials{
 		pattern:          regexp.MustCompile(pattern),
+		patternValue:	  regexp.MustCompile(patternValue),
 		entropyThreshold: entropyThreshold,
 		perCharThreshold: perCharThreshold,
 		ignoreEntropy:    ignoreEntropy,
