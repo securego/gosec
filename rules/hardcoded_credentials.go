@@ -84,11 +84,15 @@ func (r *credentials) matchAssign(assign *ast.AssignStmt, ctx *gosec.Context) (*
 
 			// Match the value assigned
 			for _, e := range assign.Rhs {
-				if val, err := gosec.GetString(e); err == nil {
-					if r.patternValue.MatchString(val) {
-						if r.ignoreEntropy || r.isHighEntropyString(val) {
-							return ctx.NewIssue(assign, r.ID(), r.What, r.Severity, r.Confidence), nil
-						}
+				val, err := gosec.GetString(e); 
+				
+				if err != nil {
+					continue
+				}
+
+				if r.patternValue.MatchString(val) {
+					if r.ignoreEntropy || r.isHighEntropyString(val) {
+						return ctx.NewIssue(assign, r.ID(), r.What, r.Severity, r.Confidence), nil
 					}
 				}
 			}
