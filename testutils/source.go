@@ -265,6 +265,55 @@ func main() {
 }`}, 1, gosec.NewConfig()},
 	}
 
+	// SampleCodeG101 code snippets for hardcoded credentials
+	SampleCodeG101Values = []CodeSample{
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	username := "admin"
+	key := "472bb6c8c1871887cc117742ead362d688707d0442de930f7588db9d5ba091cc"
+	fmt.Println("Logging in with: ", username, key)
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+const (
+	b = "Bearer: c0df7a0f9b4a6a336029689b5df0712459a4f396c609ab05fd21a9097b4264f7"
+)
+
+func main() {
+	fmt.Println(b)
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+const (
+	tooLong = "key: c0df7a0f9b4a6a336029689b5df0712459a4f396c609ab05fd21a9097b4264f71294129"
+)
+
+func main() {
+	fmt.Println(tooLong)
+}`}, 0, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	b := "test"
+	if b == "b7997caa846af0c50c095d63d212be2fbaffd35c22c735a905ddba87d85618fd" {
+		fmt.Println(b)
+	}
+}`}, 1, gosec.NewConfig()},
+	}
+
 	// SampleCodeG102 code snippets for network binding
 	SampleCodeG102 = []CodeSample{
 		// Bind to all networks explicitly

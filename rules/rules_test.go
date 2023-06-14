@@ -55,6 +55,10 @@ var _ = Describe("gosec rules", func() {
 			runner("G101", testutils.SampleCodeG101)
 		})
 
+		It("should detect hardcoded credential values", func() {
+			runner("G101", testutils.SampleCodeG101Values)
+		})
+
 		It("should detect binding to all network interfaces", func() {
 			runner("G102", testutils.SampleCodeG102)
 		})
