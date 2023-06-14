@@ -151,9 +151,9 @@ func (r *credentials) matchEqualityCheck(binaryExpr *ast.BinaryExpr, ctx *gosec.
 			identStrConst, ok = binaryExpr.Y.(*ast.BasicLit)
 		}
 
-		if ok { // Match for literals
-			s, err := gosec.GetString(identStrConst)
-			if err == nil && r.patternValue.MatchString(s) {
+		if ok && identStrConst.Kind == token.STRING { // Match for literals
+			s, _ := gosec.GetString(identStrConst)
+			if r.patternValue.MatchString(s) {
 				if r.ignoreEntropy || r.isHighEntropyString(s) {
 					return ctx.NewIssue(binaryExpr, r.ID(), r.What, r.Severity, r.Confidence), nil
 				}

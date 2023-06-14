@@ -295,11 +295,23 @@ package main
 import "fmt"
 
 const (
-	tooLong = "key: c0df7a0f9b4a6a336029689b5df0712459a4f396c609ab05fd21a9097b4264f71294129"
+	tooLongConst = "key: c0df7a0f9b4a6a336029689b5df0712459a4f396c609ab05fd21a9097b4264f71294129"
 )
 
 func main() {
-	fmt.Println(tooLong)
+	fmt.Println(tooLongConst)
+}`}, 0, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+const (
+	tooShortConst = "key: c0df7a0f9b4a6a336029689b5df0712459a4f396c609ab05fd21a9097b4264f71294"
+)
+
+func main() {
+	fmt.Println(tooShortConst)
 }`}, 0, gosec.NewConfig()},
 		{[]string{`
 package main
@@ -307,11 +319,33 @@ package main
 import "fmt"
 
 func main() {
-	b := "test"
-	if b == "b7997caa846af0c50c095d63d212be2fbaffd35c22c735a905ddba87d85618fd" {
-		fmt.Println(b)
+	compareStr := "test"
+	if compareStr == "b7997caa846af0c50c095d63d212be2fbaffd35c22c735a905ddba87d85618fd" {
+		fmt.Println(compareStr)
 	}
 }`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	compareTooShort := "test"
+	if compareTooShort == "b7997caa846af0c50c095d63d212be2fbaffd35c22c735a905ddba87d85618d" {
+		fmt.Println(compareTooShort)
+	}
+}`}, 0, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	compareTooLong := "test"
+	if compareTooLong == "b7997caa846af0c50c095d63d212be2fbaffd35c22c735a905ddba87d85618fd11" {
+		fmt.Println(compareTooLong)
+	}
+}`}, 0, gosec.NewConfig()},
 	}
 
 	// SampleCodeG102 code snippets for network binding
