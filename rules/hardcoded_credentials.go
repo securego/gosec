@@ -71,7 +71,7 @@ func (r *credentials) Match(n ast.Node, ctx *gosec.Context) (*issue.Issue, error
 func (r *credentials) matchAssign(assign *ast.AssignStmt, ctx *gosec.Context) (*issue.Issue, error) {
 	for _, i := range assign.Lhs {
 		if ident, ok := i.(*ast.Ident); ok {
-			// Match the variable name
+			// First check LHS to find anything being assigned to variables whose name appears to be a cred
 			if r.pattern.MatchString(ident.Name) {
 				for _, e := range assign.Rhs {
 					if val, err := gosec.GetString(e); err == nil {
@@ -82,10 +82,9 @@ func (r *credentials) matchAssign(assign *ast.AssignStmt, ctx *gosec.Context) (*
 				}
 			}
 
-			// Match the value assigned
+			// Now that no names were matched, match the RHS to see if the actual values being assigned are creds
 			for _, e := range assign.Rhs {
-				val, err := gosec.GetString(e); 
-				
+				val, err := gosec.GetString(e)
 				if err != nil {
 					continue
 				}
@@ -102,7 +101,8 @@ func (r *credentials) matchAssign(assign *ast.AssignStmt, ctx *gosec.Context) (*
 }
 
 func (r *credentials) matchValueSpec(valueSpec *ast.ValueSpec, ctx *gosec.Context) (*issue.Issue, error) {
-	// Match name
+	// Running match against the variable name(s) first. Will catch any creds whose var name matches the pattern,
+	// then will go back over to check the values themselves.
 	for index, ident := range valueSpec.Names {
 		if r.pattern.MatchString(ident.Name) && valueSpec.Values != nil {
 			// const foo, bar = "same value"
@@ -117,7 +117,7 @@ func (r *credentials) matchValueSpec(valueSpec *ast.ValueSpec, ctx *gosec.Contex
 		}
 	}
 
-	// Match values
+	// Now that no variable names have been matched, match the actual values to find any creds
 	for _, ident := range valueSpec.Values {
 		if val, err := gosec.GetString(ident); err == nil {
 			if r.patternValue.MatchString(val) {
@@ -150,12 +150,14 @@ func (r *credentials) matchEqualityCheck(binaryExpr *ast.BinaryExpr, ctx *gosec.
 			}
 		}
 
+		// Now that the variable names have been checked, and no matches were found, make sure that
+		// either the left or right operands is a string literal so we can match the value.
 		identStrConst, ok := binaryExpr.X.(*ast.BasicLit)
 		if !ok {
 			identStrConst, ok = binaryExpr.Y.(*ast.BasicLit)
 		}
 
-		if ok && identStrConst.Kind == token.STRING { // Match for literals
+		if ok && identStrConst.Kind == token.STRING {
 			s, _ := gosec.GetString(identStrConst)
 			if r.patternValue.MatchString(s) {
 				if r.ignoreEntropy || r.isHighEntropyString(s) {
