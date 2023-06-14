@@ -346,7 +346,7 @@ func main() {
 		fmt.Println(compareTooLong)
 	}
 }`}, 0, gosec.NewConfig()},
-	{[]string{`
+		{[]string{`
 package main
 
 import "fmt"
@@ -357,7 +357,7 @@ func main() {
 		fmt.Println(compareGoogleAPI)
 	}
 }`}, 1, gosec.NewConfig()},
-	{[]string{`
+		{[]string{`
 package main
 
 import "fmt"
@@ -369,7 +369,7 @@ const (
 func main() {
 	fmt.Println(githubPAT)
 }`}, 1, gosec.NewConfig()},
-{[]string{`
+		{[]string{`
 package main
 
 import "fmt"
