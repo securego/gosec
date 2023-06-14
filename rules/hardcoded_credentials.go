@@ -173,7 +173,7 @@ func (r *credentials) matchEqualityCheck(binaryExpr *ast.BinaryExpr, ctx *gosec.
 // assigned to variables that appear to be related to credentials.
 func NewHardcodedCredentials(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 	pattern := `(?i)passwd|pass|password|pwd|secret|token|pw|apiKey|bearer|cred`
-	patternValue := "(?i)^(.*[:;,](\\s)*)?[a-f0-9]{64}$"
+	patternValue := "(?i)(^(.*[:;,](\\s)*)?[a-f0-9]{64}$)|(AIza[0-9A-Za-z-_]{35})|(^(.*[:;,](\\s)*)?github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59}$)|(^(.*[:;,](\\s)*)?[0-9a-zA-Z-_]{24}$)"
 	entropyThreshold := 80.0
 	perCharThreshold := 3.0
 	ignoreEntropy := false

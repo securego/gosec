@@ -346,6 +346,39 @@ func main() {
 		fmt.Println(compareTooLong)
 	}
 }`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	compareGoogleAPI := "test"
+	if compareGoogleAPI == "AIzajtGS_aJGkoiAmSbXzu9I-1eytAi9Lrlh-vT" {
+		fmt.Println(compareGoogleAPI)
+	}
+}`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+const (
+	githubPAT = "key: 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"
+)
+
+func main() {
+	fmt.Println(githubPAT)
+}`}, 1, gosec.NewConfig()},
+{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	username := "admin"
+	googOAuthSec := "uibYYslvAUKn2ORRJ7EaZtMs"
+	fmt.Println("Logging in with: ", username, googOAuthSec)
+}`}, 1, gosec.NewConfig()},
 	}
 
 	// SampleCodeG102 code snippets for network binding
