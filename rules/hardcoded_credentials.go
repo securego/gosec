@@ -29,7 +29,7 @@ import (
 type credentials struct {
 	issue.MetaData
 	pattern          *regexp.Regexp
-	patternValue	 *regexp.Regexp // Pattern for matching string values (LHS on assign statements)
+	patternValue     *regexp.Regexp // Pattern for matching string values (LHS on assign statements)
 	entropyThreshold float64
 	perCharThreshold float64
 	truncate         int
@@ -153,7 +153,7 @@ func (r *credentials) matchEqualityCheck(binaryExpr *ast.BinaryExpr, ctx *gosec.
 		}
 		if okLit { // Match for literals
 			s, err := gosec.GetString(identStrConst)
-			if err == nil &&  r.patternValue.MatchString(s) {
+			if err == nil && r.patternValue.MatchString(s) {
 				if r.ignoreEntropy || (!r.ignoreEntropy && r.isHighEntropyString(s)) {
 					return ctx.NewIssue(binaryExpr, r.ID(), r.What, r.Severity, r.Confidence), nil
 				}
@@ -216,7 +216,7 @@ func NewHardcodedCredentials(id string, conf gosec.Config) (gosec.Rule, []ast.No
 
 	return &credentials{
 		pattern:          regexp.MustCompile(pattern),
-		patternValue:	  regexp.MustCompile(patternValue),
+		patternValue:     regexp.MustCompile(patternValue),
 		entropyThreshold: entropyThreshold,
 		perCharThreshold: perCharThreshold,
 		ignoreEntropy:    ignoreEntropy,
