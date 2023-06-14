@@ -265,7 +265,7 @@ func main() {
 }`}, 1, gosec.NewConfig()},
 	}
 
-	// SampleCodeG101 code snippets for hardcoded credentials
+	// SampleCodeG101Values code snippets for hardcoded credentials
 	SampleCodeG101Values = []CodeSample{
 		{[]string{`
 package main

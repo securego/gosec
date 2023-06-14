@@ -86,7 +86,7 @@ func (r *credentials) matchAssign(assign *ast.AssignStmt, ctx *gosec.Context) (*
 			for _, e := range assign.Rhs {
 				if val, err := gosec.GetString(e); err == nil {
 					if r.patternValue.MatchString(val) {
-						if r.ignoreEntropy || (!r.ignoreEntropy && r.isHighEntropyString(val)) {
+						if r.ignoreEntropy || r.isHighEntropyString(val) {
 							return ctx.NewIssue(assign, r.ID(), r.What, r.Severity, r.Confidence), nil
 						}
 					}
@@ -117,7 +117,7 @@ func (r *credentials) matchValueSpec(valueSpec *ast.ValueSpec, ctx *gosec.Contex
 	for _, ident := range valueSpec.Values {
 		if val, err := gosec.GetString(ident); err == nil {
 			if r.patternValue.MatchString(val) {
-				if r.ignoreEntropy || (!r.ignoreEntropy && r.isHighEntropyString(val)) {
+				if r.ignoreEntropy || r.isHighEntropyString(val) {
 					return ctx.NewIssue(valueSpec, r.ID(), r.What, r.Severity, r.Confidence), nil
 				}
 			}
@@ -129,12 +129,6 @@ func (r *credentials) matchValueSpec(valueSpec *ast.ValueSpec, ctx *gosec.Contex
 
 func (r *credentials) matchEqualityCheck(binaryExpr *ast.BinaryExpr, ctx *gosec.Context) (*issue.Issue, error) {
 	if binaryExpr.Op == token.EQL || binaryExpr.Op == token.NEQ {
-		identStrConst, okLit := binaryExpr.X.(*ast.BasicLit)
-		if !okLit {
-			identStrConst, okLit = binaryExpr.Y.(*ast.BasicLit)
-		}
-
-		// Match for Ident Name
 		ident, ok := binaryExpr.X.(*ast.Ident)
 		if !ok {
 			ident, _ = binaryExpr.Y.(*ast.Ident)
@@ -151,10 +145,16 @@ func (r *credentials) matchEqualityCheck(binaryExpr *ast.BinaryExpr, ctx *gosec.
 				}
 			}
 		}
-		if okLit { // Match for literals
+
+		identStrConst, ok := binaryExpr.X.(*ast.BasicLit)
+		if !ok {
+			identStrConst, ok = binaryExpr.Y.(*ast.BasicLit)
+		}
+
+		if ok { // Match for literals
 			s, err := gosec.GetString(identStrConst)
 			if err == nil && r.patternValue.MatchString(s) {
-				if r.ignoreEntropy || (!r.ignoreEntropy && r.isHighEntropyString(s)) {
+				if r.ignoreEntropy || r.isHighEntropyString(s) {
 					return ctx.NewIssue(binaryExpr, r.ID(), r.What, r.Severity, r.Confidence), nil
 				}
 			}
