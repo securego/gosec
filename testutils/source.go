@@ -265,6 +265,122 @@ func main() {
 }`}, 1, gosec.NewConfig()},
 	}
 
+	// SampleCodeG101Values code snippets for hardcoded credentials
+	SampleCodeG101Values = []CodeSample{
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	username := "admin"
+	key := "472bb6c8c1871887cc117742ead362d688707d0442de930f7588db9d5ba091cc"
+	fmt.Println("Logging in with: ", username, key)
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+const (
+	b = "Bearer: c0df7a0f9b4a6a336029689b5df0712459a4f396c609ab05fd21a9097b4264f7"
+)
+
+func main() {
+	fmt.Println(b)
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+const (
+	tooLongConst = "key: c0df7a0f9b4a6a336029689b5df0712459a4f396c609ab05fd21a9097b4264f71294129"
+)
+
+func main() {
+	fmt.Println(tooLongConst)
+}`}, 0, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+const (
+	tooShortConst = "key: c0df7a0f9b4a6a336029689b5df0712459a4f396c609ab05fd21a9097b4264f71294"
+)
+
+func main() {
+	fmt.Println(tooShortConst)
+}`}, 0, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	compareStr := "test"
+	if compareStr == "b7997caa846af0c50c095d63d212be2fbaffd35c22c735a905ddba87d85618fd" {
+		fmt.Println(compareStr)
+	}
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	compareTooShort := "test"
+	if compareTooShort == "b7997caa846af0c50c095d63d212be2fbaffd35c22c735a905ddba87d85618d" {
+		fmt.Println(compareTooShort)
+	}
+}`}, 0, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	compareTooLong := "test"
+	if compareTooLong == "b7997caa846af0c50c095d63d212be2fbaffd35c22c735a905ddba87d85618fd11" {
+		fmt.Println(compareTooLong)
+	}
+}`}, 0, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	compareGoogleAPI := "test"
+	if compareGoogleAPI == "AIzajtGS_aJGkoiAmSbXzu9I-1eytAi9Lrlh-vT" {
+		fmt.Println(compareGoogleAPI)
+	}
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+const (
+	githubPAT = "key: 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"
+)
+
+func main() {
+	fmt.Println(githubPAT)
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	username := "admin"
+	googOAuthSec := "uibYYslvAUKn2ORRJ7EaZtMs"
+	fmt.Println("Logging in with: ", username, googOAuthSec)
+}`}, 1, gosec.NewConfig()},
+	}
+
 	// SampleCodeG102 code snippets for network binding
 	SampleCodeG102 = []CodeSample{
 		// Bind to all networks explicitly

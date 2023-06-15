@@ -29,6 +29,7 @@ import (
 type credentials struct {
 	issue.MetaData
 	pattern          *regexp.Regexp
+	patternValue     *regexp.Regexp // Pattern for matching string values (LHS on assign statements)
 	entropyThreshold float64
 	perCharThreshold float64
 	truncate         int
@@ -70,6 +71,7 @@ func (r *credentials) Match(n ast.Node, ctx *gosec.Context) (*issue.Issue, error
 func (r *credentials) matchAssign(assign *ast.AssignStmt, ctx *gosec.Context) (*issue.Issue, error) {
 	for _, i := range assign.Lhs {
 		if ident, ok := i.(*ast.Ident); ok {
+			// First check LHS to find anything being assigned to variables whose name appears to be a cred
 			if r.pattern.MatchString(ident.Name) {
 				for _, e := range assign.Rhs {
 					if val, err := gosec.GetString(e); err == nil {
@@ -79,12 +81,28 @@ func (r *credentials) matchAssign(assign *ast.AssignStmt, ctx *gosec.Context) (*
 					}
 				}
 			}
+
+			// Now that no names were matched, match the RHS to see if the actual values being assigned are creds
+			for _, e := range assign.Rhs {
+				val, err := gosec.GetString(e)
+				if err != nil {
+					continue
+				}
+
+				if r.patternValue.MatchString(val) {
+					if r.ignoreEntropy || r.isHighEntropyString(val) {
+						return ctx.NewIssue(assign, r.ID(), r.What, r.Severity, r.Confidence), nil
+					}
+				}
+			}
 		}
 	}
 	return nil, nil
 }
 
 func (r *credentials) matchValueSpec(valueSpec *ast.ValueSpec, ctx *gosec.Context) (*issue.Issue, error) {
+	// Running match against the variable name(s) first. Will catch any creds whose var name matches the pattern,
+	// then will go back over to check the values themselves.
 	for index, ident := range valueSpec.Names {
 		if r.pattern.MatchString(ident.Name) && valueSpec.Values != nil {
 			// const foo, bar = "same value"
@@ -98,6 +116,18 @@ func (r *credentials) matchValueSpec(valueSpec *ast.ValueSpec, ctx *gosec.Contex
 			}
 		}
 	}
+
+	// Now that no variable names have been matched, match the actual values to find any creds
+	for _, ident := range valueSpec.Values {
+		if val, err := gosec.GetString(ident); err == nil {
+			if r.patternValue.MatchString(val) {
+				if r.ignoreEntropy || r.isHighEntropyString(val) {
+					return ctx.NewIssue(valueSpec, r.ID(), r.What, r.Severity, r.Confidence), nil
+				}
+			}
+		}
+	}
+
 	return nil, nil
 }
 
@@ -119,6 +149,22 @@ func (r *credentials) matchEqualityCheck(binaryExpr *ast.BinaryExpr, ctx *gosec.
 				}
 			}
 		}
+
+		// Now that the variable names have been checked, and no matches were found, make sure that
+		// either the left or right operands is a string literal so we can match the value.
+		identStrConst, ok := binaryExpr.X.(*ast.BasicLit)
+		if !ok {
+			identStrConst, ok = binaryExpr.Y.(*ast.BasicLit)
+		}
+
+		if ok && identStrConst.Kind == token.STRING {
+			s, _ := gosec.GetString(identStrConst)
+			if r.patternValue.MatchString(s) {
+				if r.ignoreEntropy || r.isHighEntropyString(s) {
+					return ctx.NewIssue(binaryExpr, r.ID(), r.What, r.Severity, r.Confidence), nil
+				}
+			}
+		}
 	}
 	return nil, nil
 }
@@ -127,6 +173,7 @@ func (r *credentials) matchEqualityCheck(binaryExpr *ast.BinaryExpr, ctx *gosec.
 // assigned to variables that appear to be related to credentials.
 func NewHardcodedCredentials(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 	pattern := `(?i)passwd|pass|password|pwd|secret|token|pw|apiKey|bearer|cred`
+	patternValue := "(?i)(^(.*[:;,](\\s)*)?[a-f0-9]{64}$)|(AIza[0-9A-Za-z-_]{35})|(^(.*[:;,](\\s)*)?github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59}$)|(^(.*[:;,](\\s)*)?[0-9a-zA-Z-_]{24}$)"
 	entropyThreshold := 80.0
 	perCharThreshold := 3.0
 	ignoreEntropy := false
@@ -138,6 +185,13 @@ func NewHardcodedCredentials(id string, conf gosec.Config) (gosec.Rule, []ast.No
 				pattern = cfgPattern
 			}
 		}
+
+		if configPatternValue, ok := conf["patternValue"]; ok {
+			if cfgPatternValue, ok := configPatternValue.(string); ok {
+				patternValue = cfgPatternValue
+			}
+		}
+
 		if configIgnoreEntropy, ok := conf["ignore_entropy"]; ok {
 			if cfgIgnoreEntropy, ok := configIgnoreEntropy.(bool); ok {
 				ignoreEntropy = cfgIgnoreEntropy
@@ -168,6 +222,7 @@ func NewHardcodedCredentials(id string, conf gosec.Config) (gosec.Rule, []ast.No
 
 	return &credentials{
 		pattern:          regexp.MustCompile(pattern),
+		patternValue:     regexp.MustCompile(patternValue),
 		entropyThreshold: entropyThreshold,
 		perCharThreshold: perCharThreshold,
 		ignoreEntropy:    ignoreEntropy,
