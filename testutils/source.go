@@ -3766,5 +3766,18 @@ func main() {
 	fmt.Println(s[5])
 
 }`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+
+	s := make([]byte, 0)
+	s = make([]byte, 3)
+
+	fmt.Println(s[:3])
+
+}`}, 0, gosec.NewConfig()},
 	}
 )
