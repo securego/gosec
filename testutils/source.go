@@ -3679,4 +3679,23 @@ func main() {
         C.printData(cData)
 }
 `}, 0, gosec.NewConfig()}}
+
+	// SampleCodeG602 - Slice access out of bounds
+	SampleCodeG602 = []CodeSample{
+		{[]string{
+			`
+package main
+
+import "fmt"
+
+func main() {
+
+	bb := make([]byte, 0)
+
+	fmt.Println(bb[:3])
+
+}
+`,
+		}, 1, gosec.NewConfig()},
+	}
 )
