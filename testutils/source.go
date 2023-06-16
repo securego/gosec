@@ -3682,20 +3682,89 @@ func main() {
 
 	// SampleCodeG602 - Slice access out of bounds
 	SampleCodeG602 = []CodeSample{
-		{[]string{
-			`
+		{[]string{`
 package main
 
 import "fmt"
 
 func main() {
 
-	bb := make([]byte, 0)
+	s := make([]byte, 0)
 
-	fmt.Println(bb[:3])
+	fmt.Println(s[:3])
 
-}
-`,
-		}, 1, gosec.NewConfig()},
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+
+	s := make([]byte, 0)
+
+	fmt.Println(s[3:])
+
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+
+	s := make([]byte, 16)
+
+	fmt.Println(s[:17])
+
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+
+	s := make([]byte, 16)
+
+	fmt.Println(s[:16])
+
+}`}, 0, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+
+	s := make([]byte, 16)
+
+	fmt.Println(s[5:17])
+
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+
+	s := make([]byte, 4)
+
+	fmt.Println(s[3])
+
+}`}, 0, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+
+	s := make([]byte, 4)
+
+	fmt.Println(s[5])
+
+}`}, 1, gosec.NewConfig()},
 	}
 )

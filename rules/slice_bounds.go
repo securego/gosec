@@ -8,7 +8,6 @@ import (
 )
 
 type sliceOutOfBounds struct {
-	calls      gosec.CallList
 	sliceSizes map[string]int64
 	issue.MetaData
 }
@@ -23,6 +22,8 @@ func (s *sliceOutOfBounds) Match(node ast.Node, ctx *gosec.Context) (*issue.Issu
 		return s.matchAssign(node, ctx)
 	case *ast.SliceExpr:
 		return s.matchSliceExpr(node, ctx)
+	case *ast.IndexExpr:
+		return s.matchIndexExpr(node, ctx)
 	}
 	return nil, nil
 }
@@ -105,6 +106,31 @@ func (s *sliceOutOfBounds) matchSliceExpr(node *ast.SliceExpr, ctx *gosec.Contex
 	return nil, nil
 }
 
+func (s *sliceOutOfBounds) matchIndexExpr(node *ast.IndexExpr, ctx *gosec.Context) (*issue.Issue, error) {
+	// First get the slice name so we can check the size in our map
+	ident, ok := node.X.(*ast.Ident)
+	if !ok {
+		return nil, nil
+	}
+
+	// Get slice size from the map to compare it against high and low
+	sliceSize, ok := s.sliceSizes[ident.Name]
+	if !ok {
+		return nil, nil // Slice is not present in map, so doing nothing
+	}
+
+	// Get the index literal
+	indexIdent, ok := node.Index.(*ast.BasicLit)
+	if ok && indexIdent != nil {
+		index, _ := gosec.GetInt(indexIdent)
+		if index >= sliceSize {
+			return ctx.NewIssue(node, s.ID(), s.What, s.Severity, s.Confidence), nil
+		}
+	}
+
+	return nil, nil
+}
+
 func NewSliceBoundCheck(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	return &sliceOutOfBounds{
 		sliceSizes: make(map[string]int64),
@@ -114,5 +140,5 @@ func NewSliceBoundCheck(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 			Confidence: issue.Medium,
 			What:       "Potentially accessing slice out of bounds",
 		},
-	}, []ast.Node{(*ast.AssignStmt)(nil), (*ast.ValueSpec)(nil), (*ast.BinaryExpr)(nil), (*ast.SliceExpr)(nil)}
+	}, []ast.Node{(*ast.AssignStmt)(nil), (*ast.SliceExpr)(nil), (*ast.IndexExpr)(nil)}
 }
