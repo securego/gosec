@@ -3831,7 +3831,7 @@ func main() {
 }
 
 func doStuff(x []int) {
-	newSice := x[:10]
+	newSlice := x[:10]
 	fmt.Println(newSlice)
 }`}, 1, gosec.NewConfig()},
 	}

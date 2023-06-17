@@ -9,7 +9,9 @@ import (
 )
 
 type sliceOutOfBounds struct {
-	sliceCaps map[string]int64 // Capacities of slices
+	sliceCaps       map[string]int64 // Capacities of slices
+	currentScope    *ast.Scope       // Current scope. Map is cleared when scope changes.
+	currentFuncName string           // Current function. Slices are stored as funcName/sliceName.
 	issue.MetaData
 }
 
@@ -18,6 +20,13 @@ func (s *sliceOutOfBounds) ID() string {
 }
 
 func (s *sliceOutOfBounds) Match(node ast.Node, ctx *gosec.Context) (*issue.Issue, error) {
+	if s.currentScope == nil {
+		s.currentScope = ctx.Root.Scope
+	} else if s.currentScope != ctx.Root.Scope {
+		s.currentScope = ctx.Root.Scope
+		s.sliceCaps = make(map[string]int64)
+	}
+
 	switch node := node.(type) {
 	case *ast.AssignStmt:
 		return s.matchAssign(node, ctx)
@@ -25,6 +34,8 @@ func (s *sliceOutOfBounds) Match(node ast.Node, ctx *gosec.Context) (*issue.Issu
 		return s.matchSliceExpr(node, ctx)
 	case *ast.IndexExpr:
 		return s.matchIndexExpr(node, ctx)
+	case *ast.FuncDecl:
+		s.currentFuncName = node.Name.Name
 		//case *ast.CallExpr:
 		//return s.matchCallExpr(node, ctx)
 	}
@@ -60,7 +71,8 @@ func (s *sliceOutOfBounds) matchSliceMake(funcCall *ast.CallExpr, sliceName stri
 		return nil, nil
 	}
 
-	s.sliceCaps[sliceName] = sliceCap
+	s.sliceCaps[s.currentFuncName+"/"+sliceName] = sliceCap
+	log.Print(s.sliceCaps)
 	return nil, nil
 }
 
@@ -79,11 +91,10 @@ func (s *sliceOutOfBounds) matchSliceAssignment(node *ast.SliceExpr, sliceName s
 	}
 
 	// Get cap of old slice to calculate this new slice's cap
-	oldCap, ok := s.sliceCaps[ident.Name]
+	oldCap, ok := s.sliceCaps[s.currentFuncName+"/"+ident.Name]
 	if !ok {
 		return nil, nil
 	}
-	log.Print(ident.Name, " OLD CAP--", oldCap)
 
 	// Get and check low value
 	lowIdent, ok := node.Low.(*ast.BasicLit)
@@ -91,10 +102,9 @@ func (s *sliceOutOfBounds) matchSliceAssignment(node *ast.SliceExpr, sliceName s
 		low, _ := gosec.GetInt(lowIdent)
 
 		newCap := oldCap - low
-		log.Print(ident.Name, " NEW CAP--", newCap)
-		s.sliceCaps[sliceName] = newCap
+		s.sliceCaps[s.currentFuncName+"/"+sliceName] = newCap
 	} else if lowIdent == nil { // If no lower bound, capacity will be same
-		s.sliceCaps[sliceName] = oldCap
+		s.sliceCaps[s.currentFuncName+"/"+sliceName] = oldCap
 	}
 
 	log.Print(s.sliceCaps)
@@ -130,7 +140,7 @@ func (s *sliceOutOfBounds) matchSliceExpr(node *ast.SliceExpr, ctx *gosec.Contex
 	}
 
 	// Get slice cap from the map to compare it against high and low
-	sliceCap, ok := s.sliceCaps[ident.Name]
+	sliceCap, ok := s.sliceCaps[s.currentFuncName+"/"+ident.Name]
 	if !ok {
 		return nil, nil // Slice is not present in map, so doing nothing
 	}
@@ -153,6 +163,8 @@ func (s *sliceOutOfBounds) matchSliceExpr(node *ast.SliceExpr, ctx *gosec.Contex
 		}
 	}
 
+	log.Print(s.sliceCaps)
+
 	return nil, nil
 }
 
@@ -164,7 +176,7 @@ func (s *sliceOutOfBounds) matchIndexExpr(node *ast.IndexExpr, ctx *gosec.Contex
 	}
 
 	// Get slice cap from the map to compare it against high and low
-	sliceSize, ok := s.sliceCaps[ident.Name]
+	sliceSize, ok := s.sliceCaps[s.currentFuncName+"/"+ident.Name]
 	if !ok {
 		return nil, nil // Slice is not present in map, so doing nothing
 	}
@@ -193,5 +205,5 @@ func NewSliceBoundCheck(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 			Confidence: issue.Medium,
 			What:       "Potentially accessing slice out of bounds",
 		},
-	}, []ast.Node{(*ast.AssignStmt)(nil), (*ast.SliceExpr)(nil), (*ast.IndexExpr)(nil), (*ast.CallExpr)(nil)}
+	}, []ast.Node{(*ast.AssignStmt)(nil), (*ast.SliceExpr)(nil), (*ast.IndexExpr)(nil), (*ast.CallExpr)(nil), (*ast.FuncDecl)(nil)}
 }
