@@ -352,6 +352,8 @@ func (s *sliceOutOfBounds) matchIndexExpr(node *ast.IndexExpr, ctx *gosec.Contex
 	return nil, nil
 }
 
+// NewSliceBoundsCheck attempts to find any slices being accessed out of bounds
+// by reslicing or by being indexed.
 func NewSliceBoundCheck(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	sliceMapNil := make(map[string]*int64)
 	sliceMap := make(map[*ast.CallExpr]map[string]*int64)
