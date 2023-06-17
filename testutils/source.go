@@ -3834,5 +3834,27 @@ func doStuff(x []int) {
 	newSlice := x[:10]
 	fmt.Println(newSlice)
 }`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+
+	s := make([]int, 0, 30)
+	doStuff(s)
+	x := make([]int, 20)
+	y := x[10:]
+	doStuff(y)
+	z := y[5:]
+	doStuff(z)
+}
+
+func doStuff(x []int) {
+	newSlice := x[:10]
+	fmt.Println(newSlice)
+	newSlice2 := x[:6]
+	fmt.Println(newSlice2)
+}`}, 2, gosec.NewConfig()},
 	}
 )
