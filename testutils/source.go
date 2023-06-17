@@ -3779,5 +3779,60 @@ func main() {
 	fmt.Println(s[:3])
 
 }`}, 0, gosec.NewConfig()},
+
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+
+	s := make([]byte, 0, 4)
+
+	fmt.Println(s[:3])
+	fmt.Println(s[3])
+
+}`}, 0, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+
+	s := make([]byte, 0, 4)
+
+	fmt.Println(s[:5])
+	fmt.Println(s[7])
+
+}`}, 2, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+
+	s := make([]byte, 0, 4)
+	x := s[:2]
+	y := x[:10]
+	fmt.Println(y)
+}`}, 1, gosec.NewConfig()},
+
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+
+	s := make([]int, 0, 4)
+	doStuff(s)
+}
+
+func doStuff(x []int) {
+	newSice := x[:10]
+	fmt.Println(newSlice)
+}`}, 1, gosec.NewConfig()},
 	}
 )
