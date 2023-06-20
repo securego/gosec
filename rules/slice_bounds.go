@@ -8,6 +8,9 @@ import (
 	"github.com/securego/gosec/v2/issue"
 )
 
+// sliceOutOfBounds is a rule which checks for slices which are accessed outside their capacity,
+// either through indexing it out of bounds or through slice expressions whose low or high index
+// are out of bounds.
 type sliceOutOfBounds struct {
 	sliceCaps       map[*ast.CallExpr]map[string]*int64 // Capacities of slices. Maps function call -> var name -> value
 	currentScope    *types.Scope                        // Current scope. Map is cleared when scope changes.
@@ -16,6 +19,7 @@ type sliceOutOfBounds struct {
 	issue.MetaData
 }
 
+// ID returns the rule ID for sliceOutOfBounds: G602.
 func (s *sliceOutOfBounds) ID() string {
 	return s.MetaData.ID
 }
@@ -107,12 +111,16 @@ func (s *sliceOutOfBounds) setupCallArgCaps(callExpr *ast.CallExpr, ctx *gosec.C
 		case *ast.SliceExpr:
 			caps := s.evaluateSliceExpr(node, ctx)
 
-			// Simplifying assumption: use the lowest capacity. Storing all possibly capacities for slices passed
+			// Simplifying assumption: use the lowest capacity. Storing all possible capacities for slices passed
 			// to a function call would catch the most issues, but would require a data structure like a stack and a
 			// reworking of the code for scanning itself. Use the lowest capacity, as this would be more likely to
 			// raise an issue for being out of bounds.
 			var lowestCap *int64
 			for _, cap := range caps {
+				if cap == nil {
+					continue
+				}
+
 				if lowestCap == nil {
 					lowestCap = cap
 				} else if *lowestCap > *cap {
@@ -352,7 +360,7 @@ func (s *sliceOutOfBounds) matchIndexExpr(node *ast.IndexExpr, ctx *gosec.Contex
 	return nil, nil
 }
 
-// NewSliceBoundsCheck attempts to find any slices being accessed out of bounds
+// NewSliceBoundCheck attempts to find any slices being accessed out of bounds
 // by reslicing or by being indexed.
 func NewSliceBoundCheck(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	sliceMapNil := make(map[string]*int64)
