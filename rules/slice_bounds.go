@@ -1,6 +1,7 @@
 package rules
 
 import (
+	"fmt"
 	"go/ast"
 	"go/types"
 
@@ -12,11 +13,11 @@ import (
 // either through indexing it out of bounds or through slice expressions whose low or high index
 // are out of bounds.
 type sliceOutOfBounds struct {
-	sliceCaps       map[*ast.CallExpr]map[string]*int64 // Capacities of slices. Maps function call -> var name -> value
+	sliceCaps       map[*ast.CallExpr]map[string]*int64 // Capacities of slices. Maps function call -> var name -> value.
 	currentScope    *types.Scope                        // Current scope. Map is cleared when scope changes.
-	currentFuncName string                              // Current function
-	funcCallArgs    map[string][]*int64                 // Caps to load once a func declaration is scanned
-	issue.MetaData
+	currentFuncName string                              // Current function.
+	funcCallArgs    map[string][]*int64                 // Caps to load once a func declaration is scanned.
+	issue.MetaData                                      // Metadata for this rule.
 }
 
 // ID returns the rule ID for sliceOutOfBounds: G602.
@@ -53,7 +54,6 @@ func (s *sliceOutOfBounds) Match(node ast.Node, ctx *gosec.Context) (*issue.Issu
 			break
 		}
 
-		// TODO: Dont do this for calls to make
 		sliceMap := make(map[string]*int64)
 		s.sliceCaps[node] = sliceMap
 		s.setupCallArgCaps(node, ctx)
@@ -61,13 +61,15 @@ func (s *sliceOutOfBounds) Match(node ast.Node, ctx *gosec.Context) (*issue.Issu
 	return nil, nil
 }
 
+// updateSliceCaps takes in a variable name and a map of calls we are updating the variables for to the updated values
+// and will add it to the sliceCaps map.
 func (s *sliceOutOfBounds) updateSliceCaps(varName string, caps map[*ast.CallExpr]*int64) {
 	for callExpr, cap := range caps {
 		s.sliceCaps[callExpr][varName] = cap
 	}
 }
 
-// Get all calls for the current function
+// getAllCalls returns all CallExprs that are calls to the given function.
 func (s *sliceOutOfBounds) getAllCalls(funcName string, ctx *gosec.Context) []*ast.CallExpr {
 	calls := []*ast.CallExpr{}
 
@@ -87,19 +89,21 @@ func (s *sliceOutOfBounds) getAllCalls(funcName string, ctx *gosec.Context) []*a
 	return calls
 }
 
-// Gets all the capacities for slice with given name that are stored for each call to the current function we are looking at
+// getSliceCapsForFunc gets all the capacities for slice with given name that are stored for each call to the passed function.
 func (s *sliceOutOfBounds) getSliceCapsForFunc(funcName string, varName string, ctx *gosec.Context) map[*ast.CallExpr]*int64 {
 	caps := make(map[*ast.CallExpr]*int64)
 
 	calls := s.getAllCalls(funcName, ctx)
 	for _, call := range calls {
-		caps[call] = s.sliceCaps[call][varName]
+		if callCaps, ok := s.sliceCaps[call]; ok {
+			caps[call] = callCaps[varName]
+		}
 	}
 
 	return caps
 }
 
-// Evaluate and save the caps for any slices in the args so they can be validated when the function is scanned
+// setupCallArgCaps evaluates and saves the caps for any slices in the args so they can be validated when the function is scanned.
 func (s *sliceOutOfBounds) setupCallArgCaps(callExpr *ast.CallExpr, ctx *gosec.Context) {
 	// Array of caps to be loaded once the function declaration is scanned
 	funcCallArgs := []*int64{}
@@ -170,7 +174,7 @@ func (s *sliceOutOfBounds) setupCallArgCaps(callExpr *ast.CallExpr, ctx *gosec.C
 	s.funcCallArgs[funcName] = funcCallArgs
 }
 
-// Load caps that were saved for a call to this function
+// loadArgCaps loads caps that were saved for a call to this function.
 func (s *sliceOutOfBounds) loadArgCaps(funcDecl *ast.FuncDecl) {
 	sliceMap := make(map[string]*int64)
 	funcName := funcDecl.Name.Name
@@ -203,14 +207,15 @@ func (s *sliceOutOfBounds) loadArgCaps(funcDecl *ast.FuncDecl) {
 			continue
 		}
 
-		paramName := params[it].Names[0].Name
-		sliceMap[paramName] = capacity
+		if paramName := params[it].Names[0]; paramName != nil {
+			sliceMap[paramName.Name] = capacity
+		}
 	}
 
 	s.sliceCaps[&dummyCallExpr] = sliceMap
 }
 
-// Matches calls to make() and stores the capacity of the new slice in the map to compare against future slice usage
+// matchSliceMake matches calls to make() and stores the capacity of the new slice in the map to compare against future slice usage.
 func (s *sliceOutOfBounds) matchSliceMake(funcCall *ast.CallExpr, sliceName string, ctx *gosec.Context) (*issue.Issue, error) {
 	_, funcName, err := gosec.GetCallInfo(funcCall, ctx)
 	if err != nil || funcName != "make" {
@@ -248,6 +253,9 @@ func (s *sliceOutOfBounds) matchSliceMake(funcCall *ast.CallExpr, sliceName stri
 	return nil, nil
 }
 
+// evaluateSliceExpr takes a slice expression and evaluates what the capacity of said slice is for each of the
+// calls to the current function. Returns map of the call expressions of each call to the current function to
+// the evaluated capacities.
 func (s *sliceOutOfBounds) evaluateSliceExpr(node *ast.SliceExpr, ctx *gosec.Context) map[*ast.CallExpr]*int64 {
 	// Get ident to get name
 	ident, ok := node.X.(*ast.Ident)
@@ -277,11 +285,11 @@ func (s *sliceOutOfBounds) evaluateSliceExpr(node *ast.SliceExpr, ctx *gosec.Con
 	return caps
 }
 
-// Matches slice assignments, calculates capacity of slice if possible to store it in map
+// matchSliceAssignment matches slice assignments, calculates capacity of slice if possible to store it in map.
 func (s *sliceOutOfBounds) matchSliceAssignment(node *ast.SliceExpr, sliceName string, ctx *gosec.Context) (*issue.Issue, error) {
 	// First do the normal match that verifies the slice expr is not out of bounds
 	if i, err := s.matchSliceExpr(node, ctx); err != nil {
-		return i, err
+		return i, fmt.Errorf("There was an error while matching a slice expression to check slice bounds for %s: %w", sliceName, err)
 	}
 
 	// Now that the assignment is (presumably) successfully, we can calculate the capacity and add this new slice to the map
@@ -291,6 +299,7 @@ func (s *sliceOutOfBounds) matchSliceAssignment(node *ast.SliceExpr, sliceName s
 	return nil, nil
 }
 
+// matchAssign matches checks if an assignment statement is making a slice, or if it is assigning a slice.
 func (s *sliceOutOfBounds) matchAssign(node *ast.AssignStmt, ctx *gosec.Context) (*issue.Issue, error) {
 	// Check RHS for calls to make() so we can get the actual size of the slice
 	for it, i := range node.Rhs {
@@ -311,6 +320,7 @@ func (s *sliceOutOfBounds) matchAssign(node *ast.AssignStmt, ctx *gosec.Context)
 	return nil, nil
 }
 
+// matchSliceExpr validates that a given slice expression (eg, slice[10:30]) is not out of bounds.
 func (s *sliceOutOfBounds) matchSliceExpr(node *ast.SliceExpr, ctx *gosec.Context) (*issue.Issue, error) {
 	// First get the slice name so we can check the size in our map
 	ident, ok := node.X.(*ast.Ident)
@@ -348,6 +358,7 @@ func (s *sliceOutOfBounds) matchSliceExpr(node *ast.SliceExpr, ctx *gosec.Contex
 	return nil, nil
 }
 
+// matchIndexExpr validates that an index into a slice is not out of bounds.
 func (s *sliceOutOfBounds) matchIndexExpr(node *ast.IndexExpr, ctx *gosec.Context) (*issue.Issue, error) {
 	// First get the slice name so we can check the size in our map
 	ident, ok := node.X.(*ast.Ident)
