@@ -48,6 +48,12 @@ func (s *sliceOutOfBounds) Match(node ast.Node, ctx *gosec.Context) (*issue.Issu
 		s.currentFuncName = node.Name.Name
 		s.loadArgCaps(node)
 	case *ast.CallExpr:
+		if _, ok := node.Fun.(*ast.FuncLit); ok {
+			// Do nothing with func literals for now.
+			break
+		}
+
+		// TODO: Dont do this for calls to make
 		sliceMap := make(map[string]*int64)
 		s.sliceCaps[node] = sliceMap
 		s.setupCallArgCaps(node, ctx)
@@ -76,8 +82,6 @@ func (s *sliceOutOfBounds) getAllCalls(funcName string, ctx *gosec.Context) []*a
 			if callFuncName == funcName {
 				calls = append(calls, callExpr)
 			}
-		} else {
-			calls = append(calls, callExpr)
 		}
 	}
 	return calls
@@ -129,6 +133,7 @@ func (s *sliceOutOfBounds) setupCallArgCaps(callExpr *ast.CallExpr, ctx *gosec.C
 			}
 
 			if lowestCap == nil {
+				funcCallArgs = append(funcCallArgs, nil)
 				continue
 			}
 
@@ -136,13 +141,14 @@ func (s *sliceOutOfBounds) setupCallArgCaps(callExpr *ast.CallExpr, ctx *gosec.C
 			funcCallArgs = append(funcCallArgs, lowestCap)
 		case *ast.Ident:
 			ident := arg.(*ast.Ident)
-			caps := s.getSliceCapsForFunc(funcName, ident.Name, ctx)
+			caps := s.getSliceCapsForFunc(s.currentFuncName, ident.Name, ctx)
 
 			var lowestCap *int64
 			for _, cap := range caps {
 				if cap == nil {
 					continue
 				}
+
 				if lowestCap == nil {
 					lowestCap = cap
 				} else if *lowestCap > *cap {
@@ -151,6 +157,7 @@ func (s *sliceOutOfBounds) setupCallArgCaps(callExpr *ast.CallExpr, ctx *gosec.C
 			}
 
 			if lowestCap == nil {
+				funcCallArgs = append(funcCallArgs, nil)
 				continue
 			}
 
@@ -168,15 +175,22 @@ func (s *sliceOutOfBounds) loadArgCaps(funcDecl *ast.FuncDecl) {
 	sliceMap := make(map[string]*int64)
 	funcName := funcDecl.Name.Name
 
+	// Create a dummmy call expr for the new function. This is so we can still store args for
+	// functions which are not explicitly called in the code by other functions (specifically, main).
+	ident := ast.NewIdent(funcName)
+	dummyCallExpr := ast.CallExpr{
+		Fun: ident,
+	}
+
 	argCaps, ok := s.funcCallArgs[funcName]
 	if !ok || len(argCaps) == 0 {
-		s.sliceCaps[nil] = sliceMap
+		s.sliceCaps[&dummyCallExpr] = sliceMap
 		return
 	}
 
 	params := funcDecl.Type.Params.List
 	if len(params) > len(argCaps) {
-		return
+		return // Length of params and args doesn't match, so don't do anything with this.
 	}
 
 	for it := range params {
@@ -193,7 +207,7 @@ func (s *sliceOutOfBounds) loadArgCaps(funcDecl *ast.FuncDecl) {
 		sliceMap[paramName] = capacity
 	}
 
-	s.sliceCaps[nil] = sliceMap
+	s.sliceCaps[&dummyCallExpr] = sliceMap
 }
 
 // Matches calls to make() and stores the capacity of the new slice in the map to compare against future slice usage
@@ -247,6 +261,7 @@ func (s *sliceOutOfBounds) evaluateSliceExpr(node *ast.SliceExpr, ctx *gosec.Con
 		if oldCap == nil {
 			continue
 		}
+
 		// Get and check low value
 		lowIdent, ok := node.Low.(*ast.BasicLit)
 		if ok && lowIdent != nil {
@@ -363,9 +378,7 @@ func (s *sliceOutOfBounds) matchIndexExpr(node *ast.IndexExpr, ctx *gosec.Contex
 // NewSliceBoundCheck attempts to find any slices being accessed out of bounds
 // by reslicing or by being indexed.
 func NewSliceBoundCheck(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
-	sliceMapNil := make(map[string]*int64)
 	sliceMap := make(map[*ast.CallExpr]map[string]*int64)
-	sliceMap[nil] = sliceMapNil
 
 	return &sliceOutOfBounds{
 		sliceCaps:       sliceMap,
