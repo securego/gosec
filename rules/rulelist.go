@@ -107,6 +107,7 @@ func Generate(trackSuppressions bool, filters ...RuleFilter) RuleList {
 
 		// memory safety
 		{"G601", "Implicit memory aliasing in RangeStmt", NewImplicitAliasing},
+		{"G602", "Slice access out of bounds", NewSliceBoundCheck},
 	}
 
 	ruleMap := make(map[string]RuleDefinition)
