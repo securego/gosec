@@ -1596,6 +1596,28 @@ func main() {
 	// SampleCodeG202 - SQL query string building via string concatenation
 	SampleCodeG202 = []CodeSample{
 		{[]string{`
+      // infixed concatenation
+package main
+
+import (
+	"database/sql"
+	"os"
+)
+
+func main(){
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+
+  q := "INSERT INTO foo (name) VALUES ('" + os.Args[0] + "')"
+	rows, err := db.Query(q)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
 package main
 
 import (

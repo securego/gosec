@@ -79,8 +79,8 @@ func Generate(trackSuppressions bool, filters ...RuleFilter) RuleList {
 		{"G114", "Use of net/http serve function that has no support for setting timeouts", NewHTTPServeWithoutTimeouts},
 
 		// injection
-		{"G201", "SQL query construction using format string", NewSQLStrFormat},
 		{"G202", "SQL query construction using string concatenation", NewSQLStrConcat},
+		{"G201", "SQL query construction using format string", NewSQLStrFormat},
 		{"G203", "Use of unescaped data in HTML templates", NewTemplateCheck},
 		{"G204", "Audit use of command execution", NewSubproc},
 
