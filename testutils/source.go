@@ -1635,7 +1635,8 @@ func main(){
 		panic(err)
 	}
 	defer rows.Close()
-}`}, 1, gosec.NewConfig()}, {[]string{`
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
 // case insensitive match
 package main
 
@@ -1654,7 +1655,8 @@ func main(){
 		panic(err)
 	}
 	defer rows.Close()
-}`}, 1, gosec.NewConfig()}, {[]string{`
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
 // context match
 package main
 
@@ -1674,7 +1676,8 @@ func main(){
 		panic(err)
 	}
 	defer rows.Close()
-}`}, 1, gosec.NewConfig()}, {[]string{`
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
 // DB transaction check
 package main
 
@@ -1702,7 +1705,8 @@ func main(){
 	if err := tx.Commit(); err != nil {
 		panic(err)
 	}
-}`}, 1, gosec.NewConfig()}, {[]string{`
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
 // multiple string concatenation
 package main
 
@@ -1721,7 +1725,8 @@ func main(){
 		panic(err)
 	}
 	defer rows.Close()
-}`}, 1, gosec.NewConfig()}, {[]string{`
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
 // false positive
 package main
 
@@ -1740,7 +1745,8 @@ func main(){
 		panic(err)
 	}
 	defer rows.Close()
-}`}, 0, gosec.NewConfig()}, {[]string{`
+}`}, 0, gosec.NewConfig()},
+		{[]string{`
 package main
 
 import (
@@ -1762,7 +1768,8 @@ func main(){
 		}
 		defer rows.Close()
 }
-`}, 0, gosec.NewConfig()}, {[]string{`
+`}, 0, gosec.NewConfig()},
+		{[]string{`
 package main
 
 const gender = "M"
@@ -1788,7 +1795,8 @@ func main(){
 		}
 		defer rows.Close()
 }
-`}, 0, gosec.NewConfig()}, {[]string{`
+`}, 0, gosec.NewConfig()},
+		{[]string{`
 // ExecContext match
 package main
 
@@ -1809,7 +1817,8 @@ func main() {
 		panic(err)
 	}
 	fmt.Println(result)
-}`}, 1, gosec.NewConfig()}, {[]string{`
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
 // Exec match
 package main
 
@@ -1829,7 +1838,8 @@ func main() {
 		panic(err)
 	}
 	fmt.Println(result)
-}`}, 1, gosec.NewConfig()}, {[]string{`
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
 package main
 
 import (
