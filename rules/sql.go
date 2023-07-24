@@ -182,10 +182,6 @@ func (s *sqlStrConcat) checkQuery(call *ast.CallExpr, ctx *gosec.Context) (*issu
 
 		switch decl := id.Obj.Decl.(type) {
 		case *ast.AssignStmt:
-			if injection := s.findInjectionInBranch(ctx, decl.Lhs); injection != nil {
-				return ctx.NewIssue(injection, s.ID(), s.What, s.Severity, s.Confidence), nil
-			}
-
 			if injection := s.findInjectionInBranch(ctx, decl.Rhs); injection != nil {
 				return ctx.NewIssue(injection, s.ID(), s.What, s.Severity, s.Confidence), nil
 			}
