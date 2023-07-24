@@ -118,12 +118,12 @@ func GetStringRecursive(n ast.Node) (string, error) {
 		var err error
 		x, xerr := GetStringRecursive(expr.X)
 		if xerr != nil {
-			err = fmt.Errorf("%w Error on X branch in recursion: %w", xerr, err)
+			err = fmt.Errorf("%w Error on X branch in recursion: %v", err, xerr)
 		}
 
 		y, yerr := GetStringRecursive(expr.Y)
 		if yerr != nil {
-			err = fmt.Errorf("%w Error on Y branch in recursion: %w", yerr, err)
+			err = fmt.Errorf("%w Error on Y branch in recursion: %v", err, err)
 		}
 
 		return x + y, err
