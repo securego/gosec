@@ -114,21 +114,17 @@ func GetStringRecursive(n ast.Node) (string, error) {
 	}
 
 	if expr, ok := n.(*ast.BinaryExpr); ok {
-		var err error
-		x, xerr := GetStringRecursive(expr.X)
-		// TODO: replace this error formatting strangeness with errors.Join when gosec is bumped to go 1.20
-		if xerr != nil {
-			err = fmt.Errorf("Error on X branch in recursion: %w", xerr)
+		x, err := GetStringRecursive(expr.X)
+		if err != nil {
+			return "", err
 		}
 
-		y, yerr := GetStringRecursive(expr.Y)
-		if yerr != nil {
-			// Linter dislikes using non-%w formatting verbs for errors, but also doesn't like formatting with two %w statements.
-			// So we just add the string representation of the underlying error
-			err = fmt.Errorf("%w Error on Y branch in recursion: %v", err, yerr.Error())
+		y, err := GetStringRecursive(expr.Y)
+		if err != nil {
+			return "", err
 		}
 
-		return x + y, err
+		return x + y, nil
 	}
 
 	return "", nil
