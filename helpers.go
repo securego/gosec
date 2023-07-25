@@ -107,8 +107,7 @@ func GetChar(n ast.Node) (byte, error) {
 // Do note that this will omit non-string values. So for example, if you were to use this node:
 // ```go
 // q := "SELECT * FROM foo WHERE name = '" + os.Args[0] + "' AND 1=1" // will result in "SELECT * FROM foo WHERE ” AND 1=1"
-//
-// ```
+
 func GetStringRecursive(n ast.Node) (string, error) {
 	if node, ok := n.(*ast.BasicLit); ok && node.Kind == token.STRING {
 		return strconv.Unquote(node.Value)
@@ -117,13 +116,14 @@ func GetStringRecursive(n ast.Node) (string, error) {
 	if expr, ok := n.(*ast.BinaryExpr); ok {
 		var err error
 		x, xerr := GetStringRecursive(expr.X)
+		// TODO: replace this error formatting strangeness with errors.Join when gosec is bumped to go 1.20
 		if xerr != nil {
-			err = fmt.Errorf("%w Error on X branch in recursion: %v", err, xerr)
+			err = fmt.Errorf("Error on X branch in recursion: %w", xerr)
 		}
 
 		y, yerr := GetStringRecursive(expr.Y)
 		if yerr != nil {
-			err = fmt.Errorf("%w Error on Y branch in recursion: %v", err, err)
+			err = fmt.Errorf("%w Error on Y branch in recursion: %v", err, yerr.Error())
 		}
 
 		return x + y, err
