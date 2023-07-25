@@ -123,6 +123,8 @@ func GetStringRecursive(n ast.Node) (string, error) {
 
 		y, yerr := GetStringRecursive(expr.Y)
 		if yerr != nil {
+			// Linter dislikes using non-%w formatting verbs for errors, but also doesn't like formatting with two %w statements.
+			// So we just add the string representation of the underlying error
 			err = fmt.Errorf("%w Error on Y branch in recursion: %v", err, yerr.Error())
 		}
 
