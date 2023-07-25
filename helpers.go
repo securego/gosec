@@ -96,11 +96,46 @@ func GetChar(n ast.Node) (byte, error) {
 	return 0, fmt.Errorf("Unexpected AST node type: %T", n)
 }
 
+// GetStringRecursive will recursively walk down a tree of *ast.BinaryExpr. It will then concat the results, and return.
+// Unlike the other getters, it does _not_ raise an error for unknown ast.Node types. At the base, the recursion will hit a non-BinaryExpr type,
+// either BasicLit or other, so it's not an error case. It will only error if `strconv.Unquote` errors. This matters, because there's
+// currently functionality that relies on error values being returned by GetString if and when it hits a non-basiclit string node type,
+// hence for cases where recursion is needed, we use this separate function, so that we can still be backwards compatbile.
+//
+// This was added to handle a SQL injection concatenation case where the injected value is infixed between two strings, not at the start or end. See example below
+//
+// Do note that this will omit non-string values. So for example, if you were to use this node:
+// ```go
+// q := "SELECT * FROM foo WHERE name = '" + os.Args[0] + "' AND 1=1" // will result in "SELECT * FROM foo WHERE ” AND 1=1"
+
+func GetStringRecursive(n ast.Node) (string, error) {
+	if node, ok := n.(*ast.BasicLit); ok && node.Kind == token.STRING {
+		return strconv.Unquote(node.Value)
+	}
+
+	if expr, ok := n.(*ast.BinaryExpr); ok {
+		x, err := GetStringRecursive(expr.X)
+		if err != nil {
+			return "", err
+		}
+
+		y, err := GetStringRecursive(expr.Y)
+		if err != nil {
+			return "", err
+		}
+
+		return x + y, nil
+	}
+
+	return "", nil
+}
+
 // GetString will read and return a string value from an ast.BasicLit
 func GetString(n ast.Node) (string, error) {
 	if node, ok := n.(*ast.BasicLit); ok && node.Kind == token.STRING {
 		return strconv.Unquote(node.Value)
 	}
+
 	return "", fmt.Errorf("Unexpected AST node type: %T", n)
 }
 
@@ -201,22 +236,21 @@ func GetCallStringArgsValues(n ast.Node, _ *Context) []string {
 	return values
 }
 
-// GetIdentStringValues return the string values of an Ident if they can be resolved
-func GetIdentStringValues(ident *ast.Ident) []string {
+func getIdentStringValues(ident *ast.Ident, stringFinder func(ast.Node) (string, error)) []string {
 	values := []string{}
 	obj := ident.Obj
 	if obj != nil {
 		switch decl := obj.Decl.(type) {
 		case *ast.ValueSpec:
 			for _, v := range decl.Values {
-				value, err := GetString(v)
+				value, err := stringFinder(v)
 				if err == nil {
 					values = append(values, value)
 				}
 			}
 		case *ast.AssignStmt:
 			for _, v := range decl.Rhs {
-				value, err := GetString(v)
+				value, err := stringFinder(v)
 				if err == nil {
 					values = append(values, value)
 				}
@@ -224,6 +258,18 @@ func GetIdentStringValues(ident *ast.Ident) []string {
 		}
 	}
 	return values
+}
+
+// getIdentStringRecursive returns the string of values of an Ident if they can be resolved
+// The difference between this and GetIdentStringValues is that it will attempt to resolve the strings recursively,
+// if it is passed a *ast.BinaryExpr. See GetStringRecursive for details
+func GetIdentStringValuesRecursive(ident *ast.Ident) []string {
+	return getIdentStringValues(ident, GetStringRecursive)
+}
+
+// GetIdentStringValues return the string values of an Ident if they can be resolved
+func GetIdentStringValues(ident *ast.Ident) []string {
+	return getIdentStringValues(ident, GetString)
 }
 
 // GetBinaryExprOperands returns all operands of a binary expression by traversing

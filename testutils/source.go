@@ -1712,6 +1712,28 @@ func main() {
 	// SampleCodeG202 - SQL query string building via string concatenation
 	SampleCodeG202 = []CodeSample{
 		{[]string{`
+      // infixed concatenation
+package main
+
+import (
+	"database/sql"
+	"os"
+)
+
+func main(){
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+
+  q := "INSERT INTO foo (name) VALUES ('" + os.Args[0] + "')"
+	rows, err := db.Query(q)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
 package main
 
 import (
@@ -1729,7 +1751,8 @@ func main(){
 		panic(err)
 	}
 	defer rows.Close()
-}`}, 1, gosec.NewConfig()}, {[]string{`
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
 // case insensitive match
 package main
 
@@ -1748,7 +1771,8 @@ func main(){
 		panic(err)
 	}
 	defer rows.Close()
-}`}, 1, gosec.NewConfig()}, {[]string{`
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
 // context match
 package main
 
@@ -1768,7 +1792,8 @@ func main(){
 		panic(err)
 	}
 	defer rows.Close()
-}`}, 1, gosec.NewConfig()}, {[]string{`
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
 // DB transaction check
 package main
 
@@ -1796,7 +1821,8 @@ func main(){
 	if err := tx.Commit(); err != nil {
 		panic(err)
 	}
-}`}, 1, gosec.NewConfig()}, {[]string{`
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
 // multiple string concatenation
 package main
 
@@ -1815,7 +1841,8 @@ func main(){
 		panic(err)
 	}
 	defer rows.Close()
-}`}, 1, gosec.NewConfig()}, {[]string{`
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
 // false positive
 package main
 
@@ -1834,7 +1861,8 @@ func main(){
 		panic(err)
 	}
 	defer rows.Close()
-}`}, 0, gosec.NewConfig()}, {[]string{`
+}`}, 0, gosec.NewConfig()},
+		{[]string{`
 package main
 
 import (
@@ -1856,7 +1884,8 @@ func main(){
 		}
 		defer rows.Close()
 }
-`}, 0, gosec.NewConfig()}, {[]string{`
+`}, 0, gosec.NewConfig()},
+		{[]string{`
 package main
 
 const gender = "M"
@@ -1882,7 +1911,8 @@ func main(){
 		}
 		defer rows.Close()
 }
-`}, 0, gosec.NewConfig()}, {[]string{`
+`}, 0, gosec.NewConfig()},
+		{[]string{`
 // ExecContext match
 package main
 
@@ -1903,7 +1933,8 @@ func main() {
 		panic(err)
 	}
 	fmt.Println(result)
-}`}, 1, gosec.NewConfig()}, {[]string{`
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
 // Exec match
 package main
 
@@ -1923,7 +1954,8 @@ func main() {
 		panic(err)
 	}
 	fmt.Println(result)
-}`}, 1, gosec.NewConfig()}, {[]string{`
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
 package main
 
 import (

@@ -98,6 +98,32 @@ func (s *sqlStrConcat) ID() string {
 	return s.MetaData.ID
 }
 
+// findInjectionInBranch walks diwb a set if expressions, and will create new issues if it finds SQL injections
+// This method assumes you've already verified that the branch contains SQL syntax
+func (s *sqlStrConcat) findInjectionInBranch(ctx *gosec.Context, branch []ast.Expr) *ast.BinaryExpr {
+	for _, node := range branch {
+		be, ok := node.(*ast.BinaryExpr)
+		if !ok {
+			continue
+		}
+
+		operands := gosec.GetBinaryExprOperands(be)
+
+		for _, op := range operands {
+			if _, ok := op.(*ast.BasicLit); ok {
+				continue
+			}
+
+			if ident, ok := op.(*ast.Ident); ok && s.checkObject(ident, ctx) {
+				continue
+			}
+
+			return be
+		}
+	}
+	return nil
+}
+
 // see if we can figure out what it is
 func (s *sqlStrConcat) checkObject(n *ast.Ident, c *gosec.Context) bool {
 	if n.Obj != nil {
@@ -140,6 +166,28 @@ func (s *sqlStrConcat) checkQuery(call *ast.CallExpr, ctx *gosec.Context) (*issu
 		}
 	}
 
+	// Handle the case where an injection occurs as an infixed string concatenation, ie "SELECT * FROM foo WHERE name = '" + os.Args[0] + "' AND 1=1"
+	if id, ok := query.(*ast.Ident); ok {
+		var match bool
+		for _, str := range gosec.GetIdentStringValuesRecursive(id) {
+			if s.MatchPatterns(str) {
+				match = true
+				break
+			}
+		}
+
+		if !match {
+			return nil, nil
+		}
+
+		switch decl := id.Obj.Decl.(type) {
+		case *ast.AssignStmt:
+			if injection := s.findInjectionInBranch(ctx, decl.Rhs); injection != nil {
+				return ctx.NewIssue(injection, s.ID(), s.What, s.Severity, s.Confidence), nil
+			}
+		}
+	}
+
 	return nil, nil
 }
 
@@ -157,6 +205,7 @@ func (s *sqlStrConcat) Match(n ast.Node, ctx *gosec.Context) (*issue.Issue, erro
 			return s.checkQuery(sqlQueryCall, ctx)
 		}
 	}
+
 	return nil, nil
 }
 
@@ -165,7 +214,7 @@ func NewSQLStrConcat(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	rule := &sqlStrConcat{
 		sqlStatement: sqlStatement{
 			patterns: []*regexp.Regexp{
-				regexp.MustCompile(`(?i)(SELECT|DELETE|INSERT|UPDATE|INTO|FROM|WHERE) `),
+				regexp.MustCompile("(?i)(SELECT|DELETE|INSERT|UPDATE|INTO|FROM|WHERE)( |\n|\r|\t)"),
 			},
 			MetaData: issue.MetaData{
 				ID:         id,
