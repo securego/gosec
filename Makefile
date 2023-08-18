@@ -11,7 +11,6 @@ endif
 BUILDFLAGS := "-w -s -X 'main.Version=$(GIT_TAG)' -X 'main.GitTag=$(GIT_TAG)' -X 'main.BuildDate=$(BUILD_DATE)'"
 CGO_ENABLED = 0
 GO := GO111MODULE=on go
-GO_NOMOD :=GO111MODULE=off go
 GOPATH ?= $(shell $(GO) env GOPATH)
 GOBIN ?= $(GOPATH)/bin
 GOSEC ?= $(GOBIN)/gosec
@@ -25,8 +24,8 @@ default:
 
 install-test-deps:
 	go install github.com/onsi/ginkgo/v2/ginkgo@latest
-	$(GO_NOMOD) get -u golang.org/x/crypto/ssh
-	$(GO_NOMOD) get -u github.com/lib/pq
+	go install golang.org/x/crypto/...@latest
+	go install github.com/lib/pq/...@latest
 
 install-govulncheck:
 	@if [ $(GO_MINOR_VERSION) -gt $(GOVULN_MIN_VERSION) ]; then \
@@ -89,5 +88,5 @@ image-push: image
 
 tlsconfig:
 	go generate ./...
-	
+
 .PHONY: test build clean release image image-push tlsconfig

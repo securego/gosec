@@ -1178,7 +1178,7 @@ func HelloServer(w http.ResponseWriter, r *http.Request) {
 			"fmt"
 			"net/http"
 		)
-		
+
 		func main() {
 			http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 				fmt.Fprintf(w, "Hello, %s!", r.URL.Path[1:])
@@ -1199,7 +1199,7 @@ func HelloServer(w http.ResponseWriter, r *http.Request) {
 			"time"
 			"net/http"
 		)
-		
+
 		func main() {
 			http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 				fmt.Fprintf(w, "Hello, %s!", r.URL.Path[1:])
@@ -1222,7 +1222,7 @@ func HelloServer(w http.ResponseWriter, r *http.Request) {
 			"time"
 			"net/http"
 		)
-		
+
 		func main() {
 			http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 				fmt.Fprintf(w, "Hello, %s!", r.URL.Path[1:])
@@ -3624,6 +3624,46 @@ type sampleStruct struct {
 }
 
 func main() {
+	samples := []*sampleStruct{
+		{name: "a"},
+		{name: "b"},
+	}
+	for _, sample := range samples {
+		fmt.Println(&sample)
+	}
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import (
+	"fmt"
+)
+
+type sampleStruct struct {
+	name string
+}
+
+func main() {
+	samples := []*sampleStruct{
+		{name: "a"},
+		{name: "b"},
+	}
+	for _, sample := range samples {
+		fmt.Println(&sample.name)
+	}
+}`}, 0, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import (
+	"fmt"
+)
+
+type sampleStruct struct {
+	name string
+}
+
+func main() {
 	samples := []sampleStruct{
 		{name: "a"},
 		{name: "b"},
@@ -3654,6 +3694,44 @@ func main() {
 	}
 	for _, sample := range samples {
 		fmt.Println(&sample.sub.name)
+	}
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import (
+	"fmt"
+)
+
+type subStruct struct {
+	name string
+}
+
+type sampleStruct struct {
+	sub subStruct
+}
+
+func main() {
+	samples := []*sampleStruct{
+		{sub: subStruct{name: "a"}},
+		{sub: subStruct{name: "b"}},
+	}
+	for _, sample := range samples {
+		fmt.Println(&sample.sub.name)
+	}
+}`}, 0, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import (
+	"fmt"
+)
+
+func main() {
+	one, two := 1, 2
+	samples := []*int{&one, &two}
+	for _, sample := range samples {
+		fmt.Println(&sample)
 	}
 }`}, 1, gosec.NewConfig()},
 	}
