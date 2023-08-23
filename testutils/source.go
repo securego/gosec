@@ -3966,5 +3966,19 @@ func doStuff(x []int) {
 	newSlice2 := x[:6]
 	fmt.Println(newSlice2)
 }`}, 2, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+  testMap := make(map[string]any, 0)
+  testMap["test1"] = map[string]interface{}{
+    "test2": map[string]interface{}{
+      "value": 0,
+    },
+  }
+  fmt.Println(testMap)
+}`}, 0, gosec.NewConfig()},
 	}
 )
