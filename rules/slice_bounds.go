@@ -233,6 +233,11 @@ func (s *sliceOutOfBounds) matchSliceMake(funcCall *ast.CallExpr, sliceName stri
 		return nil, nil // Unexpected, args should always be 2 or 3
 	}
 
+	// Check if the type of the slice is a map, since they should no be checked.
+	if _, ok := funcCall.Args[0].(*ast.MapType); ok {
+		return nil, nil
+	}
+
 	// Check and get the capacity of the slice passed to make. It must be a literal value, since we aren't evaluating the expression.
 	sliceCapLit, ok := funcCall.Args[capacityArg].(*ast.BasicLit)
 	if !ok {
