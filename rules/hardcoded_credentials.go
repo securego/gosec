@@ -59,7 +59,7 @@ var secretsPatterns = [...]secretPattern{
 	},
 	{
 		name:   "Amazon MWS Auth Token",
-		regexp: regexp.MustCompile(`amzn\\.mws\\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`),
+		regexp: regexp.MustCompile(`amzn\.mws\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`),
 	},
 	{
 		name:   "AWS AppSync GraphQL Key",
@@ -79,23 +79,23 @@ var secretsPatterns = [...]secretPattern{
 	},
 	{
 		name:   "Google API Key",
-		regexp: regexp.MustCompile(`AIza[0-9A-Za-z\\-_]{35}`),
+		regexp: regexp.MustCompile(`AIza[0-9A-Za-z\-_]{35}`),
 	},
 	{
 		name:   "Google Cloud Platform API Key",
-		regexp: regexp.MustCompile(`AIza[0-9A-Za-z\\-_]{35}`),
+		regexp: regexp.MustCompile(`AIza[0-9A-Za-z\-_]{35}`),
 	},
 	{
 		name:   "Google Cloud Platform OAuth",
-		regexp: regexp.MustCompile(`[0-9]+-[0-9A-Za-z_]{32}\\.apps\\.googleusercontent\\.com`),
+		regexp: regexp.MustCompile(`[0-9]+-[0-9A-Za-z_]{32}\.apps\.googleusercontent\.com`),
 	},
 	{
 		name:   "Google Drive API Key",
-		regexp: regexp.MustCompile(`AIza[0-9A-Za-z\\-_]{35}`),
+		regexp: regexp.MustCompile(`AIza[0-9A-Za-z\-_]{35}`),
 	},
 	{
 		name:   "Google Drive OAuth",
-		regexp: regexp.MustCompile(`[0-9]+-[0-9A-Za-z_]{32}\\.apps\\.googleusercontent\\.com`),
+		regexp: regexp.MustCompile(`[0-9]+-[0-9A-Za-z_]{32}\.apps\.googleusercontent\.com`),
 	},
 	{
 		name:   "Google (GCP) Service-account",
@@ -103,23 +103,23 @@ var secretsPatterns = [...]secretPattern{
 	},
 	{
 		name:   "Google Gmail API Key",
-		regexp: regexp.MustCompile(`AIza[0-9A-Za-z\\-_]{35}`),
+		regexp: regexp.MustCompile(`AIza[0-9A-Za-z\-_]{35}`),
 	},
 	{
 		name:   "Google Gmail OAuth",
-		regexp: regexp.MustCompile(`[0-9]+-[0-9A-Za-z_]{32}\\.apps\\.googleusercontent\\.com`),
+		regexp: regexp.MustCompile(`[0-9]+-[0-9A-Za-z_]{32}\.apps\.googleusercontent\.com`),
 	},
 	{
 		name:   "Google OAuth Access Token",
-		regexp: regexp.MustCompile(`ya29\\.[0-9A-Za-z\\-_]+`),
+		regexp: regexp.MustCompile(`ya29\.[0-9A-Za-z\-_]+`),
 	},
 	{
 		name:   "Google YouTube API Key",
-		regexp: regexp.MustCompile(`AIza[0-9A-Za-z\\-_]{35}`),
+		regexp: regexp.MustCompile(`AIza[0-9A-Za-z\-_]{35}`),
 	},
 	{
 		name:   "Google YouTube OAuth",
-		regexp: regexp.MustCompile(`[0-9]+-[0-9A-Za-z_]{32}\\.apps\\.googleusercontent\\.com`),
+		regexp: regexp.MustCompile(`[0-9]+-[0-9A-Za-z_]{32}\.apps\.googleusercontent\.com`),
 	},
 	{
 		name:   "Generic API Key",
@@ -147,7 +147,7 @@ var secretsPatterns = [...]secretPattern{
 	},
 	{
 		name:   "Slack Webhook",
-		regexp: regexp.MustCompile(`https://hooks\\.slack\\.com/services/T[a-zA-Z0-9_]{8}/B[a-zA-Z0-9_]{8}/[a-zA-Z0-9_]{24}`),
+		regexp: regexp.MustCompile(`https://hooks\.slack\.com/services/T[a-zA-Z0-9_]{8}/B[a-zA-Z0-9_]{8}/[a-zA-Z0-9_]{24}`),
 	},
 	{
 		name:   "Stripe API Key",
@@ -163,15 +163,15 @@ var secretsPatterns = [...]secretPattern{
 	},
 	{
 		name:   "Square Access Token",
-		regexp: regexp.MustCompile(`sq0atp-[0-9A-Za-z\\-_]{22}`),
+		regexp: regexp.MustCompile(`sq0atp-[0-9A-Za-z\-_]{22}`),
 	},
 	{
 		name:   "Square OAuth Secret",
-		regexp: regexp.MustCompile(`sq0csp-[0-9A-Za-z\\-_]{43}`),
+		regexp: regexp.MustCompile(`sq0csp-[0-9A-Za-z\-_]{43}`),
 	},
 	{
 		name:   "Telegram Bot API Key",
-		regexp: regexp.MustCompile(`[0-9]+:AA[0-9A-Za-z\\-_]{33}`),
+		regexp: regexp.MustCompile(`[0-9]+:AA[0-9A-Za-z\-_]{33}`),
 	},
 	{
 		name:   "Twilio API Key",
