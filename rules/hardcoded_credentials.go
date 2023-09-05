@@ -15,6 +15,7 @@
 package rules
 
 import (
+	"fmt"
 	"go/ast"
 	"go/token"
 	"regexp"
@@ -26,10 +27,169 @@ import (
 	"github.com/securego/gosec/v2/issue"
 )
 
+type secretPattern struct {
+	name   string
+	regexp *regexp.Regexp
+}
+
+var secretsPatterns = [...]secretPattern{
+	{
+		name:   "RSA private key",
+		regexp: regexp.MustCompile(`-----BEGIN RSA PRIVATE KEY-----`),
+	},
+	{
+		name:   "SSH (DSA) private key",
+		regexp: regexp.MustCompile(`-----BEGIN DSA PRIVATE KEY-----`),
+	},
+	{
+		name:   "SSH (EC) private key",
+		regexp: regexp.MustCompile(`-----BEGIN EC PRIVATE KEY-----`),
+	},
+	{
+		name:   "PGP private key block",
+		regexp: regexp.MustCompile(`-----BEGIN PGP PRIVATE KEY BLOCK-----`),
+	},
+	{
+		name:   "Slack Token",
+		regexp: regexp.MustCompile(`xox[pborsa]-[0-9]{12}-[0-9]{12}-[0-9]{12}-[a-z0-9]{32}`),
+	},
+	{
+		name:   "AWS API Key",
+		regexp: regexp.MustCompile(`AKIA[0-9A-Z]{16}`),
+	},
+	{
+		name:   "Amazon MWS Auth Token",
+		regexp: regexp.MustCompile(`amzn\.mws\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`),
+	},
+	{
+		name:   "AWS AppSync GraphQL Key",
+		regexp: regexp.MustCompile(`da2-[a-z0-9]{26}`),
+	},
+	{
+		name:   "GitHub personal access token",
+		regexp: regexp.MustCompile(`ghp_[a-zA-Z0-9]{36}`),
+	},
+	{
+		name:   "GitHub fine-grained access token",
+		regexp: regexp.MustCompile(`github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59}`),
+	},
+	{
+		name:   "GitHub action temporary token",
+		regexp: regexp.MustCompile(`ghs_[a-zA-Z0-9]{36}`),
+	},
+	{
+		name:   "Google API Key",
+		regexp: regexp.MustCompile(`AIza[0-9A-Za-z\-_]{35}`),
+	},
+	{
+		name:   "Google Cloud Platform API Key",
+		regexp: regexp.MustCompile(`AIza[0-9A-Za-z\-_]{35}`),
+	},
+	{
+		name:   "Google Cloud Platform OAuth",
+		regexp: regexp.MustCompile(`[0-9]+-[0-9A-Za-z_]{32}\.apps\.googleusercontent\.com`),
+	},
+	{
+		name:   "Google Drive API Key",
+		regexp: regexp.MustCompile(`AIza[0-9A-Za-z\-_]{35}`),
+	},
+	{
+		name:   "Google Drive OAuth",
+		regexp: regexp.MustCompile(`[0-9]+-[0-9A-Za-z_]{32}\.apps\.googleusercontent\.com`),
+	},
+	{
+		name:   "Google (GCP) Service-account",
+		regexp: regexp.MustCompile(`"type": "service_account"`),
+	},
+	{
+		name:   "Google Gmail API Key",
+		regexp: regexp.MustCompile(`AIza[0-9A-Za-z\-_]{35}`),
+	},
+	{
+		name:   "Google Gmail OAuth",
+		regexp: regexp.MustCompile(`[0-9]+-[0-9A-Za-z_]{32}\.apps\.googleusercontent\.com`),
+	},
+	{
+		name:   "Google OAuth Access Token",
+		regexp: regexp.MustCompile(`ya29\.[0-9A-Za-z\-_]+`),
+	},
+	{
+		name:   "Google YouTube API Key",
+		regexp: regexp.MustCompile(`AIza[0-9A-Za-z\-_]{35}`),
+	},
+	{
+		name:   "Google YouTube OAuth",
+		regexp: regexp.MustCompile(`[0-9]+-[0-9A-Za-z_]{32}\.apps\.googleusercontent\.com`),
+	},
+	{
+		name:   "Generic API Key",
+		regexp: regexp.MustCompile(`[aA][pP][iI]_?[kK][eE][yY].*[''|"][0-9a-zA-Z]{32,45}[''|"]`),
+	},
+	{
+		name:   "Generic Secret",
+		regexp: regexp.MustCompile(`[sS][eE][cC][rR][eE][tT].*[''|"][0-9a-zA-Z]{32,45}[''|"]`),
+	},
+	{
+		name:   "Heroku API Key",
+		regexp: regexp.MustCompile(`[hH][eE][rR][oO][kK][uU].*[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}`),
+	},
+	{
+		name:   "MailChimp API Key",
+		regexp: regexp.MustCompile(`[0-9a-f]{32}-us[0-9]{1,2}`),
+	},
+	{
+		name:   "Mailgun API Key",
+		regexp: regexp.MustCompile(`key-[0-9a-zA-Z]{32}`),
+	},
+	{
+		name:   "Password in URL",
+		regexp: regexp.MustCompile(`[a-zA-Z]{3,10}://[^/\\s:@]{3,20}:[^/\\s:@]{3,20}@.{1,100}["'\\s]`),
+	},
+	{
+		name:   "Slack Webhook",
+		regexp: regexp.MustCompile(`https://hooks\.slack\.com/services/T[a-zA-Z0-9_]{8}/B[a-zA-Z0-9_]{8}/[a-zA-Z0-9_]{24}`),
+	},
+	{
+		name:   "Stripe API Key",
+		regexp: regexp.MustCompile(`sk_live_[0-9a-zA-Z]{24}`),
+	},
+	{
+		name:   "Stripe API Key",
+		regexp: regexp.MustCompile(`sk_live_[0-9a-zA-Z]{24}`),
+	},
+	{
+		name:   "Stripe Restricted API Key",
+		regexp: regexp.MustCompile(`rk_live_[0-9a-zA-Z]{24}`),
+	},
+	{
+		name:   "Square Access Token",
+		regexp: regexp.MustCompile(`sq0atp-[0-9A-Za-z\-_]{22}`),
+	},
+	{
+		name:   "Square OAuth Secret",
+		regexp: regexp.MustCompile(`sq0csp-[0-9A-Za-z\-_]{43}`),
+	},
+	{
+		name:   "Telegram Bot API Key",
+		regexp: regexp.MustCompile(`[0-9]+:AA[0-9A-Za-z\-_]{33}`),
+	},
+	{
+		name:   "Twilio API Key",
+		regexp: regexp.MustCompile(`SK[0-9a-fA-F]{32}`),
+	},
+	{
+		name:   "Twitter Access Token",
+		regexp: regexp.MustCompile(`[tT][wW][iI][tT][tT][eE][rR].*[1-9][0-9]+-[0-9a-zA-Z]{40}`),
+	},
+	{
+		name:   "Twitter OAuth",
+		regexp: regexp.MustCompile(`[tT][wW][iI][tT][tT][eE][rR].*[''|"][0-9a-zA-Z]{35,44}[''|"]`),
+	},
+}
+
 type credentials struct {
 	issue.MetaData
 	pattern          *regexp.Regexp
-	patternValue     *regexp.Regexp // Pattern for matching string values (LHS on assign statements)
 	entropyThreshold float64
 	perCharThreshold float64
 	truncate         int
@@ -54,6 +214,15 @@ func (r *credentials) isHighEntropyString(str string) bool {
 	return (info.Entropy >= r.entropyThreshold ||
 		(info.Entropy >= (r.entropyThreshold/2) &&
 			entropyPerChar >= r.perCharThreshold))
+}
+
+func (r *credentials) isSecretPattern(str string) (bool, string) {
+	for _, pattern := range secretsPatterns {
+		if pattern.regexp.MatchString(str) {
+			return true, pattern.name
+		}
+	}
+	return false, ""
 }
 
 func (r *credentials) Match(n ast.Node, ctx *gosec.Context) (*issue.Issue, error) {
@@ -89,9 +258,9 @@ func (r *credentials) matchAssign(assign *ast.AssignStmt, ctx *gosec.Context) (*
 					continue
 				}
 
-				if r.patternValue.MatchString(val) {
-					if r.ignoreEntropy || r.isHighEntropyString(val) {
-						return ctx.NewIssue(assign, r.ID(), r.What, r.Severity, r.Confidence), nil
+				if r.ignoreEntropy || r.isHighEntropyString(val) {
+					if ok, patternName := r.isSecretPattern(val); ok {
+						return ctx.NewIssue(assign, r.ID(), fmt.Sprintf("%s: %s", r.What, patternName), r.Severity, r.Confidence), nil
 					}
 				}
 			}
@@ -120,9 +289,9 @@ func (r *credentials) matchValueSpec(valueSpec *ast.ValueSpec, ctx *gosec.Contex
 	// Now that no variable names have been matched, match the actual values to find any creds
 	for _, ident := range valueSpec.Values {
 		if val, err := gosec.GetString(ident); err == nil {
-			if r.patternValue.MatchString(val) {
-				if r.ignoreEntropy || r.isHighEntropyString(val) {
-					return ctx.NewIssue(valueSpec, r.ID(), r.What, r.Severity, r.Confidence), nil
+			if r.ignoreEntropy || r.isHighEntropyString(val) {
+				if ok, patternName := r.isSecretPattern(val); ok {
+					return ctx.NewIssue(valueSpec, r.ID(), fmt.Sprintf("%s: %s", r.What, patternName), r.Severity, r.Confidence), nil
 				}
 			}
 		}
@@ -159,9 +328,9 @@ func (r *credentials) matchEqualityCheck(binaryExpr *ast.BinaryExpr, ctx *gosec.
 
 		if ok && identStrConst.Kind == token.STRING {
 			s, _ := gosec.GetString(identStrConst)
-			if r.patternValue.MatchString(s) {
-				if r.ignoreEntropy || r.isHighEntropyString(s) {
-					return ctx.NewIssue(binaryExpr, r.ID(), r.What, r.Severity, r.Confidence), nil
+			if r.ignoreEntropy || r.isHighEntropyString(s) {
+				if ok, patternName := r.isSecretPattern(s); ok {
+					return ctx.NewIssue(binaryExpr, r.ID(), fmt.Sprintf("%s: %s", r.What, patternName), r.Severity, r.Confidence), nil
 				}
 			}
 		}
@@ -173,7 +342,6 @@ func (r *credentials) matchEqualityCheck(binaryExpr *ast.BinaryExpr, ctx *gosec.
 // assigned to variables that appear to be related to credentials.
 func NewHardcodedCredentials(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 	pattern := `(?i)passwd|pass|password|pwd|secret|token|pw|apiKey|bearer|cred`
-	patternValue := "(?i)(^(.*[:;,](\\s)*)?[a-f0-9]{64}$)|(AIza[0-9A-Za-z-_]{35})|(^(.*[:;,](\\s)*)?github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59}$)|(^(.*[:;,](\\s)*)?[0-9a-zA-Z-_]{24}$)"
 	entropyThreshold := 80.0
 	perCharThreshold := 3.0
 	ignoreEntropy := false
@@ -183,12 +351,6 @@ func NewHardcodedCredentials(id string, conf gosec.Config) (gosec.Rule, []ast.No
 		if configPattern, ok := conf["pattern"]; ok {
 			if cfgPattern, ok := configPattern.(string); ok {
 				pattern = cfgPattern
-			}
-		}
-
-		if configPatternValue, ok := conf["patternValue"]; ok {
-			if cfgPatternValue, ok := configPatternValue.(string); ok {
-				patternValue = cfgPatternValue
 			}
 		}
 
@@ -222,7 +384,6 @@ func NewHardcodedCredentials(id string, conf gosec.Config) (gosec.Rule, []ast.No
 
 	return &credentials{
 		pattern:          regexp.MustCompile(pattern),
-		patternValue:     regexp.MustCompile(patternValue),
 		entropyThreshold: entropyThreshold,
 		perCharThreshold: perCharThreshold,
 		ignoreEntropy:    ignoreEntropy,
