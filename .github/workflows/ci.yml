@@ -10,7 +10,7 @@ jobs:
   test:
     strategy:
       matrix:
-        version: [{go: '1.19.13', golangci: 'v1.52.0'}, {go: '1.20.8', golangci: 'latest'}, {go: '1.21.1', golangci: 'latest'}]
+        version: [{go: '1.20.8', golangci: 'latest'}, {go: '1.21.1', golangci: 'latest'}]
     runs-on: ubuntu-latest
     env:
       GO111MODULE: on
