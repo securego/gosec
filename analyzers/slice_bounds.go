@@ -60,7 +60,7 @@ func runSliceBounds(pass *analysis.Pass) (interface{}, error) {
 			for _, instr := range block.Instrs {
 				switch instr := instr.(type) {
 				case *ssa.Alloc:
-					cap, err := extractSliceCapFromAlloc(instr.String())
+					sliceCap, err := extractSliceCapFromAlloc(instr.String())
 					if err != nil {
 						break
 					}
@@ -73,7 +73,7 @@ func runSliceBounds(pass *analysis.Pass) (interface{}, error) {
 							if _, ok := slice.X.(*ssa.Alloc); ok {
 								if slice.Parent() != nil {
 									l, h := extractSliceBounds(slice)
-									newCap := computeSliceNewCap(l, h, cap)
+									newCap := computeSliceNewCap(l, h, sliceCap)
 									violations := []ssa.Instruction{}
 									trackSliceBounds(newCap, slice, &violations, ifs)
 									for _, s := range violations {
@@ -155,7 +155,7 @@ func runSliceBounds(pass *analysis.Pass) (interface{}, error) {
 	return nil, nil
 }
 
-func trackSliceBounds(cap int, slice ssa.Node, violations *[]ssa.Instruction, ifs map[ssa.If]*ssa.BinOp) {
+func trackSliceBounds(sliceCap int, slice ssa.Node, violations *[]ssa.Instruction, ifs map[ssa.If]*ssa.BinOp) {
 	if violations == nil {
 		violations = &[]ssa.Instruction{}
 	}
@@ -164,16 +164,16 @@ func trackSliceBounds(cap int, slice ssa.Node, violations *[]ssa.Instruction, if
 		for _, refinstr := range *referrers {
 			switch refinstr := refinstr.(type) {
 			case *ssa.Slice:
-				checkAllSlicesBounds(cap, refinstr, violations, ifs)
+				checkAllSlicesBounds(sliceCap, refinstr, violations, ifs)
 				switch refinstr.X.(type) {
 				case *ssa.Alloc, *ssa.Parameter:
 					l, h := extractSliceBounds(refinstr)
-					newCap := computeSliceNewCap(l, h, cap)
+					newCap := computeSliceNewCap(l, h, sliceCap)
 					trackSliceBounds(newCap, refinstr, violations, ifs)
 				}
 			case *ssa.IndexAddr:
 				indexValue, err := extractIntValue(refinstr.Index.String())
-				if err == nil && !isSliceIndexInsideBounds(0, cap, indexValue) {
+				if err == nil && !isSliceIndexInsideBounds(0, sliceCap, indexValue) {
 					*violations = append(*violations, refinstr)
 				}
 			case *ssa.Call:
@@ -189,7 +189,7 @@ func trackSliceBounds(cap int, slice ssa.Node, violations *[]ssa.Instruction, if
 					if fn, ok := refinstr.Call.Value.(*ssa.Function); ok {
 						if len(fn.Params) > parPos && parPos > -1 {
 							param := fn.Params[parPos]
-							trackSliceBounds(cap, param, violations, ifs)
+							trackSliceBounds(sliceCap, param, violations, ifs)
 						}
 					}
 				}
@@ -198,18 +198,18 @@ func trackSliceBounds(cap int, slice ssa.Node, violations *[]ssa.Instruction, if
 	}
 }
 
-func checkAllSlicesBounds(cap int, slice *ssa.Slice, violations *[]ssa.Instruction, ifs map[ssa.If]*ssa.BinOp) {
+func checkAllSlicesBounds(sliceCap int, slice *ssa.Slice, violations *[]ssa.Instruction, ifs map[ssa.If]*ssa.BinOp) {
 	if violations == nil {
 		violations = &[]ssa.Instruction{}
 	}
 	sliceLow, sliceHigh := extractSliceBounds(slice)
-	if !isSliceInsideBounds(0, cap, sliceLow, sliceHigh) {
+	if !isSliceInsideBounds(0, sliceCap, sliceLow, sliceHigh) {
 		*violations = append(*violations, slice)
 	}
 	switch slice.X.(type) {
 	case *ssa.Alloc, *ssa.Parameter, *ssa.Slice:
 		l, h := extractSliceBounds(slice)
-		newCap := computeSliceNewCap(l, h, cap)
+		newCap := computeSliceNewCap(l, h, sliceCap)
 		trackSliceBounds(newCap, slice, violations, ifs)
 	}
 
@@ -220,11 +220,11 @@ func checkAllSlicesBounds(cap int, slice *ssa.Slice, violations *[]ssa.Instructi
 	for _, ref := range *references {
 		switch s := ref.(type) {
 		case *ssa.Slice:
-			checkAllSlicesBounds(cap, s, violations, ifs)
+			checkAllSlicesBounds(sliceCap, s, violations, ifs)
 			switch s.X.(type) {
 			case *ssa.Alloc, *ssa.Parameter:
 				l, h := extractSliceBounds(s)
-				newCap := computeSliceNewCap(l, h, cap)
+				newCap := computeSliceNewCap(l, h, sliceCap)
 				trackSliceBounds(newCap, s, violations, ifs)
 			}
 		}
@@ -252,12 +252,12 @@ func extractSliceIfLenCondition(call *ssa.Call) (*ssa.If, *ssa.BinOp) {
 	return nil, nil
 }
 
-func computeSliceNewCap(l, h, cap int) int {
+func computeSliceNewCap(l, h, oldCap int) int {
 	if l == 0 && h == 0 {
-		return cap
+		return oldCap
 	}
 	if l > 0 && h == 0 {
-		return cap - l
+		return oldCap - l
 	}
 	if l == 0 && h > 0 {
 		return h
@@ -359,10 +359,10 @@ func extractIntValue(value string) (int, error) {
 
 func extractSliceCapFromAlloc(instr string) (int, error) {
 	re := regexp.MustCompile(`new \[(\d+)\]*`)
-	var cap int
+	var sliceCap int
 	matches := re.FindAllStringSubmatch(instr, -1)
 	if matches == nil {
-		return cap, errors.New("no slice cap found")
+		return sliceCap, errors.New("no slice cap found")
 	}
 
 	if len(matches) > 0 {
