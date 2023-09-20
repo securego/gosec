@@ -231,9 +231,7 @@ func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error
 					return fmt.Errorf("parsing errors in pkg %q: %w", pkg.Name, err)
 				}
 				gosec.CheckRules(pkg)
-				if on, err := gosec.config.IsGlobalEnabled(SSA); err == nil && on {
-					gosec.CheckAnalyzers(pkg)
-				}
+				gosec.CheckAnalyzers(pkg)
 			}
 		}
 	}
@@ -377,8 +375,10 @@ func (gosec *Analyzer) CheckAnalyzers(pkg *packages.Package) {
 			continue
 		}
 		if result != nil {
-			if aissue, ok := result.(*issue.Issue); ok {
-				gosec.updateIssues(aissue, false, []issue.SuppressionInfo{})
+			if passIssues, ok := result.([]*issue.Issue); ok {
+				for _, iss := range passIssues {
+					gosec.updateIssues(iss, false, []issue.SuppressionInfo{})
+				}
 			}
 		}
 	}

@@ -3861,55 +3861,55 @@ func main() {
 
 }`}, 2, gosec.NewConfig()},
 		{[]string{`
-package main
+		package main
 
-import "fmt"
+		import "fmt"
 
-func main() {
+		func main() {
 
-	s := make([]byte, 0, 4)
-	x := s[:2]
-	y := x[:10]
-	fmt.Println(y)
-}`}, 1, gosec.NewConfig()},
+			s := make([]byte, 0, 4)
+			x := s[:2]
+			y := x[:10]
+			fmt.Println(y)
+		}`}, 1, gosec.NewConfig()},
 
 		{[]string{`
-package main
+		package main
 
-import "fmt"
+		import "fmt"
 
-func main() {
+		func main() {
 
-	s := make([]int, 0, 4)
-	doStuff(s)
-}
+			s := make([]int, 0, 4)
+			doStuff(s)
+		}
 
-func doStuff(x []int) {
-	newSlice := x[:10]
-	fmt.Println(newSlice)
-}`}, 1, gosec.NewConfig()},
+		func doStuff(x []int) {
+			newSlice := x[:10]
+			fmt.Println(newSlice)
+		}`}, 1, gosec.NewConfig()},
 		{[]string{`
-package main
+		package main
 
-import "fmt"
+		import "fmt"
 
-func main() {
+		func main() {
 
-	s := make([]int, 0, 30)
-	doStuff(s)
-	x := make([]int, 20)
-	y := x[10:]
-	doStuff(y)
-	z := y[5:]
-	doStuff(z)
-}
+			s := make([]int, 0, 30)
+			doStuff(s)
+			x := make([]int, 20)
+			y := x[10:]
+			doStuff(y)
+			z := y[5:]
+			doStuff(z)
+		}
 
-func doStuff(x []int) {
-	newSlice := x[:10]
-	fmt.Println(newSlice)
-	newSlice2 := x[:6]
-	fmt.Println(newSlice2)
-}`}, 2, gosec.NewConfig()},
+		func doStuff(x []int) {
+			newSlice := x[:10]
+			fmt.Println(newSlice)
+			newSlice2 := x[:6]
+			fmt.Println(newSlice2)
+		}`}, 2, gosec.NewConfig()},
 		{[]string{`
 package main
 
@@ -3923,6 +3923,49 @@ func main() {
     },
   }
   fmt.Println(testMap)
+}`}, 0, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+  s := make([]byte, 0)
+  if len(s) > 0 {
+    fmt.Println(s[0])
+  }
+}`}, 0, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+  s := make([]byte, 0)
+  if len(s) > 0 {
+    fmt.Println("fake test")
+  }
+  fmt.Println(s[0])
+}`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+  s := make([]int, 16)
+  for i := 0; i < 17; i++ {
+    s = append(s, i)
+  } 
+  if len(s) < 16 {
+      fmt.Println(s[10:16])
+  } else {
+      fmt.Println(s[3:18])
+  }
+  fmt.Println(s[0])
+  for i := range s {
+      fmt.Println(s[i])
+  }
 }`}, 0, gosec.NewConfig()},
 	}
 )

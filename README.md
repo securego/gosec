@@ -1,7 +1,7 @@
 
 # gosec - Golang Security Checker
 
-Inspects source code for security problems by scanning the Go AST.
+Inspects source code for security problems by scanning the Go AST and SSA code representation.
 
 <img src="https://securego.io/img/gosec.png" width="320">
 
