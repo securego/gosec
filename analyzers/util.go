@@ -38,7 +38,7 @@ type SSAAnalyzerResult struct {
 // BuildDefaultAnalyzers returns the default list of analyzers
 func BuildDefaultAnalyzers() []*analysis.Analyzer {
 	return []*analysis.Analyzer{
-		newSSRFAnalyzer("G107", "URL provided to HTTP request as taint input"),
+		newSliceBoundsAnalyzer("G602", "Possible slice bounds out of range"),
 	}
 }
 
