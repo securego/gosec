@@ -121,10 +121,9 @@ func NewMkdirPerms(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 
 type osCreatePermissions struct {
 	issue.MetaData
-	defaultMode int64
-	mode        int64
-	pkgs        []string
-	calls       []string
+	mode  int64
+	pkgs  []string
+	calls []string
 }
 
 const defaultOsCreateMode = 0o666
