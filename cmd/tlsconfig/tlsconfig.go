@@ -46,8 +46,8 @@ type Configuration struct {
 	ECDHParamSize         float64  `json:"ecdh_param_size"`
 	HstsMinAge            float64  `json:"hsts_min_age"`
 	OldestClients         []string `json:"oldest_clients"`
-	OCSPStample           bool     `json:"ocsp_staple"`
-	ServerPreferedOrder   bool     `json:"server_preferred_order"`
+	OCSPStaple            bool     `json:"ocsp_staple"`
+	ServerPreferredOrder  bool     `json:"server_preferred_order"`
 	MaxCertLifespan       float64  `json:"maximum_certificate_lifespan"`
 }
 
@@ -121,27 +121,27 @@ func getGoTLSConf() (goTLSConfiguration, error) {
 		panic(msg)
 	}
 
-	tlsConfg := goTLSConfiguration{}
+	tlsConfig := goTLSConfiguration{}
 
 	modern, err := getGoCipherConfig("modern", *sstls)
 	if err != nil {
-		return tlsConfg, err
+		return tlsConfig, err
 	}
-	tlsConfg.cipherConfigs = append(tlsConfg.cipherConfigs, modern)
+	tlsConfig.cipherConfigs = append(tlsConfig.cipherConfigs, modern)
 
 	intermediate, err := getGoCipherConfig("intermediate", *sstls)
 	if err != nil {
-		return tlsConfg, err
+		return tlsConfig, err
 	}
-	tlsConfg.cipherConfigs = append(tlsConfg.cipherConfigs, intermediate)
+	tlsConfig.cipherConfigs = append(tlsConfig.cipherConfigs, intermediate)
 
 	old, err := getGoCipherConfig("old", *sstls)
 	if err != nil {
-		return tlsConfg, err
+		return tlsConfig, err
 	}
-	tlsConfg.cipherConfigs = append(tlsConfg.cipherConfigs, old)
+	tlsConfig.cipherConfigs = append(tlsConfig.cipherConfigs, old)
 
-	return tlsConfg, nil
+	return tlsConfig, nil
 }
 
 func getCurrentDir() (string, error) {

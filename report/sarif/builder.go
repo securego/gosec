@@ -8,7 +8,7 @@ func NewReport(version string, schema string) *Report {
 	}
 }
 
-// WithRuns dafines runs for the current report
+// WithRuns defines runs for the current report
 func (r *Report) WithRuns(runs ...*Run) *Report {
 	r.Runs = runs
 	return r
