@@ -9,6 +9,7 @@ linters:
     - exportloopref
     - gci
     - ginkgolinter
+    - gochecknoinits
     - gofmt
     - gofumpt
     - goimports
