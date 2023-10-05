@@ -79,7 +79,7 @@ var _ = Describe("Issue", func() {
 			ast.Walk(v, ctx.Root)
 			Expect(target).ShouldNot(BeNil())
 
-			// Use hardcodeded rule to check assignment
+			// Use hardcoded rule to check assignment
 			cfg := gosec.NewConfig()
 			rule, _ := rules.NewHardcodedCredentials("TEST", cfg)
 			foundIssue, err := rule.Match(target, ctx)
