@@ -61,6 +61,7 @@ jobs:
           COSIGN_PASSWORD: ${{secrets.COSIGN_PASSWORD}}
       - name: Release Docker Image
         uses: docker/build-push-action@v5
+        id: relimage
         with:
           platforms: linux/amd64,linux/arm/v7,linux/arm64
           tags: ${{steps.meta.outputs.tags}}
@@ -73,4 +74,4 @@ jobs:
           TAGS: ${{steps.meta.outputs.tags}}
           COSIGN_PASSWORD: ${{secrets.COSIGN_PASSWORD}}
           COSIGN_PRIVATE_KEY: /tmp/cosign.key
-          DIGEST: ${{steps.build-push-action.outputs.digest}}
+          DIGEST: ${{steps.relimage.outputs.digest}}
