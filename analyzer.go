@@ -231,7 +231,9 @@ func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error
 					return fmt.Errorf("parsing errors in pkg %q: %w", pkg.Name, err)
 				}
 				gosec.CheckRules(pkg)
-				gosec.CheckAnalyzers(pkg)
+				if on, err := gosec.config.IsGlobalEnabled(SSA); err == nil && on {
+					gosec.CheckAnalyzers(pkg)
+				}
 			}
 		}
 	}
