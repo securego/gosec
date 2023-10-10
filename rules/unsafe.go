@@ -43,7 +43,7 @@ func (r *usingUnsafe) Match(n ast.Node, c *gosec.Context) (gi *issue.Issue, err 
 func NewUsingUnsafe(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	return &usingUnsafe{
 		pkg:   "unsafe",
-		calls: []string{"Alignof", "Offsetof", "Sizeof", "Pointer"},
+		calls: []string{"Pointer", "String", "StringData", "Slice", "SliceData"},
 		MetaData: issue.MetaData{
 			ID:         id,
 			What:       "Use of unsafe calls should be audited",
