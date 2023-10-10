@@ -436,16 +436,49 @@ type Fake struct{}
 func (Fake) Good() {}
 
 func main() {
-	unsafeM := Fake{}
-   	unsafeM.Good()
-   	intArray := [...]int{1, 2}
-   	fmt.Printf("\nintArray: %v\n", intArray)
-   	intPtr := &intArray[0]
-   	fmt.Printf("\nintPtr=%p, *intPtr=%d.\n", intPtr, *intPtr)
-   	addressHolder := uintptr(unsafe.Pointer(intPtr)) + unsafe.Sizeof(intArray[0])
-   	intPtr = (*int)(unsafe.Pointer(addressHolder))
-   	fmt.Printf("\nintPtr=%p, *intPtr=%d.\n\n", intPtr, *intPtr)
-}`}, 3, gosec.NewConfig()},
+  unsafeM := Fake{}
+  unsafeM.Good()
+  intArray := [...]int{1, 2}
+  fmt.Printf("\nintArray: %v\n", intArray)
+  intPtr := &intArray[0]
+  fmt.Printf("\nintPtr=%p, *intPtr=%d.\n", intPtr, *intPtr)
+  addressHolder := uintptr(unsafe.Pointer(intPtr)) 
+  intPtr = (*int)(unsafe.Pointer(addressHolder))
+  fmt.Printf("\nintPtr=%p, *intPtr=%d.\n\n", intPtr, *intPtr)
+}`}, 2, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import (
+	"fmt"
+	"unsafe"
+)
+
+func main() {
+  chars := [...]byte{1, 2}
+  charsPtr := &chars[0]
+  str := unsafe.String(charsPtr, len(chars))
+  fmt.Printf("%s\n", str)
+  ptr := unsafe.StringData(str)
+  fmt.Printf("ptr: %p\n", ptr)
+
+}`}, 2, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import (
+	"fmt"
+	"unsafe"
+)
+
+func main() {
+  chars := [...]byte{1, 2}
+  charsPtr := &chars[0]
+  slice := unsafe.Slice(charsPtr, len(chars))
+  fmt.Printf("%v\n", slice)
+  ptr := unsafe.SliceData(slice)
+  fmt.Printf("ptr: %p\n", ptr)
+}`}, 2, gosec.NewConfig()},
 	}
 
 	// SampleCodeG104 finds errors that aren't being handled
