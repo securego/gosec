@@ -183,7 +183,7 @@ func GetCallInfo(n ast.Node, ctx *Context) (string, string, error) {
 			case *ast.CallExpr:
 				switch call := expr.Fun.(type) {
 				case *ast.Ident:
-					if call.Name == "new" {
+					if call.Name == "new" && len(expr.Args) > 0 {
 						t := ctx.Info.TypeOf(expr.Args[0])
 						if t != nil {
 							return t.String(), fn.Sel.Name, nil

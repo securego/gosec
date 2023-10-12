@@ -251,6 +251,38 @@ var _ = Describe("Helpers", func() {
 
 			Expect(result).Should(HaveKeyWithValue("fmt", "Println"))
 		})
+
+		It("should return the type and call name when built-in new function is overriden", func() {
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("main.go", `
+      package main
+
+      type S struct{ F int }
+
+      func (f S) Fun() {}
+
+      func new() S { return S{} }
+
+      func main() {
+	      new().Fun()
+      }
+			`)
+			ctx := pkg.CreateContext("main.go")
+			result := map[string]string{}
+			visitor := testutils.NewMockVisitor()
+			visitor.Context = ctx
+			visitor.Callback = func(n ast.Node, ctx *gosec.Context) bool {
+				typeName, call, err := gosec.GetCallInfo(n, ctx)
+				if err == nil {
+					result[typeName] = call
+				}
+				return true
+			}
+			ast.Walk(visitor, ctx.Root)
+
+			Expect(result).Should(HaveKeyWithValue("main", "new"))
+		})
 	})
 	Context("when getting binary expression operands", func() {
 		It("should return all operands of a binary expression", func() {
