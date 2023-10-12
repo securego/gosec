@@ -282,7 +282,7 @@ func (gosec *Analyzer) load(pkgPath string, conf *packages.Config) ([]*packages.
 	return pkgs, nil
 }
 
-// CheckRules runs analysis on the given package
+// CheckRules runs analysis on the given package.
 func (gosec *Analyzer) CheckRules(pkg *packages.Package) {
 	gosec.logger.Println("Checking package:", pkg.Name)
 	for _, file := range pkg.Syntax {
@@ -318,31 +318,14 @@ func (gosec *Analyzer) CheckRules(pkg *packages.Package) {
 	}
 }
 
-// CheckAnalyzers runs analyzers on a given package
+// CheckAnalyzers runs analyzers on a given package.
 func (gosec *Analyzer) CheckAnalyzers(pkg *packages.Package) {
-	ssaPass := &analysis.Pass{
-		Analyzer:          buildssa.Analyzer,
-		Fset:              pkg.Fset,
-		Files:             pkg.Syntax,
-		OtherFiles:        pkg.OtherFiles,
-		IgnoredFiles:      pkg.IgnoredFiles,
-		Pkg:               pkg.Types,
-		TypesInfo:         pkg.TypesInfo,
-		TypesSizes:        pkg.TypesSizes,
-		ResultOf:          nil,
-		Report:            nil,
-		ImportObjectFact:  nil,
-		ExportObjectFact:  nil,
-		ImportPackageFact: nil,
-		ExportPackageFact: nil,
-		AllObjectFacts:    nil,
-		AllPackageFacts:   nil,
-	}
-	ssaResult, err := ssaPass.Analyzer.Run(ssaPass)
+	ssaResult, err := gosec.buildSSA(pkg)
 	if err != nil {
-		gosec.logger.Printf("Error running SSA analyser on package %q: %s", pkg.Name, err)
+		gosec.logger.Printf("Error building the SSA representation of the package %q: %s", pkg.Name, err)
 		return
 	}
+
 	resultMap := map[*analysis.Analyzer]interface{}{
 		buildssa.Analyzer: &analyzers.SSAAnalyzerResult{
 			Config: gosec.Config(),
@@ -382,6 +365,35 @@ func (gosec *Analyzer) CheckAnalyzers(pkg *packages.Package) {
 			}
 		}
 	}
+}
+
+// buildSSA runs the SSA pass which builds the SSA representation of the package. It handles gracefully any panic.
+func (gosec *Analyzer) buildSSA(pkg *packages.Package) (interface{}, error) {
+	defer func() {
+		if r := recover(); r != nil {
+			gosec.logger.Printf("Panic when running SSA analyser on package %q: %s", pkg.Name, r)
+		}
+	}()
+	ssaPass := &analysis.Pass{
+		Analyzer:          buildssa.Analyzer,
+		Fset:              pkg.Fset,
+		Files:             pkg.Syntax,
+		OtherFiles:        pkg.OtherFiles,
+		IgnoredFiles:      pkg.IgnoredFiles,
+		Pkg:               pkg.Types,
+		TypesInfo:         pkg.TypesInfo,
+		TypesSizes:        pkg.TypesSizes,
+		ResultOf:          nil,
+		Report:            nil,
+		ImportObjectFact:  nil,
+		ExportObjectFact:  nil,
+		ImportPackageFact: nil,
+		ExportPackageFact: nil,
+		AllObjectFacts:    nil,
+		AllPackageFacts:   nil,
+	}
+
+	return ssaPass.Analyzer.Run(ssaPass)
 }
 
 func isGeneratedFile(file *ast.File) bool {
