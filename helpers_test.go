@@ -252,7 +252,7 @@ var _ = Describe("Helpers", func() {
 			Expect(result).Should(HaveKeyWithValue("fmt", "Println"))
 		})
 
-		It("should return the type and call name when built-in new function is overriden", func() {
+		It("should return the type and call name when built-in new function is overridden", func() {
 			pkg := testutils.NewTestPackage()
 			defer pkg.Close()
 			pkg.AddFile("main.go", `
