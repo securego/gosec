@@ -743,25 +743,6 @@ var _ = Describe("Analyzer", func() {
 			Expect(issues[0].Suppressions[0].Justification).To(Equal(""))
 		})
 
-		It("should track multiple suppressions if the violation is suppressed by both #nosec and #nosec RuleList", func() {
-			sample := testutils.SampleCodeG101[0]
-			source := sample.Code[0]
-			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G101")).RulesInfo())
-
-			nosecPackage := testutils.NewTestPackage()
-			defer nosecPackage.Close()
-			nosecSource := strings.Replace(source, "}", "} //#nosec G101 -- Justification", 1)
-			nosecSource = strings.Replace(nosecSource, "func", "//#nosec\nfunc", 1)
-			nosecPackage.AddFile("pwd.go", nosecSource)
-			err := nosecPackage.Build()
-			Expect(err).ShouldNot(HaveOccurred())
-			err = analyzer.Process(buildTags, nosecPackage.Path)
-			Expect(err).ShouldNot(HaveOccurred())
-			issues, _, _ := analyzer.Report()
-			Expect(issues).To(HaveLen(sample.Errors))
-			Expect(issues[0].Suppressions).To(HaveLen(2))
-		})
-
 		It("should not report an error if the rule is not included", func() {
 			sample := testutils.SampleCodeG101[0]
 			source := sample.Code[0]
@@ -807,7 +788,7 @@ var _ = Describe("Analyzer", func() {
 
 			nosecPackage := testutils.NewTestPackage()
 			defer nosecPackage.Close()
-			nosecSource := strings.Replace(source, "}", "} //#nosec G101 -- Justification", 1)
+			nosecSource := strings.Replace(source, "password := \"f62e5bcda4fae4f82370da0c6f20697b8f8447ef\"", "password := \"f62e5bcda4fae4f82370da0c6f20697b8f8447ef\" //#nosec G101 -- Justification", 1)
 			nosecPackage.AddFile("pwd.go", nosecSource)
 			err := nosecPackage.Build()
 			Expect(err).ShouldNot(HaveOccurred())

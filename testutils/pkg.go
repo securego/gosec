@@ -53,9 +53,9 @@ func (p *TestPackage) write() error {
 		return nil
 	}
 	for filename, content := range p.Files {
-		if e := os.WriteFile(filename, []byte(content), 0o644); e != nil {
+		if e := os.WriteFile(filename, []byte(content), 0o644); e != nil /* #nosec G306 */ {
 			return e
-		} //#nosec G306
+		}
 	}
 	p.onDisk = true
 	return nil
