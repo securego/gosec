@@ -370,7 +370,7 @@ func (gosec *Analyzer) CheckAnalyzers(pkg *packages.Package) {
 // buildSSA runs the SSA pass which builds the SSA representation of the package. It handles gracefully any panic.
 func (gosec *Analyzer) buildSSA(pkg *packages.Package) (interface{}, error) {
 	defer func() {
-		if r := recover(); r = nil {
+		if r := recover(); r != nil {
 			gosec.logger.Printf("Panic when running SSA analyser on package: %s", pkg.Name)
 		}
 	}()

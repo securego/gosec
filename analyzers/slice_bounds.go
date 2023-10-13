@@ -38,6 +38,8 @@ const (
 	upperBounded
 )
 
+const maxDepth = 20
+
 func newSliceBoundsAnalyzer(id string, description string) *analysis.Analyzer {
 	return &analysis.Analyzer{
 		Name:     id,
@@ -75,7 +77,7 @@ func runSliceBounds(pass *analysis.Pass) (interface{}, error) {
 									l, h := extractSliceBounds(slice)
 									newCap := computeSliceNewCap(l, h, sliceCap)
 									violations := []ssa.Instruction{}
-									trackSliceBounds(newCap, slice, &violations, ifs)
+									trackSliceBounds(0, newCap, slice, &violations, ifs)
 									for _, s := range violations {
 										switch s := s.(type) {
 										case *ssa.Slice:
@@ -155,7 +157,11 @@ func runSliceBounds(pass *analysis.Pass) (interface{}, error) {
 	return nil, nil
 }
 
-func trackSliceBounds(sliceCap int, slice ssa.Node, violations *[]ssa.Instruction, ifs map[ssa.If]*ssa.BinOp) {
+func trackSliceBounds(depth int, sliceCap int, slice ssa.Node, violations *[]ssa.Instruction, ifs map[ssa.If]*ssa.BinOp) {
+	if depth == maxDepth {
+		return
+	}
+	depth++
 	if violations == nil {
 		violations = &[]ssa.Instruction{}
 	}
@@ -164,12 +170,12 @@ func trackSliceBounds(sliceCap int, slice ssa.Node, violations *[]ssa.Instructio
 		for _, refinstr := range *referrers {
 			switch refinstr := refinstr.(type) {
 			case *ssa.Slice:
-				checkAllSlicesBounds(sliceCap, refinstr, violations, ifs)
+				checkAllSlicesBounds(depth, sliceCap, refinstr, violations, ifs)
 				switch refinstr.X.(type) {
 				case *ssa.Alloc, *ssa.Parameter:
 					l, h := extractSliceBounds(refinstr)
 					newCap := computeSliceNewCap(l, h, sliceCap)
-					trackSliceBounds(newCap, refinstr, violations, ifs)
+					trackSliceBounds(depth, newCap, refinstr, violations, ifs)
 				}
 			case *ssa.IndexAddr:
 				indexValue, err := extractIntValue(refinstr.Index.String())
@@ -189,7 +195,7 @@ func trackSliceBounds(sliceCap int, slice ssa.Node, violations *[]ssa.Instructio
 					if fn, ok := refinstr.Call.Value.(*ssa.Function); ok {
 						if len(fn.Params) > parPos && parPos > -1 {
 							param := fn.Params[parPos]
-							trackSliceBounds(sliceCap, param, violations, ifs)
+							trackSliceBounds(depth, sliceCap, param, violations, ifs)
 						}
 					}
 				}
@@ -198,7 +204,11 @@ func trackSliceBounds(sliceCap int, slice ssa.Node, violations *[]ssa.Instructio
 	}
 }
 
-func checkAllSlicesBounds(sliceCap int, slice *ssa.Slice, violations *[]ssa.Instruction, ifs map[ssa.If]*ssa.BinOp) {
+func checkAllSlicesBounds(depth int, sliceCap int, slice *ssa.Slice, violations *[]ssa.Instruction, ifs map[ssa.If]*ssa.BinOp) {
+	if depth == maxDepth {
+		return
+	}
+	depth++
 	if violations == nil {
 		violations = &[]ssa.Instruction{}
 	}
@@ -210,7 +220,7 @@ func checkAllSlicesBounds(sliceCap int, slice *ssa.Slice, violations *[]ssa.Inst
 	case *ssa.Alloc, *ssa.Parameter, *ssa.Slice:
 		l, h := extractSliceBounds(slice)
 		newCap := computeSliceNewCap(l, h, sliceCap)
-		trackSliceBounds(newCap, slice, violations, ifs)
+		trackSliceBounds(depth, newCap, slice, violations, ifs)
 	}
 
 	references := slice.Referrers()
@@ -220,12 +230,12 @@ func checkAllSlicesBounds(sliceCap int, slice *ssa.Slice, violations *[]ssa.Inst
 	for _, ref := range *references {
 		switch s := ref.(type) {
 		case *ssa.Slice:
-			checkAllSlicesBounds(sliceCap, s, violations, ifs)
+			checkAllSlicesBounds(depth, sliceCap, s, violations, ifs)
 			switch s.X.(type) {
 			case *ssa.Alloc, *ssa.Parameter:
 				l, h := extractSliceBounds(s)
 				newCap := computeSliceNewCap(l, h, sliceCap)
-				trackSliceBounds(newCap, s, violations, ifs)
+				trackSliceBounds(depth, newCap, s, violations, ifs)
 			}
 		}
 	}
