@@ -850,6 +850,5 @@ func main() {
 			Expect(issues[0].Suppressions[0].Kind).To(Equal("inSource"))
 			Expect(issues[0].Suppressions[0].Justification).To(Equal("false positive, this is not a private data"))
 		})
-
 	})
 })
