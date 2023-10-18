@@ -64,6 +64,9 @@ test-coverage: install-test-deps
 build:
 	go build -o $(BIN) ./cmd/gosec/
 
+build-race:
+	go build -race -o $(BIN) ./cmd/gosec/
+
 clean:
 	rm -rf build vendor dist coverage.txt
 	rm -f release image $(BIN)
