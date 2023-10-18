@@ -57,10 +57,78 @@ const aliasOfAllRules = "*"
 
 var generatedCodePattern = regexp.MustCompile(`^// Code generated .* DO NOT EDIT\.$`)
 
-// ignoreLocation keeps the location of an ignored rule
-type ignoreLocation struct {
-	file string
-	line string
+type ignore struct {
+	start        int
+	end          int
+	suppressions map[string][]issue.SuppressionInfo
+}
+
+type ignores map[string][]ignore
+
+func newIgnores() ignores {
+	return make(map[string][]ignore)
+}
+
+func (i ignores) parseLine(line string) (int, int) {
+	parts := strings.Split(line, "-")
+	start, err := strconv.Atoi(parts[0])
+	if err != nil {
+		start = 0
+	}
+	end := start
+	if len(parts) > 1 {
+		if e, err := strconv.Atoi(parts[1]); err == nil {
+			end = e
+		}
+	}
+	return start, end
+}
+
+func (i ignores) add(file string, line string, suppressions map[string]issue.SuppressionInfo) {
+	is := []ignore{}
+	if _, ok := i[file]; ok {
+		is = i[file]
+	}
+	found := false
+	start, end := i.parseLine(line)
+	for _, ig := range is {
+		if ig.start <= start && ig.end >= end {
+			found = true
+			for r, s := range suppressions {
+				ss, ok := ig.suppressions[r]
+				if !ok {
+					ss = []issue.SuppressionInfo{}
+				}
+				ss = append(ss, s)
+				ig.suppressions[r] = ss
+			}
+			break
+		}
+	}
+	if !found {
+		ig := ignore{
+			start:        start,
+			end:          end,
+			suppressions: map[string][]issue.SuppressionInfo{},
+		}
+		for r, s := range suppressions {
+			ig.suppressions[r] = []issue.SuppressionInfo{s}
+		}
+		is = append(is, ig)
+	}
+	i[file] = is
+}
+
+func (i ignores) get(file string, line string) map[string][]issue.SuppressionInfo {
+	start, end := i.parseLine(line)
+	if is, ok := i[file]; ok {
+		for _, i := range is {
+			if i.start <= start && i.end >= end {
+				return i.suppressions
+			}
+		}
+	}
+	return map[string][]issue.SuppressionInfo{}
 }
 
 // The Context is populated with data parsed from the source code as it is scanned.
@@ -75,7 +143,7 @@ type Context struct {
 	Root         *ast.File
 	Imports      *ImportTracker
 	Config       Config
-	Ignores      map[ignoreLocation]map[string][]issue.SuppressionInfo
+	Ignores      ignores
 	PassedValues map[string]interface{}
 }
 
@@ -318,6 +386,8 @@ func (gosec *Analyzer) CheckRules(pkg *packages.Package) {
 		gosec.context.PkgFiles = pkg.Syntax
 		gosec.context.Imports = NewImportTracker()
 		gosec.context.PassedValues = make(map[string]interface{})
+		gosec.context.Ignores = newIgnores()
+		gosec.updateIgnores()
 		ast.Walk(gosec, file)
 		gosec.stats.NumFiles++
 		gosec.stats.NumLines += pkg.Fset.File(file.Pos()).LineCount()
@@ -527,9 +597,6 @@ func (gosec *Analyzer) ignore(n ast.Node) map[string]issue.SuppressionInfo {
 // Visit runs the gosec visitor logic over an AST created by parsing go code.
 // Rule methods added with AddRule will be invoked as necessary.
 func (gosec *Analyzer) Visit(n ast.Node) ast.Visitor {
-	// Update any potentially ignored rules at the node location
-	gosec.updateIgnoredRules(n)
-
 	// Using ast.File instead of ast.ImportSpec, so that we can track all imports at once.
 	switch i := n.(type) {
 	case *ast.File:
@@ -548,40 +615,33 @@ func (gosec *Analyzer) Visit(n ast.Node) ast.Visitor {
 	return gosec
 }
 
-func (gosec *Analyzer) updateIgnoredRules(n ast.Node) {
+func (gosec *Analyzer) updateIgnores() {
+	for n := range gosec.context.Comments {
+		gosec.updateIgnoredRulesForNode(n)
+	}
+}
+
+func (gosec *Analyzer) updateIgnoredRulesForNode(n ast.Node) {
 	ignoredRules := gosec.ignore(n)
 	if len(ignoredRules) > 0 {
 		if gosec.context.Ignores == nil {
-			gosec.context.Ignores = make(map[ignoreLocation]map[string][]issue.SuppressionInfo)
+			gosec.context.Ignores = newIgnores()
 		}
 		line := issue.GetLine(gosec.context.FileSet.File(n.Pos()), n)
-		ignoreLocation := ignoreLocation{
-			file: gosec.context.FileSet.File(n.Pos()).Name(),
-			line: line,
-		}
-		current, ok := gosec.context.Ignores[ignoreLocation]
-		if !ok {
-			current = map[string][]issue.SuppressionInfo{}
-		}
-		for r, s := range ignoredRules {
-			if current[r] == nil {
-				current[r] = []issue.SuppressionInfo{}
-			}
-			current[r] = append(current[r], s)
-		}
-		gosec.context.Ignores[ignoreLocation] = current
+		gosec.context.Ignores.add(
+			gosec.context.FileSet.File(n.Pos()).Name(),
+			line,
+			ignoredRules,
+		)
 	}
 }
 
 func (gosec *Analyzer) getSuppressionsAtLineInFile(file string, line string, id string) ([]issue.SuppressionInfo, bool) {
-	ignores, ok := gosec.context.Ignores[ignoreLocation{file: file, line: line}]
-	if !ok {
-		ignores = make(map[string][]issue.SuppressionInfo)
-	}
+	ignoredRules := gosec.context.Ignores.get(file, line)
 
 	// Check if the rule was specifically suppressed at this location.
-	generalSuppressions, generalIgnored := ignores[aliasOfAllRules]
-	ruleSuppressions, ruleIgnored := ignores[id]
+	generalSuppressions, generalIgnored := ignoredRules[aliasOfAllRules]
+	ruleSuppressions, ruleIgnored := ignoredRules[id]
 	ignored := generalIgnored || ruleIgnored
 	suppressions := append(generalSuppressions, ruleSuppressions...)
 
