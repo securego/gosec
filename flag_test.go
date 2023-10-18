@@ -13,10 +13,11 @@ import (
 var _ = Describe("Cli", func() {
 	Context("vflag test", func() {
 		It("value must be empty as parameter value contains invalid character", func() {
-			os.Args = []string{"gosec", "-test1=-incorrect"}
+			os.Args = []string{"gosec", "-flag1=-incorrect"}
 			f := vflag.ValidatedFlag{}
-			flag.Var(&f, "test1", "")
-			flag.CommandLine.Init("test1", flag.ContinueOnError)
+			flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+			flag.Var(&f, "falg1", "")
+			flag.CommandLine.Init("flag1", flag.ContinueOnError)
 			flag.Parse()
 			Expect(flag.Parsed()).Should(BeTrue())
 			Expect(f.Value).Should(Equal(``))
@@ -24,6 +25,7 @@ var _ = Describe("Cli", func() {
 		It("value must be empty as parameter value contains invalid character without equal sign", func() {
 			os.Args = []string{"gosec", "-test2= -incorrect"}
 			f := vflag.ValidatedFlag{}
+			flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 			flag.Var(&f, "test2", "")
 			flag.CommandLine.Init("test2", flag.ContinueOnError)
 			flag.Parse()
