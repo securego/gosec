@@ -306,21 +306,21 @@ var _ = Describe("Analyzer", func() {
 			Expect(nosecIssues).Should(HaveLen(sample.Errors))
 		})
 
-		XIt("should be possible to overwrite nosec comments, and report issues but the should not be counted", func() {
+		It("should be possible to overwrite nosec comments, and report issues but they should not be counted", func() {
 			// Rule for MD5 weak crypto usage
 			sample := testutils.SampleCodeG401[0]
 			source := sample.Code[0]
 
 			// overwrite nosec option
 			nosecIgnoreConfig := gosec.NewConfig()
-			nosecIgnoreConfig.SetGlobal(gosec.Nosec, "true")
+			nosecIgnoreConfig.SetGlobal(gosec.Nosec, "mynosec")
 			nosecIgnoreConfig.SetGlobal(gosec.ShowIgnored, "true")
 			customAnalyzer := gosec.NewAnalyzer(nosecIgnoreConfig, tests, false, false, 1, logger)
 			customAnalyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G401")).RulesInfo())
 
 			nosecPackage := testutils.NewTestPackage()
 			defer nosecPackage.Close()
-			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() //#nosec", 1)
+			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() // #mynosec", 1)
 			nosecPackage.AddFile("md5.go", nosecSource)
 			err := nosecPackage.Build()
 			Expect(err).ShouldNot(HaveOccurred())
