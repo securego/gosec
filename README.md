@@ -1,5 +1,5 @@
 
-# gosec - Golang Security Checker
+# gosec - Go Security Checker
 
 Inspects source code for security problems by scanning the Go AST and SSA code representation.
 
@@ -385,7 +385,7 @@ schema-generate -i sarif-schema-2.1.0.json -o mypath/types.go
 ```
 
 Most of the MarshallJSON/UnmarshalJSON are removed except the one for PropertyBag which is handy to inline the additional properties. The rest can be removed.
-The URI,ID, UUID, GUID were renamed so it fits the Golang convention defined [here](https://github.com/golang/lint/blob/master/lint.go#L700)
+The URI,ID, UUID, GUID were renamed so it fits the Go convention defined [here](https://github.com/golang/lint/blob/master/lint.go#L700)
 
 ### Tests
 
