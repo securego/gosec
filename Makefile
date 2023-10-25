@@ -17,7 +17,7 @@ GOSEC ?= $(GOBIN)/gosec
 GINKGO ?= $(GOBIN)/ginkgo
 GO_MINOR_VERSION = $(shell $(GO) version | cut -c 14- | cut -d' ' -f1 | cut -d'.' -f2)
 GOVULN_MIN_VERSION = 17
-GO_VERSION = 1.20
+GO_VERSION = 1.21
 
 default:
 	$(MAKE) build
@@ -76,7 +76,7 @@ release:
 	goreleaser release
 
 build-linux:
-	CGO_ENABLED=$(CGO_ENABLED) GOOS=linux GOARCH=amd64 go build -ldflags=$(BUILDFLAGS) -o $(BIN) ./cmd/gosec/
+	CGO_ENABLED=$(CGO_ENABLED) GOOS=linux go build -ldflags=$(BUILDFLAGS) -o $(BIN) ./cmd/gosec/
 
 image:
 	@echo "Building the Docker image..."
