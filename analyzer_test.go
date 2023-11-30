@@ -471,7 +471,7 @@ var _ = Describe("Analyzer", func() {
 			issues, _, _ := customAnalyzer.Report()
 			Expect(issues).Should(HaveLen(1))
 		})
-		It("should be able to scan generated files if NOT excluded", func() {
+		It("should be able to scan generated files if NOT excluded when using the rules", func() {
 			customAnalyzer := gosec.NewAnalyzer(nil, true, false, false, 1, logger)
 			customAnalyzer.LoadRules(rules.Generate(false).RulesInfo())
 			pkg := testutils.NewTestPackage()
@@ -492,7 +492,7 @@ var _ = Describe("Analyzer", func() {
 			issues, _, _ := customAnalyzer.Report()
 			Expect(issues).Should(HaveLen(1))
 		})
-		It("should be able to skip generated files if excluded", func() {
+		It("should be able to skip generated files if excluded when using the rules", func() {
 			customAnalyzer := gosec.NewAnalyzer(nil, true, true, false, 1, logger)
 			customAnalyzer.LoadRules(rules.Generate(false).RulesInfo())
 			pkg := testutils.NewTestPackage()
@@ -505,6 +505,50 @@ var _ = Describe("Analyzer", func() {
 				}
 				func TestFoo(t *testing.T){
 					test()
+				}`)
+			err := pkg.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = customAnalyzer.Process(buildTags, pkg.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			issues, _, _ := customAnalyzer.Report()
+			Expect(issues).Should(BeEmpty())
+		})
+		It("should be able to scan generated files if NOT excluded when using the analyzes", func() {
+			customAnalyzer := gosec.NewAnalyzer(nil, true, false, false, 1, logger)
+			customAnalyzer.LoadRules(rules.Generate(false).RulesInfo())
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("foo.go", `
+				package main
+				// Code generated some-generator DO NOT EDIT.
+        import (
+          "fmt"
+        )
+        func main() {
+          values := []string{}
+          fmt.Println(values[0])
+				}`)
+			err := pkg.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = customAnalyzer.Process(buildTags, pkg.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			issues, _, _ := customAnalyzer.Report()
+			Expect(issues).Should(HaveLen(1))
+		})
+		It("should be able to skip generated files if excluded when using the analyzes", func() {
+			customAnalyzer := gosec.NewAnalyzer(nil, true, true, false, 1, logger)
+			customAnalyzer.LoadRules(rules.Generate(false).RulesInfo())
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("foo.go", `
+				package main
+				// Code generated some-generator DO NOT EDIT.
+        import (
+          "fmt"
+        )
+        func main() {
+          values := []string{}
+          fmt.Println(values[0])
 				}`)
 			err := pkg.Build()
 			Expect(err).ShouldNot(HaveOccurred())
