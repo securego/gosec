@@ -2,11 +2,10 @@ package testutils
 
 import "github.com/securego/gosec/v2"
 
-var (
-	// SampleCodeG102 code snippets for network binding
-	SampleCodeG102 = []CodeSample{
-		// Bind to all networks explicitly
-		{[]string{`
+// SampleCodeG102 code snippets for network binding
+var SampleCodeG102 = []CodeSample{
+	// Bind to all networks explicitly
+	{[]string{`
 package main
 
 import (
@@ -22,8 +21,8 @@ func main() {
 	defer l.Close()
 }
 `}, 1, gosec.NewConfig()},
-		// Bind to all networks implicitly (default if host omitted)
-		{[]string{`
+	// Bind to all networks implicitly (default if host omitted)
+	{[]string{`
 package main
 
 import (
@@ -39,8 +38,8 @@ func main() {
 	defer l.Close()
 }
 `}, 1, gosec.NewConfig()},
-		// Bind to all networks indirectly through a parsing function
-		{[]string{`
+	// Bind to all networks indirectly through a parsing function
+	{[]string{`
 package main
 
 import (
@@ -61,8 +60,8 @@ func main() {
 	defer l.Close()
 }
 `}, 1, gosec.NewConfig()},
-		// Bind to all networks indirectly through a parsing function
-		{[]string{`
+	// Bind to all networks indirectly through a parsing function
+	{[]string{`
 package main
 
 import (
@@ -84,7 +83,7 @@ func main() {
 	defer l.Close()
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -102,5 +101,4 @@ func main() {
 	defer l.Close()
 }
 `}, 1, gosec.NewConfig()},
-	}
-)
+}

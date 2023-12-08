@@ -2,10 +2,9 @@ package testutils
 
 import "github.com/securego/gosec/v2"
 
-var (
-	// SampleCodeG502 - Blocklisted import DES
-	SampleCodeG502 = []CodeSample{
-		{[]string{`
+// SampleCodeG502 - Blocklisted import DES
+var SampleCodeG502 = []CodeSample{
+	{[]string{`
 package main
 
 import (
@@ -33,5 +32,4 @@ func main() {
 	fmt.Println("Secret message is: %s", hex.EncodeToString(ciphertext))
 }
 `}, 1, gosec.NewConfig()},
-	}
-)
+}

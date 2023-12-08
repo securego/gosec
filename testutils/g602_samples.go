@@ -2,10 +2,9 @@ package testutils
 
 import "github.com/securego/gosec/v2"
 
-var (
-	// SampleCodeG602 - Slice access out of bounds
-	SampleCodeG602 = []CodeSample{
-		{[]string{`
+// SampleCodeG602 - Slice access out of bounds
+var SampleCodeG602 = []CodeSample{
+	{[]string{`
 package main
 
 import "fmt"
@@ -18,7 +17,7 @@ func main() {
 
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import "fmt"
@@ -31,7 +30,7 @@ func main() {
 
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import "fmt"
@@ -44,7 +43,7 @@ func main() {
 
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import "fmt"
@@ -57,7 +56,7 @@ func main() {
 
 }
 `}, 0, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import "fmt"
@@ -70,7 +69,7 @@ func main() {
 
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import "fmt"
@@ -83,7 +82,7 @@ func main() {
 
 }
 `}, 0, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import "fmt"
@@ -96,7 +95,7 @@ func main() {
 
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import "fmt"
@@ -110,7 +109,7 @@ func main() {
 
 }
 `}, 0, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import "fmt"
@@ -124,7 +123,7 @@ func main() {
 
 }
 `}, 0, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import "fmt"
@@ -138,7 +137,7 @@ func main() {
 
 }
 `}, 2, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import "fmt"
@@ -151,7 +150,7 @@ func main() {
 	fmt.Println(y)
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import "fmt"
@@ -167,7 +166,7 @@ func doStuff(x []int) {
 	fmt.Println(newSlice)
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import "fmt"
@@ -190,7 +189,7 @@ func doStuff(x []int) {
 	fmt.Println(newSlice2)
 }
 `}, 2, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import "fmt"
@@ -205,7 +204,7 @@ func main() {
   fmt.Println(testMap)
 }
 `}, 0, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import "fmt"
@@ -217,7 +216,7 @@ func main() {
   }
 }
 `}, 0, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import "fmt"
@@ -230,7 +229,7 @@ func main() {
 	fmt.Println(s[0])
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import "fmt"
@@ -251,5 +250,4 @@ func main() {
 	}
 }
 `}, 0, gosec.NewConfig()},
-	}
-)
+}

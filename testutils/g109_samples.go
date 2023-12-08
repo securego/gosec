@@ -2,10 +2,9 @@ package testutils
 
 import "github.com/securego/gosec/v2"
 
-var (
-	// SampleCodeG109 - Potential Integer OverFlow
-	SampleCodeG109 = []CodeSample{
-		{[]string{`
+// SampleCodeG109 - Potential Integer OverFlow
+var SampleCodeG109 = []CodeSample{
+	{[]string{`
 package main
 
 import (
@@ -22,7 +21,7 @@ func main() {
 	fmt.Println(value)
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -40,7 +39,7 @@ func main() {
 	}
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -56,7 +55,7 @@ func main() {
 	fmt.Println(bigValue)
 }
 `}, 0, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -79,7 +78,7 @@ func test() {
 	fmt.Println(value)
 }
 `}, 0, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -97,7 +96,7 @@ func main() {
 	fmt.Println(v)
 }
 `}, 0, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -110,5 +109,4 @@ func main() {
 	fmt.Println(b, err)
 }
 `}, 0, gosec.NewConfig()},
-	}
-)
+}

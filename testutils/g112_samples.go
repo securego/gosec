@@ -2,10 +2,9 @@ package testutils
 
 import "github.com/securego/gosec/v2"
 
-var (
-	// SampleCodeG112 - potential slowloris attack
-	SampleCodeG112 = []CodeSample{
-		{[]string{`
+// SampleCodeG112 - potential slowloris attack
+var SampleCodeG112 = []CodeSample{
+	{[]string{`
 package main
 
 import (
@@ -25,7 +24,7 @@ func main() {
 	}
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -48,7 +47,7 @@ func main() {
 	}
 }
 `}, 0, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -71,7 +70,7 @@ func main() {
 	}
 }
 `}, 0, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -103,5 +102,4 @@ func main() {
 	fmt.Print("test")
 }
 `}, 0, gosec.NewConfig()},
-	}
-)
+}

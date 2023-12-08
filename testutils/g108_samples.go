@@ -2,10 +2,9 @@ package testutils
 
 import "github.com/securego/gosec/v2"
 
-var (
-	// SampleCodeG108 - pprof endpoint automatically exposed
-	SampleCodeG108 = []CodeSample{
-		{[]string{`
+// SampleCodeG108 - pprof endpoint automatically exposed
+var SampleCodeG108 = []CodeSample{
+	{[]string{`
 package main
 
 import (
@@ -22,7 +21,7 @@ func main() {
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -38,5 +37,4 @@ func main() {
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 `}, 0, gosec.NewConfig()},
-	}
-)
+}

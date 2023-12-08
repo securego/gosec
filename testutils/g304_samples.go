@@ -2,10 +2,9 @@ package testutils
 
 import "github.com/securego/gosec/v2"
 
-var (
-	// SampleCodeG304 - potential file inclusion vulnerability
-	SampleCodeG304 = []CodeSample{
-		{[]string{`
+// SampleCodeG304 - potential file inclusion vulnerability
+var SampleCodeG304 = []CodeSample{
+	{[]string{`
 package main
 
 import (
@@ -24,7 +23,7 @@ func main() {
 
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -42,7 +41,7 @@ func main() {
 
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -68,7 +67,7 @@ func main() {
 	log.Fatal(http.ListenAndServe(":3000", nil))
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -94,7 +93,7 @@ func main() {
 	log.Fatal(http.ListenAndServe(":3000", nil))
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -112,7 +111,7 @@ import (
 		log.Print(body)
  }
  `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
  package main
 
  import (
@@ -138,7 +137,7 @@ func main() {
   fmt.Println(string(contents))
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -159,7 +158,7 @@ func main() {
 	log.Print(body)
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -176,7 +175,7 @@ func main() {
     }
 }
 `}, 0, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -196,7 +195,7 @@ func main() {
 	openFile(repoFile)
 }
 `}, 0, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -219,7 +218,7 @@ func main() {
 	openFile(dir, repoFile)
 }
 `}, 0, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -239,7 +238,7 @@ func main() {
     }
 }
 `}, 0, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -271,7 +270,7 @@ func main() {
 	}
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -303,5 +302,4 @@ package main
 
 var THEWD string
 `}, 0, gosec.NewConfig()},
-	}
-)
+}

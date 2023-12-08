@@ -2,10 +2,9 @@ package testutils
 
 import "github.com/securego/gosec/v2"
 
-var (
-	// SampleCodeG110 - potential DoS vulnerability via decompression bomb
-	SampleCodeG110 = []CodeSample{
-		{[]string{`
+// SampleCodeG110 - potential DoS vulnerability via decompression bomb
+var SampleCodeG110 = []CodeSample{
+	{[]string{`
 package main
 
 import (
@@ -31,7 +30,7 @@ func main() {
 
 	r.Close()
 }`}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -58,7 +57,7 @@ func main() {
 	r.Close()
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -97,7 +96,7 @@ func main() {
 	}
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -124,5 +123,4 @@ func main() {
 	}
 }
 `}, 0, gosec.NewConfig()},
-	}
-)
+}

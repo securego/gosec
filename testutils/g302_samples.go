@@ -2,10 +2,9 @@ package testutils
 
 import "github.com/securego/gosec/v2"
 
-var (
-	// SampleCodeG302 - file create / chmod permissions check
-	SampleCodeG302 = []CodeSample{
-		{[]string{`
+// SampleCodeG302 - file create / chmod permissions check
+var SampleCodeG302 = []CodeSample{
+	{[]string{`
 package main
 
 import (
@@ -21,7 +20,7 @@ func main() {
 	}
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -37,7 +36,7 @@ func main() {
 	}
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -53,7 +52,7 @@ func main() {
 	}
 }
 `}, 0, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -69,5 +68,4 @@ func main() {
 	}
 }
 `}, 0, gosec.NewConfig()},
-	}
-)
+}

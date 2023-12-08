@@ -2,10 +2,9 @@ package testutils
 
 import "github.com/securego/gosec/v2"
 
-var (
-	// SampleCodeG501 - Blocklisted import MD5
-	SampleCodeG501 = []CodeSample{
-		{[]string{`
+// SampleCodeG501 - Blocklisted import MD5
+var SampleCodeG501 = []CodeSample{
+	{[]string{`
 package main
 
 import (
@@ -20,5 +19,4 @@ func main() {
 	}
 }
 `}, 1, gosec.NewConfig()},
-	}
-)
+}

@@ -2,10 +2,9 @@ package testutils
 
 import "github.com/securego/gosec/v2"
 
-var (
-	// SampleCodeG504 - Blocklisted import CGI
-	SampleCodeG504 = []CodeSample{
-		{[]string{`
+// SampleCodeG504 - Blocklisted import CGI
+var SampleCodeG504 = []CodeSample{
+	{[]string{`
 package main
 
 import (
@@ -17,5 +16,4 @@ func main() {
 	cgi.Serve(http.FileServer(http.Dir("/usr/share/doc")))
 }
 `}, 1, gosec.NewConfig()},
-	}
-)
+}

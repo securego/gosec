@@ -2,10 +2,9 @@ package testutils
 
 import "github.com/securego/gosec/v2"
 
-var (
-	// SampleCodeG204 - Subprocess auditing
-	SampleCodeG204 = []CodeSample{
-		{[]string{`
+// SampleCodeG204 - Subprocess auditing
+var SampleCodeG204 = []CodeSample{
+	{[]string{`
 package main
 
 import (
@@ -22,7 +21,7 @@ func main() {
   	log.Printf("Command finished with error: %v", err)
 }
 `}, 0, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // Calling any function which starts a new process with using
 // command line arguments as it's arguments is considered dangerous
 package main
@@ -42,7 +41,7 @@ func main() {
 	log.Printf("Command finished with error: %v", err)
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // Initializing a local variable using a environmental
 // variable is consider as a dangerous user input
 package main
@@ -65,7 +64,7 @@ func main() {
 	log.Printf("Command finished with error: %v", err)
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // gosec doesn't have enough context to decide that the
 // command argument of the RunCmd function is hardcoded string
 // and that's why it's better to warn the user so he can audit it
@@ -90,7 +89,7 @@ func main() {
 	RunCmd("sleep")
 }
 `}, 0, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -120,7 +119,7 @@ func main() {
 	RunCmd("ll", "ls")
 }
 `}, 0, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // syscall.Exec function called with hardcoded arguments
 // shouldn't be consider as a command injection
 package main
@@ -137,8 +136,8 @@ func main() {
 	}
 }
 `}, 0, gosec.NewConfig()},
-		{
-			[]string{`
+	{
+		[]string{`
 package main
 
 import (
@@ -156,8 +155,9 @@ func RunCmd(command string) {
 func main() {
 	RunCmd("sleep")
 }
-`}, 1, gosec.NewConfig()},
-		{[]string{`
+`}, 1, gosec.NewConfig(),
+	},
+	{[]string{`
 package main
 
 import (
@@ -176,7 +176,7 @@ func main() {
 	RunCmd("sleep")
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // starting a process with a variable as an argument
 // even if not constant is not considered as dangerous
 // because it has hardcoded value
@@ -199,7 +199,7 @@ func main() {
 	log.Printf("Command finished with error: %v", err)
 }
 `}, 0, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // exec.Command from supplemental package sys/execabs
 // using variable arguments
 package main
@@ -219,7 +219,7 @@ func main() {
 	log.Printf("Command finished with error: %v", err)
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // Initializing a local variable using a environmental
 // variable is consider as a dangerous user input
 package main
@@ -242,5 +242,4 @@ func main() {
 	log.Printf("Command finished with error: %v", err)
 }
 `}, 1, gosec.NewConfig()},
-	}
-)
+}

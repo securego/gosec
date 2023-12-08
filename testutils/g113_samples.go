@@ -2,10 +2,9 @@ package testutils
 
 import "github.com/securego/gosec/v2"
 
-var (
-	// SampleCodeG113 - Usage of Rat.SetString in math/big with an overflow
-	SampleCodeG113 = []CodeSample{
-		{[]string{`
+// SampleCodeG113 - Usage of Rat.SetString in math/big with an overflow
+var SampleCodeG113 = []CodeSample{
+	{[]string{`
 package main
 
 import (
@@ -20,5 +19,4 @@ func main() {
 	fmt.Println(r)
 }
 `}, 1, gosec.NewConfig()},
-	}
-)
+}

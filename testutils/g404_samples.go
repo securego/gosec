@@ -2,10 +2,9 @@ package testutils
 
 import "github.com/securego/gosec/v2"
 
-var (
-	// SampleCodeG404 - weak random number
-	SampleCodeG404 = []CodeSample{
-		{[]string{`
+// SampleCodeG404 - weak random number
+var SampleCodeG404 = []CodeSample{
+	{[]string{`
 package main
 
 import "crypto/rand"
@@ -15,7 +14,7 @@ func main() {
 	println(good)
 }
 `}, 0, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import "math/rand"
@@ -25,7 +24,7 @@ func main() {
 	println(bad)
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -40,7 +39,7 @@ func main() {
 	println(bad)
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -53,7 +52,7 @@ func main() {
 	println(bad)
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -65,7 +64,7 @@ func main() {
 	println(bad)
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -81,7 +80,7 @@ func main() {
 	println(bad)
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -100,5 +99,4 @@ func main() {
 	_ = rand3.Intn(2)  // bad
 }
 `}, 3, gosec.NewConfig()},
-	}
-)
+}
