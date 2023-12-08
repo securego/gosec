@@ -2,10 +2,9 @@ package testutils
 
 import "github.com/securego/gosec/v2"
 
-var (
-	// SampleCodeG114 - Use of net/http serve functions that have no support for setting timeouts
-	SampleCodeG114 = []CodeSample{
-		{[]string{`
+// SampleCodeG114 - Use of net/http serve functions that have no support for setting timeouts
+var SampleCodeG114 = []CodeSample{
+	{[]string{`
 package main
 
 import (
@@ -18,7 +17,7 @@ func main() {
 	log.Fatal(err)
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -31,7 +30,7 @@ func main() {
 	log.Fatal(err)
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -50,7 +49,7 @@ func main() {
 	log.Fatal(err)
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -69,5 +68,4 @@ func main() {
 	log.Fatal(err)
 }
 `}, 1, gosec.NewConfig()},
-	}
-)
+}

@@ -2,10 +2,9 @@ package testutils
 
 import "github.com/securego/gosec/v2"
 
-var (
-	// SampleCodeG305 - File path traversal when extracting zip/tar archives
-	SampleCodeG305 = []CodeSample{
-		{[]string{`
+// SampleCodeG305 - File path traversal when extracting zip/tar archives
+var SampleCodeG305 = []CodeSample{
+	{[]string{`
 package unzip
 
 import (
@@ -52,7 +51,7 @@ func unzip(archive, target string) error {
 	return nil
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package unzip
 
 import (
@@ -100,7 +99,7 @@ func unzip(archive, target string) error {
 	return nil
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package zip
 
 import (
@@ -140,7 +139,7 @@ func extractFile(f *zip.File, destPath string) error {
     return os.Chmod(filePath, f.FileInfo().Mode())
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package tz
 
 import (
@@ -174,5 +173,4 @@ func extractFile(f *tar.Header, tr *tar.Reader, destPath string) error {
     return os.Chmod(filePath, f.FileInfo().Mode())
 }
 `}, 1, gosec.NewConfig()},
-	}
-)
+}

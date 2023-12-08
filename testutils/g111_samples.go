@@ -2,10 +2,9 @@ package testutils
 
 import "github.com/securego/gosec/v2"
 
-var (
-	// SampleCodeG111 - potential directory traversal
-	SampleCodeG111 = []CodeSample{
-		{[]string{`
+// SampleCodeG111 - potential directory traversal
+var SampleCodeG111 = []CodeSample{
+	{[]string{`
 package main
 
 import (
@@ -25,5 +24,4 @@ func HelloServer(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Hello, %s!", r.URL.Path[1:])
 }
 `}, 1, gosec.NewConfig()},
-	}
-)
+}

@@ -2,10 +2,9 @@ package testutils
 
 import "github.com/securego/gosec/v2"
 
-var (
-	// SampleCodeCgo - Cgo file sample
-	SampleCodeCgo = []CodeSample{
-		{[]string{`
+// SampleCodeCgo - Cgo file sample
+var SampleCodeCgo = []CodeSample{
+	{[]string{`
 package main
 
 import (
@@ -48,5 +47,4 @@ func main() {
         C.printData(cData)
 }
 `}, 0, gosec.NewConfig()},
-	}
-)
+}

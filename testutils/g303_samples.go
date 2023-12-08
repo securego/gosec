@@ -2,10 +2,9 @@ package testutils
 
 import "github.com/securego/gosec/v2"
 
-var (
-	// SampleCodeG303 - bad tempfile permissions & hardcoded shared path
-	SampleCodeG303 = []CodeSample{
-		{[]string{`
+// SampleCodeG303 - bad tempfile permissions & hardcoded shared path
+var SampleCodeG303 = []CodeSample{
+	{[]string{`
 package samples
 
 import (
@@ -57,5 +56,4 @@ func main() {
 	}
 }
 `}, 9, gosec.NewConfig()},
-	}
-)
+}

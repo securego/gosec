@@ -2,10 +2,9 @@ package testutils
 
 import "github.com/securego/gosec/v2"
 
-var (
-	// SampleCodeG202 - SQL query string building via string concatenation
-	SampleCodeG202 = []CodeSample{
-		{[]string{`
+// SampleCodeG202 - SQL query string building via string concatenation
+var SampleCodeG202 = []CodeSample{
+	{[]string{`
 // infixed concatenation
 package main
 
@@ -28,7 +27,7 @@ func main(){
 	defer rows.Close()
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -48,7 +47,7 @@ func main(){
 	defer rows.Close()
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // case insensitive match
 package main
 
@@ -69,7 +68,7 @@ func main(){
 	defer rows.Close()
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // context match
 package main
 
@@ -91,7 +90,7 @@ func main(){
 	defer rows.Close()
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // DB transaction check
 package main
 
@@ -121,7 +120,7 @@ func main(){
 	}
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // multiple string concatenation
 package main
 
@@ -142,7 +141,7 @@ func main(){
 	defer rows.Close()
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // false positive
 package main
 
@@ -163,7 +162,7 @@ func main(){
 	defer rows.Close()
 }
 `}, 0, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -186,7 +185,7 @@ func main(){
 	defer rows.Close()
 }
 `}, 0, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 const gender = "M"
@@ -213,7 +212,7 @@ func main(){
 		defer rows.Close()
 }
 `}, 0, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // ExecContext match
 package main
 
@@ -235,7 +234,7 @@ func main() {
 	}
 	fmt.Println(result)
 }`}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // Exec match
 package main
 
@@ -256,7 +255,7 @@ func main() {
 	}
 	fmt.Println(result)
 }`}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -280,5 +279,4 @@ func main() {
 	fmt.Println(result)
 }
 `}, 0, gosec.NewConfig()},
-	}
-)
+}

@@ -2,10 +2,9 @@ package testutils
 
 import "github.com/securego/gosec/v2"
 
-var (
-	// SampleCodeG107 - SSRF via http requests with variable url
-	SampleCodeG107 = []CodeSample{
-		{[]string{`
+// SampleCodeG107 - SSRF via http requests with variable url
+var SampleCodeG107 = []CodeSample{
+	{[]string{`
 // Input from the std in is considered insecure
 package main
 import (
@@ -33,7 +32,7 @@ func main() {
 		fmt.Printf("%s", body)
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // Variable defined a package level can be changed at any time
 // regardless of the initial value
 package main
@@ -58,7 +57,7 @@ func main() {
 	}
 	fmt.Printf("%s", body)
 }`}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // Environmental variables are not considered as secure source
 package main
 import (
@@ -81,7 +80,7 @@ func main() {
 	fmt.Printf("%s", body)
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // Constant variables or hard-coded strings are secure
 package main
 
@@ -98,7 +97,7 @@ func main() {
 	fmt.Println(resp.Status)
 }
 `}, 0, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // A variable at function scope which is initialized to
 // a constant string is secure (e.g. cannot be changed concurrently)
 package main
@@ -116,7 +115,7 @@ func main() {
 	fmt.Println(resp.Status)
 }
 `}, 0, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // A variable at function scope which is initialized to
 // a constant string is secure (e.g. cannot be changed concurrently)
 package main
@@ -134,7 +133,7 @@ func main() {
 	fmt.Println(resp.Status)
 }
 `}, 0, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // A variable at function scope which is initialized to
 // a constant string is secure (e.g. cannot be changed concurrently)
 package main
@@ -154,7 +153,7 @@ func main() {
 	fmt.Println(resp.Status)
 }
 `}, 0, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // An exported variable declared a packaged scope is not secure
 // because it can changed at any time
 package main
@@ -174,7 +173,7 @@ func main() {
 	fmt.Println(resp.Status)
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // An url provided as a function argument is not secure
 package main
 
@@ -194,5 +193,4 @@ func main() {
 	get(url)
 }
 `}, 1, gosec.NewConfig()},
-	}
-)
+}

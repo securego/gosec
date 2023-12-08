@@ -2,10 +2,9 @@ package testutils
 
 import "github.com/securego/gosec/v2"
 
-var (
-	// SampleCodeG201 - SQL injection via format string
-	SampleCodeG201 = []CodeSample{
-		{[]string{`
+// SampleCodeG201 - SQL injection via format string
+var SampleCodeG201 = []CodeSample{
+	{[]string{`
 // Format string without proper quoting
 package main
 
@@ -28,7 +27,7 @@ func main(){
 	defer rows.Close()
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // Format string without proper quoting case insensitive
 package main
 
@@ -51,7 +50,7 @@ func main(){
 	defer rows.Close()
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // Format string without proper quoting with context
 package main
 import (
@@ -74,7 +73,7 @@ func main(){
 	defer rows.Close()
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // Format string without proper quoting with transaction
 package main
 import (
@@ -105,7 +104,7 @@ func main(){
 	}
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // Format string false positive, safe string spec.
 package main
 
@@ -128,7 +127,7 @@ func main(){
 	defer rows.Close()
 }
 `}, 0, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // Format string false positive
 package main
 
@@ -150,7 +149,7 @@ func main(){
 		defer rows.Close()
 }
 `}, 0, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // Format string false positive, quoted formatter argument.
 package main
 
@@ -174,7 +173,7 @@ func main(){
 	defer rows.Close()
 }
 `}, 0, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // false positive
 package main
 
@@ -197,7 +196,7 @@ func main(){
 	defer rows.Close()
 }
 `}, 0, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 import (
 	"fmt"
@@ -207,7 +206,7 @@ func main(){
 	fmt.Sprintln()
 }
 `}, 0, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // Format string with \n\r
 package main
 
@@ -230,7 +229,7 @@ func main(){
 	defer rows.Close()
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // Format string with \n\r
 package main
 
@@ -253,7 +252,7 @@ func main(){
 	defer rows.Close()
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // SQLI by db.Query(some).Scan(&other)
 package main
 
@@ -277,7 +276,7 @@ func main() {
 	}
 	defer db.Close()
 }`}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // SQLI by db.Query(some).Scan(&other)
 package main
 
@@ -300,7 +299,7 @@ func main() {
 	}
 	defer db.Close()
 }`}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // SQLI by db.Prepare(some)
 package main
 
@@ -333,7 +332,7 @@ func main() {
 	defer stmt.Close()
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // SQLI by db.PrepareContext(some)
 package main
 
@@ -367,7 +366,7 @@ func main() {
 	defer stmt.Close()
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // false positive
 package main
 
@@ -399,5 +398,4 @@ func main() {
 	defer stmt.Close()
 }
 `}, 0, gosec.NewConfig()},
-	}
-)
+}

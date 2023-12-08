@@ -2,10 +2,9 @@ package testutils
 
 import "github.com/securego/gosec/v2"
 
-var (
-	// SampleCodeG402 - TLS settings
-	SampleCodeG402 = []CodeSample{
-		{[]string{`
+// SampleCodeG402 - TLS settings
+var SampleCodeG402 = []CodeSample{
+	{[]string{`
 // InsecureSkipVerify
 package main
 
@@ -27,7 +26,7 @@ func main() {
 	}
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // InsecureSkipVerify from variable
 package main
 
@@ -40,7 +39,7 @@ func main() {
 	conf.InsecureSkipVerify = true
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // Insecure minimum version
 package main
 
@@ -61,7 +60,7 @@ func main() {
 	}
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // Insecure minimum version
 package main
 
@@ -83,7 +82,7 @@ func main() {
 	fmt.Printf("Debug: %v\n", a.MinVersion)
 }
 `}, 0, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // Insecure minimum version
 package main
 
@@ -103,7 +102,7 @@ func main() {
 	fmt.Printf("Debug: %v\n", a.MinVersion)
 }
 `}, 0, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // Insecure minimum version
 package main
 import (
@@ -123,7 +122,7 @@ func main() {
 	fmt.Printf("Debug: %v\n", a.MinVersion)
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // Insecure minimum version
 package main
 
@@ -148,7 +147,7 @@ func main() {
 	fmt.Printf("Debug: %v\n", a.MinVersion)
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // Insecure minimum version
 package main
 
@@ -171,7 +170,7 @@ func main() {
 	}
 }
 `}, 0, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // Insecure max version
 package main
 
@@ -192,7 +191,7 @@ func main() {
 	}
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // Insecure ciphersuite selection
 package main
 
@@ -218,7 +217,7 @@ func main() {
 	}
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // secure max version when min version is specified
 package main
 
@@ -242,7 +241,7 @@ func main() {
 	}
 }
 `}, 0, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package p0
 
 import "crypto/tls"
@@ -260,7 +259,7 @@ func TlsConfig1() *tls.Config {
    return &tls.Config{MinVersion: 0x0304}
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -281,7 +280,7 @@ import "crypto/tls"
 
 const MinVer = tls.VersionTLS13
 `}, 0, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -294,5 +293,4 @@ func main() {
 	_ = cryptotls.Config{MinVersion: cryptotls.VersionTLS12}
 }
 `}, 0, gosec.NewConfig()},
-	}
-)
+}

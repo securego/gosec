@@ -2,10 +2,9 @@ package testutils
 
 import "github.com/securego/gosec/v2"
 
-var (
-	// SampleCodeG307 - Poor permissions for os.Create
-	SampleCodeG307 = []CodeSample{
-		{[]string{`
+// SampleCodeG307 - Poor permissions for os.Create
+var SampleCodeG307 = []CodeSample{
+	{[]string{`
 package main
 
 import (
@@ -25,7 +24,7 @@ func main() {
 	defer f.Close()
 }
 `}, 0, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -45,5 +44,4 @@ func main() {
 	defer f.Close()
 }
 `}, 1, gosec.Config{"G307": "0o600"}},
-	}
-)
+}

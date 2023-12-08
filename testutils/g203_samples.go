@@ -2,10 +2,9 @@ package testutils
 
 import "github.com/securego/gosec/v2"
 
-var (
-	// SampleCodeG203 - Template checks
-	SampleCodeG203 = []CodeSample{
-		{[]string{`
+// SampleCodeG203 - Template checks
+var SampleCodeG203 = []CodeSample{
+	{[]string{`
 // We assume that hardcoded template strings are safe as the programmer would
 // need to be explicitly shooting themselves in the foot (as below)
 package main
@@ -26,7 +25,7 @@ func main() {
 	t.Execute(os.Stdout, v)
 }
 `}, 0, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 // Using a variable to initialize could potentially be dangerous. Under the
 // current model this will likely produce some false positives.
 package main
@@ -48,7 +47,7 @@ func main() {
 	t.Execute(os.Stdout, v)
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -68,7 +67,7 @@ func main() {
 	t.Execute(os.Stdout, v)
 }
 `}, 1, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -88,5 +87,4 @@ func main() {
 	t.Execute(os.Stdout, v)
 }
 `}, 1, gosec.NewConfig()},
-	}
-)
+}

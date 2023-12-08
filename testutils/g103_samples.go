@@ -2,10 +2,9 @@ package testutils
 
 import "github.com/securego/gosec/v2"
 
-var (
-	// SampleCodeG103 find instances of unsafe blocks for auditing purposes
-	SampleCodeG103 = []CodeSample{
-		{[]string{`
+// SampleCodeG103 find instances of unsafe blocks for auditing purposes
+var SampleCodeG103 = []CodeSample{
+	{[]string{`
 package main
 
 import (
@@ -29,7 +28,7 @@ func main() {
 	fmt.Printf("\nintPtr=%p, *intPtr=%d.\n\n", intPtr, *intPtr)
 }
 `}, 2, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -46,7 +45,7 @@ func main() {
 	fmt.Printf("ptr: %p\n", ptr)
 }
 `}, 2, gosec.NewConfig()},
-		{[]string{`
+	{[]string{`
 package main
 
 import (
@@ -63,5 +62,4 @@ func main() {
 	fmt.Printf("ptr: %p\n", ptr)
 }
 `}, 2, gosec.NewConfig()},
-	}
-)
+}
