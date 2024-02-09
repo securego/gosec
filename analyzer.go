@@ -333,12 +333,25 @@ func (gosec *Analyzer) load(pkgPath string, conf *packages.Config) ([]*packages.
 		return []*packages.Package{}, fmt.Errorf("importing dir %q: %w", pkgPath, err)
 	}
 
-	var packageFiles []string
-	for _, filename := range basePackage.GoFiles {
-		packageFiles = append(packageFiles, path.Join(pkgPath, filename))
+	var goModFile string
+	goModDir := abspath[0 : len(abspath)-len(pkgPath)] // get root dir
+	if modPkgs, err := packages.Load(&packages.Config{Mode: packages.NeedModule, Dir: abspath}, abspath); err == nil && len(modPkgs) == 1 {
+		goModFile = modPkgs[0].Module.GoMod
+		goModDir = path.Dir(goModFile)
 	}
-	for _, filename := range basePackage.CgoFiles {
-		packageFiles = append(packageFiles, path.Join(pkgPath, filename))
+
+	var packageFiles []string
+	for _, filename := range append(basePackage.GoFiles, basePackage.CgoFiles...) {
+		if goModDir == "" {
+			packageFiles = append(packageFiles, path.Join(pkgPath, filename))
+		} else {
+			filePath := path.Join(abspath, filename)
+			relPath, err := filepath.Rel(goModDir, filePath)
+			if err != nil {
+				return []*packages.Package{}, fmt.Errorf("get relative path between %q and %q: %w", goModDir, filePath, err)
+			}
+			packageFiles = append(packageFiles, relPath)
+		}
 	}
 
 	if gosec.tests {
@@ -354,6 +367,7 @@ func (gosec *Analyzer) load(pkgPath string, conf *packages.Config) ([]*packages.
 	gosec.mu.Lock()
 	conf.BuildFlags = nil
 	defer gosec.mu.Unlock()
+	conf.Dir = goModDir
 	pkgs, err := packages.Load(conf, packageFiles...)
 	if err != nil {
 		return []*packages.Package{}, fmt.Errorf("loading files from package %q: %w", pkgPath, err)
