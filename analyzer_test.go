@@ -2,10 +2,12 @@ package gosec_test
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"regexp"
 	"strings"
+	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -110,6 +112,36 @@ var _ = Describe("Analyzer", func() {
 				package main
 				func main(){
 				}`)
+			pkg2.AddFile("bar.go", `
+				package main
+				func bar(){
+				}`)
+			err := pkg1.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = pkg2.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, pkg1.Path, pkg2.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			_, metrics, _ := analyzer.Report()
+			Expect(metrics.NumFiles).To(Equal(2))
+		})
+
+		It("should be able to analyze multiple Go modules", func() {
+			analyzer.LoadRules(rules.Generate(false).RulesInfo())
+			pkg1 := testutils.NewTestPackage()
+			pkg2 := testutils.NewTestPackage()
+			defer pkg1.Close()
+			defer pkg2.Close()
+			pkg1.AddFile("go.mod", `
+				module github.com/securego/gosec/v2/test1
+			`)
+			pkg1.AddFile("foo.go", `
+				package main
+				func main(){
+				}`)
+			pkg2.AddFile("go.mod", `
+				module github.com/securego/gosec/v2/test2
+			`)
 			pkg2.AddFile("bar.go", `
 				package main
 				func bar(){
@@ -896,3 +928,63 @@ func main() {
 		})
 	})
 })
+
+func BenchmarkWithMultiModuleDisabled(b *testing.B) {
+	b.Setenv("DISABLE_MULTI_MODULE_MODE", "true")
+	for _, numFiles := range []int{1, 10, 100, 1000, 5000} {
+		b.Run(fmt.Sprintf("_%d", numFiles), func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				benchutil(numFiles, b)
+			}
+		})
+	}
+}
+
+func BenchmarkWithMultiModuleEnabled(b *testing.B) {
+	for _, numFiles := range []int{1, 10, 100, 1000, 5000} {
+		b.Run(fmt.Sprintf("_%d", numFiles), func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				benchutil(numFiles, b)
+			}
+		})
+	}
+}
+
+func benchutil(numFiles int, t testing.TB) {
+	logger, _ := testutils.NewLogger()
+	analyzer := gosec.NewAnalyzer(nil, false, false, false, 1, logger)
+	analyzer.LoadRules(rules.Generate(false).RulesInfo())
+	pkg1 := testutils.NewTestPackage()
+	defer pkg1.Close()
+	pkg1.AddFile("go.mod", `
+		module github.com/securego/gosec/v2/test2
+	`)
+
+	pkg1.AddFile("foo.go", `
+		package main
+		func main(){}
+	`)
+
+	for i := 0; i < numFiles; i++ {
+		filename := fmt.Sprintf("foo_%d.go", i)
+		pkg1.AddFile(filename, fmt.Sprintf(`
+			package main
+			func SomeFunc%d(){}
+		`, i))
+	}
+
+	err := pkg1.Build()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = analyzer.Process([]string{}, pkg1.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, _, errs := analyzer.Report()
+	if errs != nil && len(errs) != 0 {
+		t.Fatal(errs)
+	}
+}

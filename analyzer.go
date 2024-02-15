@@ -335,9 +335,11 @@ func (gosec *Analyzer) load(pkgPath string, conf *packages.Config) ([]*packages.
 
 	var goModFile string
 	goModDir := abspath[0 : len(abspath)-len(pkgPath)] // get root dir
-	if modPkgs, err := packages.Load(&packages.Config{Mode: packages.NeedModule, Dir: abspath}, abspath); err == nil && len(modPkgs) == 1 {
-		goModFile = modPkgs[0].Module.GoMod
-		goModDir = path.Dir(goModFile)
+	if os.Getenv("DISABLE_MULTI_MODULE_MODE") != "true" {
+		if modPkgs, err := packages.Load(&packages.Config{Mode: packages.NeedModule, Dir: abspath}, abspath); err == nil && len(modPkgs) == 1 {
+			goModFile = modPkgs[0].Module.GoMod
+			goModDir = path.Dir(goModFile)
+		}
 	}
 
 	var packageFiles []string
@@ -348,7 +350,8 @@ func (gosec *Analyzer) load(pkgPath string, conf *packages.Config) ([]*packages.
 			filePath := path.Join(abspath, filename)
 			relPath, err := filepath.Rel(goModDir, filePath)
 			if err != nil {
-				return []*packages.Package{}, fmt.Errorf("get relative path between %q and %q: %w", goModDir, filePath, err)
+				gosec.logger.Printf("Skipping: %s. Cannot get relative path between %q and %q: %s", filename, goModDir, filePath, err)
+				continue
 			}
 			packageFiles = append(packageFiles, relPath)
 		}
