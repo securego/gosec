@@ -334,7 +334,7 @@ func (gosec *Analyzer) load(pkgPath string, conf *packages.Config) ([]*packages.
 	}
 
 	var goModFile string
-	goModDir := abspath[0 : len(abspath)-len(pkgPath)] // get root dir
+	var goModDir string
 	if os.Getenv("DISABLE_MULTI_MODULE_MODE") != "true" {
 		if modPkgs, err := packages.Load(&packages.Config{Mode: packages.NeedModule, Dir: abspath}, abspath); err == nil && len(modPkgs) == 1 {
 			goModFile = modPkgs[0].Module.GoMod
@@ -370,7 +370,9 @@ func (gosec *Analyzer) load(pkgPath string, conf *packages.Config) ([]*packages.
 	gosec.mu.Lock()
 	conf.BuildFlags = nil
 	defer gosec.mu.Unlock()
-	conf.Dir = goModDir
+	if goModDir != "" {
+		conf.Dir = goModDir
+	}
 	pkgs, err := packages.Load(conf, packageFiles...)
 	if err != nil {
 		return []*packages.Package{}, fmt.Errorf("loading files from package %q: %w", pkgPath, err)
