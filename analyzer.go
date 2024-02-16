@@ -337,8 +337,14 @@ func (gosec *Analyzer) load(pkgPath string, conf *packages.Config) ([]*packages.
 	var goModDir string
 	if os.Getenv("DISABLE_MULTI_MODULE_MODE") != "true" {
 		if modPkgs, err := packages.Load(&packages.Config{Mode: packages.NeedModule, Dir: abspath}, abspath); err == nil && len(modPkgs) == 1 {
-			goModFile = modPkgs[0].Module.GoMod
-			goModDir = path.Dir(goModFile)
+			if len(modPkgs[0].Errors) != 0 {
+				for _, modPkgErr := range modPkgs[0].Errors {
+					gosec.logger.Printf("Skipping multi module mode for '%s': %s", pkgPath, modPkgErr)
+				}
+			} else {
+				goModFile = modPkgs[0].Module.GoMod
+				goModDir = path.Dir(goModFile)
+			}
 		}
 	}
 
