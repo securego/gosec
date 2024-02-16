@@ -376,9 +376,16 @@ func (gosec *Analyzer) load(pkgPath string, conf *packages.Config) ([]*packages.
 	gosec.mu.Lock()
 	conf.BuildFlags = nil
 	defer gosec.mu.Unlock()
+
+	// set conf.Dir and reset back to original value
+	confDir := conf.Dir
 	if goModDir != "" {
 		conf.Dir = goModDir
+		defer func() {
+			conf.Dir = confDir
+		}()
 	}
+
 	pkgs, err := packages.Load(conf, packageFiles...)
 	if err != nil {
 		return []*packages.Package{}, fmt.Errorf("loading files from package %q: %w", pkgPath, err)
