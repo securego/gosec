@@ -159,7 +159,7 @@ directory you can supply `./...` as the input argument.
 - G503: Import blocklist: crypto/rc4
 - G504: Import blocklist: net/http/cgi
 - G505: Import blocklist: crypto/sha1
-- G601: Implicit memory aliasing of items from a range statement
+- G601: Implicit memory aliasing of items from a range statement (only for Go 1.21 or lower)
 - G602: Slice access out of bounds
 
 ### Retired rules
