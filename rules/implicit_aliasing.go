@@ -47,6 +47,12 @@ func doGetIdentExpr(expr ast.Expr, hasSelector bool) (*ast.Ident, bool) {
 }
 
 func (r *implicitAliasing) Match(n ast.Node, c *gosec.Context) (*issue.Issue, error) {
+	// This rule does not apply for Go 1.22, see https://tip.golang.org/doc/go1.22#language.
+	major, minor, _ := gosec.GoVersion()
+	if major >= 1 && minor >= 22 {
+		return nil, nil
+	}
+
 	switch node := n.(type) {
 	case *ast.RangeStmt:
 		// When presented with a range statement, get the underlying Object bound to
