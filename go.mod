@@ -7,7 +7,7 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/mozilla/tls-observatory v0.0.0-20210609171429-7bc42856d2e5
 	github.com/onsi/gomega v1.31.1
-	golang.org/x/crypto v0.19.0
+	golang.org/x/crypto v0.20.0
 	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616
 	golang.org/x/text v0.14.0
 	golang.org/x/tools v0.18.0
