@@ -23,8 +23,7 @@ import (
 
 type weakRand struct {
 	issue.MetaData
-	funcNames   []string
-	packagePath string
+	blocklist map[string][]string
 }
 
 func (w *weakRand) ID() string {
@@ -32,8 +31,8 @@ func (w *weakRand) ID() string {
 }
 
 func (w *weakRand) Match(n ast.Node, c *gosec.Context) (*issue.Issue, error) {
-	for _, funcName := range w.funcNames {
-		if _, matched := gosec.MatchCallByPackage(n, c, w.packagePath, funcName); matched {
+	for pkg, funcs := range w.blocklist {
+		if _, matched := gosec.MatchCallByPackage(n, c, pkg, funcs...); matched {
 			return c.NewIssue(n, w.ID(), w.What, w.Severity, w.Confidence), nil
 		}
 	}
@@ -43,17 +42,22 @@ func (w *weakRand) Match(n ast.Node, c *gosec.Context) (*issue.Issue, error) {
 
 // NewWeakRandCheck detects the use of random number generator that isn't cryptographically secure
 func NewWeakRandCheck(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
+	calls := make(map[string][]string)
+	calls["math/rand"] = []string{
+		"New", "Read", "Float32", "Float64", "Int", "Int31", "Int31n",
+		"Int63", "Int63n", "Intn", "NormFloat64", "Uint32", "Uint64",
+	}
+	calls["math/rand/v2"] = []string{
+		"New", "Float32", "Float64", "Int", "Int32", "Int32N",
+		"Int64", "Int64N", "IntN", "N", "NormFloat64", "Uint32", "Uint32N", "Uint64", "Uint64N", "UintN",
+	}
 	return &weakRand{
-		funcNames: []string{
-			"New", "Read", "Float32", "Float64", "Int", "Int31",
-			"Int31n", "Int63", "Int63n", "Intn", "NormalFloat64", "Uint32", "Uint64",
-		},
-		packagePath: "math/rand",
+		blocklist: calls,
 		MetaData: issue.MetaData{
 			ID:         id,
 			Severity:   issue.High,
 			Confidence: issue.Medium,
-			What:       "Use of weak random number generator (math/rand instead of crypto/rand)",
+			What:       "Use of weak random number generator (math/rand or math/rand/v2 instead of crypto/rand)",
 		},
 	}, []ast.Node{(*ast.CallExpr)(nil)}
 }
