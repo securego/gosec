@@ -19,9 +19,7 @@ import (
 	"strings"
 )
 
-var (
-	versioningPackagePattern = regexp.MustCompile(`v[0-9]+$`)
-)
+var versioningPackagePattern = regexp.MustCompile(`v[0-9]+$`)
 
 // ImportTracker is used to normalize the packages that have been imported
 // by a source file. It is able to differentiate between plain imports, aliased
