@@ -55,8 +55,6 @@ const externalSuppressionJustification = "Globally suppressed."
 
 const aliasOfAllRules = "*"
 
-var generatedCodePattern = regexp.MustCompile(`^// Code generated .* DO NOT EDIT\.$`)
-
 type ignore struct {
 	start        int
 	end          int
