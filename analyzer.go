@@ -376,7 +376,7 @@ func (gosec *Analyzer) CheckRules(pkg *packages.Package) {
 		if filepath.Ext(checkedFile) != ".go" {
 			continue
 		}
-		if gosec.excludeGenerated && isGeneratedFile(file) {
+		if gosec.excludeGenerated && ast.IsGenerated(file) {
 			gosec.logger.Println("Ignoring generated file:", checkedFile)
 			continue
 		}
@@ -459,7 +459,7 @@ func (gosec *Analyzer) CheckAnalyzers(pkg *packages.Package) {
 func (gosec *Analyzer) generatedFiles(pkg *packages.Package) map[string]bool {
 	generatedFiles := map[string]bool{}
 	for _, file := range pkg.Syntax {
-		if isGeneratedFile(file) {
+		if ast.IsGenerated(file) {
 			fp := pkg.Fset.File(file.Pos())
 			if fp == nil {
 				// skip files which cannot be located
@@ -498,17 +498,6 @@ func (gosec *Analyzer) buildSSA(pkg *packages.Package) (interface{}, error) {
 	}
 
 	return ssaPass.Analyzer.Run(ssaPass)
-}
-
-func isGeneratedFile(file *ast.File) bool {
-	for _, comment := range file.Comments {
-		for _, row := range comment.List {
-			if generatedCodePattern.MatchString(row.Text) {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 // ParseErrors parses the errors from given package
