@@ -498,8 +498,8 @@ var _ = Describe("Analyzer", func() {
 			pkg := testutils.NewTestPackage()
 			defer pkg.Close()
 			pkg.AddFile("foo.go", `
-				package foo
 				// Code generated some-generator DO NOT EDIT.
+				package foo
 				func test() error {
 				  return nil
 				}
@@ -541,8 +541,8 @@ var _ = Describe("Analyzer", func() {
 			pkg := testutils.NewTestPackage()
 			defer pkg.Close()
 			pkg.AddFile("foo.go", `
-				package main
 				// Code generated some-generator DO NOT EDIT.
+				package main
         import (
           "fmt"
         )
