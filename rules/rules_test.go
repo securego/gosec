@@ -192,7 +192,10 @@ var _ = Describe("gosec rules", func() {
 		})
 
 		It("should detect implicit aliasing in ForRange", func() {
-			runner("G601", testutils.SampleCodeG601)
+			major, minor, _ := gosec.GoVersion()
+			if major <= 1 && minor < 22 {
+				runner("G601", testutils.SampleCodeG601)
+			}
 		})
 
 		It("should detect out of bounds slice access", func() {
