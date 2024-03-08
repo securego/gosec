@@ -31,11 +31,12 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/securego/gosec/v2/analyzers"
-	"github.com/securego/gosec/v2/issue"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/buildssa"
 	"golang.org/x/tools/go/packages"
+
+	"github.com/securego/gosec/v2/analyzers"
+	"github.com/securego/gosec/v2/issue"
 )
 
 // LoadMode controls the amount of details to return when loading the packages
