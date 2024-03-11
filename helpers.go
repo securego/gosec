@@ -260,7 +260,7 @@ func getIdentStringValues(ident *ast.Ident, stringFinder func(ast.Node) (string,
 	return values
 }
 
-// getIdentStringRecursive returns the string of values of an Ident if they can be resolved
+// GetIdentStringValuesRecursive returns the string of values of an Ident if they can be resolved
 // The difference between this and GetIdentStringValues is that it will attempt to resolve the strings recursively,
 // if it is passed a *ast.BinaryExpr. See GetStringRecursive for details
 func GetIdentStringValuesRecursive(ident *ast.Ident) []string {
