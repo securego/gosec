@@ -15,12 +15,15 @@
 package gosec
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"go/ast"
 	"go/token"
 	"go/types"
 	"os"
+	"os/exec"
 	"os/user"
 	"path/filepath"
 	"regexp"
@@ -493,19 +496,45 @@ func RootPath(root string) (string, error) {
 	return filepath.Abs(root)
 }
 
-// GoVersion returns parsed version of Go from runtime
+// GoVersion returns parsed version of Go mod version and fallback to runtime version if not found.
 func GoVersion() (int, int, int) {
-	return parseGoVersion(runtime.Version())
+	goVersion, err := goModVersion()
+	if err != nil {
+		return parseGoVersion(strings.TrimPrefix(runtime.Version(), "go"))
+	}
+
+	return parseGoVersion(goVersion)
+}
+
+type goListOutput struct {
+	GoVersion string `json:"GoVersion"`
+}
+
+func goModVersion() (string, error) {
+	cmd := exec.Command("go", "list", "-m", "-json")
+
+	raw, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("command go list: %w: %s", err, string(raw))
+	}
+
+	var v goListOutput
+	err = json.NewDecoder(bytes.NewBuffer(raw)).Decode(&v)
+	if err != nil {
+		return "", fmt.Errorf("unmarshaling error: %w: %s", err, string(raw))
+	}
+
+	return v.GoVersion, nil
 }
 
 // parseGoVersion parses Go version.
 // example:
-// - go1.19rc2
-// - go1.19beta2
-// - go1.19.4
-// - go1.19
+// - 1.19rc2
+// - 1.19beta2
+// - 1.19.4
+// - 1.19
 func parseGoVersion(version string) (int, int, int) {
-	exp := regexp.MustCompile(`go(\d+).(\d+)(?:.(\d+))?.*`)
+	exp := regexp.MustCompile(`(\d+).(\d+)(?:.(\d+))?.*`)
 	parts := exp.FindStringSubmatch(version)
 	if len(parts) <= 1 {
 		return 0, 0, 0
