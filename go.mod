@@ -6,7 +6,7 @@ require (
 	github.com/gookit/color v1.5.4
 	github.com/lib/pq v1.10.9
 	github.com/mozilla/tls-observatory v0.0.0-20210609171429-7bc42856d2e5
-	github.com/onsi/ginkgo/v2 v2.15.0
+	github.com/onsi/ginkgo/v2 v2.17.1
 	github.com/onsi/gomega v1.32.0
 	golang.org/x/crypto v0.21.0
 	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616
