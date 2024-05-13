@@ -143,6 +143,7 @@ func NewReadFile(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	rule.pathJoin.Add("path", "Join")
 	rule.clean.Add("path/filepath", "Clean")
 	rule.clean.Add("path/filepath", "Rel")
+	rule.clean.Add("path/filepath", "EvalSymlinks")
 	rule.Add("io/ioutil", "ReadFile")
 	rule.Add("os", "ReadFile")
 	rule.Add("os", "Open")
