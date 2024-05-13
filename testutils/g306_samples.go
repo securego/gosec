@@ -21,7 +21,6 @@ func check(e error) {
 }
 
 func main() {
-
 	d1 := []byte("hello\ngo\n")
 	err := ioutil.WriteFile("/tmp/dat1", d1, 0744)
 	check(err)
@@ -51,6 +50,26 @@ func main() {
 
 	w.Flush()
 
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import (
+	"io/ioutil"
+	"os"
+)
+
+func check(e error) {
+	if e != nil {
+		panic(e)
+	}
+}
+
+func main() {
+	content := []byte("hello\ngo\n")
+	err := ioutil.WriteFile("/tmp/dat1", content, os.ModePerm)
+	check(err)
 }
 `}, 1, gosec.NewConfig()},
 }
