@@ -502,7 +502,7 @@ func RootPath(root string) (string, error) {
 // GoVersion returns parsed version of Go mod version and fallback to runtime version if not found.
 func GoVersion() (int, int, int) {
 	_, ok := os.LookupEnv(noGoModVersion)
-	if ok {
+	if !ok {
 		if goModVersion, err := goModVersion(); err == nil {
 			return parseGoVersion(goModVersion)
 		}
