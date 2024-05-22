@@ -32,6 +32,9 @@ import (
 	"strings"
 )
 
+// noGoModVersion disables the parsing of  go version from go module file present in the project
+const noGoModVersion = "GOSECNOMODVERSION"
+
 // MatchCallByPackage ensures that the specified package is imported,
 // adjusts the name for any aliases and ignores cases that are
 // initialization only imports.
@@ -498,12 +501,13 @@ func RootPath(root string) (string, error) {
 
 // GoVersion returns parsed version of Go mod version and fallback to runtime version if not found.
 func GoVersion() (int, int, int) {
-	goVersion, err := goModVersion()
-	if err != nil {
-		return parseGoVersion(strings.TrimPrefix(runtime.Version(), "go"))
+	_, ok := os.LookupEnv(noGoModVersion)
+	if ok {
+		if goModVersion, err := goModVersion(); err == nil {
+			return parseGoVersion(goModVersion)
+		}
 	}
-
-	return parseGoVersion(goVersion)
+	return parseGoVersion(strings.TrimPrefix(runtime.Version(), "go"))
 }
 
 type goListOutput struct {
