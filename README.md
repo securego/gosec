@@ -234,7 +234,7 @@ You can also configure the hard-coded credentials rule `G101` with additional pa
 
 Some rules require a specific Go version which is retrieved from the Go module file present in the project. If this version cannot be found, it will fallback to Go runtime version.
 
-The Go module version is parsed using the `go list` command which in some cases might lead to performance degradation. In this situation, the go module version can be easily disabled by setting the environment variable `GOSECNOMODVERSION=on`.
+The Go module version is parsed using the `go list` command which in some cases might lead to performance degradation. In this situation, the go module version can be easily provided by setting the environment variable `GOSECGOVERSION=go1.21.1`.
 
 ### Dependencies
 
