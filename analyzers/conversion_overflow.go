@@ -19,10 +19,11 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/securego/gosec/v2/issue"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/buildssa"
 	"golang.org/x/tools/go/ssa"
+
+	"github.com/securego/gosec/v2/issue"
 )
 
 func newConversionOverflowAnalyzer(id string, description string) *analysis.Analyzer {
