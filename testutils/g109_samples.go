@@ -20,7 +20,7 @@ func main() {
 	value := int32(bigValue)
 	fmt.Println(value)
 }
-`}, 1, gosec.NewConfig()},
+`}, 2, gosec.NewConfig()},
 	{[]string{`
 package main
 
@@ -38,7 +38,7 @@ func main() {
 		fmt.Println(bigValue)
 	}
 }
-`}, 1, gosec.NewConfig()},
+`}, 2, gosec.NewConfig()},
 	{[]string{`
 package main
 
@@ -74,7 +74,7 @@ func main() {
 
 func test() {
 	bigValue := 30
-	value := int32(bigValue)
+	value := int64(bigValue)
 	fmt.Println(value)
 }
 `}, 0, gosec.NewConfig()},
@@ -92,7 +92,7 @@ func main() {
 		value, _ := strconv.Atoi("2147483648")
 		fmt.Println(value)
 	}
-	v := int32(value)
+	v := int64(value)
 	fmt.Println(v)
 }
 `}, 0, gosec.NewConfig()},
@@ -105,7 +105,7 @@ import (
 )
 func main() {
 	a, err := strconv.Atoi("a")
-	b := int32(a) //#nosec G109
+	b := int64(a) //#nosec G109
 	fmt.Println(b, err)
 }
 `}, 0, gosec.NewConfig()},
