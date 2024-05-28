@@ -220,6 +220,52 @@ var _ = Describe("Analyzer", func() {
 			Expect(nosecIssues).Should(BeEmpty())
 		})
 
+		It("should not report errors when a nosec  block and line comment are present", func() {
+			sample := testutils.SampleCodeG101[23]
+			source := sample.Code[0]
+			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G101")).RulesInfo())
+
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecPackage.AddFile("g101.go", source)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			nosecIssues, _, _ := analyzer.Report()
+			Expect(nosecIssues).Should(BeEmpty())
+		})
+		It("should not report errors when only a nosec  block is present", func() {
+			sample := testutils.SampleCodeG101[24]
+			source := sample.Code[0]
+			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G101")).RulesInfo())
+
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecPackage.AddFile("g101.go", source)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			nosecIssues, _, _ := analyzer.Report()
+			Expect(nosecIssues).Should(BeEmpty())
+		})
+		It("should not report errors when a single line nosec  is present on a multi-line issue", func() {
+			sample := testutils.SampleCodeG112[3]
+			source := sample.Code[0]
+			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G112")).RulesInfo())
+
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecPackage.AddFile("g112.go", source)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			nosecIssues, _, _ := analyzer.Report()
+			Expect(nosecIssues).Should(BeEmpty())
+		})
+
 		It("should report errors when an exclude comment is present for a different rule", func() {
 			sample := testutils.SampleCodeG401[0]
 			source := sample.Code[0]
