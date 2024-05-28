@@ -122,7 +122,7 @@ func (i ignores) get(file string, line string) map[string][]issue.SuppressionInf
 	start, end := i.parseLine(line)
 	if is, ok := i[file]; ok {
 		for _, i := range is {
-			if start <= i.start && end >= i.end {
+			if i.start <= start && i.end >= end || start <= i.start && end >= i.end {
 				return i.suppressions
 			}
 		}

@@ -278,6 +278,50 @@ func main() {
 	fmt.Println(bearer)
 }
 `}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+// #nosec G101
+const (
+	ConfigLearnerTokenAuth string = "learner_auth_token_config" // #nosec G101
+)
+
+func main() {
+	fmt.Printf("%s\n", ConfigLearnerTokenAuth)
+}
+
+`}, 0, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+// #nosec G101
+const (
+	ConfigLearnerTokenAuth string = "learner_auth_token_config"
+)
+
+func main() {
+	fmt.Printf("%s\n", ConfigLearnerTokenAuth)
+}
+	
+`}, 0, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+const (
+	ConfigLearnerTokenAuth string = "learner_auth_token_config" // #nosec G101
+)
+
+func main() {
+	fmt.Printf("%s\n", ConfigLearnerTokenAuth)
+}
+	
+`}, 0, gosec.NewConfig()},
 	}
 
 	// SampleCodeG101Values code snippets for hardcoded credentials
