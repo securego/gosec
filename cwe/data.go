@@ -93,6 +93,11 @@ var idWeaknesses = map[string]*Weakness{
 		Description: "The use of a broken or risky cryptographic algorithm is an unnecessary risk that may result in the exposure of sensitive information.",
 		Name:        "Use of a Broken or Risky Cryptographic Algorithm",
 	},
+	"328": {
+		ID:          "328",
+		Description: "The product uses an algorithm that produces a digest (output value) that does not meet security expectations for a hash function that allows an adversary to reasonably determine the original input (preimage attack), find another input that can produce the same hash (2nd preimage attack), or find multiple inputs that evaluate to the same hash (birthday attack). ",
+		Name:        "Use of Weak Hash",
+	},
 	"338": {
 		ID:          "338",
 		Description: "The product uses a Pseudo-Random Number Generator (PRNG) in a security context, but the PRNG's algorithm is not cryptographically strong.",
