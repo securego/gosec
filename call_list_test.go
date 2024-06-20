@@ -94,6 +94,32 @@ var _ = Describe("Call List", func() {
 		Expect(matched).Should(Equal(1))
 	})
 
+	It("should match a package call expression", func() {
+		// Create file to be scanned
+		pkg := testutils.NewTestPackage()
+		defer pkg.Close()
+		pkg.AddFile("cipher.go", testutils.SampleCodeG405[0].Code[0])
+
+		ctx := pkg.CreateContext("cipher.go")
+
+		// Search for des.NewCipher()
+		calls.Add("crypto/des", "NewCipher")
+
+		// Stub out visitor and count number of matched call expr
+		matched := 0
+		v := testutils.NewMockVisitor()
+		v.Context = ctx
+		v.Callback = func(n ast.Node, ctx *gosec.Context) bool {
+			if _, ok := n.(*ast.CallExpr); ok && calls.ContainsPkgCallExpr(n, ctx, false) != nil {
+				matched++
+			}
+			return true
+		}
+		ast.Walk(v, ctx.Root)
+		Expect(matched).Should(Equal(1))
+	})
+
+
 	It("should match a call expression", func() {
 		// Create file to be scanned
 		pkg := testutils.NewTestPackage()

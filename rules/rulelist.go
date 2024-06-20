@@ -94,10 +94,11 @@ func Generate(trackSuppressions bool, filters ...RuleFilter) RuleList {
 		{"G307", "Poor file permissions used when creating a file with os.Create", NewOsCreatePerms},
 
 		// crypto
-		{"G401", "Detect the usage of DES, RC4, MD5 or SHA1", NewUsesWeakCryptography},
+		{"G401", "Detect the usage of MD5 or SHA1", NewUsesWeakCryptographyHash},
 		{"G402", "Look for bad TLS connection settings", NewIntermediateTLSCheck},
 		{"G403", "Ensure minimum RSA key length of 2048 bits", NewWeakKeyStrength},
 		{"G404", "Insecure random number source (rand)", NewWeakRandCheck},
+		{"G405", "Detect the usage of DES or RC4", NewUsesWeakCryptographyEncryption},
 
 		// blocklist
 		{"G501", "Import blocklist: crypto/md5", NewBlocklistedImportMD5},

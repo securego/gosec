@@ -175,6 +175,14 @@ var _ = Describe("gosec rules", func() {
 			runner("G404", testutils.SampleCodeG404)
 		})
 
+		It("should detect weak crypto algorithms", func() {
+			runner("G405", testutils.SampleCodeG405)
+		})
+
+		It("should detect weak crypto algorithms", func() {
+			runner("G405", testutils.SampleCodeG405b)
+		})
+
 		It("should detect blocklisted imports - MD5", func() {
 			runner("G501", testutils.SampleCodeG501)
 		})

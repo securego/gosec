@@ -151,10 +151,11 @@ directory you can supply `./...` as the input argument.
 - G305: File traversal when extracting zip/tar archive
 - G306: Poor file permissions used when writing to a new file
 - G307: Poor file permissions used when creating a file with os.Create
-- G401: Detect the usage of DES, RC4, MD5 or SHA1
+- G401: Detect the usage of MD5 or SHA1
 - G402: Look for bad TLS connection settings
 - G403: Ensure minimum RSA key length of 2048 bits
 - G404: Insecure random number source (rand)
+- G405: Detect the usage of DES or RC4
 - G501: Import blocklist: crypto/md5
 - G502: Import blocklist: crypto/des
 - G503: Import blocklist: crypto/rc4
