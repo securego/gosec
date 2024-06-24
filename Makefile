@@ -68,7 +68,7 @@ build-race:
 	go build -race -o $(BIN) ./cmd/gosec/
 
 clean:
-	rm -rf build vendor dist coverage.txt
+	rm -rf build vendor dist coverage.out
 	rm -f release image $(BIN)
 
 release:

@@ -183,6 +183,14 @@ var _ = Describe("gosec rules", func() {
 			runner("G405", testutils.SampleCodeG405b)
 		})
 
+		It("should detect weak crypto algorithms", func() {
+			runner("G406", testutils.SampleCodeG406)
+		})
+
+		It("should detect weak crypto algorithms", func() {
+			runner("G406", testutils.SampleCodeG406b)
+		})
+
 		It("should detect blocklisted imports - MD5", func() {
 			runner("G501", testutils.SampleCodeG501)
 		})
@@ -201,6 +209,14 @@ var _ = Describe("gosec rules", func() {
 
 		It("should detect blocklisted imports - SHA1", func() {
 			runner("G505", testutils.SampleCodeG505)
+		})
+
+		It("should detect blocklisted imports - MD4", func() {
+			runner("G506", testutils.SampleCodeG506)
+		})
+
+		It("should detect blocklisted imports - RIPEMD160", func() {
+			runner("G507", testutils.SampleCodeG507)
 		})
 
 		It("should detect implicit aliasing in ForRange", func() {
