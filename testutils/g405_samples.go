@@ -62,6 +62,6 @@ func main() {
 	fmt.Println("Plain Decrypted", string(data))
 }
 
-`}, 1, gosec.NewConfig()},
+`}, 2, gosec.NewConfig()},
 	}
 )
