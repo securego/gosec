@@ -119,7 +119,6 @@ var _ = Describe("Call List", func() {
 		Expect(matched).Should(Equal(1))
 	})
 
-
 	It("should match a call expression", func() {
 		// Create file to be scanned
 		pkg := testutils.NewTestPackage()
