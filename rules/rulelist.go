@@ -99,6 +99,7 @@ func Generate(trackSuppressions bool, filters ...RuleFilter) RuleList {
 		{"G403", "Ensure minimum RSA key length of 2048 bits", NewWeakKeyStrength},
 		{"G404", "Insecure random number source (rand)", NewWeakRandCheck},
 		{"G405", "Detect the usage of DES or RC4", NewUsesWeakCryptographyEncryption},
+		{"G406", "Detect the usage of deprecated MD4 or RIPEMD160", NewUsesWeakDeprecatedCryptographyHash},
 
 		// blocklist
 		{"G501", "Import blocklist: crypto/md5", NewBlocklistedImportMD5},
@@ -106,6 +107,8 @@ func Generate(trackSuppressions bool, filters ...RuleFilter) RuleList {
 		{"G503", "Import blocklist: crypto/rc4", NewBlocklistedImportRC4},
 		{"G504", "Import blocklist: net/http/cgi", NewBlocklistedImportCGI},
 		{"G505", "Import blocklist: crypto/sha1", NewBlocklistedImportSHA1},
+		{"G506", "Import blocklist: golang.org/x/crypto/md4", NewBlocklistedImportMD4},
+		{"G507", "Import blocklist: golang.org/x/crypto/ripemd160", NewBlocklistedImportRIPEMD160},
 
 		// memory safety
 		{"G601", "Implicit memory aliasing in RangeStmt", NewImplicitAliasing},

@@ -119,6 +119,31 @@ var _ = Describe("Call List", func() {
 		Expect(matched).Should(Equal(1))
 	})
 
+	It("should match a package call expression", func() {
+		// Create file to be scanned
+		pkg := testutils.NewTestPackage()
+		defer pkg.Close()
+		pkg.AddFile("md4.go", testutils.SampleCodeG406[0].Code[0])
+
+		ctx := pkg.CreateContext("md4.go")
+
+		// Search for md4.New()
+		calls.Add("golang.org/x/crypto/md4", "New")
+
+		// Stub out visitor and count number of matched call expr
+		matched := 0
+		v := testutils.NewMockVisitor()
+		v.Context = ctx
+		v.Callback = func(n ast.Node, ctx *gosec.Context) bool {
+			if _, ok := n.(*ast.CallExpr); ok && calls.ContainsPkgCallExpr(n, ctx, false) != nil {
+				matched++
+			}
+			return true
+		}
+		ast.Walk(v, ctx.Root)
+		Expect(matched).Should(Equal(1))
+	})
+
 	It("should match a call expression", func() {
 		// Create file to be scanned
 		pkg := testutils.NewTestPackage()
