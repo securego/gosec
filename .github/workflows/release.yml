@@ -60,7 +60,7 @@ jobs:
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
           COSIGN_PASSWORD: ${{secrets.COSIGN_PASSWORD}}
       - name: Release Docker Image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         id: relimage
         with:
           platforms: linux/amd64,linux/arm/v7,linux/arm64,linux/ppc64le
