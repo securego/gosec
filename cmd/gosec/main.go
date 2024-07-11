@@ -84,6 +84,9 @@ var (
 	// #nosec alternative tag
 	flagAlternativeNoSec = flag.String("nosec-tag", "", "Set an alternative string for #nosec. Some examples: #dontanalyze, #falsepositive")
 
+	// flagEnableAudit enables audit mode
+	flagEnableAudit = flag.Bool("enable-audit", false, "Enable audit mode")
+
 	// output file
 	flagOutput = flag.String("out", "", "Set output file for results")
 
@@ -195,6 +198,9 @@ func loadConfig(configFile string) (gosec.Config, error) {
 	}
 	if *flagAlternativeNoSec != "" {
 		config.SetGlobal(gosec.NoSecAlternative, *flagAlternativeNoSec)
+	}
+	if *flagEnableAudit {
+		config.SetGlobal(gosec.Audit, "true")
 	}
 	// set global option IncludeRules ,when flag set or global option IncludeRules  is nil
 	if v, _ := config.GetGlobal(gosec.IncludeRules); *flagRulesInclude != "" || v == "" {
