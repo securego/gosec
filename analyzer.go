@@ -390,7 +390,6 @@ func (gosec *Analyzer) CheckRules(pkg *packages.Package) {
 		gosec.context.PkgFiles = pkg.Syntax
 		gosec.context.Imports = NewImportTracker()
 		gosec.context.PassedValues = make(map[string]interface{})
-		gosec.context.Ignores = newIgnores()
 		gosec.updateIgnores()
 		ast.Walk(gosec, file)
 		gosec.stats.NumFiles++
