@@ -154,4 +154,40 @@ func ExampleFunction() {
 }
 `,
 	}, 0, gosec.NewConfig()},
+	{[]string{
+		`
+package main
+
+import (
+	"fmt"
+	"math"
+)
+
+type Uint uint
+
+func main() {
+    var a uint8 = math.MaxUint8
+    b := Uint(a)
+    fmt.Println(b)
+}
+	`,
+	}, 0, gosec.NewConfig()},
+	{[]string{
+		`
+package main
+
+import (
+	"fmt"
+	"math"
+)
+
+type CustomType int
+
+func main() {
+    var a uint = math.MaxUint
+    b := CustomType(a)
+    fmt.Println(b)
+}
+	`,
+	}, 1, gosec.NewConfig()},
 }

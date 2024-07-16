@@ -47,8 +47,8 @@ func runConversionOverflow(pass *analysis.Pass) (interface{}, error) {
 			for _, instr := range block.Instrs {
 				switch instr := instr.(type) {
 				case *ssa.Convert:
-					src := instr.X.Type().String()
-					dst := instr.Type().String()
+					src := instr.X.Type().Underlying().String()
+					dst := instr.Type().Underlying().String()
 					if isIntOverflow(src, dst) {
 						issue := newIssue(pass.Analyzer.Name,
 							fmt.Sprintf("integer overflow conversion %s -> %s", src, dst),
