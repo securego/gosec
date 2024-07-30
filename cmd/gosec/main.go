@@ -320,6 +320,7 @@ func main() {
 	// Makes sure some version information is set
 	prepareVersionInfo()
 
+	fmt.Println("gosec - Golang security checker", Version, GitTag, BuildDate)
 	// Setup usage description
 	flag.Usage = usage
 
@@ -447,6 +448,9 @@ func main() {
 		metrics.NumFound = trueIssues
 	}
 
+	for _, issue := range issues {
+		fmt.Printf("Issue: %+v-- %+v\n", issue.What, issue.Cwe)
+	}
 	// Exit quietly if nothing was found
 	if len(issues) == 0 && *flagQuiet {
 		os.Exit(0)

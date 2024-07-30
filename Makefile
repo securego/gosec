@@ -93,3 +93,6 @@ tlsconfig:
 	go generate ./...
 
 .PHONY: test build clean release image image-push tlsconfig
+
+run_local:
+	go run cmd/gosec/main.go cmd/gosec/version.go cmd/gosec/sort_issues.go /Users/lamtt/Documents/Workspace/Piscale/SourceCode/removeUnused
