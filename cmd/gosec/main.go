@@ -27,6 +27,7 @@ import (
 	"github.com/securego/gosec/v2"
 	"github.com/securego/gosec/v2/cmd/vflag"
 	"github.com/securego/gosec/v2/issue"
+	proposeSolution "github.com/securego/gosec/v2/proposesolution"
 	"github.com/securego/gosec/v2/report"
 	"github.com/securego/gosec/v2/rules"
 )
@@ -148,6 +149,9 @@ var (
 
 	// flagTerse shows only the summary of scan discarding all the logs
 	flagTerse = flag.Bool("terse", false, "Shows only the results and summary")
+
+	// apiKey for gemini to get the solution for the issues
+	flagGeminiKey = flag.String("gemini-key", "", "apiKey for gemini to get the solution for the issues")
 
 	// exclude the folders from scan
 	flagDirsExclude arrayFlags
@@ -448,9 +452,6 @@ func main() {
 		metrics.NumFound = trueIssues
 	}
 
-	for _, issue := range issues {
-		fmt.Printf("Issue: %+v-- %+v\n", issue.What, issue.Cwe)
-	}
 	// Exit quietly if nothing was found
 	if len(issues) == 0 && *flagQuiet {
 		os.Exit(0)
@@ -460,6 +461,9 @@ func main() {
 	rootPaths := getRootPaths(flag.Args())
 
 	reportInfo := gosec.NewReportInfo(issues, metrics, errors).WithVersion(Version)
+
+	// Call gemini request to solve the issues
+	proposeSolution.GetSolutionFromGemini(*flagGeminiKey, issues)
 
 	if *flagOutput == "" || *flagStdOut {
 		fileFormat := getPrintedFormat(*flagFormat, *flagVerbose)

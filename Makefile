@@ -95,4 +95,7 @@ tlsconfig:
 .PHONY: test build clean release image image-push tlsconfig
 
 run_local:
-	go run cmd/gosec/main.go cmd/gosec/version.go cmd/gosec/sort_issues.go /Users/lamtt/Documents/Workspace/Piscale/SourceCode/removeUnused
+	go run cmd/gosec/main.go cmd/gosec/version.go cmd/gosec/sort_issues.go {your-project-path}
+
+run_build:
+	./gemini_gosec -gemini-key="{your-api-key}" {your-project-path}
