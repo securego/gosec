@@ -150,8 +150,11 @@ var (
 	// flagTerse shows only the summary of scan discarding all the logs
 	flagTerse = flag.Bool("terse", false, "Shows only the results and summary")
 
-	// apiKey for gemini to get the solution for the issues
-	flagGeminiKey = flag.String("gemini-key", "", "apiKey for gemini to get the solution for the issues")
+	// ai platform provider to generate solutions to issues
+	flagAiApiProvider = flag.String("ai-api-provider", "", "ai platform provider to generate solutions to issues")
+
+	// key to implementing AI provider services
+	flagAiApiKey = flag.String("ai-api-key", "", "key to implementing AI provider services")
 
 	// exclude the folders from scan
 	flagDirsExclude arrayFlags
@@ -461,8 +464,13 @@ func main() {
 
 	reportInfo := gosec.NewReportInfo(issues, metrics, errors).WithVersion(Version)
 
-	// Call gemini request to solve the issues
-	proposeSolution.GetSolutionFromGemini(*flagGeminiKey, issues)
+	// Call ai request to solve the issues
+	if *flagAiApiProvider != "" && *flagAiApiKey != "" {
+		err := proposeSolution.GenerateSolution(*flagAiApiProvider, *flagAiApiKey, issues)
+		if err != nil {
+			logger.Fatal(err)
+		}
+	}
 
 	if *flagOutput == "" || *flagStdOut {
 		fileFormat := getPrintedFormat(*flagFormat, *flagVerbose)
