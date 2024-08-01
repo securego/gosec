@@ -40,6 +40,7 @@ func generateSolutionByGemini(aiApiKey string, issues []*issue.Issue) error {
 	return nil
 }
 
+// GenerateSolution generates a solution for the given issues using the specified AI provider
 func GenerateSolution(aiApiProvider, aiApiKey string, issues []*issue.Issue) error {
 	switch aiApiProvider {
 	case GeminiProvider:
