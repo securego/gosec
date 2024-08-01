@@ -6,8 +6,9 @@ import (
 	"time"
 
 	"github.com/google/generative-ai-go/genai"
-	"github.com/securego/gosec/v2/issue"
 	"google.golang.org/api/option"
+
+	"github.com/securego/gosec/v2/issue"
 )
 
 const (
