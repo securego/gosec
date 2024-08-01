@@ -324,7 +324,6 @@ func main() {
 	// Makes sure some version information is set
 	prepareVersionInfo()
 
-	fmt.Println("gosec - Golang security checker", Version, GitTag, BuildDate)
 	// Setup usage description
 	flag.Usage = usage
 
