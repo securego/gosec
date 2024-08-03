@@ -274,6 +274,12 @@ gosec can ignore generated go files with default generated code comment.
 gosec -exclude-generated ./...
 ```
 
+### Autofix vulnerabilities
+gosec can suggest fixes based on AI. To use this feature, please provide the following two parameters `ai-api-provider` and `ai-api-key`. In the current version, gosec only supports gemini.
+
+```bash
+gosec -ai-api-provider="your_provider" -ai-api-key="your_key" ./...
+```
 
 ### Annotating code
 
