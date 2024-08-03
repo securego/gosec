@@ -29,7 +29,13 @@ func generateSolutionByGemini(aiApiKey string, issues []*issue.Issue) error {
 	defer client.Close()
 
 	model := client.GenerativeModel(GeminiModel)
+	cachedAutofix := make(map[string]string)
 	for _, issue := range issues {
+		if val, ok := cachedAutofix[issue.What]; ok {
+			issue.Autofix = val
+			continue
+		}
+
 		prompt := fmt.Sprintf(AIPrompt, issue.What)
 		resp, err := model.GenerateContent(ctx, genai.Text(prompt))
 		if err != nil {
@@ -41,6 +47,7 @@ func generateSolutionByGemini(aiApiKey string, issues []*issue.Issue) error {
 		}
 
 		issue.Autofix = fmt.Sprintf("%+v", resp.Candidates[0].Content.Parts[0])
+		cachedAutofix[issue.What] = issue.Autofix
 	}
 	return nil
 }
