@@ -156,6 +156,9 @@ var (
 	// key to implementing AI provider services
 	flagAiApiKey = flag.String("ai-api-key", "", "key to implementing AI provider services")
 
+	// endpoint to the AI provider
+	flagAiEndpoint = flag.String("ai-endpoint", "", "endpoint to the AI provider")
+
 	// exclude the folders from scan
 	flagDirsExclude arrayFlags
 
@@ -466,7 +469,7 @@ func main() {
 
 	// Call ai request to solve the issues
 	if *flagAiApiProvider != "" && *flagAiApiKey != "" {
-		err := autofix.GenerateSolution(*flagAiApiProvider, *flagAiApiKey, issues)
+		err := autofix.GenerateSolution(*flagAiApiProvider, *flagAiApiKey, *flagAiEndpoint, issues)
 		if err != nil {
 			logger.Print(err)
 		}
