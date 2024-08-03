@@ -15,10 +15,11 @@ const (
 	GeminiModel    = "gemini-1.5-flash"
 	AIPrompt       = "What is the solution to fix the error \"%s\". Answer limited to 200 words"
 	GeminiProvider = "gemini"
+
+	timeout = 30 * time.Second
 )
 
 func generateSolutionByGemini(aiApiKey string, issues []*issue.Issue) error {
-	timeout := 30 * time.Second
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
