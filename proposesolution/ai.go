@@ -24,7 +24,7 @@ func generateSolutionByGemini(aiApiKey string, issues []*issue.Issue) error {
 
 	client, err := genai.NewClient(ctx, option.WithAPIKey(aiApiKey))
 	if err != nil {
-		return err
+		return fmt.Errorf("calling gemeni API: %w", err)
 	}
 	defer client.Close()
 
@@ -33,7 +33,7 @@ func generateSolutionByGemini(aiApiKey string, issues []*issue.Issue) error {
 		prompt := fmt.Sprintf(AIPrompt, issue.What)
 		resp, err := model.GenerateContent(ctx, genai.Text(prompt))
 		if err != nil {
-			return err
+			return fmt.Errorf("gemini generating content: %w", err)
 		}
 
 		issue.ProposedSolution = fmt.Sprintf("%+v", resp.Candidates[0].Content.Parts[0])
