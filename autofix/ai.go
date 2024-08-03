@@ -1,4 +1,4 @@
-package proposesolution
+package autofix
 
 import (
 	"context"
@@ -36,7 +36,11 @@ func generateSolutionByGemini(aiApiKey string, issues []*issue.Issue) error {
 			return fmt.Errorf("gemini generating content: %w", err)
 		}
 
-		issue.ProposedSolution = fmt.Sprintf("%+v", resp.Candidates[0].Content.Parts[0])
+		if len(resp.Candidates) == 0 {
+			return fmt.Errorf("gemini no candidates found")
+		}
+
+		issue.AutoFix = fmt.Sprintf("%+v", resp.Candidates[0].Content.Parts[0])
 	}
 	return nil
 }

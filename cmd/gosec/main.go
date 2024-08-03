@@ -25,9 +25,9 @@ import (
 	"strings"
 
 	"github.com/securego/gosec/v2"
+	"github.com/securego/gosec/v2/autofix"
 	"github.com/securego/gosec/v2/cmd/vflag"
 	"github.com/securego/gosec/v2/issue"
-	proposeSolution "github.com/securego/gosec/v2/proposesolution"
 	"github.com/securego/gosec/v2/report"
 	"github.com/securego/gosec/v2/rules"
 )
@@ -466,9 +466,9 @@ func main() {
 
 	// Call ai request to solve the issues
 	if *flagAiApiProvider != "" && *flagAiApiKey != "" {
-		err := proposeSolution.GenerateSolution(*flagAiApiProvider, *flagAiApiKey, issues)
+		err := autofix.GenerateSolution(*flagAiApiProvider, *flagAiApiKey, issues)
 		if err != nil {
-			logger.Fatal(err)
+			logger.Print(err)
 		}
 	}
 

@@ -1,14 +1,13 @@
-package proposesolution_test
+package autofix
 
 import (
 	"testing"
 
 	"github.com/securego/gosec/v2/issue"
-	"github.com/securego/gosec/v2/proposesolution"
 )
 
 func TestGenerateSolution(t *testing.T) {
-	aiApiProvider := proposesolution.GeminiProvider
+	aiApiProvider := GeminiProvider
 	aiApiKey := "test-api-key" // Replace with a valid API key for actual testing
 
 	issues := []*issue.Issue{
@@ -17,13 +16,13 @@ func TestGenerateSolution(t *testing.T) {
 		},
 	}
 
-	err := proposesolution.GenerateSolution(aiApiProvider, aiApiKey, issues)
+	err := GenerateSolution(aiApiProvider, aiApiKey, issues)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
 
 	for _, issue := range issues {
-		if issue.ProposedSolution == "" {
+		if issue.AutoFix == "" {
 			t.Errorf("Expected a proposed solution, got an empty string")
 		}
 	}
