@@ -40,7 +40,7 @@ func generateSolutionByGemini(aiApiKey string, issues []*issue.Issue) error {
 			return fmt.Errorf("gemini no candidates found")
 		}
 
-		issue.AutoFix = fmt.Sprintf("%+v", resp.Candidates[0].Content.Parts[0])
+		issue.Autofix = fmt.Sprintf("%+v", resp.Candidates[0].Content.Parts[0])
 	}
 	return nil
 }

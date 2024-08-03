@@ -108,7 +108,7 @@ type Issue struct {
 	Col          string            `json:"column"`            // Column number in line
 	NoSec        bool              `json:"nosec"`             // true if the issue is nosec
 	Suppressions []SuppressionInfo `json:"suppressions"`      // Suppression info of the issue
-	AutoFix      string            `json:"autofix,omitempty"` // Proposed auto fix the issue
+	Autofix      string            `json:"autofix,omitempty"` // Proposed auto fix the issue
 }
 
 // SuppressionInfo object is to record the kind and the justification that used

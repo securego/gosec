@@ -18,7 +18,7 @@ func generatePlaintext(issue *issue.Issue) string {
 		issue.What + " (Confidence: " + strconv.Itoa(int(issue.Confidence)) +
 		", Severity: " + strconv.Itoa(int(issue.Severity)) +
 		", CWE: " + cweID + ")\n" + "> " + html.EscapeString(issue.Code) +
-		"\n Auto Fix: " + issue.AutoFix
+		"\n Autofix: " + issue.Autofix
 }
 
 // GenerateReport Convert a gosec report to a JUnit Report
