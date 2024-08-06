@@ -2,6 +2,7 @@ package autofix
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
