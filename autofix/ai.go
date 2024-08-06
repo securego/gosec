@@ -107,18 +107,18 @@ func GenerateSolution(aiApiProvider, aiApiKey, endpoint string, issues []*issue.
 	defer cancel()
 
 	var client GenAIClient
-	var err error
 
 	switch aiApiProvider {
 	case GeminiProvider:
+		var err error
 		client, err = NewGenAIClient(ctx, aiApiKey, endpoint)
+		if err != nil {
+			return fmt.Errorf("generate solution error: %w", err)
+		}
 	default:
 		return fmt.Errorf("ai provider not supported")
 	}
 
-	if err != nil {
-		return fmt.Errorf("generate solution error: %w", err)
-	}
 	defer client.Close()
 
 	return generateSolutionByGemini(client, issues)
