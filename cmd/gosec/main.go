@@ -151,7 +151,7 @@ var (
 	flagTerse = flag.Bool("terse", false, "Shows only the results and summary")
 
 	// AI platform provider to generate solutions to issues
-	flagAiApiProvider = flag.String("ai-api-provider", "", "ai platform provider to generate solutions to issues")
+	flagAiApiProvider = flag.String("ai-api-provider", "", "AI platform provider to generate solutions to issues")
 
 	// key to implementing AI provider services
 	flagAiApiKey = flag.String("ai-api-key", "", "key to implementing AI provider services")
