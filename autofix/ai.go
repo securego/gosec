@@ -51,7 +51,7 @@ type genAIGenerativeModelWrapper struct {
 func (w *genAIGenerativeModelWrapper) GenerateContent(ctx context.Context, prompt string) (string, error) {
 	resp, err := w.model.GenerateContent(ctx, genai.Text(prompt))
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("generate content error: %w", err)
 	}
 	if len(resp.Candidates) == 0 {
 		return "", fmt.Errorf("no candidates found")
