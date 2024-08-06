@@ -92,7 +92,7 @@ func generateSolutionByGemini(client GenAIClient, issues []*issue.Issue) error {
 		}
 
 		if resp == "" {
-			return fmt.Errorf("gemini no candidates found")
+			return errors.New("gemini no candidates found")
 		}
 
 		issue.Autofix = resp
