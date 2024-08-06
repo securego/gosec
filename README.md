@@ -275,7 +275,7 @@ gosec -exclude-generated ./...
 ```
 
 ### Autofix vulnerabilities
-gosec can suggest fixes based on AI. To use this feature, please provide the following two parameters `ai-api-provider` and `ai-api-key`. In the current version, gosec only supports gemini.
+gosec can suggest fixes based on AI. To use this feature, please provide the following two parameters `ai-api-provider` and `ai-api-key`. In the current version, gosec only supports gemini. [How to create gemini key.](https://ai.google.dev/gemini-api/docs/api-key)
 
 ```bash
 gosec -ai-api-provider="your_provider" -ai-api-key="your_key" ./...
