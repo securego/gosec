@@ -117,7 +117,7 @@ func GenerateSolution(aiApiProvider, aiApiKey, endpoint string, issues []*issue.
 	}
 
 	if err != nil {
-		return err
+		return fmt.Errorf("generate solution error: %w", err)
 	}
 	defer client.Close()
 
