@@ -117,7 +117,7 @@ func GenerateSolution(aiApiProvider, aiApiKey, endpoint string, issues []*issue.
 			return fmt.Errorf("generate solution error: %w", err)
 		}
 	default:
-		return fmt.Errorf("ai provider not supported")
+		return errors.New("ai provider not supported")
 	}
 
 	defer client.Close()
