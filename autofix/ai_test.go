@@ -5,9 +5,10 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/securego/gosec/v2/issue"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/securego/gosec/v2/issue"
 )
 
 // MockGenAIClient is a mock of the GenAIClient interface
