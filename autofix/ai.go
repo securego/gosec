@@ -14,7 +14,7 @@ import (
 
 const (
 	GeminiModel    = "gemini-1.5-flash"
-	AIPrompt       = "In golang, what is the solution to fix the error \"%s\". Answer limited to 200 words"
+	AIPrompt       = "In Go, what is the solution to fix the error %q. Answer limited to 200 words"
 	GeminiProvider = "gemini"
 
 	timeout = 30 * time.Second
