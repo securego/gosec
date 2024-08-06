@@ -150,7 +150,7 @@ var (
 	// flagTerse shows only the summary of scan discarding all the logs
 	flagTerse = flag.Bool("terse", false, "Shows only the results and summary")
 
-	// ai platform provider to generate solutions to issues
+	// AI platform provider to generate solutions to issues
 	flagAiApiProvider = flag.String("ai-api-provider", "", "ai platform provider to generate solutions to issues")
 
 	// key to implementing AI provider services
