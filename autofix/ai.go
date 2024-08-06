@@ -55,7 +55,7 @@ func (w *genAIGenerativeModelWrapper) GenerateContent(ctx context.Context, promp
 		return "", fmt.Errorf("generate content error: %w", err)
 	}
 	if len(resp.Candidates) == 0 {
-		return "", fmt.Errorf("no candidates found")
+		return "", errors.New("no candidates found")
 	}
 	return fmt.Sprintf("%+v", resp.Candidates[0].Content.Parts[0]), nil
 }
