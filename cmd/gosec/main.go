@@ -467,7 +467,7 @@ func main() {
 
 	reportInfo := gosec.NewReportInfo(issues, metrics, errors).WithVersion(Version)
 
-	// Call ai request to solve the issues
+	// Call AI request to solve the issues
 	if *flagAiApiProvider != "" && *flagAiApiKey != "" {
 		err := autofix.GenerateSolution(*flagAiApiProvider, *flagAiApiKey, *flagAiEndpoint, issues)
 		if err != nil {
