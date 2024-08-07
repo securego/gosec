@@ -8,7 +8,7 @@ Golang errors in file: [{{ $filePath }}]:
 {{ range $index, $issue := .Issues }}
 [{{ highlight $issue.FileLocation $issue.Severity $issue.NoSec }}] - {{ $issue.RuleID }}{{ if $issue.NoSec }} ({{- success "NoSec" -}}){{ end }} ({{ if $issue.Cwe }}{{$issue.Cwe.SprintID}}{{ else }}{{"CWE"}}{{ end }}): {{ $issue.What }} (Confidence: {{ $issue.Confidence}}, Severity: {{ $issue.Severity }})
 {{ printCode $issue }}
-
+{{ "Autofix" }}: {{ $issue.Autofix }}
 {{ end }}
 {{ notice "Summary:" }}
   Gosec  : {{.GosecVersion}}
