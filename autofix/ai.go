@@ -46,6 +46,7 @@ func (w *genAIClientWrapper) GenerativeModel(name string) GenAIGenerativeModel {
 
 // genAIGenerativeModelWrapper wraps the genai.GenerativeModel to implement GenAIGenerativeModel
 type genAIGenerativeModelWrapper struct {
+	// model is the underlying generative model
 	model *genai.GenerativeModel
 }
 
@@ -57,6 +58,7 @@ func (w *genAIGenerativeModelWrapper) GenerateContent(ctx context.Context, promp
 	if len(resp.Candidates) == 0 {
 		return "", errors.New("no candidates found")
 	}
+	// Return the first candidate
 	return fmt.Sprintf("%+v", resp.Candidates[0].Content.Parts[0]), nil
 }
 
