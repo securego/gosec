@@ -79,13 +79,20 @@ func NewTool(driver *ToolComponent) *Tool {
 }
 
 // NewResult instantiate a Result
-func NewResult(ruleID string, ruleIndex int, level Level, message string, suppressions []*Suppression) *Result {
+func NewResult(ruleID string, ruleIndex int, level Level, message string, suppressions []*Suppression, autofix string) *Result {
 	return &Result{
 		RuleID:       ruleID,
 		RuleIndex:    ruleIndex,
 		Level:        level,
 		Message:      NewMessage(message),
 		Suppressions: suppressions,
+		Fixes: []*Fix{
+			{
+				Description: &Message{
+					Markdown: autofix,
+				},
+			},
+		},
 	}
 }
 

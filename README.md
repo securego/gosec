@@ -274,6 +274,18 @@ gosec can ignore generated go files with default generated code comment.
 gosec -exclude-generated ./...
 ```
 
+### Auto fixing vulnerabilities
+gosec can suggest fixes based on AI recommendation. It will call an AI API to receive a suggestion for a security finding.
+
+You can enable this feature by providing the following command line arguments:
+- `ai-api-provider`: the name of the AI API provider, currently only `gemini`is supported.
+- `ai-api-key`: the key to access the AI API, For gemini, you can create an API key following [these instructions](https://ai.google.dev/gemini-api/docs/api-key).
+- `ai-endpoint`: the endpoint of the AI provider, this is optional argument.
+
+
+```bash
+gosec -ai-api-provider="gemini" -ai-api-key="your_key" ./...
+```
 
 ### Annotating code
 
@@ -359,7 +371,7 @@ file. The output format is controlled by the `-fmt` flag, and the output file is
 $ gosec -fmt=json -out=results.json *.go
 ```
 
-Results will be reported to stdout as well as to the provided output file by `-stdout` flag. The `-verbose` flag overrides the 
+Results will be reported to stdout as well as to the provided output file by `-stdout` flag. The `-verbose` flag overrides the
 output format when stdout the results while saving them in the output file
 ```bash
 # Write output in json format to results.json as well as stdout
@@ -418,14 +430,14 @@ git push origin v1.0.0
 The GitHub [release workflow](.github/workflows/release.yml) triggers immediately after the tag is pushed upstream. This flow will
 release the binaries using the [goreleaser](https://goreleaser.com/actions/) action and then it will build and publish the docker image into Docker Hub.
 
-The released artifacts are signed using [cosign](https://docs.sigstore.dev/). You can use the public key from [cosign.pub](cosign.pub) 
+The released artifacts are signed using [cosign](https://docs.sigstore.dev/). You can use the public key from [cosign.pub](cosign.pub)
 file to verify the signature of docker image and binaries files.
 
 The docker image signature can be verified with the following command:
 ```
 cosign verify --key cosign.pub securego/gosec:<TAG>
 ```
- 
+
 The binary files signature can be verified with the following command:
 ```
 cosign verify-blob --key cosign.pub --signature gosec_<VERSION>_darwin_amd64.tar.gz.sig  gosec_<VERSION>_darwin_amd64.tar.gz
