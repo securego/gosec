@@ -105,7 +105,7 @@ func generateSolutionByGemini(client GenAIClient, issues []*issue.Issue) error {
 		prompt := fmt.Sprintf(AIPrompt, issue.What)
 		resp, err := model.GenerateContent(ctx, prompt)
 		if err != nil {
-			return fmt.Errorf("generating content with gemini: %w", err)
+			return fmt.Errorf("generating autofix with gemini: %w", err)
 		}
 
 		if resp == "" {

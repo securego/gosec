@@ -73,7 +73,7 @@ func TestGenerateSolutionByGemini_NoCandidates(t *testing.T) {
 
 	// Assert
 	assert.Error(t, err)
-	assert.Equal(t, "gemini no candidates found", err.Error())
+	assert.Equal(t, "no autofix returned by gemini", err.Error())
 	mockClient.AssertExpectations(t)
 	mockModel.AssertExpectations(t)
 }
@@ -94,7 +94,7 @@ func TestGenerateSolutionByGemini_APIError(t *testing.T) {
 
 	// Assert
 	assert.Error(t, err)
-	assert.Equal(t, "gemini generating content: API error", err.Error())
+	assert.Equal(t, "generating autofix with gemini: API error", err.Error())
 	mockClient.AssertExpectations(t)
 	mockModel.AssertExpectations(t)
 }
