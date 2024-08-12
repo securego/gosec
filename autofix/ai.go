@@ -13,8 +13,11 @@ import (
 )
 
 const (
-	GeminiModel    = "gemini-1.5-flash"
-	AIPrompt       = "In Go, what is the solution to fix the error %q. Answer limited to 200 words"
+	GeminiModel = "gemini-1.5-flash"
+	// AIPrompt       = "In Go, what is the solution to fix the error %q. Answer limited to 200 words"
+	AIPrompt = `Provide a brief explanation and a solution to fix this security issue
+  in Go programming language: %q.
+  Answer limited to 200 words`
 	GeminiProvider = "gemini"
 
 	timeout = 30 * time.Second
