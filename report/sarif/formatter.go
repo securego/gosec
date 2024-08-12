@@ -47,6 +47,7 @@ func GenerateReport(rootPaths []string, data *gosec.ReportInfo) (*Report, error)
 			getSarifLevel(issue.Severity.String()),
 			issue.What,
 			buildSarifSuppressions(issue.Suppressions),
+			issue.Autofix,
 		).WithLocations(location)
 
 		results = append(results, result)

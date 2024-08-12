@@ -16,7 +16,7 @@ const (
 	// Error : The rule specified by ruleId was evaluated and a serious problem was found.
 	Error = Level("error")
 	// Version : SARIF Schema version
-	Version = "2.1.0"
+	Version = "2.2.0"
 	// Schema : SARIF Schema URL
-	Schema = "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json"
+	Schema = "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.2.json"
 )
