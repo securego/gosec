@@ -14,8 +14,7 @@ import (
 
 const (
 	GeminiModel = "gemini-1.5-flash"
-	// AIPrompt       = "In Go, what is the solution to fix the error %q. Answer limited to 200 words"
-	AIPrompt = `Provide a brief explanation and a solution to fix this security issue
+	AIPrompt    = `Provide a brief explanation and a solution to fix this security issue
   in Go programming language: %q.
   Answer in markdown format and keep the response limited to 200 words.`
 	GeminiProvider = "gemini"
@@ -23,26 +22,31 @@ const (
 	timeout = 30 * time.Second
 )
 
-// GenAIClient defines the interface for the GenAI client
+// GenAIClient defines the interface for the GenAI client.
 type GenAIClient interface {
+	// Close clean up and close the client.
 	Close() error
+	// GenerativeModel build the generative mode.
 	GenerativeModel(name string) GenAIGenerativeModel
 }
 
-// GenAIGenerativeModel defines the interface for the Generative Model
+// GenAIGenerativeModel defines the interface for the Generative Model.
 type GenAIGenerativeModel interface {
+	// GenerateContent generates an response for given prompt.
 	GenerateContent(ctx context.Context, prompt string) (string, error)
 }
 
-// genAIClientWrapper wraps the genai.Client to implement GenAIClient
+// genAIClientWrapper wraps the genai.Client to implement GenAIClient.
 type genAIClientWrapper struct {
 	client *genai.Client
 }
 
+// Close closes the gen AI client.
 func (w *genAIClientWrapper) Close() error {
 	return w.client.Close()
 }
 
+// GenerativeModel builds the generative Model.
 func (w *genAIClientWrapper) GenerativeModel(name string) GenAIGenerativeModel {
 	return &genAIGenerativeModelWrapper{model: w.client.GenerativeModel(name)}
 }
@@ -53,18 +57,25 @@ type genAIGenerativeModelWrapper struct {
 	model *genai.GenerativeModel
 }
 
+// GenerateContent generates a response for the given prompt using gemini API.
 func (w *genAIGenerativeModelWrapper) GenerateContent(ctx context.Context, prompt string) (string, error) {
 	resp, err := w.model.GenerateContent(ctx, genai.Text(prompt))
 	if err != nil {
-		return "", fmt.Errorf("generate content error: %w", err)
+		return "", fmt.Errorf("generating autofix: %w", err)
 	}
 	if len(resp.Candidates) == 0 {
-		return "", errors.New("no candidates found")
+		return "", errors.New("no autofix returned by gemini")
 	}
+
+	if len(resp.Candidates[0].Content.Parts) == 0 {
+		return "", errors.New("nothing found in the first autofix returned by gemini")
+	}
+
 	// Return the first candidate
 	return fmt.Sprintf("%+v", resp.Candidates[0].Content.Parts[0]), nil
 }
 
+// NewGenAIClient creates a new gemini API client.
 func NewGenAIClient(ctx context.Context, aiApiKey, endpoint string) (GenAIClient, error) {
 	clientOptions := []option.ClientOption{option.WithAPIKey(aiApiKey)}
 	if endpoint != "" {
@@ -94,11 +105,11 @@ func generateSolutionByGemini(client GenAIClient, issues []*issue.Issue) error {
 		prompt := fmt.Sprintf(AIPrompt, issue.What)
 		resp, err := model.GenerateContent(ctx, prompt)
 		if err != nil {
-			return fmt.Errorf("gemini generating content: %w", err)
+			return fmt.Errorf("generating content with gemini: %w", err)
 		}
 
 		if resp == "" {
-			return errors.New("gemini no candidates found")
+			return errors.New("no autofix returned by gemini")
 		}
 
 		issue.Autofix = resp
@@ -119,7 +130,7 @@ func GenerateSolution(aiApiProvider, aiApiKey, endpoint string, issues []*issue.
 		var err error
 		client, err = NewGenAIClient(ctx, aiApiKey, endpoint)
 		if err != nil {
-			return fmt.Errorf("generate solution error: %w", err)
+			return fmt.Errorf("generating autofix: %w", err)
 		}
 	default:
 		return errors.New("ai provider not supported")
