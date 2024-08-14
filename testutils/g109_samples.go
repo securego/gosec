@@ -20,7 +20,7 @@ func main() {
 	value := int32(bigValue)
 	fmt.Println(value)
 }
-`}, 2, gosec.NewConfig()},
+`}, 1, gosec.NewConfig()},
 	{[]string{`
 package main
 
@@ -38,7 +38,7 @@ func main() {
 		fmt.Println(bigValue)
 	}
 }
-`}, 2, gosec.NewConfig()},
+`}, 1, gosec.NewConfig()},
 	{[]string{`
 package main
 

@@ -24,6 +24,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/securego/gosec/v2"
+	"github.com/securego/gosec/v2/analyzers"
 	"github.com/securego/gosec/v2/rules"
 	"github.com/securego/gosec/v2/testutils"
 	"golang.org/x/tools/go/packages"
@@ -1110,6 +1111,7 @@ var _ = Describe("Analyzer", func() {
 		It("should be able to scan generated files if NOT excluded when using the analyzes", func() {
 			customAnalyzer := gosec.NewAnalyzer(nil, true, false, false, 1, logger)
 			customAnalyzer.LoadRules(rules.Generate(false).RulesInfo())
+			customAnalyzer.LoadAnalyzers(analyzers.Generate(false).AnalyzersInfo())
 			pkg := testutils.NewTestPackage()
 			defer pkg.Close()
 			pkg.AddFile("foo.go", `
@@ -1132,6 +1134,7 @@ var _ = Describe("Analyzer", func() {
 		It("should be able to skip generated files if excluded when using the analyzes", func() {
 			customAnalyzer := gosec.NewAnalyzer(nil, true, true, false, 1, logger)
 			customAnalyzer.LoadRules(rules.Generate(false).RulesInfo())
+			customAnalyzer.LoadAnalyzers(analyzers.Generate(false).AnalyzersInfo())
 			pkg := testutils.NewTestPackage()
 			defer pkg.Close()
 			pkg.AddFile("foo.go", `
@@ -1488,6 +1491,44 @@ var _ = Describe("Analyzer", func() {
 			controlPackage := testutils.NewTestPackage()
 			defer controlPackage.Close()
 			controlPackage.AddFile("pwd.go", source)
+			err := controlPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, controlPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			issues, _, _ := analyzer.Report()
+			Expect(issues).Should(HaveLen(sample.Errors))
+			Expect(issues[0].Suppressions).To(HaveLen(1))
+			Expect(issues[0].Suppressions[0].Kind).To(Equal("external"))
+			Expect(issues[0].Suppressions[0].Justification).To(Equal("Globally suppressed."))
+		})
+
+		It("should not report an error if the analyzer is not included", func() {
+			sample := testutils.SampleCodeG602[0]
+			source := sample.Code[0]
+			analyzer.LoadAnalyzers(analyzers.Generate(true, analyzers.NewAnalyzerFilter(false, "G115")).AnalyzersInfo())
+
+			controlPackage := testutils.NewTestPackage()
+			defer controlPackage.Close()
+			controlPackage.AddFile("cipher.go", source)
+			err := controlPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, controlPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			controlIssues, _, _ := analyzer.Report()
+			Expect(controlIssues).Should(HaveLen(sample.Errors))
+			Expect(controlIssues[0].Suppressions).To(HaveLen(1))
+			Expect(controlIssues[0].Suppressions[0].Kind).To(Equal("external"))
+			Expect(controlIssues[0].Suppressions[0].Justification).To(Equal("Globally suppressed."))
+		})
+
+		It("should not report an error if the analyzer is excluded", func() {
+			sample := testutils.SampleCodeG602[0]
+			source := sample.Code[0]
+			analyzer.LoadAnalyzers(analyzers.Generate(true, analyzers.NewAnalyzerFilter(true, "G602")).AnalyzersInfo())
+
+			controlPackage := testutils.NewTestPackage()
+			defer controlPackage.Close()
+			controlPackage.AddFile("cipher.go", source)
 			err := controlPackage.Build()
 			Expect(err).ShouldNot(HaveOccurred())
 			err = analyzer.Process(buildTags, controlPackage.Path)
