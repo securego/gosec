@@ -133,6 +133,11 @@ var idWeaknesses = map[string]*Weakness{
 		Description: "The software contains hard-coded credentials, such as a password or cryptographic key, which it uses for its own inbound authentication, outbound communication to external components, or encryption of internal data.",
 		Name:        "Use of Hard-coded Credentials",
 	},
+	"1204": {
+		ID:          "1204",
+		Description: "The product uses a cryptographic primitive that uses an Initialization Vector (IV), but the product does not generate IVs that are sufficiently unpredictable or unique according to the expected cryptographic requirements for that primitive.",
+		Name:        "Generation of Weak Initialization Vector (IV)",
+	},
 }
 
 // Get Retrieves a CWE weakness by it's id
