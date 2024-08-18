@@ -279,7 +279,8 @@ gosec can suggest fixes based on AI recommendation. It will call an AI API to re
 
 You can enable this feature by providing the following command line arguments:
 - `ai-api-provider`: the name of the AI API provider, currently only `gemini`is supported.
-- `ai-api-key`: the key to access the AI API, For gemini, you can create an API key following [these instructions](https://ai.google.dev/gemini-api/docs/api-key).
+- `ai-api-key` or set the environment variable `GOSEC_AI_API_KEY`: the key to access the AI API,
+For gemini, you can create an API key following [these instructions](https://ai.google.dev/gemini-api/docs/api-key).
 - `ai-endpoint`: the endpoint of the AI provider, this is optional argument.
 
 
