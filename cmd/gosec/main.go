@@ -60,7 +60,7 @@ USAGE:
 
 `
 	// Environment variable for AI API key.
-	aiApiKeyEnv = "GOSEC_AI_API_KEY"
+	aiApiKeyEnv = "GOSEC_AI_API_KEY" // #nosec G101
 )
 
 type arrayFlags []string
