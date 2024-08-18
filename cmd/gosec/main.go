@@ -59,6 +59,8 @@ USAGE:
 	$ gosec -exclude=G101 $GOPATH/src/github.com/example/project/...
 
 `
+	// Environment variable for AI API key.
+	aiApiKeyEnv = "GOSEC_AI_API_KEY" // #nosec G101
 )
 
 type arrayFlags []string
@@ -468,8 +470,12 @@ func main() {
 	reportInfo := gosec.NewReportInfo(issues, metrics, errors).WithVersion(Version)
 
 	// Call AI request to solve the issues
-	if *flagAiApiProvider != "" && *flagAiApiKey != "" {
-		err := autofix.GenerateSolution(*flagAiApiProvider, *flagAiApiKey, *flagAiEndpoint, issues)
+	aiApiKey := os.Getenv(aiApiKeyEnv)
+	if aiApiKeyEnv == "" {
+		aiApiKey = *flagAiApiKey
+	}
+	if *flagAiApiProvider != "" && aiApiKey != "" {
+		err := autofix.GenerateSolution(*flagAiApiProvider, aiApiKey, *flagAiEndpoint, issues)
 		if err != nil {
 			logger.Print(err)
 		}
