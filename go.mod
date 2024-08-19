@@ -58,6 +58,6 @@ require (
 	google.golang.org/protobuf v1.34.2 // indirect
 )
 
-go 1.21
+go 1.22
 
-toolchain go1.23.0
+toolchain go1.22.0
