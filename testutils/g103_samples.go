@@ -27,7 +27,7 @@ func main() {
 	intPtr = (*int)(unsafe.Pointer(addressHolder))
 	fmt.Printf("\nintPtr=%p, *intPtr=%d.\n\n", intPtr, *intPtr)
 }
-`}, 3, gosec.NewConfig()},
+`}, 2, gosec.NewConfig()},
 	{[]string{`
 package main
 

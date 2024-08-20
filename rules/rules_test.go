@@ -111,10 +111,6 @@ var _ = Describe("gosec rules", func() {
 			runner("G114", testutils.SampleCodeG114)
 		})
 
-		It("should detect integer conversion overflow", func() {
-			runner("G115", testutils.SampleCodeG115)
-		})
-
 		It("should detect sql injection via format strings", func() {
 			runner("G201", testutils.SampleCodeG201)
 		})
@@ -224,10 +220,6 @@ var _ = Describe("gosec rules", func() {
 			if major <= 1 && minor < 22 {
 				runner("G601", testutils.SampleCodeG601)
 			}
-		})
-
-		It("should detect out of bounds slice access", func() {
-			runner("G602", testutils.SampleCodeG602)
 		})
 	})
 })

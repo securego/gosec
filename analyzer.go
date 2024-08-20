@@ -182,7 +182,7 @@ type Analyzer struct {
 	showIgnored       bool
 	trackSuppressions bool
 	concurrency       int
-	analyzerList      []*analysis.Analyzer
+	analyzerSet       *analyzers.AnalyzerSet
 	mu                sync.Mutex
 }
 
@@ -213,7 +213,7 @@ func NewAnalyzer(conf Config, tests bool, excludeGenerated bool, trackSuppressio
 		concurrency:       concurrency,
 		excludeGenerated:  excludeGenerated,
 		trackSuppressions: trackSuppressions,
-		analyzerList:      analyzers.BuildDefaultAnalyzers(),
+		analyzerSet:       analyzers.NewAnalyzerSet(),
 	}
 }
 
@@ -233,6 +233,15 @@ func (gosec *Analyzer) LoadRules(ruleDefinitions map[string]RuleBuilder, ruleSup
 	for id, def := range ruleDefinitions {
 		r, nodes := def(id, gosec.config)
 		gosec.ruleset.Register(r, ruleSuppressed[id], nodes...)
+	}
+}
+
+// LoadAnalyzers instantiates all the analyzers to be used when analyzing source
+// packages
+func (gosec *Analyzer) LoadAnalyzers(analyzerDefinitions map[string]analyzers.AnalyzerDefinition, analyzerSuppressed map[string]bool) {
+	for id, def := range analyzerDefinitions {
+		r := def.Create(def.ID, def.Description)
+		gosec.analyzerSet.Register(r, analyzerSuppressed[id])
 	}
 }
 
@@ -415,7 +424,7 @@ func (gosec *Analyzer) CheckAnalyzers(pkg *packages.Package) {
 
 	generatedFiles := gosec.generatedFiles(pkg)
 
-	for _, analyzer := range gosec.analyzerList {
+	for _, analyzer := range gosec.analyzerSet.Analyzers {
 		pass := &analysis.Pass{
 			Analyzer:          analyzer,
 			Fset:              pkg.Fset,
@@ -666,7 +675,7 @@ func (gosec *Analyzer) getSuppressionsAtLineInFile(file string, line string, id 
 	suppressions := append(generalSuppressions, ruleSuppressions...)
 
 	// Track external suppressions of this rule.
-	if gosec.ruleset.IsRuleSuppressed(id) {
+	if gosec.ruleset.IsRuleSuppressed(id) || gosec.analyzerSet.IsSuppressed(id) {
 		ignored = true
 		suppressions = append(suppressions, issue.SuppressionInfo{
 			Kind:          "external",
@@ -705,4 +714,5 @@ func (gosec *Analyzer) Reset() {
 	gosec.issues = make([]*issue.Issue, 0, 16)
 	gosec.stats = &Metrics{}
 	gosec.ruleset = NewRuleSet()
+	gosec.analyzerSet = analyzers.NewAnalyzerSet()
 }

@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/securego/gosec/v2"
+	"github.com/securego/gosec/v2/analyzers"
 	"github.com/securego/gosec/v2/autofix"
 	"github.com/securego/gosec/v2/cmd/vflag"
 	"github.com/securego/gosec/v2/issue"
@@ -177,14 +178,23 @@ func usage() {
 
 	// sorted rule list for ease of reading
 	rl := rules.Generate(*flagTrackSuppressions)
-	keys := make([]string, 0, len(rl.Rules))
+	al := analyzers.Generate(*flagTrackSuppressions)
+	keys := make([]string, 0, len(rl.Rules)+len(al.Analyzers))
 	for key := range rl.Rules {
+		keys = append(keys, key)
+	}
+	for key := range al.Analyzers {
 		keys = append(keys, key)
 	}
 	sort.Strings(keys)
 	for _, k := range keys {
-		v := rl.Rules[k]
-		fmt.Fprintf(os.Stderr, "\t%s: %s\n", k, v.Description)
+		var description string
+		if rule, ok := rl.Rules[k]; ok {
+			description = rule.Description
+		} else if analyzer, ok := al.Analyzers[k]; ok {
+			description = analyzer.Description
+		}
+		fmt.Fprintf(os.Stderr, "\t%s: %s\n", k, description)
 	}
 	fmt.Fprint(os.Stderr, "\n")
 }
@@ -243,6 +253,26 @@ func loadRules(include, exclude string) rules.RuleList {
 		logger.Println("Excluding rules: default")
 	}
 	return rules.Generate(*flagTrackSuppressions, filters...)
+}
+
+func loadAnalyzers(include, exclude string) *analyzers.AnalyzerList {
+	var filters []analyzers.AnalyzerFilter
+	if include != "" {
+		logger.Printf("Including analyzers: %s", include)
+		including := strings.Split(include, ",")
+		filters = append(filters, analyzers.NewAnalyzerFilter(false, including...))
+	} else {
+		logger.Println("Including analyzers: default")
+	}
+
+	if exclude != "" {
+		logger.Printf("Excluding analyzers: %s", exclude)
+		excluding := strings.Split(exclude, ",")
+		filters = append(filters, analyzers.NewAnalyzerFilter(true, excluding...))
+	} else {
+		logger.Println("Excluding analyzers: default")
+	}
+	return analyzers.Generate(*flagTrackSuppressions, filters...)
 }
 
 func getRootPaths(paths []string) []string {
@@ -412,9 +442,12 @@ func main() {
 		logger.Fatal("No rules are configured")
 	}
 
+	analyzerList := loadAnalyzers(includeRules, excludeRules)
+
 	// Create the analyzer
 	analyzer := gosec.NewAnalyzer(config, *flagScanTests, *flagExcludeGenerated, *flagTrackSuppressions, *flagConcurrency, logger)
 	analyzer.LoadRules(ruleList.RulesInfo())
+	analyzer.LoadAnalyzers(analyzerList.AnalyzersInfo())
 
 	excludedDirs := gosec.ExcludedDirsRegExp(flagDirsExclude)
 	var packages []string
