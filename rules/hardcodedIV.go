@@ -23,42 +23,46 @@ func (r *usesHardcodedIV) Match(n ast.Node, c *gosec.Context) (*issue.Issue, err
 	funcCall := n.(*ast.CallExpr)
 
 	// cast to a function call from an object and get the function part; example: a.doSomething()
-	funcSelector, exists := funcCall.Fun.(*ast.SelectorExpr)
-	if exists {
-		//Iterate trough the wanted functions
-		for functionName, functionNumArgsAndNoncePosArr := range r.trackedFunctions {
-			// Check if the call is actually made from an object
-			if _, hasX := funcSelector.X.(*ast.Ident); hasX {
 
-				// Check if the function name matches with the one we look for, and if the function accepts an exact number of arguments(Function signature)
+	if funcSelector, isSelector := funcCall.Fun.(*ast.SelectorExpr); isSelector {
+
+		// Check if the call is actually made from an object
+		if _, hasX := funcSelector.X.(*ast.Ident); hasX {
+
+			//Iterate trough the wanted functions
+			for functionName, functionNumArgsAndNoncePosArr := range r.trackedFunctions {
+
+				// Check if the function name matches with the one we look for, and if the function accepts an exact number of arguments(rough function signature check)
 				if funcSelector.Sel.Name == functionName && len(funcCall.Args) == functionNumArgsAndNoncePosArr[0] {
 
 					// Check the type of the passed argument to the function
-					switch funcCall.Args[functionNumArgsAndNoncePosArr[1]].(type) {
+					switch trackedFunctionPassedArgType := funcCall.Args[functionNumArgsAndNoncePosArr[1]].(type) {
 
+					// {} used
 					case *ast.CompositeLit:
 						// Check if the argument is static array
-						if _, isArray := funcCall.Args[functionNumArgsAndNoncePosArr[1]].(*ast.CompositeLit).Type.(*ast.ArrayType); isArray {
+						if _, isArray := trackedFunctionPassedArgType.Type.(*ast.ArrayType); isArray {
 							return c.NewIssue(n, r.ID(), r.What+" by passing hardcoded byte array", r.Severity, r.Confidence), nil
 						}
 
+					// () used
 					case *ast.CallExpr:
 
 						// Check if it's a function call, because []byte() is a function call, and also check if the number of arguments to this call is only 1
-						switch funcCall.Args[functionNumArgsAndNoncePosArr[1]].(*ast.CallExpr).Fun.(type) {
+						switch trackedFunctionPassedArgType.Fun.(type) {
 						case *ast.ArrayType:
 							return c.NewIssue(n, r.ID(), r.What+" by converting static string to a byte array", r.Severity, r.Confidence), nil
 
-						// Check if it's an anonymous function
+						// Check if the argument passed is another function
 						case *ast.FuncLit:
-							functionCalled, _ := funcCall.Args[functionNumArgsAndNoncePosArr[1]].(*ast.CallExpr).Fun.(*ast.FuncLit)
+							functionCalled, _ := trackedFunctionPassedArgType.Fun.(*ast.FuncLit)
 
 							// Check the type of the last statement in the anonymous function
-							switch functionCalled.Body.List[len(functionCalled.Body.List)-1].(type) {
+							switch calledFunctionLastInstructionType := functionCalled.Body.List[len(functionCalled.Body.List)-1].(type) {
 
 							case *ast.IfStmt:
 
-								ifStatementContent := functionCalled.Body.List[len(functionCalled.Body.List)-1].(*ast.IfStmt).Body.List
+								ifStatementContent := calledFunctionLastInstructionType.Body.List
 
 								// check if the if statement has return statement
 								if retStatement, isReturn := ifStatementContent[len(ifStatementContent)-1].(*ast.ReturnStmt); isReturn {
@@ -80,7 +84,7 @@ func (r *usesHardcodedIV) Match(n ast.Node, c *gosec.Context) (*issue.Issue, err
 								}
 							case *ast.ReturnStmt:
 
-								argInNestedFunc := functionCalled.Body.List[len(functionCalled.Body.List)-1].(*ast.ReturnStmt).Results[0]
+								argInNestedFunc := calledFunctionLastInstructionType.Results[0]
 								switch argInNestedFunc.(type) {
 								case *ast.CompositeLit:
 									// Check if the argument is static array
