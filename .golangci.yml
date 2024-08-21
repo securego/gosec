@@ -35,6 +35,11 @@ linters-settings:
       - standard
       - default
       - prefix(github.com/securego)
+  staticcheck:
+    checks:
+     - all
+     - '-SA1019'
+
   revive:
     rules:
       - name: dot-imports
