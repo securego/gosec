@@ -2,11 +2,11 @@ linters:
   enable:
     - asciicheck
     - bodyclose
+    - copyloopvar
     - dogsled
     - durationcheck
     - errcheck
     - errorlint
-    - exportloopref
     - gci
     - ginkgolinter
     - gochecknoinits
