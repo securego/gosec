@@ -178,6 +178,36 @@ package main
 
 import (
 	"fmt"
+)
+
+func main() {
+    var a byte = '\xff'
+    b := int64(a)
+    fmt.Println(b)
+}
+	`,
+	}, 0, gosec.NewConfig()},
+	{[]string{
+		`
+package main
+
+import (
+	"fmt"
+)
+
+func main() {
+    var a int8 = -1
+    b := int64(a)
+    fmt.Println(b)
+}
+	`,
+	}, 0, gosec.NewConfig()},
+	{[]string{
+		`
+package main
+
+import (
+	"fmt"
 	"math"
 )
 
@@ -186,6 +216,21 @@ type CustomType int
 func main() {
     var a uint = math.MaxUint
     b := CustomType(a)
+    fmt.Println(b)
+}
+	`,
+	}, 1, gosec.NewConfig()},
+	{[]string{
+		`
+package main
+
+import (
+	"fmt"
+)
+
+func main() {
+    a := []int{1,2,3}
+    b := uint32(len(a))
     fmt.Println(b)
 }
 	`,
