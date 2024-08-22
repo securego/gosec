@@ -235,4 +235,34 @@ func main() {
 }
 	`,
 	}, 1, gosec.NewConfig()},
+	{[]string{
+		`
+package main
+
+import (
+        "fmt"
+)
+
+func main() {
+        a := "A\xFF"
+        b := int64(a[0])
+        fmt.Printf("%d\n", b)
+}
+	`,
+	}, 0, gosec.NewConfig()},
+	{[]string{
+		`
+package main
+
+import (
+        "fmt"
+)
+
+func main() {
+        var a uint8 = 13
+        b := int(a)
+        fmt.Printf("%d\n", b)
+}
+	`,
+	}, 0, gosec.NewConfig()},
 }

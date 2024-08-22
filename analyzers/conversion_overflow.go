@@ -76,7 +76,7 @@ type integer struct {
 }
 
 func parseIntType(intType string) (integer, error) {
-	re := regexp.MustCompile(`(?P<type>u?int)(?P<size>\d{2})?`)
+	re := regexp.MustCompile(`(?P<type>u?int)(?P<size>\d{1,2})?`)
 	matches := re.FindStringSubmatch(intType)
 	if matches == nil {
 		return integer{}, fmt.Errorf("no integer type match found for %s", intType)
