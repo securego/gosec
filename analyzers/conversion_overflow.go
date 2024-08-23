@@ -16,6 +16,7 @@ package analyzers
 
 import (
 	"fmt"
+	"go/token"
 	"regexp"
 	"strconv"
 
@@ -49,6 +50,9 @@ func runConversionOverflow(pass *analysis.Pass) (interface{}, error) {
 				case *ssa.Convert:
 					src := instr.X.Type().Underlying().String()
 					dst := instr.Type().Underlying().String()
+					if isSafeConversion(instr) {
+						continue
+					}
 					if isIntOverflow(src, dst) {
 						issue := newIssue(pass.Analyzer.Name,
 							fmt.Sprintf("integer overflow conversion %s -> %s", src, dst),
@@ -68,6 +72,93 @@ func runConversionOverflow(pass *analysis.Pass) (interface{}, error) {
 		return issues, nil
 	}
 	return nil, nil
+}
+
+func isSafeConversion(instr *ssa.Convert) bool {
+	dstType := instr.Type().Underlying().String()
+
+	// Check for constant conversions
+	if constVal, ok := instr.X.(*ssa.Const); ok {
+		if isConstantInRange(constVal, dstType) {
+			return true
+		}
+	}
+
+	// Check for explicit range checks
+	if hasExplicitRangeCheck(instr) {
+		return true
+	}
+
+	// Check for string to integer conversions with specified bit size
+	if isStringToIntConversion(instr, dstType) {
+		return true
+	}
+
+	return false
+}
+
+func isConstantInRange(constVal *ssa.Const, dstType string) bool {
+	value, err := strconv.ParseInt(constVal.Value.String(), 10, 64)
+	if err != nil {
+		return false
+	}
+
+	dstInt, err := parseIntType(dstType)
+	if err != nil {
+		return false
+	}
+
+	if dstInt.signed {
+		return value >= -(1<<(dstInt.size-1)) && value <= (1<<(dstInt.size-1))-1
+	}
+	return value >= 0 && value <= (1<<dstInt.size)-1
+}
+
+func hasExplicitRangeCheck(instr *ssa.Convert) bool {
+	block := instr.Block()
+	for _, i := range block.Instrs {
+		if binOp, ok := i.(*ssa.BinOp); ok {
+			// Check if either operand of the BinOp is the result of the Convert instruction
+			if (binOp.X == instr || binOp.Y == instr) &&
+				(binOp.Op == token.LSS || binOp.Op == token.LEQ || binOp.Op == token.GTR || binOp.Op == token.GEQ) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func isStringToIntConversion(instr *ssa.Convert, dstType string) bool {
+	// Traverse the SSA instructions to find the original variable
+	original := instr.X
+	for {
+		switch v := original.(type) {
+		case *ssa.Call:
+			if v.Call.StaticCallee() != nil && v.Call.StaticCallee().Name() == "ParseInt" {
+				if len(v.Call.Args) == 3 {
+					if bitSize, ok := v.Call.Args[2].(*ssa.Const); ok {
+						bitSizeValue, err := strconv.Atoi(bitSize.Value.String())
+						if err != nil {
+							return false
+						}
+						dstInt, err := parseIntType(dstType)
+						if err != nil {
+							return false
+						}
+						isSafe := bitSizeValue <= dstInt.size
+						return isSafe
+					}
+				}
+			}
+			return false
+		case *ssa.Phi:
+			original = v.Edges[0]
+		case *ssa.Extract:
+			original = v.Tuple
+		default:
+			return false
+		}
+	}
 }
 
 type integer struct {

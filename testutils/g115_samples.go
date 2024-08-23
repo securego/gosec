@@ -265,4 +265,95 @@ func main() {
 }
 	`,
 	}, 0, gosec.NewConfig()},
+	{[]string{
+		`
+package main
+
+import (
+        "fmt"
+)
+
+func main() {
+        const a int64 = 13
+        b := int32(a)
+        fmt.Printf("%d\n", b)
+}
+	`,
+	}, 0, gosec.NewConfig()},
+	{[]string{
+		`
+package main
+
+import (
+        "fmt"
+        "math"
+)
+
+func main() {
+        var a int64 = 13
+        if a < math.MinInt32 || a > math.MaxInt32 {
+            panic("out of range")
+        }
+        b := int32(a)
+        fmt.Printf("%d\n", b)
+}
+	`,
+	}, 0, gosec.NewConfig()},
+	{[]string{
+		`
+package main
+
+import (
+        "fmt"
+        "math"
+        "math/rand"
+)
+
+func main() {
+        a := rand.Int63()
+        if a < math.MinInt64 || a > math.MaxInt32 {
+            panic("out of range")
+        }
+        b := int32(a)
+        fmt.Printf("%d\n", b)
+}
+	`,
+	}, 1, gosec.NewConfig()},
+	{[]string{
+		`
+package main
+
+import (
+        "fmt"
+        "math"
+)
+
+func main() {
+        var a int32 = math.MaxInt32
+        if a < math.MinInt32 || a > math.MaxInt32 {
+            panic("out of range")
+        }
+        var b int64 = int64(a) * 2
+        c := int32(b)
+        fmt.Printf("%d\n", c)
+}
+	`,
+	}, 1, gosec.NewConfig()},
+	{[]string{
+		`
+package main
+
+import (
+        "fmt"
+        "strconv"
+)
+
+func main() {
+        var a string = "13"
+        b, _ := strconv.ParseInt(a, 10, 32)
+        c := int32(b)
+        fmt.Printf("%d\n", c)
+}
+	`,
+	}, 0, gosec.NewConfig()},
 }
