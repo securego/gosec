@@ -37,6 +37,8 @@ jobs:
           args: ./...
       - name: Run Tests
         run: make test
+      - name: Perf Diff
+        run: make perf-diff
   coverage:
     needs: [test]
     runs-on: ubuntu-latest

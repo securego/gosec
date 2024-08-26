@@ -92,4 +92,7 @@ image-push: image
 tlsconfig:
 	go generate ./...
 
-.PHONY: test build clean release image image-push tlsconfig
+perf-diff:
+	./perf-diff.sh
+
+.PHONY: test build clean release image image-push tlsconfig perf-diff
