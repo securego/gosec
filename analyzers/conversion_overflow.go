@@ -134,9 +134,10 @@ func isStringToIntConversion(instr *ssa.Convert, dstType string) bool {
 	for {
 		switch v := original.(type) {
 		case *ssa.Call:
-			if v.Call.StaticCallee() != nil && v.Call.StaticCallee().Name() == "ParseInt" {
+			if v.Call.StaticCallee() != nil && (v.Call.StaticCallee().Name() == "ParseInt" || v.Call.StaticCallee().Name() == "ParseUint") {
 				if len(v.Call.Args) == 3 {
 					if bitSize, ok := v.Call.Args[2].(*ssa.Const); ok {
+						signed := v.Call.StaticCallee().Name() == "ParseInt"
 						bitSizeValue, err := strconv.Atoi(bitSize.Value.String())
 						if err != nil {
 							return false
@@ -145,7 +146,7 @@ func isStringToIntConversion(instr *ssa.Convert, dstType string) bool {
 						if err != nil {
 							return false
 						}
-						isSafe := bitSizeValue <= dstInt.size
+						isSafe := bitSizeValue <= dstInt.size && signed == dstInt.signed
 						return isSafe
 					}
 				}

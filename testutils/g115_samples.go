@@ -356,4 +356,38 @@ func main() {
 }
 	`,
 	}, 0, gosec.NewConfig()},
+	{[]string{
+		`
+package main
+
+import (
+        "fmt"
+        "strconv"
+)
+
+func main() {
+        var a string = "13"
+        b, _ := strconv.ParseUint(a, 10, 8)
+        c := uint8(b)
+        fmt.Printf("%d\n", c)
+}
+	`,
+	}, 0, gosec.NewConfig()},
+	{[]string{
+		`
+package main
+
+import (
+        "fmt"
+        "strconv"
+)
+
+func main() {
+        var a string = "13"
+        b, _ := strconv.ParseInt(a, 10, 8)
+        c := uint8(b)
+        fmt.Printf("%d\n", c)
+}
+	`,
+	}, 1, gosec.NewConfig()},
 }
