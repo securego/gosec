@@ -115,13 +115,14 @@ func isConstantInRange(constVal *ssa.Const, dstType string) bool {
 }
 
 func hasExplicitRangeCheck(instr *ssa.Convert) bool {
-	block := instr.Block()
-	for _, i := range block.Instrs {
-		if binOp, ok := i.(*ssa.BinOp); ok {
-			// Check if either operand of the BinOp is the result of the Convert instruction
-			if (binOp.X == instr || binOp.Y == instr) &&
-				(binOp.Op == token.LSS || binOp.Op == token.LEQ || binOp.Op == token.GTR || binOp.Op == token.GEQ) {
-				return true
+	for _, block := range instr.Block().Parent().Blocks {
+		for _, i := range block.Instrs {
+			if binOp, ok := i.(*ssa.BinOp); ok {
+				// Check if either operand of the BinOp is the result of the Convert instruction
+				if (binOp.X == instr.X || binOp.Y == instr.X) &&
+					(binOp.Op == token.LSS || binOp.Op == token.LEQ || binOp.Op == token.GTR || binOp.Op == token.GEQ) {
+					return true
+				}
 			}
 		}
 	}

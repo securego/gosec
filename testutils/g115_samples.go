@@ -311,14 +311,14 @@ import (
 
 func main() {
         a := rand.Int63()
-        if a < math.MinInt64 || a > math.MaxInt32 {
+        if a < math.MinInt32 || a > math.MaxInt32 {
             panic("out of range")
         }
         b := int32(a)
         fmt.Printf("%d\n", b)
 }
 	`,
-	}, 1, gosec.NewConfig()},
+	}, 0, gosec.NewConfig()},
 	{[]string{
 		`
 package main
