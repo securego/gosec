@@ -50,10 +50,10 @@ func runConversionOverflow(pass *analysis.Pass) (interface{}, error) {
 				case *ssa.Convert:
 					src := instr.X.Type().Underlying().String()
 					dst := instr.Type().Underlying().String()
-					if isSafeConversion(instr) {
-						continue
-					}
 					if isIntOverflow(src, dst) {
+						if isSafeConversion(instr) {
+							continue
+						}
 						issue := newIssue(pass.Analyzer.Name,
 							fmt.Sprintf("integer overflow conversion %s -> %s", src, dst),
 							pass.Fset,
@@ -84,13 +84,13 @@ func isSafeConversion(instr *ssa.Convert) bool {
 		}
 	}
 
-	// Check for explicit range checks
-	if hasExplicitRangeCheck(instr) {
+	// Check for string to integer conversions with specified bit size
+	if isStringToIntConversion(instr, dstType) {
 		return true
 	}
 
-	// Check for string to integer conversions with specified bit size
-	if isStringToIntConversion(instr, dstType) {
+	// Check for explicit range checks
+	if hasExplicitRangeCheck(instr, dstType) {
 		return true
 	}
 
@@ -112,20 +112,6 @@ func isConstantInRange(constVal *ssa.Const, dstType string) bool {
 		return value >= -(1<<(dstInt.size-1)) && value <= (1<<(dstInt.size-1))-1
 	}
 	return value >= 0 && value <= (1<<dstInt.size)-1
-}
-
-func hasExplicitRangeCheck(instr *ssa.Convert) bool {
-	block := instr.Block()
-	for _, i := range block.Instrs {
-		if binOp, ok := i.(*ssa.BinOp); ok {
-			// Check if either operand of the BinOp is the result of the Convert instruction
-			if (binOp.X == instr || binOp.Y == instr) &&
-				(binOp.Op == token.LSS || binOp.Op == token.LEQ || binOp.Op == token.GTR || binOp.Op == token.GEQ) {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 func isStringToIntConversion(instr *ssa.Convert, dstType string) bool {
@@ -160,6 +146,87 @@ func isStringToIntConversion(instr *ssa.Convert, dstType string) bool {
 			return false
 		}
 	}
+}
+
+func hasExplicitRangeCheck(instr *ssa.Convert, dstType string) bool {
+	block := instr.Block()
+	dstInt, err := parseIntType(dstType)
+	if err != nil {
+		return false
+	}
+
+	minBoundChecked := false
+	maxBoundChecked := false
+
+	srcInt, err := parseIntType(instr.X.Type().String())
+	if err != nil {
+		return false
+	}
+
+	minBoundChecked = checkSourceMinBound(srcInt, dstInt)
+	maxBoundChecked = checkSourceMaxBound(srcInt, dstInt)
+
+	// If both bounds are already checked, return true
+	if minBoundChecked && maxBoundChecked {
+		return true
+	}
+
+	// Recursive function to check predecessors
+	var checkPredecessors func(block *ssa.BasicBlock) bool
+	checkPredecessors = func(block *ssa.BasicBlock) bool {
+		for _, pred := range block.Preds {
+			minChecked, maxChecked := checkBlockForRangeCheck(pred, instr, dstInt)
+			if minChecked {
+				minBoundChecked = true
+			}
+			if maxChecked {
+				maxBoundChecked = true
+			}
+			if minBoundChecked && maxBoundChecked {
+				return true
+			}
+			if checkPredecessors(pred) {
+				return true
+			}
+		}
+		return false
+	}
+
+	// Start checking from the initial block
+	checkPredecessors(block)
+
+	if minBoundChecked && maxBoundChecked {
+		return true
+	}
+
+	return false
+}
+
+func checkBlockForRangeCheck(block *ssa.BasicBlock, instr *ssa.Convert, dstInt integer) (bool, bool) {
+	minBoundChecked := false
+	maxBoundChecked := false
+
+	for _, i := range block.Instrs {
+		if binOp, ok := i.(*ssa.BinOp); ok && isRelevantBinOp(binOp, instr.X) {
+			constVal := extractConst(binOp)
+			if constVal == nil {
+				continue
+			}
+
+			value, err := strconv.ParseInt(constVal.Value.String(), 10, 64)
+			if err != nil {
+				continue
+			}
+
+			minBoundChecked = minBoundChecked || checkMinBoundValue(value, dstInt)
+			maxBoundChecked = maxBoundChecked || checkMaxBoundValue(value, dstInt)
+
+			if minBoundChecked && maxBoundChecked {
+				break
+			}
+		}
+	}
+	return minBoundChecked, maxBoundChecked
 }
 
 type integer struct {
@@ -224,4 +291,72 @@ func isIntOverflow(src string, dst string) bool {
 	}
 
 	return false
+}
+
+func isRelevantBinOp(binOp *ssa.BinOp, x ssa.Value) bool {
+	return (binOp.X == x || binOp.Y == x) &&
+		(binOp.Op == token.LSS || binOp.Op == token.LEQ || binOp.Op == token.GTR || binOp.Op == token.GEQ)
+}
+
+func extractConst(binOp *ssa.BinOp) *ssa.Const {
+	if c, ok := binOp.Y.(*ssa.Const); ok {
+		return c
+	}
+	if c, ok := binOp.X.(*ssa.Const); ok {
+		return c
+	}
+	return nil
+}
+
+func checkSourceMinBound(srcInt, dstInt integer) bool {
+	if dstInt.signed {
+		if srcInt.signed {
+			// Source and destination are both signed
+			return -(1 << (srcInt.size - 1)) >= -(1 << (dstInt.size - 1))
+		}
+		// Source is unsigned and destination is signed
+		return 0 >= -(1 << (dstInt.size - 1))
+	}
+	if srcInt.signed {
+		// Source is signed and destination is unsigned
+		return -(1 << (srcInt.size - 1)) >= 0
+	}
+	// Both source and destination are unsigned
+	return true
+}
+
+func checkSourceMaxBound(srcInt, dstInt integer) bool {
+	if dstInt.signed {
+		if srcInt.signed {
+			// Source and destination are both signed
+			return (1<<(srcInt.size-1))-1 <= (1<<(dstInt.size-1))-1
+		}
+		// Source is unsigned and destination is signed
+		var a uint = (1 << srcInt.size) - 1
+		var b uint = (1 << (dstInt.size - 1)) - 1
+		return a <= b
+	}
+	// Destination is unsigned
+	if srcInt.signed {
+		// Source is signed and destination is unsigned
+		var a uint = (1 << (srcInt.size - 1)) - 1
+		var b uint = (1 << dstInt.size) - 1
+		return a <= b
+	}
+	// Both source and destination are unsigned
+	return (1<<srcInt.size)-1 <= (1<<dstInt.size)-1
+}
+
+func checkMinBoundValue(value int64, dstInt integer) bool {
+	if dstInt.signed {
+		return value == -(1 << (dstInt.size - 1))
+	}
+	return value >= 0 // For unsigned types, the minimum bound is always 0
+}
+
+func checkMaxBoundValue(value int64, dstInt integer) bool {
+	if dstInt.signed {
+		return value == (1<<(dstInt.size-1))-1
+	}
+	return value == (1<<dstInt.size)-1
 }
