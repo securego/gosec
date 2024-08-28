@@ -197,28 +197,41 @@ func hasExplicitRangeCheck(instr *ssa.Convert, dstType string) bool {
 	return false
 }
 
-func checkBlockForRangeCheck(block *ssa.BasicBlock, instr *ssa.Convert, dstInt integer) (bool, bool) {
-	minBoundChecked := false
-	maxBoundChecked := false
-
+func checkBlockForRangeCheck(block *ssa.BasicBlock, instr *ssa.Convert, dstInt integer) (minBoundChecked, maxBoundChecked bool) {
 	for _, i := range block.Instrs {
-		if binOp, ok := i.(*ssa.BinOp); ok && isRelevantBinOp(binOp, instr.X) {
-			constVal := extractConst(binOp)
-			if constVal == nil {
-				continue
-			}
+		switch v := i.(type) {
+		case *ssa.BinOp:
+			if isBoundCheck(v, instr.X) {
+				constVal, isOnLeft := constFromBoundCheck(v)
+				if constVal == nil {
+					continue
+				}
 
-			value, err := strconv.ParseInt(constVal.Value.String(), 10, 64)
-			if err != nil {
-				continue
-			}
+				value := constVal.Int64()
 
-			minBoundChecked = minBoundChecked || checkMinBoundValue(value, dstInt)
-			maxBoundChecked = maxBoundChecked || checkMaxBoundValue(value, dstInt)
-
-			if minBoundChecked && maxBoundChecked {
-				break
+				if isOnLeft {
+					if v.Op == token.LSS || v.Op == token.LEQ {
+						maxBoundChecked = maxBoundChecked || checkMaxBoundValue(value, dstInt)
+					}
+					if v.Op == token.GTR || v.Op == token.GEQ {
+						minBoundChecked = minBoundChecked || checkMinBoundValue(value, dstInt)
+					}
+				} else {
+					if v.Op == token.LSS || v.Op == token.LEQ {
+						minBoundChecked = minBoundChecked || checkMinBoundValue(value, dstInt)
+					}
+					if v.Op == token.GTR || v.Op == token.GEQ {
+						maxBoundChecked = maxBoundChecked || checkMaxBoundValue(value, dstInt)
+					}
+				}
 			}
+		case *ssa.Phi:
+			// Handle logical operations
+			continue
+		}
+
+		if minBoundChecked && maxBoundChecked {
+			break
 		}
 	}
 	return minBoundChecked, maxBoundChecked
@@ -288,36 +301,34 @@ func isIntOverflow(src string, dst string) bool {
 	return false
 }
 
-func isRelevantBinOp(binOp *ssa.BinOp, x ssa.Value) bool {
+func isBoundCheck(binOp *ssa.BinOp, x ssa.Value) bool {
 	return (binOp.X == x || binOp.Y == x) &&
 		(binOp.Op == token.LSS || binOp.Op == token.LEQ || binOp.Op == token.GTR || binOp.Op == token.GEQ)
 }
 
-func extractConst(binOp *ssa.BinOp) *ssa.Const {
-	if c, ok := binOp.Y.(*ssa.Const); ok {
-		return c
-	}
+func constFromBoundCheck(binOp *ssa.BinOp) (constant *ssa.Const, isOnLeft bool) {
 	if c, ok := binOp.X.(*ssa.Const); ok {
-		return c
+		return c, true
 	}
-	return nil
+	if c, ok := binOp.Y.(*ssa.Const); ok {
+		return c, false
+	}
+	return nil, false
 }
 
 func checkSourceMinBound(srcInt, dstInt integer) bool {
-	if dstInt.signed {
-		if srcInt.signed {
-			// Source and destination are both signed
-			return -(1 << (srcInt.size - 1)) >= -(1 << (dstInt.size - 1))
-		}
-		// Source is unsigned and destination is signed
-		return 0 >= -(1 << (dstInt.size - 1))
+	if !srcInt.signed {
+		// For unsigned types, the minimum bound is always 0 and is always safe
+		return true
 	}
-	if srcInt.signed {
+
+	if dstInt.signed {
+		// Source and destination are both signed
+		return -(1 << (srcInt.size - 1)) >= -(1 << (dstInt.size - 1))
+	} else {
 		// Source is signed and destination is unsigned
 		return -(1 << (srcInt.size - 1)) >= 0
 	}
-	// Both source and destination are unsigned
-	return true
 }
 
 func checkSourceMaxBound(srcInt, dstInt integer) bool {
@@ -344,14 +355,14 @@ func checkSourceMaxBound(srcInt, dstInt integer) bool {
 
 func checkMinBoundValue(value int64, dstInt integer) bool {
 	if dstInt.signed {
-		return value == -(1 << (dstInt.size - 1))
+		return value >= -(1 << (dstInt.size - 1))
 	}
 	return value >= 0 // For unsigned types, the minimum bound is always 0
 }
 
 func checkMaxBoundValue(value int64, dstInt integer) bool {
 	if dstInt.signed {
-		return value == (1<<(dstInt.size-1))-1
+		return value <= (1<<(dstInt.size-1))-1
 	}
-	return value == (1<<dstInt.size)-1
+	return value <= (1<<dstInt.size)-1
 }
