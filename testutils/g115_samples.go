@@ -495,4 +495,21 @@ func foo(x int) uint32 {
 }
 `,
 	}, 0, gosec.NewConfig()},
+	{[]string{
+		`
+package main
+
+import (
+        "math"
+)
+
+func foo(items []string) uint32 {
+        x := len(items)
+        if x > math.MaxUint32 {
+            return math.MaxUint32
+        }
+        return uint32(x)
+}
+`,
+	}, 0, gosec.NewConfig()},
 }
