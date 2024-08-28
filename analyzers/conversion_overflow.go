@@ -229,6 +229,15 @@ func checkBlockForRangeCheck(block *ssa.BasicBlock, instr *ssa.Convert, dstInt i
 					}
 				}
 			}
+		case *ssa.Call:
+			// len(slice) results in an int that is guaranteed >= 0, which
+			// satisfies the lower bound check for int -> uint conversion
+			if v != instr.X {
+				continue
+			}
+			if fn, isBuiltin := v.Call.Value.(*ssa.Builtin); isBuiltin && fn.Name() == "len" && !dstInt.signed {
+				minBoundChecked = true
+			}
 		case *ssa.Phi:
 			// Handle logical operations
 			continue
