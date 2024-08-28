@@ -149,7 +149,6 @@ func isStringToIntConversion(instr *ssa.Convert, dstType string) bool {
 }
 
 func hasExplicitRangeCheck(instr *ssa.Convert, dstType string) bool {
-	block := instr.Block()
 	dstInt, err := parseIntType(dstType)
 	if err != nil {
 		return false
@@ -168,85 +167,96 @@ func hasExplicitRangeCheck(instr *ssa.Convert, dstType string) bool {
 		return true
 	}
 
-	// Recursive depth-first search of predecessor blocks of the SSA function to find bounds checks on the value being converted
-	var checkPredecessors func(block *ssa.BasicBlock, depth int) bool
-	checkPredecessors = func(block *ssa.BasicBlock, depth int) bool {
-		if depth > maxDepth {
-			return false
-		}
-
-		for _, pred := range block.Preds {
-			minChecked, maxChecked := checkBlockForRangeCheck(pred, instr, dstInt)
-
+	visitedIfs := make(map[*ssa.If]bool)
+	for _, block := range instr.Parent().Blocks {
+		var minChecked, maxChecked bool
+		for _, blockInstr := range block.Instrs {
+			switch v := blockInstr.(type) {
+			case *ssa.If:
+				minChecked, maxChecked = checkIfForRangeCheck(v, instr, dstInt, visitedIfs)
+			case *ssa.Call:
+				// len(slice) results in an int that is guaranteed >= 0, which
+				// satisfies the lower bound check for int -> uint conversion
+				if v != instr.X {
+					continue
+				}
+				if fn, isBuiltin := v.Call.Value.(*ssa.Builtin); isBuiltin && fn.Name() == "len" && !dstInt.signed {
+					minChecked = true
+				}
+			case *ssa.Convert:
+				if v == instr {
+					break
+				}
+			}
 			minBoundChecked = minBoundChecked || minChecked
 			maxBoundChecked = maxBoundChecked || maxChecked
 
 			if minBoundChecked && maxBoundChecked {
 				return true
 			}
-			if checkPredecessors(pred, depth+1) {
-				return true
-			}
 		}
-		return false
 	}
-
-	// Start checking from the initial block
-	checkPredecessors(block, 0)
-
-	if minBoundChecked && maxBoundChecked {
-		return true
-	}
-
 	return false
 }
 
-func checkBlockForRangeCheck(block *ssa.BasicBlock, instr *ssa.Convert, dstInt integer) (minBoundChecked, maxBoundChecked bool) {
-	for _, i := range block.Instrs {
-		switch v := i.(type) {
-		case *ssa.BinOp:
-			if isBoundCheck(v, instr.X) {
-				constVal, isOnLeft := constFromBoundCheck(v)
-				if constVal == nil {
-					continue
-				}
+func checkIfForRangeCheck(ifInstr *ssa.If, instr *ssa.Convert, dstInt integer, visitedIfs map[*ssa.If]bool) (minBoundChecked, maxBoundChecked bool) {
+	if visitedIfs[ifInstr] {
+		// If the if instruction has already been visited, we can skip it
+		return false, false
+	}
+	visitedIfs[ifInstr] = true
 
-				value := constVal.Int64()
+	// check Instrs for other bound checks
+	condBlock := ifInstr.Block()
+	if succIf, ok := condBlock.Succs[1].Instrs[1].(*ssa.If); ok {
+		// this is an OR condition and should be sufficient if it contains the other bound check
+		minBoundChecked, maxBoundChecked = checkIfForRangeCheck(succIf, instr, dstInt, visitedIfs)
+	}
 
-				if isOnLeft {
-					if v.Op == token.LSS || v.Op == token.LEQ {
-						maxBoundChecked = maxBoundChecked || checkMaxBoundValue(value, dstInt)
-					}
-					if v.Op == token.GTR || v.Op == token.GEQ {
-						minBoundChecked = minBoundChecked || checkMinBoundValue(value, dstInt)
-					}
-				} else {
-					if v.Op == token.LSS || v.Op == token.LEQ {
-						minBoundChecked = minBoundChecked || checkMinBoundValue(value, dstInt)
-					}
-					if v.Op == token.GTR || v.Op == token.GEQ {
-						maxBoundChecked = maxBoundChecked || checkMaxBoundValue(value, dstInt)
-					}
-				}
+	// check the instructions of the if block for other bound checks
+	for _, succ := range condBlock.Succs {
+		for _, blockInstr := range succ.Instrs {
+			if succIf, ok := blockInstr.(*ssa.If); ok {
+				// this is an AND condition and is insufficient to check the bounds but we need to visit it
+				// because walking the parent block will visit it again
+				_, _ = checkIfForRangeCheck(succIf, instr, dstInt, visitedIfs)
 			}
-		case *ssa.Call:
-			// len(slice) results in an int that is guaranteed >= 0, which
-			// satisfies the lower bound check for int -> uint conversion
-			if v != instr.X {
-				continue
-			}
-			if fn, isBuiltin := v.Call.Value.(*ssa.Builtin); isBuiltin && fn.Name() == "len" && !dstInt.signed {
-				minBoundChecked = true
-			}
-		case *ssa.Phi:
-			// Handle logical operations
-			continue
-		}
-
-		if minBoundChecked && maxBoundChecked {
-			break
 		}
 	}
+
+	cond := ifInstr.Cond
+	// Check if the condition is a bound check
+	if binOp, ok := cond.(*ssa.BinOp); ok {
+		if isBoundCheck(binOp, instr.X) {
+			constVal, isOnLeft := constFromBoundCheck(binOp)
+			if constVal == nil {
+				return false, false
+			}
+
+			value := constVal.Int64()
+
+			if isOnLeft {
+				if binOp.Op == token.LSS || binOp.Op == token.LEQ {
+					newMaxCheck := checkMaxBoundValue(value, dstInt)
+					maxBoundChecked = maxBoundChecked || newMaxCheck
+				}
+				if binOp.Op == token.GTR || binOp.Op == token.GEQ {
+					newMinCheck := checkMinBoundValue(value, dstInt)
+					minBoundChecked = minBoundChecked || newMinCheck
+				}
+			} else {
+				if binOp.Op == token.LSS || binOp.Op == token.LEQ {
+					newMinCheck := checkMinBoundValue(value, dstInt)
+					minBoundChecked = minBoundChecked || newMinCheck
+				}
+				if binOp.Op == token.GTR || binOp.Op == token.GEQ {
+					newMaxCheck := checkMaxBoundValue(value, dstInt)
+					maxBoundChecked = maxBoundChecked || newMaxCheck
+				}
+			}
+		}
+	}
+
 	return minBoundChecked, maxBoundChecked
 }
 

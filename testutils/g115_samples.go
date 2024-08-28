@@ -322,7 +322,7 @@ func main() {
         fmt.Printf("%d\n", b)
 }
 	`,
-	}, 0, gosec.NewConfig()},
+	}, 1, gosec.NewConfig()},
 	{[]string{
 		`
 package main
@@ -342,7 +342,7 @@ func main() {
         fmt.Printf("%d\n", b)
 }
 	`,
-	}, 1, gosec.NewConfig()},
+	}, 0, gosec.NewConfig()},
 	{[]string{
 		`
 package main
@@ -355,7 +355,7 @@ import (
 
 func main() {
         a := rand.Int63()
-        if a < math.MinInt64 && a > math.MaxInt32 {
+        if a < math.MinInt64 || a > math.MaxInt32 {
             panic("out of range")
         }
         b := int32(a)
