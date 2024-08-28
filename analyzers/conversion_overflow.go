@@ -155,16 +155,13 @@ func hasExplicitRangeCheck(instr *ssa.Convert, dstType string) bool {
 		return false
 	}
 
-	minBoundChecked := false
-	maxBoundChecked := false
-
 	srcInt, err := parseIntType(instr.X.Type().String())
 	if err != nil {
 		return false
 	}
 
-	minBoundChecked = checkSourceMinBound(srcInt, dstInt)
-	maxBoundChecked = checkSourceMaxBound(srcInt, dstInt)
+	minBoundChecked := checkSourceMinBound(srcInt, dstInt)
+	maxBoundChecked := checkSourceMaxBound(srcInt, dstInt)
 
 	// If both bounds are already checked, return true
 	if minBoundChecked && maxBoundChecked {
@@ -176,12 +173,10 @@ func hasExplicitRangeCheck(instr *ssa.Convert, dstType string) bool {
 	checkPredecessors = func(block *ssa.BasicBlock) bool {
 		for _, pred := range block.Preds {
 			minChecked, maxChecked := checkBlockForRangeCheck(pred, instr, dstInt)
-			if minChecked {
-				minBoundChecked = true
-			}
-			if maxChecked {
-				maxBoundChecked = true
-			}
+
+			minBoundChecked = minBoundChecked || minChecked
+			maxBoundChecked = maxBoundChecked || maxChecked
+
 			if minBoundChecked && maxBoundChecked {
 				return true
 			}
