@@ -168,9 +168,13 @@ func hasExplicitRangeCheck(instr *ssa.Convert, dstType string) bool {
 		return true
 	}
 
-	// Recursive function to check predecessors
-	var checkPredecessors func(block *ssa.BasicBlock) bool
-	checkPredecessors = func(block *ssa.BasicBlock) bool {
+	// Recursive depth-first search of predecessor blocks of the SSA function to find bounds checks on the value being converted
+	var checkPredecessors func(block *ssa.BasicBlock, depth int) bool
+	checkPredecessors = func(block *ssa.BasicBlock, depth int) bool {
+		if depth > maxDepth {
+			return false
+		}
+
 		for _, pred := range block.Preds {
 			minChecked, maxChecked := checkBlockForRangeCheck(pred, instr, dstInt)
 
@@ -180,7 +184,7 @@ func hasExplicitRangeCheck(instr *ssa.Convert, dstType string) bool {
 			if minBoundChecked && maxBoundChecked {
 				return true
 			}
-			if checkPredecessors(pred) {
+			if checkPredecessors(pred, depth+1) {
 				return true
 			}
 		}
@@ -188,7 +192,7 @@ func hasExplicitRangeCheck(instr *ssa.Convert, dstType string) bool {
 	}
 
 	// Start checking from the initial block
-	checkPredecessors(block)
+	checkPredecessors(block, 0)
 
 	if minBoundChecked && maxBoundChecked {
 		return true
