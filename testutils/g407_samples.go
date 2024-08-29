@@ -377,4 +377,98 @@ func main() {
 }
 `}, 2, gosec.NewConfig()},
 	}
+
+	// SampleCodeG407p - Use of hardcoded nonce/IV
+	SampleCodeG407p = []CodeSample{
+		{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+	"fmt"
+)
+
+func main() {
+
+	var nonce = []byte("ILoveMyNonce")
+	block, _ := aes.NewCipher([]byte{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1})
+	aesGCM, _ := cipher.NewGCM(block)
+	fmt.Println(string(aesGCM.Seal(nil, nonce, []byte("My secret message"), nil)))
+}
+`}, 1, gosec.NewConfig()},
+	}
+
+	// SampleCodeG407q - Use of hardcoded nonce/IV
+	SampleCodeG407q = []CodeSample{
+		{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+	"fmt"
+)
+
+func main() {
+
+	var nonce = []byte{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
+	block, _ := aes.NewCipher([]byte{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1})
+	aesCTR := cipher.NewCTR(block, nonce)
+	var output = make([]byte, 16)
+	aesCTR.XORKeyStream(output, []byte("Very Cool thing!"))
+	fmt.Println(string(output))
+}
+`}, 1, gosec.NewConfig()},
+	}
+
+	// SampleCodeG407r - Use of hardcoded nonce/IV
+	SampleCodeG407r = []CodeSample{
+		{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"fmt"
+)
+
+func coolFunc(size int) []byte{
+	buf := make([]byte, size)
+	rand.Read(buf)
+	return buf
+}
+
+func main() {
+
+	var nonce = coolFunc(16)
+	block, _ := aes.NewCipher([]byte{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1})
+	aesCTR := cipher.NewCTR(block, nonce)
+	var output = make([]byte, 16)
+	aesCTR.XORKeyStream(output, []byte("Very Cool thing!"))
+	fmt.Println(string(output))
+}
+`}, 0, gosec.NewConfig()},
+	}
+	// SampleCodeG407s - Use of hardcoded nonce/IV
+	SampleCodeG407s = []CodeSample{
+		{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"fmt"
+)
+
+var nonce = []byte{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
+
+func main() {
+
+	block, _ := aes.NewCipher([]byte{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1})
+	aesGCM, _ := cipher.NewGCM(block)
+	cipherText := aesGCM.Seal(nil, nonce, []byte("My secret message"), nil)
+	fmt.Println(string(cipherText))
+
+}
+`}, 1, gosec.NewConfig()},
+	}
 )

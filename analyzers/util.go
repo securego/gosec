@@ -35,6 +35,15 @@ type SSAAnalyzerResult struct {
 	SSA    *buildssa.SSA
 }
 
+// BuildDefaultAnalyzers returns the default list of analyzers
+func BuildDefaultAnalyzers() []*analysis.Analyzer {
+	return []*analysis.Analyzer{
+		newConversionOverflowAnalyzer("G115", "Type conversion which leads to integer overflow"),
+		newSliceBoundsAnalyzer("G602", "Possible slice bounds out of range"),
+		newHardCodedNonce("G407", "Use of hardcoded IV/nonce for encryption"),
+	}
+}
+
 // getSSAResult retrieves the SSA result from analysis pass
 func getSSAResult(pass *analysis.Pass) (*SSAAnalyzerResult, error) {
 	result, ok := pass.ResultOf[buildssa.Analyzer]
