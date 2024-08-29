@@ -247,6 +247,22 @@ var _ = Describe("gosec rules", func() {
 			runner("G407", testutils.SampleCodeG407o)
 		})
 
+		It("should detect hardcoded nonce/IV", func() {
+			runner("G407", testutils.SampleCodeG407p)
+		})
+
+		It("should detect hardcoded nonce/IV", func() {
+			runner("G407", testutils.SampleCodeG407q)
+		})
+
+		It("should detect hardcoded nonce/IV", func() {
+			runner("G407", testutils.SampleCodeG407r)
+		})
+
+		It("should detect hardcoded nonce/IV", func() {
+			runner("G407", testutils.SampleCodeG407s)
+		})
+		
 		It("should detect blocklisted imports - MD5", func() {
 			runner("G501", testutils.SampleCodeG501)
 		})

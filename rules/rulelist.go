@@ -100,7 +100,6 @@ func Generate(trackSuppressions bool, filters ...RuleFilter) RuleList {
 		{"G404", "Insecure random number source (rand)", NewWeakRandCheck},
 		{"G405", "Detect the usage of DES or RC4", NewUsesWeakCryptographyEncryption},
 		{"G406", "Detect the usage of deprecated MD4 or RIPEMD160", NewUsesWeakDeprecatedCryptographyHash},
-		{"G407", "Detect the usage of hardcoded Initialization Vector(IV)/Nonce", NewUsesHardCodedIV},
 
 		// blocklist
 		{"G501", "Import blocklist: crypto/md5", NewBlocklistedImportMD5},
