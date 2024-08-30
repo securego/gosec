@@ -140,9 +140,22 @@ func parseIntType(intType string) (integer, error) {
 	var max uint
 
 	if signed {
-		max = (1 << uint(intSize-1)) - 1
+		shiftAmount := intSize - 1
+
+		// Perform a bounds check
+		if shiftAmount < 0 {
+			return integer{}, fmt.Errorf("invalid shift amount: %d", shiftAmount)
+		}
+
+		max = (1 << uint(shiftAmount)) - 1
 		min = -1 << (intSize - 1)
+
 	} else {
+		// Perform a bounds check
+		if intSize < 0 {
+			return integer{}, fmt.Errorf("invalid bit size: %d", intSize)
+		}
+
 		max = (1 << uint(intSize)) - 1
 		min = 0
 	}
