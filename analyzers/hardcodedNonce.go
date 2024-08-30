@@ -57,8 +57,8 @@ func runHardCodedNonce(pass *analysis.Pass) (interface{}, error) {
 		"crypto/cipher.NewOFB":          {2, 1},
 	}
 	var issues []*issue.Issue
-	var ssaPkgFunctions = ssaResult.SSA.SrcFuncs
-	var savedArgsFromFunctions = *iterateAndGetArgsFromTrackedFunctions(ssaPkgFunctions, &calls)
+	ssaPkgFunctions := ssaResult.SSA.SrcFuncs
+	savedArgsFromFunctions := *iterateAndGetArgsFromTrackedFunctions(ssaPkgFunctions, &calls)
 
 	for _, savedArg := range savedArgsFromFunctions {
 		tmp, err := raiseIssue(savedArg, &calls, ssaPkgFunctions, pass, "")
@@ -148,14 +148,12 @@ func raiseIssue(val *ssa.Value, funcsToTrack *map[string][]int, ssaFuncs []*ssa.
 
 // Iterate through all places that use the `variable` argument and check if it's used in one of the tracked functions
 func iterateThroughReferrers(variable *ssa.Value, funcsToTrack *map[string][]int, analyzerID string, issueDescription string, fileSet *token.FileSet, issueSeverity issue.Score, issueConfidence issue.Score) ([]*issue.Issue, error) {
-
 	if funcsToTrack == nil || variable == nil || analyzerID == "" || issueDescription == "" || fileSet == nil {
 		return nil, errors.New("received a nil object")
 	}
 	var gosecIssues []*issue.Issue = nil
 	// Go trough all functions that use the given arg variable
 	for _, referrer := range *(*variable).Referrers() {
-
 		// Iterate trough the functions we are interested
 		for trackedFunc := range *funcsToTrack {
 

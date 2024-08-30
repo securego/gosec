@@ -2,11 +2,9 @@ package testutils
 
 import "github.com/securego/gosec/v2"
 
-var (
-	// SampleCodeG407 - Use of hardcoded nonce/IV
-	SampleCodeG407 = []CodeSample{
-
-		{[]string{`package main
+// SampleCodeG407 - Use of hardcoded nonce/IV
+var SampleCodeG407 = []CodeSample{
+	{[]string{`package main
 
 import (
 	"crypto/aes"
@@ -25,7 +23,7 @@ func main() {
 }
 `}, 1, gosec.NewConfig()},
 
-		{[]string{`package main
+	{[]string{`package main
 
 import (
 	"crypto/aes"
@@ -45,7 +43,7 @@ func main() {
 
 `}, 0, gosec.NewConfig()},
 
-		{[]string{`package main
+	{[]string{`package main
 
 import (
 	"crypto/aes"
@@ -79,7 +77,7 @@ func main() {
 }
 `}, 0, gosec.NewConfig()},
 
-		{[]string{`package main
+	{[]string{`package main
 
 import (
 	"crypto/aes"
@@ -97,7 +95,7 @@ func main() {
 
 }`}, 1, gosec.NewConfig()},
 
-		{[]string{`package main
+	{[]string{`package main
 
 import (
 	"crypto/aes"
@@ -115,7 +113,7 @@ func main() {
 
 }`}, 1, gosec.NewConfig()},
 
-		{[]string{`package main
+	{[]string{`package main
 
 import (
 	"crypto/aes"
@@ -134,7 +132,7 @@ func main() {
 }
 `}, 1, gosec.NewConfig()},
 
-		{[]string{`package main
+	{[]string{`package main
 
 import (
 	"crypto/aes"
@@ -154,7 +152,7 @@ func main() {
 }
 `}, 2, gosec.NewConfig()},
 
-		{[]string{`package main
+	{[]string{`package main
 
 import (
 	"crypto/aes"
@@ -174,7 +172,7 @@ func main() {
 }
 `}, 2, gosec.NewConfig()},
 
-		{[]string{`package main
+	{[]string{`package main
 
 import (
 	"crypto/aes"
@@ -195,7 +193,7 @@ func main() {
 }
 `}, 2, gosec.NewConfig()},
 
-		{[]string{`package main
+	{[]string{`package main
 
 import (
 	"crypto/aes"
@@ -229,7 +227,7 @@ func main() {
 }
 `}, 2, gosec.NewConfig()},
 
-		{[]string{`package main
+	{[]string{`package main
 
 import (
 	"crypto/aes"
@@ -262,7 +260,7 @@ func main() {
 }
 `}, 2, gosec.NewConfig()},
 
-		{[]string{`package main
+	{[]string{`package main
 
 import (
 	"crypto/aes"
@@ -282,7 +280,7 @@ func main() {
 }
 `}, 2, gosec.NewConfig()},
 
-		{[]string{`package main
+	{[]string{`package main
 
 import (
 	"crypto/aes"
@@ -302,7 +300,7 @@ func main() {
 }
 `}, 2, gosec.NewConfig()},
 
-		{[]string{`package main
+	{[]string{`package main
 
 import (
 	"crypto/aes"
@@ -323,7 +321,7 @@ func main() {
 
 }`}, 2, gosec.NewConfig()},
 
-		{[]string{`package main
+	{[]string{`package main
 
 import (
 	"crypto/aes"
@@ -344,7 +342,7 @@ func main() {
 
 }`}, 2, gosec.NewConfig()},
 
-		{[]string{`package main
+	{[]string{`package main
 
 import (
 	"crypto/aes"
@@ -367,7 +365,7 @@ func main() {
 
 }`}, 2, gosec.NewConfig()},
 
-		{[]string{`package main
+	{[]string{`package main
 
 import (
 	"crypto/aes"
@@ -391,7 +389,7 @@ func main() {
 }
 `}, 2, gosec.NewConfig()},
 
-		{[]string{`package main
+	{[]string{`package main
 
 import (
 	"crypto/aes"
@@ -408,7 +406,7 @@ func main() {
 }
 `}, 1, gosec.NewConfig()},
 
-		{[]string{`package main
+	{[]string{`package main
 
 import (
 	"crypto/aes"
@@ -427,7 +425,7 @@ func main() {
 }
 `}, 1, gosec.NewConfig()},
 
-		{[]string{`package main
+	{[]string{`package main
 
 import (
 	"crypto/aes"
@@ -453,7 +451,7 @@ func main() {
 }
 `}, 0, gosec.NewConfig()},
 
-		{[]string{`package main
+	{[]string{`package main
 
 import (
 	"crypto/aes"
@@ -472,5 +470,4 @@ func main() {
 
 }
 `}, 1, gosec.NewConfig()},
-	}
-)
+}

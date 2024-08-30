@@ -1521,7 +1521,6 @@ var _ = Describe("Analyzer", func() {
 			Expect(controlIssues[0].Suppressions[0].Justification).To(Equal("Globally suppressed."))
 		})
 
-
 		It("should not report an error if the analyzer is excluded", func() {
 			sample := testutils.SampleCodeG407[0]
 			source := sample.Code[0]
