@@ -36,6 +36,19 @@ type integer struct {
 	max    uint
 }
 
+type rangeResult struct {
+	MinValue     int
+	MaxValue     uint
+	IsRangeCheck bool
+	ConvertFound bool
+}
+
+type branchBounds struct {
+	MinValue     *int
+	MaxValue     *uint
+	ConvertFound bool
+}
+
 func newConversionOverflowAnalyzer(id string, description string) *analysis.Analyzer {
 	return &analysis.Analyzer{
 		Name:     id,
@@ -217,7 +230,6 @@ func isStringToIntConversion(instr *ssa.Convert, dstType string) bool {
 }
 
 func hasExplicitRangeCheck(instr *ssa.Convert, dstType string) bool {
-	fmt.Println("")
 	dstInt, err := parseIntType(dstType)
 	if err != nil {
 		return false
@@ -240,15 +252,13 @@ func hasExplicitRangeCheck(instr *ssa.Convert, dstType string) bool {
 		for _, blockInstr := range block.Instrs {
 			switch v := blockInstr.(type) {
 			case *ssa.If:
-				currMinValue, currMaxValue, isRangeCheck, _ := getResultRange(v, instr, visitedIfs)
-
-				if isRangeCheck {
-					minValue = max(minValue, &currMinValue)
-					maxValue = min(maxValue, &currMaxValue)
+				result := getResultRange(v, instr, visitedIfs)
+				if result.IsRangeCheck {
+					minValue = max(minValue, &result.MinValue)
+					maxValue = min(maxValue, &result.MaxValue)
 				}
 			case *ssa.Call:
-				// len(slice) results in an int that is guaranteed >= 0, which
-				// satisfies the lower bound check for int -> uint conversion
+				// these function return an int of a guaranteed size
 				if v != instr.X {
 					continue
 				}
@@ -272,117 +282,121 @@ func hasExplicitRangeCheck(instr *ssa.Convert, dstType string) bool {
 	return false
 }
 
-func getResultRange(ifInstr *ssa.If, instr *ssa.Convert, visitedIfs map[*ssa.If]bool) (minValue int, maxValue uint, isRangeChk, convertFound bool) {
-	minValue = math.MinInt
-	maxValue = math.MaxUint
-
+// getResultRange is a recursive function that walks the branches of the if statement to find the range of the variable
+func getResultRange(ifInstr *ssa.If, instr *ssa.Convert, visitedIfs map[*ssa.If]bool) rangeResult {
 	if visitedIfs[ifInstr] {
-		return minValue, maxValue, false, false
+		return rangeResult{MinValue: math.MinInt, MaxValue: math.MaxUint}
 	}
 	visitedIfs[ifInstr] = true
 
 	cond := ifInstr.Cond
-
-	var thenBounds, elseBounds branchBounds
-
-	if binOp, ok := cond.(*ssa.BinOp); ok && isRangeCheck(binOp, instr.X) {
-		isRangeChk = true
-
-		// Check the true branch
-		thenBounds = walkBranchForConvert(ifInstr.Block().Succs[0], instr, visitedIfs)
-
-		x, y := binOp.X, binOp.Y
-		operandsFlipped := false
-		if x != instr.X {
-			y = x
-			operandsFlipped = true
-		}
-		constVal, ok := y.(*ssa.Const)
-		if !ok {
-			return minValue, maxValue, false, false
-		}
-
-		switch binOp.Op {
-		case token.LEQ, token.LSS:
-			if thenBounds.convertFound && !operandsFlipped {
-				maxValue = uint(constVal.Uint64())
-				if binOp.Op == token.LEQ {
-					maxValue--
-				}
-				break
-			}
-			minValue = int(constVal.Int64())
-			if binOp.Op == token.GTR {
-				minValue++
-			}
-		case token.GEQ, token.GTR:
-			if thenBounds.convertFound && !operandsFlipped {
-				minValue = int(constVal.Int64())
-				if binOp.Op == token.GEQ {
-					minValue++
-				}
-				break
-			}
-			maxValue = uint(constVal.Uint64())
-			if binOp.Op == token.LSS {
-				maxValue--
-			}
-		}
+	binOp, ok := cond.(*ssa.BinOp)
+	if !ok || !isRangeCheck(binOp, instr.X) {
+		return rangeResult{MinValue: math.MinInt, MaxValue: math.MaxUint}
 	}
 
-	if !isRangeChk {
-		return minValue, maxValue, isRangeChk, convertFound
+	result := rangeResult{
+		MinValue:     math.MinInt,
+		MaxValue:     math.MaxUint,
+		IsRangeCheck: true,
 	}
 
-	elseBounds = walkBranchForConvert(ifInstr.Block().Succs[1], instr, visitedIfs)
+	thenBounds := walkBranchForConvert(ifInstr.Block().Succs[0], instr, visitedIfs)
+	elseBounds := walkBranchForConvert(ifInstr.Block().Succs[1], instr, visitedIfs)
 
-	if thenBounds.convertFound {
-		return max(minValue, thenBounds.minValue), min(maxValue, thenBounds.maxValue), true, true
-	} else if elseBounds.convertFound {
-		return max(minValue, elseBounds.minValue), min(maxValue, elseBounds.maxValue), true, true
+	updateResultFromBinOp(&result, binOp, instr, thenBounds.ConvertFound)
+
+	if thenBounds.ConvertFound {
+		result.ConvertFound = true
+		result.MinValue = max(result.MinValue, thenBounds.MinValue)
+		result.MaxValue = min(result.MaxValue, thenBounds.MaxValue)
+	} else if elseBounds.ConvertFound {
+		result.ConvertFound = true
+		result.MinValue = max(result.MinValue, elseBounds.MinValue)
+		result.MaxValue = min(result.MaxValue, elseBounds.MaxValue)
 	}
 
-	return minValue, maxValue, isRangeChk, convertFound
+	return result
 }
 
-type branchBounds struct {
-	minValue     *int
-	maxValue     *uint
-	convertFound bool
+// updateResultFromBinOp updates the rangeResult based on the BinOp instruction and the location of the Convert instruction
+func updateResultFromBinOp(result *rangeResult, binOp *ssa.BinOp, instr *ssa.Convert, successPathConvert bool) {
+	x, y := binOp.X, binOp.Y
+	operandsFlipped := false
+	if x != instr.X {
+		y, operandsFlipped = x, true
+	}
+
+	constVal, ok := y.(*ssa.Const)
+	if !ok {
+		return
+	}
+
+	switch binOp.Op {
+	case token.LEQ, token.LSS:
+		updateMinMaxForLessOrEqual(result, constVal, binOp.Op, operandsFlipped, successPathConvert)
+	case token.GEQ, token.GTR:
+		updateMinMaxForGreaterOrEqual(result, constVal, binOp.Op, operandsFlipped, successPathConvert)
+	}
 }
 
+func updateMinMaxForLessOrEqual(result *rangeResult, constVal *ssa.Const, op token.Token, operandsFlipped bool, successPathConvert bool) {
+	// If the success path has a conversion and the operands are not flipped, then the constant value is the maximum value
+	if successPathConvert && !operandsFlipped {
+		result.MaxValue = uint(constVal.Uint64())
+		if op == token.LEQ {
+			result.MaxValue--
+		}
+	} else {
+		result.MinValue = int(constVal.Int64())
+		if op == token.GTR {
+			result.MinValue++
+		}
+	}
+}
+
+func updateMinMaxForGreaterOrEqual(result *rangeResult, constVal *ssa.Const, op token.Token, operandsFlipped bool, successPathConvert bool) {
+	// If the success path has a conversion and the operands are not flipped, then the constant value is the minimum value
+	if successPathConvert && !operandsFlipped {
+		result.MinValue = int(constVal.Int64())
+		if op == token.GEQ {
+			result.MinValue++
+		}
+	} else {
+		result.MaxValue = uint(constVal.Uint64())
+		if op == token.LSS {
+			result.MaxValue--
+		}
+	}
+}
+
+// walkBranchForConvert walks the branch of the if statement to find the range of the variable and where the conversion is
 func walkBranchForConvert(block *ssa.BasicBlock, instr *ssa.Convert, visitedIfs map[*ssa.If]bool) branchBounds {
 	bounds := branchBounds{}
-	convertFound := false
+
 	for _, blockInstr := range block.Instrs {
 		switch v := blockInstr.(type) {
 		case *ssa.If:
-			currMinValue, currMaxValue, isRangeCheck, cnvrtFound := getResultRange(v, instr, visitedIfs)
-			convertFound = convertFound || cnvrtFound
+			result := getResultRange(v, instr, visitedIfs)
+			bounds.ConvertFound = bounds.ConvertFound || result.ConvertFound
 
-			if isRangeCheck {
-				bounds.minValue = toPtr(min(currMinValue, bounds.minValue))
-				bounds.maxValue = toPtr(max(currMaxValue, bounds.maxValue))
+			if result.IsRangeCheck {
+				bounds.MinValue = toPtr(max(result.MinValue, bounds.MinValue))
+				bounds.MaxValue = toPtr(min(result.MaxValue, bounds.MaxValue))
 			}
 		case *ssa.Call:
-			if v != instr.X {
-				continue
-			}
-			if fn, isBuiltin := v.Call.Value.(*ssa.Builtin); isBuiltin {
-				switch fn.Name() {
-				case "len", "cap":
-					bounds.minValue = toPtr(0)
+			if v == instr.X {
+				if fn, isBuiltin := v.Call.Value.(*ssa.Builtin); isBuiltin && (fn.Name() == "len" || fn.Name() == "cap") {
+					bounds.MinValue = toPtr(0)
 				}
 			}
 		case *ssa.Convert:
 			if v == instr {
-				bounds.convertFound = true
-				break
+				bounds.ConvertFound = true
+				return bounds
 			}
 		}
 	}
-
-	bounds.convertFound = bounds.convertFound || convertFound
 
 	return bounds
 }
@@ -392,15 +406,6 @@ func isRangeCheck(v ssa.Value, x ssa.Value) bool {
 	case *ssa.BinOp:
 		return (op.X == x || op.Y == x) &&
 			(op.Op == token.LSS || op.Op == token.LEQ || op.Op == token.GTR || op.Op == token.GEQ)
-	case *ssa.UnOp:
-		if op.Op == token.NOT {
-			if binOp, ok := op.X.(*ssa.BinOp); ok {
-				return (binOp.X == x || binOp.Y == x) &&
-					(binOp.Op == token.EQL || binOp.Op == token.NEQ ||
-						binOp.Op == token.LSS || binOp.Op == token.LEQ ||
-						binOp.Op == token.GTR || binOp.Op == token.GEQ)
-			}
-		}
 	}
 	return false
 }
