@@ -81,7 +81,7 @@ func raiseIssue(val *ssa.Value, funcsToTrack *map[string][]int, ssaFuncs []*ssa.
 	switch valType := (*val).(type) {
 	case *ssa.Slice:
 		issueDescription += " by passing hardcoded slice/array"
-		tmp, hasErr := iterateThroughReferrers(val, funcsToTrack, pass.Analyzer.Name, issueDescription, pass.Fset, issue.High, issue.High)
+		tmp, hasErr := iterateThroughReferrers(val, funcsToTrack, pass.Analyzer.Name, issueDescription, pass.Fset, issue.High)
 		gosecIssue = append(gosecIssue, tmp...)
 		err = hasErr
 
@@ -89,7 +89,7 @@ func raiseIssue(val *ssa.Value, funcsToTrack *map[string][]int, ssaFuncs []*ssa.
 		// Check if it's a dereference operation (a.k.a pointer)
 		if valType.Op == token.MUL {
 			issueDescription += " by passing pointer which points to hardcoded variable"
-			tmp, hasErr := iterateThroughReferrers(val, funcsToTrack, pass.Analyzer.Name, issueDescription, pass.Fset, issue.High, issue.Low)
+			tmp, hasErr := iterateThroughReferrers(val, funcsToTrack, pass.Analyzer.Name, issueDescription, pass.Fset, issue.Low)
 			gosecIssue = append(gosecIssue, tmp...)
 			err = hasErr
 		}
@@ -100,7 +100,7 @@ func raiseIssue(val *ssa.Value, funcsToTrack *map[string][]int, ssaFuncs []*ssa.
 		if calledFunction, ok := valType.Call.Value.(*ssa.Function); ok {
 			if contains, funcErr := isFuncContainsCryptoRand(calledFunction); !contains && funcErr == nil {
 				issueDescription += " by passing a value from function which doesn't use crypto/rand"
-				tmp, hasErr := iterateThroughReferrers(val, funcsToTrack, pass.Analyzer.Name, issueDescription, pass.Fset, issue.High, issue.Medium)
+				tmp, hasErr := iterateThroughReferrers(val, funcsToTrack, pass.Analyzer.Name, issueDescription, pass.Fset, issue.Medium)
 				gosecIssue = append(gosecIssue, tmp...)
 				err = hasErr
 			} else if funcErr != nil {
@@ -113,7 +113,7 @@ func raiseIssue(val *ssa.Value, funcsToTrack *map[string][]int, ssaFuncs []*ssa.
 	case *ssa.Convert:
 		if valType.Type().String() == "[]byte" && valType.X.Type().String() == "string" {
 			issueDescription += " by passing converted string"
-			tmp, hasErr := iterateThroughReferrers(val, funcsToTrack, pass.Analyzer.Name, issueDescription, pass.Fset, issue.High, issue.High)
+			tmp, hasErr := iterateThroughReferrers(val, funcsToTrack, pass.Analyzer.Name, issueDescription, pass.Fset, issue.High)
 			gosecIssue = append(gosecIssue, tmp...)
 			err = hasErr
 		}
@@ -147,7 +147,7 @@ func raiseIssue(val *ssa.Value, funcsToTrack *map[string][]int, ssaFuncs []*ssa.
 }
 
 // Iterate through all places that use the `variable` argument and check if it's used in one of the tracked functions
-func iterateThroughReferrers(variable *ssa.Value, funcsToTrack *map[string][]int, analyzerID string, issueDescription string, fileSet *token.FileSet, issueSeverity issue.Score, issueConfidence issue.Score) ([]*issue.Issue, error) {
+func iterateThroughReferrers(variable *ssa.Value, funcsToTrack *map[string][]int, analyzerID string, issueDescription string, fileSet *token.FileSet, issueConfidence issue.Score) ([]*issue.Issue, error) {
 	if funcsToTrack == nil || variable == nil || analyzerID == "" || issueDescription == "" || fileSet == nil {
 		return nil, errors.New("received a nil object")
 	}
@@ -162,7 +162,7 @@ func iterateThroughReferrers(variable *ssa.Value, funcsToTrack *map[string][]int
 			trackedFuncParts := strings.Split(trackedFunc, ".")
 			trackedFuncPartsName := trackedFuncParts[len(trackedFuncParts)-1]
 			if strings.Contains(referrer.String(), trackedFuncPartsName) {
-				gosecIssues = append(gosecIssues, newIssue(analyzerID, issueDescription, fileSet, referrer.Pos(), issueSeverity, issueConfidence))
+				gosecIssues = append(gosecIssues, newIssue(analyzerID, issueDescription, fileSet, referrer.Pos(), issue.High, issueConfidence))
 			}
 		}
 	}
