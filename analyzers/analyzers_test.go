@@ -55,6 +55,10 @@ var _ = Describe("gosec analyzers", func() {
 			runner("G115", testutils.SampleCodeG115)
 		})
 
+		It("should detect hardcoded nonce/IV", func() {
+			runner("G407", testutils.SampleCodeG407)
+		})
+
 		It("should detect out of bounds slice access", func() {
 			runner("G602", testutils.SampleCodeG602)
 		})

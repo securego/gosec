@@ -5,6 +5,7 @@ import "github.com/securego/gosec/v2"
 var (
 	// SampleCodeG407 - Use of hardcoded nonce/IV
 	SampleCodeG407 = []CodeSample{
+
 		{[]string{`package main
 
 import (
@@ -21,11 +22,63 @@ func main() {
 	aesOFB.XORKeyStream(output, []byte("Very Cool thing!"))
 	fmt.Println(string(output))
 
-}`}, 1, gosec.NewConfig()},
-	}
+}
+`}, 1, gosec.NewConfig()},
 
-	// SampleCodeG407b - Use of hardcoded nonce/IV
-	SampleCodeG407b = []CodeSample{
+		{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+	"fmt"
+)
+
+func main() {
+
+	block, _ := aes.NewCipher([]byte{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1})
+	aesOFB := cipher.NewOFB(block, []byte("ILoveMyNonceAlot")) // #nosec G407
+	var output = make([]byte, 16)
+	aesOFB.XORKeyStream(output, []byte("Very Cool thing!"))
+	fmt.Println(string(output))
+
+}
+
+`}, 0, gosec.NewConfig()},
+
+		{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+	"fmt"
+)
+
+func main() {
+
+	block, _ := aes.NewCipher( []byte{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1})
+	aesGCM, _ := cipher.NewGCM(block)
+
+	cipherText := aesGCM.Seal(nil, func() []byte {
+		if true {
+			return []byte("ILoveMyNonce")
+		} else {
+			return []byte("IDont'Love..")
+		}
+	}(), []byte("My secret message"), nil) // #nosec G407
+	fmt.Println(string(cipherText))
+
+	cipherText, _ = aesGCM.Open(nil, func() []byte {
+		if true {
+			return []byte("ILoveMyNonce")
+		} else {
+			return []byte("IDont'Love..")
+		}
+	}(), cipherText, nil) // #nosec G407
+
+	fmt.Println(string(cipherText))
+}
+`}, 0, gosec.NewConfig()},
+
 		{[]string{`package main
 
 import (
@@ -43,10 +96,7 @@ func main() {
 	fmt.Println(string(output))
 
 }`}, 1, gosec.NewConfig()},
-	}
 
-	// SampleCodeG407c - Use of hardcoded nonce/IV
-	SampleCodeG407c = []CodeSample{
 		{[]string{`package main
 
 import (
@@ -64,10 +114,7 @@ func main() {
 	fmt.Println(string(output))
 
 }`}, 1, gosec.NewConfig()},
-	}
 
-	// SampleCodeG407d - Use of hardcoded nonce/IV
-	SampleCodeG407d = []CodeSample{
 		{[]string{`package main
 
 import (
@@ -86,10 +133,7 @@ func main() {
 
 }
 `}, 1, gosec.NewConfig()},
-	}
 
-	// SampleCodeG407e - Use of hardcoded nonce/IV
-	SampleCodeG407e = []CodeSample{
 		{[]string{`package main
 
 import (
@@ -109,10 +153,7 @@ func main() {
 	fmt.Println(string(cipherText))
 }
 `}, 2, gosec.NewConfig()},
-	}
 
-	// SampleCodeG407f - Use of hardcoded nonce/IV
-	SampleCodeG407f = []CodeSample{
 		{[]string{`package main
 
 import (
@@ -132,10 +173,7 @@ func main() {
 	fmt.Println(string(cipherText))
 }
 `}, 2, gosec.NewConfig()},
-	}
 
-	// SampleCodeG407g - Use of hardcoded nonce/IV
-	SampleCodeG407g = []CodeSample{
 		{[]string{`package main
 
 import (
@@ -156,10 +194,7 @@ func main() {
 	fmt.Println(string(cipherText))
 }
 `}, 2, gosec.NewConfig()},
-	}
 
-	// SampleCodeG407h - Use of hardcoded nonce/IV
-	SampleCodeG407h = []CodeSample{
 		{[]string{`package main
 
 import (
@@ -193,10 +228,7 @@ func main() {
 	fmt.Println(string(cipherText))
 }
 `}, 2, gosec.NewConfig()},
-	}
 
-	// SampleCodeG407I - Use of hardcoded nonce/IV
-	SampleCodeG407i = []CodeSample{
 		{[]string{`package main
 
 import (
@@ -229,10 +261,7 @@ func main() {
 	fmt.Println(string(cipherText))
 }
 `}, 2, gosec.NewConfig()},
-	}
 
-	// SampleCodeG407j - Use of hardcoded nonce/IV
-	SampleCodeG407j = []CodeSample{
 		{[]string{`package main
 
 import (
@@ -252,10 +281,7 @@ func main() {
 
 }
 `}, 2, gosec.NewConfig()},
-	}
 
-	// SampleCodeG407k - Use of hardcoded nonce/IV
-	SampleCodeG407k = []CodeSample{
 		{[]string{`package main
 
 import (
@@ -275,10 +301,7 @@ func main() {
 
 }
 `}, 2, gosec.NewConfig()},
-	}
 
-	// SampleCodeG407l - Use of hardcoded nonce/IV
-	SampleCodeG407l = []CodeSample{
 		{[]string{`package main
 
 import (
@@ -299,10 +322,7 @@ func main() {
 	fmt.Println(string(output))
 
 }`}, 2, gosec.NewConfig()},
-	}
 
-	// SampleCodeG407m - Use of hardcoded nonce/IV
-	SampleCodeG407m = []CodeSample{
 		{[]string{`package main
 
 import (
@@ -323,10 +343,7 @@ func main() {
 	fmt.Println(string(output))
 
 }`}, 2, gosec.NewConfig()},
-	}
 
-	// SampleCodeG407n - Use of hardcoded nonce/IV
-	SampleCodeG407n = []CodeSample{
 		{[]string{`package main
 
 import (
@@ -349,10 +366,7 @@ func main() {
 	fmt.Println(string(output))
 
 }`}, 2, gosec.NewConfig()},
-	}
 
-	// SampleCodeG407o - Use of hardcoded nonce/IV
-	SampleCodeG407o = []CodeSample{
 		{[]string{`package main
 
 import (
@@ -376,10 +390,7 @@ func main() {
 
 }
 `}, 2, gosec.NewConfig()},
-	}
 
-	// SampleCodeG407p - Use of hardcoded nonce/IV
-	SampleCodeG407p = []CodeSample{
 		{[]string{`package main
 
 import (
@@ -396,10 +407,7 @@ func main() {
 	fmt.Println(string(aesGCM.Seal(nil, nonce, []byte("My secret message"), nil)))
 }
 `}, 1, gosec.NewConfig()},
-	}
 
-	// SampleCodeG407q - Use of hardcoded nonce/IV
-	SampleCodeG407q = []CodeSample{
 		{[]string{`package main
 
 import (
@@ -418,10 +426,7 @@ func main() {
 	fmt.Println(string(output))
 }
 `}, 1, gosec.NewConfig()},
-	}
 
-	// SampleCodeG407r - Use of hardcoded nonce/IV
-	SampleCodeG407r = []CodeSample{
 		{[]string{`package main
 
 import (
@@ -447,15 +452,12 @@ func main() {
 	fmt.Println(string(output))
 }
 `}, 0, gosec.NewConfig()},
-	}
-	// SampleCodeG407s - Use of hardcoded nonce/IV
-	SampleCodeG407s = []CodeSample{
+
 		{[]string{`package main
 
 import (
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/rand"
 	"fmt"
 )
 
