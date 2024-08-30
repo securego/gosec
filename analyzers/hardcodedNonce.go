@@ -27,7 +27,7 @@ import (
 	"github.com/securego/gosec/v2/issue"
 )
 
-const defaultWhat = "Use of hardcoded IV/nonce for encryption"
+const defaultIssueDescription = "Use of hardcoded IV/nonce for encryption"
 
 func newHardCodedNonce(id string, description string) *analysis.Analyzer {
 	return &analysis.Analyzer{
@@ -58,24 +58,30 @@ func runHardCodedNonce(pass *analysis.Pass) (interface{}, error) {
 	}
 	var issues []*issue.Issue
 	ssaPkgFunctions := ssaResult.SSA.SrcFuncs
-	savedArgsFromFunctions := *iterateAndGetArgsFromTrackedFunctions(ssaPkgFunctions, &calls)
+	savedArgsFromFunctions := iterateAndGetArgsFromTrackedFunctions(ssaPkgFunctions, calls)
+	if savedArgsFromFunctions == nil {
+		return nil, errors.New("no tracked functions found, resulting in no variables to track")
+	}
 
 	for _, savedArg := range savedArgsFromFunctions {
-		tmp, err := raiseIssue(savedArg, &calls, ssaPkgFunctions, pass, "")
-		issues = append(issues, tmp...)
+		tmp, err := raiseIssue(savedArg, calls, ssaPkgFunctions, pass, "")
 		if err != nil {
-			return nil, err
+			return issues, fmt.Errorf("raising issue error: %w", err)
 		}
+		issues = append(issues, tmp...)
 	}
 	return issues, nil
 }
 
-func raiseIssue(val *ssa.Value, funcsToTrack *map[string][]int, ssaFuncs []*ssa.Function, pass *analysis.Pass, issueDescription string) ([]*issue.Issue, error) {
-	var err error = nil
-	var gosecIssue []*issue.Issue = nil
+func raiseIssue(val *ssa.Value, funcsToTrack map[string][]int, ssaFuncs []*ssa.Function, pass *analysis.Pass, issueDescription string) ([]*issue.Issue, error) {
+	if *val == nil {
+		return nil, errors.New("received a pointer to a <nil> ssa.Value")
+	}
+	var err error
+	var gosecIssue []*issue.Issue
 
 	if issueDescription == "" {
-		issueDescription = defaultWhat
+		issueDescription = defaultIssueDescription
 	}
 
 	switch valType := (*val).(type) {
@@ -95,16 +101,20 @@ func raiseIssue(val *ssa.Value, funcsToTrack *map[string][]int, ssaFuncs []*ssa.
 		}
 
 	// When the value assigned to a variable is a function call.
-	// It goes and check if this function contains call to crypto/rand.Read in it's body(Assuming that calling crypto/rand.Read in a function, is used for the generation of nonce/iv )
+	// It goes and check if this function contains call to crypto/rand.Read
+	// in it's body(Assuming that calling crypto/rand.Read in a function,
+	// is used for the generation of nonce/iv )
 	case *ssa.Call:
-		if calledFunction, ok := valType.Call.Value.(*ssa.Function); ok {
-			if contains, funcErr := isFuncContainsCryptoRand(calledFunction); !contains && funcErr == nil {
-				issueDescription += " by passing a value from function which doesn't use crypto/rand"
-				tmp, hasErr := iterateThroughReferrers(val, funcsToTrack, pass.Analyzer.Name, issueDescription, pass.Fset, issue.Medium)
-				gosecIssue = append(gosecIssue, tmp...)
-				err = hasErr
-			} else if funcErr != nil {
-				err = funcErr
+		if callValue := valType.Call.Value; callValue != nil {
+			if calledFunction, ok := callValue.(*ssa.Function); ok {
+				if contains, funcErr := isFuncContainsCryptoRand(calledFunction); !contains && funcErr == nil {
+					issueDescription += " by passing a value from function which doesn't use crypto/rand"
+					tmp, hasErr := iterateThroughReferrers(val, funcsToTrack, pass.Analyzer.Name, issueDescription, pass.Fset, issue.Medium)
+					gosecIssue = append(gosecIssue, tmp...)
+					err = hasErr
+				} else if funcErr != nil {
+					err = funcErr
+				}
 			}
 		}
 
@@ -119,11 +129,12 @@ func raiseIssue(val *ssa.Value, funcsToTrack *map[string][]int, ssaFuncs []*ssa.
 		}
 
 	case *ssa.Parameter:
-		//arg given to tracked function is wrapped in another function, example:
+		// arg given to tracked function is wrapped in another function, example:
 		// func encrypt(..,nonce,...){
-		// aesgcm.Seal()
-		//}
-		// save parameter position, by checking the name of the variable used in tracked functions and comparing it with the name of the arg
+		// 		aesgcm.Seal(nonce)
+		// }
+		// save parameter position, by checking the name of the variable used in
+		// tracked functions and comparing it with the name of the arg
 		if valType.Parent() != nil {
 			trackedFunctions := make(map[string][]int)
 			for index, funcArgs := range valType.Parent().Params {
@@ -131,13 +142,12 @@ func raiseIssue(val *ssa.Value, funcsToTrack *map[string][]int, ssaFuncs []*ssa.
 					trackedFunctions[valType.Parent().String()] = []int{len(valType.Parent().Params), index}
 				}
 			}
-			result := iterateAndGetArgsFromTrackedFunctions(ssaFuncs, &trackedFunctions)
+			result := iterateAndGetArgsFromTrackedFunctions(ssaFuncs, trackedFunctions)
 
 			issueDescription += " by passing a parameter to a function and"
 			// recursively backtrack to where the origin of a variable passed to multiple functions is
-			for _, trackedVariable := range *result {
-
-				tmp, hasErr := raiseIssue(trackedVariable, &trackedFunctions, ssaFuncs, pass, issueDescription)
+			for _, trackedVariable := range result {
+				tmp, hasErr := raiseIssue(trackedVariable, trackedFunctions, ssaFuncs, pass, issueDescription)
 				gosecIssue = append(gosecIssue, tmp...)
 				err = hasErr
 			}
@@ -147,22 +157,27 @@ func raiseIssue(val *ssa.Value, funcsToTrack *map[string][]int, ssaFuncs []*ssa.
 }
 
 // Iterate through all places that use the `variable` argument and check if it's used in one of the tracked functions
-func iterateThroughReferrers(variable *ssa.Value, funcsToTrack *map[string][]int, analyzerID string, issueDescription string, fileSet *token.FileSet, issueConfidence issue.Score) ([]*issue.Issue, error) {
+func iterateThroughReferrers(variable *ssa.Value, funcsToTrack map[string][]int,
+	analyzerID string, issueDescription string,
+	fileSet *token.FileSet, issueConfidence issue.Score,
+) ([]*issue.Issue, error) {
 	if funcsToTrack == nil || variable == nil || analyzerID == "" || issueDescription == "" || fileSet == nil {
 		return nil, errors.New("received a nil object")
 	}
-	var gosecIssues []*issue.Issue = nil
+	var gosecIssues []*issue.Issue
 	// Go trough all functions that use the given arg variable
-	for _, referrer := range *(*variable).Referrers() {
-		// Iterate trough the functions we are interested
-		for trackedFunc := range *funcsToTrack {
+	if varReferrers := (*variable).Referrers(); *varReferrers != nil {
+		for _, referrer := range *varReferrers {
+			// Iterate trough the functions we are interested
+			for trackedFunc := range funcsToTrack {
 
-			// Split the functions we are interested in, by the '.' because we will use the function name to do the comparison
-			// MIGHT GIVE SOME FALSE POSITIVES THIS WAY
-			trackedFuncParts := strings.Split(trackedFunc, ".")
-			trackedFuncPartsName := trackedFuncParts[len(trackedFuncParts)-1]
-			if strings.Contains(referrer.String(), trackedFuncPartsName) {
-				gosecIssues = append(gosecIssues, newIssue(analyzerID, issueDescription, fileSet, referrer.Pos(), issue.High, issueConfidence))
+				// Split the functions we are interested in, by the '.' because we will use the function name to do the comparison
+				// MIGHT GIVE SOME FALSE POSITIVES THIS WAY
+				trackedFuncParts := strings.Split(trackedFunc, ".")
+				trackedFuncPartsName := trackedFuncParts[len(trackedFuncParts)-1]
+				if strings.Contains(referrer.String(), trackedFuncPartsName) {
+					gosecIssues = append(gosecIssues, newIssue(analyzerID, issueDescription, fileSet, referrer.Pos(), issue.High, issueConfidence))
+				}
 			}
 		}
 	}
@@ -188,44 +203,51 @@ func isFuncContainsCryptoRand(funcCall *ssa.Function) (bool, error) {
 	return false, nil
 }
 
-func addToVarsMap(value *ssa.Value, mapToAddTo *map[string]*ssa.Value) {
-	key := (*value).Name() + (*value).Type().String() + (*value).String() + (*value).Parent().String()
-	(*mapToAddTo)[key] = value
+func addToVarsMap(value *ssa.Value, mapToAddTo map[string]*ssa.Value) {
+	valDerefed := *value
+	key := valDerefed.Name() + valDerefed.Type().String() + valDerefed.String() + valDerefed.Parent().String()
+	mapToAddTo[key] = value
 }
 
-func isContainedInMap(value *ssa.Value, mapToCheck *map[string]*ssa.Value) bool {
-	key := (*value).Name() + (*value).Type().String() + (*value).String() + (*value).Parent().String()
-	_, contained := (*mapToCheck)[key]
+func isContainedInMap(value *ssa.Value, mapToCheck map[string]*ssa.Value) bool {
+	valDerefed := *value
+
+	key := valDerefed.Name() + valDerefed.Type().String() + valDerefed.String() + valDerefed.Parent().String()
+	_, contained := mapToCheck[key]
 	return contained
 }
 
-func iterateAndGetArgsFromTrackedFunctions(ssaFuncs []*ssa.Function, trackedFunc *map[string][]int) *map[string]*ssa.Value {
+func iterateAndGetArgsFromTrackedFunctions(ssaFuncs []*ssa.Function, trackedFunc map[string][]int) map[string]*ssa.Value {
 	values := make(map[string]*ssa.Value)
 	for _, pkgFunc := range ssaFuncs {
 		for _, funcBlock := range pkgFunc.Blocks {
 			for _, funcBlocInstr := range funcBlock.Instrs {
-				if funcCall, ok := funcBlocInstr.(*ssa.Call); ok {
-					for trackedFuncName, trackedFuncArgsInfo := range *trackedFunc {
-						// only process functions that have the same number of arguments as the ones we track
-						if len(funcCall.Call.Args) == trackedFuncArgsInfo[0] {
-							tmpArg := funcCall.Call.Args[trackedFuncArgsInfo[1]]
-							// check if the function is called from an object or directly from the package
-							if funcCall.Call.Method != nil {
-								if methodFullname := funcCall.Call.Method.FullName(); methodFullname == trackedFuncName {
-									if !isContainedInMap(&tmpArg, &values) {
-										addToVarsMap(&tmpArg, &values)
-									}
-								}
-							} else if funcCall.Call.Value.String() == trackedFuncName {
-								if !isContainedInMap(&tmpArg, &values) {
-									addToVarsMap(&tmpArg, &values)
-								}
-							}
+				iterateTrackedFunctionsAndAddArgs(&funcBlocInstr, trackedFunc, values)
+			}
+		}
+	}
+	return values
+}
+
+func iterateTrackedFunctionsAndAddArgs(funcBlocInstr *ssa.Instruction, trackedFunc map[string][]int, values map[string]*ssa.Value) {
+	if funcCall, ok := (*funcBlocInstr).(*ssa.Call); ok {
+		for trackedFuncName, trackedFuncArgsInfo := range trackedFunc {
+			// only process functions that have the same number of arguments as the ones we track
+			if len(funcCall.Call.Args) == trackedFuncArgsInfo[0] {
+				tmpArg := funcCall.Call.Args[trackedFuncArgsInfo[1]]
+				// check if the function is called from an object or directly from the package
+				if funcCall.Call.Method != nil {
+					if methodFullname := funcCall.Call.Method.FullName(); methodFullname == trackedFuncName {
+						if !isContainedInMap(&tmpArg, values) {
+							addToVarsMap(&tmpArg, values)
 						}
+					}
+				} else if funcCall.Call.Value.String() == trackedFuncName {
+					if !isContainedInMap(&tmpArg, values) {
+						addToVarsMap(&tmpArg, values)
 					}
 				}
 			}
 		}
 	}
-	return &values
 }
