@@ -646,4 +646,42 @@ func main() {
 }
 	`,
 	}, 0, gosec.NewConfig()},
+	{[]string{
+		`
+package main
+
+import (
+        "fmt"
+        "math/rand"
+)
+
+func main() {
+        a := rand.Int63()
+        if a == 3 || a == 4 {
+            b := int32(a)
+            fmt.Printf("%d\n", b)
+        }
+        panic("out of range")
+}
+	`,
+	}, 0, gosec.NewConfig()},
+	{[]string{
+		`
+package main
+
+import (
+        "fmt"
+        "math/rand"
+)
+
+func main() {
+        a := rand.Int63()
+        if a != 3 || a != 4 {
+            panic("out of range")
+        }
+        b := int32(a)
+        fmt.Printf("%d\n", b)
+}
+	`,
+	}, 0, gosec.NewConfig()},
 }

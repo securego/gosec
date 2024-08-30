@@ -20,6 +20,7 @@ import (
 	"math"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"golang.org/x/exp/constraints"
 	"golang.org/x/tools/go/analysis"
@@ -37,16 +38,20 @@ type integer struct {
 }
 
 type rangeResult struct {
-	MinValue     int
-	MaxValue     uint
-	IsRangeCheck bool
-	ConvertFound bool
+	MinValue             int
+	MaxValue             uint
+	ExplixitPositiveVals []uint
+	ExplicitNegativeVals []int
+	IsRangeCheck         bool
+	ConvertFound         bool
 }
 
-type branchBounds struct {
-	MinValue     *int
-	MaxValue     *uint
-	ConvertFound bool
+type branchResults struct {
+	MinValue             *int
+	MaxValue             *uint
+	ExplixitPositiveVals []uint
+	ExplicitNegativeVals []int
+	ConvertFound         bool
 }
 
 func newConversionOverflowAnalyzer(id string, description string) *analysis.Analyzer {
@@ -151,11 +156,6 @@ func parseIntType(intType string) (integer, error) {
 		min = -1 << (intSize - 1)
 
 	} else {
-		// Perform a bounds check
-		if intSize < 0 {
-			return integer{}, fmt.Errorf("invalid bit size: %d", intSize)
-		}
-
 		max = (1 << uint(intSize)) - 1
 		min = 0
 	}
@@ -255,6 +255,8 @@ func hasExplicitRangeCheck(instr *ssa.Convert, dstType string) bool {
 
 	minValue := srcInt.min
 	maxValue := srcInt.max
+	explicitPositiveVals := []uint{}
+	explicitNegativeVals := []int{}
 
 	if minValue > dstInt.min && maxValue < dstInt.max {
 		return true
@@ -269,6 +271,8 @@ func hasExplicitRangeCheck(instr *ssa.Convert, dstType string) bool {
 				if result.IsRangeCheck {
 					minValue = max(minValue, &result.MinValue)
 					maxValue = min(maxValue, &result.MaxValue)
+					explicitPositiveVals = append(explicitPositiveVals, result.ExplixitPositiveVals...)
+					explicitNegativeVals = append(explicitNegativeVals, result.ExplicitNegativeVals...)
 				}
 			case *ssa.Call:
 				// these function return an int of a guaranteed size
@@ -287,7 +291,9 @@ func hasExplicitRangeCheck(instr *ssa.Convert, dstType string) bool {
 				}
 			}
 
-			if minValue >= dstInt.min && maxValue <= dstInt.max {
+			if explicitValsInRange(explicitPositiveVals, explicitNegativeVals, dstInt) {
+				return true
+			} else if minValue >= dstInt.min && maxValue <= dstInt.max {
 				return true
 			}
 		}
@@ -350,6 +356,29 @@ func updateResultFromBinOp(result *rangeResult, binOp *ssa.BinOp, instr *ssa.Con
 		updateMinMaxForLessOrEqual(result, constVal, binOp.Op, operandsFlipped, successPathConvert)
 	case token.GEQ, token.GTR:
 		updateMinMaxForGreaterOrEqual(result, constVal, binOp.Op, operandsFlipped, successPathConvert)
+	case token.EQL:
+		if !successPathConvert {
+			break
+		}
+
+		// determine if the constant value is positive or negative
+		if strings.Contains(constVal.String(), "-") {
+			result.ExplicitNegativeVals = append(result.ExplicitNegativeVals, int(constVal.Int64()))
+		} else {
+			result.ExplixitPositiveVals = append(result.ExplixitPositiveVals, uint(constVal.Uint64()))
+		}
+
+	case token.NEQ:
+		if successPathConvert {
+			break
+		}
+
+		// determine if the constant value is positive or negative
+		if strings.Contains(constVal.String(), "-") {
+			result.ExplicitNegativeVals = append(result.ExplicitNegativeVals, int(constVal.Int64()))
+		} else {
+			result.ExplixitPositiveVals = append(result.ExplixitPositiveVals, uint(constVal.Uint64()))
+		}
 	}
 }
 
@@ -384,8 +413,8 @@ func updateMinMaxForGreaterOrEqual(result *rangeResult, constVal *ssa.Const, op 
 }
 
 // walkBranchForConvert walks the branch of the if statement to find the range of the variable and where the conversion is
-func walkBranchForConvert(block *ssa.BasicBlock, instr *ssa.Convert, visitedIfs map[*ssa.If]bool) branchBounds {
-	bounds := branchBounds{}
+func walkBranchForConvert(block *ssa.BasicBlock, instr *ssa.Convert, visitedIfs map[*ssa.If]bool) branchResults {
+	bounds := branchResults{}
 
 	for _, blockInstr := range block.Instrs {
 		switch v := blockInstr.(type) {
@@ -417,10 +446,33 @@ func walkBranchForConvert(block *ssa.BasicBlock, instr *ssa.Convert, visitedIfs 
 func isRangeCheck(v ssa.Value, x ssa.Value) bool {
 	switch op := v.(type) {
 	case *ssa.BinOp:
-		return (op.X == x || op.Y == x) &&
-			(op.Op == token.LSS || op.Op == token.LEQ || op.Op == token.GTR || op.Op == token.GEQ)
+		switch op.Op {
+		case token.LSS, token.LEQ, token.GTR, token.GEQ,
+			token.EQL, token.NEQ:
+			return op.X == x || op.Y == x
+		}
 	}
 	return false
+}
+
+func explicitValsInRange(explicitPosVals []uint, explicitNegVals []int, dstInt integer) bool {
+	if len(explicitPosVals) == 0 && len(explicitNegVals) == 0 {
+		return false
+	}
+
+	for _, val := range explicitPosVals {
+		if val > dstInt.max {
+			return false
+		}
+	}
+
+	for _, val := range explicitNegVals {
+		if val < dstInt.min {
+			return false
+		}
+	}
+
+	return true
 }
 
 func min[T constraints.Integer](a T, b *T) T {
