@@ -17,15 +17,24 @@ package analyzers
 import (
 	"fmt"
 	"go/token"
+	"math"
 	"regexp"
 	"strconv"
 
+	"golang.org/x/exp/constraints"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/buildssa"
 	"golang.org/x/tools/go/ssa"
 
 	"github.com/securego/gosec/v2/issue"
 )
+
+type integer struct {
+	signed bool
+	size   int
+	min    int
+	max    uint
+}
 
 func newConversionOverflowAnalyzer(id string, description string) *analysis.Analyzer {
 	return &analysis.Analyzer{
@@ -72,6 +81,65 @@ func runConversionOverflow(pass *analysis.Pass) (interface{}, error) {
 		return issues, nil
 	}
 	return nil, nil
+}
+
+func isIntOverflow(src string, dst string) bool {
+	srcInt, err := parseIntType(src)
+	if err != nil {
+		return false
+	}
+
+	dstInt, err := parseIntType(dst)
+	if err != nil {
+		return false
+	}
+
+	return srcInt.min < dstInt.min || srcInt.max > dstInt.max
+}
+
+func parseIntType(intType string) (integer, error) {
+	re := regexp.MustCompile(`^(?P<type>u?int)(?P<size>\d{1,2})?$`)
+	matches := re.FindStringSubmatch(intType)
+	if matches == nil {
+		return integer{}, fmt.Errorf("no integer type match found for %s", intType)
+	}
+
+	it := matches[re.SubexpIndex("type")]
+	is := matches[re.SubexpIndex("size")]
+
+	signed := it == "int"
+
+	// use default system int type in case size is not present in the type
+	intSize := strconv.IntSize
+	if is != "" {
+		var err error
+		intSize, err = strconv.Atoi(is)
+		if err != nil {
+			return integer{}, fmt.Errorf("failed to parse the integer type size: %w", err)
+		}
+	}
+
+	if intSize != 8 && intSize != 16 && intSize != 32 && intSize != 64 && is != "" {
+		return integer{}, fmt.Errorf("invalid bit size: %d", intSize)
+	}
+
+	var min int
+	var max uint
+
+	if signed {
+		max = (1 << uint(intSize-1)) - 1
+		min = -int(max) - 1
+	} else {
+		max = (1 << uint(intSize)) - 1
+		min = 0
+	}
+
+	return integer{
+		signed: signed,
+		size:   intSize,
+		min:    min,
+		max:    max,
+	}, nil
 }
 
 func isSafeConversion(instr *ssa.Convert) bool {
@@ -149,6 +217,7 @@ func isStringToIntConversion(instr *ssa.Convert, dstType string) bool {
 }
 
 func hasExplicitRangeCheck(instr *ssa.Convert, dstType string) bool {
+	fmt.Println("")
 	dstInt, err := parseIntType(dstType)
 	if err != nil {
 		return false
@@ -159,39 +228,43 @@ func hasExplicitRangeCheck(instr *ssa.Convert, dstType string) bool {
 		return false
 	}
 
-	minBoundChecked := checkSourceMinBound(srcInt, dstInt)
-	maxBoundChecked := checkSourceMaxBound(srcInt, dstInt)
+	minValue := srcInt.min
+	maxValue := srcInt.max
 
-	// If both bounds are already checked, return true
-	if minBoundChecked && maxBoundChecked {
+	if minValue > dstInt.min && maxValue < dstInt.max {
 		return true
 	}
 
 	visitedIfs := make(map[*ssa.If]bool)
 	for _, block := range instr.Parent().Blocks {
-		var minChecked, maxChecked bool
 		for _, blockInstr := range block.Instrs {
 			switch v := blockInstr.(type) {
 			case *ssa.If:
-				minChecked, maxChecked = checkIfForRangeCheck(v, instr, dstInt, visitedIfs)
+				currMinValue, currMaxValue, isRangeCheck, _ := getResultRange(v, instr, visitedIfs)
+
+				if isRangeCheck {
+					minValue = max(minValue, &currMinValue)
+					maxValue = min(maxValue, &currMaxValue)
+				}
 			case *ssa.Call:
 				// len(slice) results in an int that is guaranteed >= 0, which
 				// satisfies the lower bound check for int -> uint conversion
 				if v != instr.X {
 					continue
 				}
-				if fn, isBuiltin := v.Call.Value.(*ssa.Builtin); isBuiltin && fn.Name() == "len" && !dstInt.signed {
-					minChecked = true
+				if fn, isBuiltin := v.Call.Value.(*ssa.Builtin); isBuiltin {
+					switch fn.Name() {
+					case "len", "cap":
+						minValue = 0
+					}
 				}
 			case *ssa.Convert:
 				if v == instr {
 					break
 				}
 			}
-			minBoundChecked = minBoundChecked || minChecked
-			maxBoundChecked = maxBoundChecked || maxChecked
 
-			if minBoundChecked && maxBoundChecked {
+			if minValue >= dstInt.min && maxValue <= dstInt.max {
 				return true
 			}
 		}
@@ -199,193 +272,159 @@ func hasExplicitRangeCheck(instr *ssa.Convert, dstType string) bool {
 	return false
 }
 
-func checkIfForRangeCheck(ifInstr *ssa.If, instr *ssa.Convert, dstInt integer, visitedIfs map[*ssa.If]bool) (minBoundChecked, maxBoundChecked bool) {
+func getResultRange(ifInstr *ssa.If, instr *ssa.Convert, visitedIfs map[*ssa.If]bool) (minValue int, maxValue uint, isRangeChk, convertFound bool) {
+	minValue = math.MinInt
+	maxValue = math.MaxUint
+
 	if visitedIfs[ifInstr] {
-		// If the if instruction has already been visited, we can skip it
-		return false, false
+		return minValue, maxValue, false, false
 	}
 	visitedIfs[ifInstr] = true
 
-	// check Instrs for other bound checks
-	condBlock := ifInstr.Block()
-	if succIf, ok := condBlock.Succs[1].Instrs[1].(*ssa.If); ok {
-		// this is an OR condition and should be sufficient if it contains the other bound check
-		minBoundChecked, maxBoundChecked = checkIfForRangeCheck(succIf, instr, dstInt, visitedIfs)
-	}
-
-	// check the instructions of the if block for other bound checks
-	for _, succ := range condBlock.Succs {
-		for _, blockInstr := range succ.Instrs {
-			if succIf, ok := blockInstr.(*ssa.If); ok {
-				// this is an AND condition and is insufficient to check the bounds but we need to visit it
-				// because walking the parent block will visit it again
-				_, _ = checkIfForRangeCheck(succIf, instr, dstInt, visitedIfs)
-			}
-		}
-	}
-
 	cond := ifInstr.Cond
-	// Check if the condition is a bound check
-	if binOp, ok := cond.(*ssa.BinOp); ok {
-		if isBoundCheck(binOp, instr.X) {
-			constVal, isOnLeft := constFromBoundCheck(binOp)
-			if constVal == nil {
-				return false, false
+
+	var thenBounds, elseBounds branchBounds
+
+	if binOp, ok := cond.(*ssa.BinOp); ok && isRangeCheck(binOp, instr.X) {
+		isRangeChk = true
+
+		// Check the true branch
+		thenBounds = walkBranchForConvert(ifInstr.Block().Succs[0], instr, visitedIfs)
+
+		x, y := binOp.X, binOp.Y
+		operandsFlipped := false
+		if x != instr.X {
+			y = x
+			operandsFlipped = true
+		}
+		constVal, ok := y.(*ssa.Const)
+		if !ok {
+			return minValue, maxValue, false, false
+		}
+
+		switch binOp.Op {
+		case token.LEQ, token.LSS:
+			if thenBounds.convertFound && !operandsFlipped {
+				maxValue = uint(constVal.Uint64())
+				if binOp.Op == token.LEQ {
+					maxValue--
+				}
+				break
 			}
-
-			value := constVal.Int64()
-
-			if isOnLeft {
-				if binOp.Op == token.LSS || binOp.Op == token.LEQ {
-					newMaxCheck := checkMaxBoundValue(value, dstInt)
-					maxBoundChecked = maxBoundChecked || newMaxCheck
+			minValue = int(constVal.Int64())
+			if binOp.Op == token.GTR {
+				minValue++
+			}
+		case token.GEQ, token.GTR:
+			if thenBounds.convertFound && !operandsFlipped {
+				minValue = int(constVal.Int64())
+				if binOp.Op == token.GEQ {
+					minValue++
 				}
-				if binOp.Op == token.GTR || binOp.Op == token.GEQ {
-					newMinCheck := checkMinBoundValue(value, dstInt)
-					minBoundChecked = minBoundChecked || newMinCheck
-				}
-			} else {
-				if binOp.Op == token.LSS || binOp.Op == token.LEQ {
-					newMinCheck := checkMinBoundValue(value, dstInt)
-					minBoundChecked = minBoundChecked || newMinCheck
-				}
-				if binOp.Op == token.GTR || binOp.Op == token.GEQ {
-					newMaxCheck := checkMaxBoundValue(value, dstInt)
-					maxBoundChecked = maxBoundChecked || newMaxCheck
-				}
+				break
+			}
+			maxValue = uint(constVal.Uint64())
+			if binOp.Op == token.LSS {
+				maxValue--
 			}
 		}
 	}
 
-	return minBoundChecked, maxBoundChecked
-}
-
-type integer struct {
-	signed bool
-	size   int
-}
-
-func parseIntType(intType string) (integer, error) {
-	re := regexp.MustCompile(`(?P<type>u?int)(?P<size>\d{1,2})?`)
-	matches := re.FindStringSubmatch(intType)
-	if matches == nil {
-		return integer{}, fmt.Errorf("no integer type match found for %s", intType)
+	if !isRangeChk {
+		return minValue, maxValue, isRangeChk, convertFound
 	}
 
-	it := matches[re.SubexpIndex("type")]
-	is := matches[re.SubexpIndex("size")]
+	elseBounds = walkBranchForConvert(ifInstr.Block().Succs[1], instr, visitedIfs)
 
-	signed := false
-	if it == "int" {
-		signed = true
+	if thenBounds.convertFound {
+		return max(minValue, thenBounds.minValue), min(maxValue, thenBounds.maxValue), true, true
+	} else if elseBounds.convertFound {
+		return max(minValue, elseBounds.minValue), min(maxValue, elseBounds.maxValue), true, true
 	}
 
-	// use default system int type in case size is not present in the type
-	intSize := strconv.IntSize
-	if is != "" {
-		var err error
-		intSize, err = strconv.Atoi(is)
-		if err != nil {
-			return integer{}, fmt.Errorf("failed to parse the integer type size: %w", err)
+	return minValue, maxValue, isRangeChk, convertFound
+}
+
+type branchBounds struct {
+	minValue     *int
+	maxValue     *uint
+	convertFound bool
+}
+
+func walkBranchForConvert(block *ssa.BasicBlock, instr *ssa.Convert, visitedIfs map[*ssa.If]bool) branchBounds {
+	bounds := branchBounds{}
+	convertFound := false
+	for _, blockInstr := range block.Instrs {
+		switch v := blockInstr.(type) {
+		case *ssa.If:
+			currMinValue, currMaxValue, isRangeCheck, cnvrtFound := getResultRange(v, instr, visitedIfs)
+			convertFound = convertFound || cnvrtFound
+
+			if isRangeCheck {
+				bounds.minValue = toPtr(min(currMinValue, bounds.minValue))
+				bounds.maxValue = toPtr(max(currMaxValue, bounds.maxValue))
+			}
+		case *ssa.Call:
+			if v != instr.X {
+				continue
+			}
+			if fn, isBuiltin := v.Call.Value.(*ssa.Builtin); isBuiltin {
+				switch fn.Name() {
+				case "len", "cap":
+					bounds.minValue = toPtr(0)
+				}
+			}
+		case *ssa.Convert:
+			if v == instr {
+				bounds.convertFound = true
+				break
+			}
 		}
 	}
 
-	return integer{signed: signed, size: intSize}, nil
+	bounds.convertFound = bounds.convertFound || convertFound
+
+	return bounds
 }
 
-func isIntOverflow(src string, dst string) bool {
-	srcInt, err := parseIntType(src)
-	if err != nil {
-		return false
+func isRangeCheck(v ssa.Value, x ssa.Value) bool {
+	switch op := v.(type) {
+	case *ssa.BinOp:
+		return (op.X == x || op.Y == x) &&
+			(op.Op == token.LSS || op.Op == token.LEQ || op.Op == token.GTR || op.Op == token.GEQ)
+	case *ssa.UnOp:
+		if op.Op == token.NOT {
+			if binOp, ok := op.X.(*ssa.BinOp); ok {
+				return (binOp.X == x || binOp.Y == x) &&
+					(binOp.Op == token.EQL || binOp.Op == token.NEQ ||
+						binOp.Op == token.LSS || binOp.Op == token.LEQ ||
+						binOp.Op == token.GTR || binOp.Op == token.GEQ)
+			}
+		}
 	}
-
-	dstInt, err := parseIntType(dst)
-	if err != nil {
-		return false
-	}
-
-	// converting uint to int of the same size or smaller might lead to overflow
-	if !srcInt.signed && dstInt.signed && dstInt.size <= srcInt.size {
-		return true
-	}
-	// converting uint to unit of a smaller size might lead to overflow
-	if !srcInt.signed && !dstInt.signed && dstInt.size < srcInt.size {
-		return true
-	}
-	// converting int to int of a smaller size might lead to overflow
-	if srcInt.signed && dstInt.signed && dstInt.size < srcInt.size {
-		return true
-	}
-	// converting int to uint of a smaller size might lead to overflow
-	if srcInt.signed && !dstInt.signed && dstInt.size < srcInt.size && srcInt.size-dstInt.size > 8 {
-		return true
-	}
-
 	return false
 }
 
-func isBoundCheck(binOp *ssa.BinOp, x ssa.Value) bool {
-	return (binOp.X == x || binOp.Y == x) &&
-		(binOp.Op == token.LSS || binOp.Op == token.LEQ || binOp.Op == token.GTR || binOp.Op == token.GEQ)
+func min[T constraints.Integer](a T, b *T) T {
+	if b == nil {
+		return a
+	}
+	if a < *b {
+		return a
+	}
+	return *b
 }
 
-func constFromBoundCheck(binOp *ssa.BinOp) (constant *ssa.Const, isOnLeft bool) {
-	if c, ok := binOp.X.(*ssa.Const); ok {
-		return c, true
+func max[T constraints.Integer](a T, b *T) T {
+	if b == nil {
+		return a
 	}
-	if c, ok := binOp.Y.(*ssa.Const); ok {
-		return c, false
+	if a > *b {
+		return a
 	}
-	return nil, false
+	return *b
 }
 
-func checkSourceMinBound(srcInt, dstInt integer) bool {
-	if !srcInt.signed {
-		// For unsigned types, the minimum bound is always 0 and is always safe
-		return true
-	}
-
-	if dstInt.signed {
-		// Source and destination are both signed
-		return -(1 << (srcInt.size - 1)) >= -(1 << (dstInt.size - 1))
-	} else {
-		// Source is signed and destination is unsigned
-		return -(1 << (srcInt.size - 1)) >= 0
-	}
-}
-
-func checkSourceMaxBound(srcInt, dstInt integer) bool {
-	if dstInt.signed {
-		if srcInt.signed {
-			// Source and destination are both signed
-			return (1<<(srcInt.size-1))-1 <= (1<<(dstInt.size-1))-1
-		}
-		// Source is unsigned and destination is signed
-		var a uint = (1 << srcInt.size) - 1
-		var b uint = (1 << (dstInt.size - 1)) - 1
-		return a <= b
-	}
-	// Destination is unsigned
-	if srcInt.signed {
-		// Source is signed and destination is unsigned
-		var a uint = (1 << (srcInt.size - 1)) - 1
-		var b uint = (1 << dstInt.size) - 1
-		return a <= b
-	}
-	// Both source and destination are unsigned
-	return (1<<srcInt.size)-1 <= (1<<dstInt.size)-1
-}
-
-func checkMinBoundValue(value int64, dstInt integer) bool {
-	if dstInt.signed {
-		return value >= -(1 << (dstInt.size - 1))
-	}
-	return value >= 0 // For unsigned types, the minimum bound is always 0
-}
-
-func checkMaxBoundValue(value int64, dstInt integer) bool {
-	if dstInt.signed {
-		return value <= (1<<(dstInt.size-1))-1
-	}
-	return value <= (1<<dstInt.size)-1
+func toPtr[T any](a T) *T {
+	return &a
 }

@@ -512,4 +512,121 @@ func foo(items []string) uint32 {
 }
 `,
 	}, 0, gosec.NewConfig()},
+	{[]string{
+		`
+package main
+
+import (
+        "math"
+)
+
+func foo(items []string) uint32 {
+        x := len(items)
+        if x < math.MaxUint32 {
+            return uint32(x)
+        }
+        return math.MaxUint32
+}
+`,
+	}, 0, gosec.NewConfig()},
+	{[]string{
+		`
+package main
+
+import (
+        "fmt"
+        "math"
+        "math/rand"
+)
+
+func main() {
+        a := rand.Int63()
+        if a >= math.MinInt32 && a <= math.MaxInt32 {
+            b := int32(a)
+            fmt.Printf("%d\n", b)
+        }
+        panic("out of range")
+}
+	`,
+	}, 0, gosec.NewConfig()},
+	{[]string{
+		`
+package main
+
+import (
+        "fmt"
+        "math"
+        "math/rand"
+)
+
+func main() {
+        a := rand.Int63()
+        if a >= math.MinInt32 && a <= math.MaxInt32 {
+            b := int32(a)
+            fmt.Printf("%d\n", b)
+        }
+        panic("out of range")
+}
+	`,
+	}, 0, gosec.NewConfig()},
+	{[]string{
+		`
+package main
+
+import (
+        "fmt"
+        "math"
+        "math/rand"
+)
+
+func main() {
+        a := rand.Int63()
+        if !(a >= math.MinInt32) && a > math.MaxInt32 {
+            b := int32(a)
+            fmt.Printf("%d\n", b)
+        }
+        panic("out of range")
+}
+	`,
+	}, 0, gosec.NewConfig()},
+	{[]string{
+		`
+package main
+
+import (
+        "fmt"
+        "math"
+        "math/rand"
+)
+
+func main() {
+        a := rand.Int63()
+        if !(a >= math.MinInt32) || a > math.MaxInt32 {
+            panic("out of range")
+        }
+        b := int32(a)
+        fmt.Printf("%d\n", b)
+}
+	`,
+	}, 0, gosec.NewConfig()},
+	{[]string{
+		`
+package main
+
+import (
+        "fmt"
+        "math"
+        "math/rand"
+)
+
+func main() {
+        a := rand.Int63()
+        if math.MinInt32 <= a && math.MaxInt32 >= a {
+            b := int32(a)
+            fmt.Printf("%d\n", b)
+        }
+        panic("out of range")
+}
+	`,
+	}, 0, gosec.NewConfig()},
 }
