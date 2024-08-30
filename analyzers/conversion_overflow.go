@@ -141,7 +141,7 @@ func parseIntType(intType string) (integer, error) {
 
 	if signed {
 		max = (1 << uint(intSize-1)) - 1
-		min = -int(max) - 1
+		min = -1 << (intSize - 1)
 	} else {
 		max = (1 << uint(intSize)) - 1
 		min = 0
