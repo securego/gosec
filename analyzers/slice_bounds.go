@@ -118,32 +118,41 @@ func runSliceBounds(pass *analysis.Pass) (interface{}, error) {
 			if i == 1 {
 				bound = invBound(bound)
 			}
-			for _, instr := range block.Instrs {
-				if _, ok := issues[instr]; ok {
-					switch bound {
-					case lowerUnbounded:
-						break
-					case upperUnbounded, unbounded:
-						delete(issues, instr)
-					case upperBounded:
-						switch tinstr := instr.(type) {
-						case *ssa.Slice:
-							lower, upper := extractSliceBounds(tinstr)
-							if isSliceInsideBounds(0, value, lower, upper) {
-								delete(issues, instr)
+			var processBlock func(block *ssa.BasicBlock)
+			processBlock = func(block *ssa.BasicBlock) {
+				for _, instr := range block.Instrs {
+					if _, ok := issues[instr]; ok {
+						switch bound {
+						case lowerUnbounded:
+							break
+						case upperUnbounded, unbounded:
+							delete(issues, instr)
+						case upperBounded:
+							switch tinstr := instr.(type) {
+							case *ssa.Slice:
+								lower, upper := extractSliceBounds(tinstr)
+								if isSliceInsideBounds(0, value, lower, upper) {
+									delete(issues, instr)
+								}
+							case *ssa.IndexAddr:
+								indexValue, err := extractIntValue(tinstr.Index.String())
+								if err != nil {
+									break
+								}
+								if isSliceIndexInsideBounds(0, value, indexValue) {
+									delete(issues, instr)
+								}
 							}
-						case *ssa.IndexAddr:
-							indexValue, err := extractIntValue(tinstr.Index.String())
-							if err != nil {
-								break
-							}
-							if isSliceIndexInsideBounds(0, value, indexValue) {
-								delete(issues, instr)
-							}
+						}
+					} else if nestedIfInstr, ok := instr.(*ssa.If); ok {
+						for _, nestedBlock := range nestedIfInstr.Block().Succs {
+							processBlock(nestedBlock)
 						}
 					}
 				}
 			}
+
+			processBlock(block)
 		}
 	}
 
