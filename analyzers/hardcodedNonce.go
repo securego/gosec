@@ -76,7 +76,8 @@ func runHardCodedNonce(pass *analysis.Pass) (interface{}, error) {
 }
 
 func raiseIssue(val ssa.Value, funcsToTrack map[string][]int, ssaFuncs []*ssa.Function,
-	pass *analysis.Pass, issueDescription string) ([]*issue.Issue, error) {
+	pass *analysis.Pass, issueDescription string,
+) ([]*issue.Issue, error) {
 	var err error
 	var gosecIssue []*issue.Issue
 
