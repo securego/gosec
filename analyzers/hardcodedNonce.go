@@ -56,22 +56,21 @@ func runHardCodedNonce(pass *analysis.Pass) (interface{}, error) {
 		"crypto/cipher.NewCTR":          {2, 1},
 		"crypto/cipher.NewOFB":          {2, 1},
 	}
-	var issues []*issue.Issue
 	ssaPkgFunctions := ssaResult.SSA.SrcFuncs
-	savedArgsFromFunctions := iterateAndGetArgsFromTrackedFunctions(ssaPkgFunctions, calls)
-	if savedArgsFromFunctions == nil {
+	args := getArgsFromTrackedFunctions(ssaPkgFunctions, calls)
+	if args == nil {
 		return nil, errors.New("no tracked functions found, resulting in no variables to track")
 	}
-
-	for _, savedArg := range savedArgsFromFunctions {
-		if savedArg == nil {
+	var issues []*issue.Issue
+	for _, arg := range args {
+		if arg == nil {
 			continue
 		}
-		tmp, err := raiseIssue(*savedArg, calls, ssaPkgFunctions, pass, "")
+		i, err := raiseIssue(*arg, calls, ssaPkgFunctions, pass, "")
 		if err != nil {
 			return issues, fmt.Errorf("raising issue error: %w", err)
 		}
-		issues = append(issues, tmp...)
+		issues = append(issues, i...)
 	}
 	return issues, nil
 }
@@ -139,7 +138,7 @@ func raiseIssue(val ssa.Value, funcsToTrack map[string][]int, ssaFuncs []*ssa.Fu
 					trackedFunctions[valType.Parent().String()] = []int{len(valType.Parent().Params), index}
 				}
 			}
-			result := iterateAndGetArgsFromTrackedFunctions(ssaFuncs, trackedFunctions)
+			result := getArgsFromTrackedFunctions(ssaFuncs, trackedFunctions)
 
 			issueDescription += " by passing a parameter to a function and"
 			// recursively backtrack to where the origin of a variable passed to multiple functions is
@@ -156,7 +155,7 @@ func raiseIssue(val ssa.Value, funcsToTrack map[string][]int, ssaFuncs []*ssa.Fu
 	return gosecIssue, err
 }
 
-// Iterate through all places that use the `variable` argument and check if it's used in one of the tracked functions
+// iterateThroughReferrers iterates through all places that use the `variable` argument and check if it's used in one of the tracked functions.
 func iterateThroughReferrers(variable ssa.Value, funcsToTrack map[string][]int,
 	analyzerID string, issueDescription string,
 	fileSet *token.FileSet, issueConfidence issue.Score,
@@ -186,7 +185,7 @@ func iterateThroughReferrers(variable ssa.Value, funcsToTrack map[string][]int,
 	return gosecIssues, nil
 }
 
-// Check whether a function contains a call to crypto/rand.Read in it's function body
+// isFuncContainsCryptoRand checks whether a function contains a call to crypto/rand.Read in it's function body.
 func isFuncContainsCryptoRand(funcCall *ssa.Function) (bool, error) {
 	if funcCall == nil {
 		return false, errors.New("passed ssa.Function object is nil")
@@ -216,7 +215,7 @@ func isContainedInMap(value ssa.Value, mapToCheck map[string]*ssa.Value) bool {
 	return contained
 }
 
-func iterateAndGetArgsFromTrackedFunctions(ssaFuncs []*ssa.Function, trackedFunc map[string][]int) map[string]*ssa.Value {
+func getArgsFromTrackedFunctions(ssaFuncs []*ssa.Function, trackedFunc map[string][]int) map[string]*ssa.Value {
 	values := make(map[string]*ssa.Value)
 	for _, pkgFunc := range ssaFuncs {
 		for _, funcBlock := range pkgFunc.Blocks {
