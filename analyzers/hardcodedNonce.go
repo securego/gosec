@@ -78,26 +78,23 @@ func runHardCodedNonce(pass *analysis.Pass) (interface{}, error) {
 func raiseIssue(val ssa.Value, funcsToTrack map[string][]int, ssaFuncs []*ssa.Function,
 	pass *analysis.Pass, issueDescription string,
 ) ([]*issue.Issue, error) {
-	var err error
-	var gosecIssue []*issue.Issue
-
 	if issueDescription == "" {
 		issueDescription = defaultIssueDescription
 	}
-
+	var err error
+	var gosecIssue []*issue.Issue
+	var issues []*issue.Issue
 	switch valType := (val).(type) {
 	case *ssa.Slice:
 		issueDescription += " by passing hardcoded slice/array"
-		tmp, hasErr := iterateThroughReferrers(val, funcsToTrack, pass.Analyzer.Name, issueDescription, pass.Fset, issue.High)
-		gosecIssue = append(gosecIssue, tmp...)
-		err = hasErr
+		issues, err = iterateThroughReferrers(val, funcsToTrack, pass.Analyzer.Name, issueDescription, pass.Fset, issue.High)
+		gosecIssue = append(gosecIssue, issues...)
 	case *ssa.UnOp:
 		// Check if it's a dereference operation (a.k.a pointer)
 		if valType.Op == token.MUL {
 			issueDescription += " by passing pointer which points to hardcoded variable"
-			tmp, hasErr := iterateThroughReferrers(val, funcsToTrack, pass.Analyzer.Name, issueDescription, pass.Fset, issue.Low)
-			gosecIssue = append(gosecIssue, tmp...)
-			err = hasErr
+			issues, err = iterateThroughReferrers(val, funcsToTrack, pass.Analyzer.Name, issueDescription, pass.Fset, issue.Low)
+			gosecIssue = append(gosecIssue, issues...)
 		}
 	// When the value assigned to a variable is a function call.
 	// It goes and check if this function contains call to crypto/rand.Read
@@ -108,9 +105,8 @@ func raiseIssue(val ssa.Value, funcsToTrack map[string][]int, ssaFuncs []*ssa.Fu
 			if calledFunction, ok := callValue.(*ssa.Function); ok {
 				if contains, funcErr := isFuncContainsCryptoRand(calledFunction); !contains && funcErr == nil {
 					issueDescription += " by passing a value from function which doesn't use crypto/rand"
-					tmp, hasErr := iterateThroughReferrers(val, funcsToTrack, pass.Analyzer.Name, issueDescription, pass.Fset, issue.Medium)
-					gosecIssue = append(gosecIssue, tmp...)
-					err = hasErr
+					issues, err = iterateThroughReferrers(val, funcsToTrack, pass.Analyzer.Name, issueDescription, pass.Fset, issue.Medium)
+					gosecIssue = append(gosecIssue, issues...)
 				} else if funcErr != nil {
 					err = funcErr
 				}
@@ -121,9 +117,8 @@ func raiseIssue(val ssa.Value, funcsToTrack map[string][]int, ssaFuncs []*ssa.Fu
 	case *ssa.Convert:
 		if valType.Type().String() == "[]byte" && valType.X.Type().String() == "string" {
 			issueDescription += " by passing converted string"
-			tmp, hasErr := iterateThroughReferrers(val, funcsToTrack, pass.Analyzer.Name, issueDescription, pass.Fset, issue.High)
-			gosecIssue = append(gosecIssue, tmp...)
-			err = hasErr
+			issues, err = iterateThroughReferrers(val, funcsToTrack, pass.Analyzer.Name, issueDescription, pass.Fset, issue.High)
+			gosecIssue = append(gosecIssue, issues...)
 		}
 	case *ssa.Parameter:
 		// arg given to tracked function is wrapped in another function, example:
@@ -139,17 +134,16 @@ func raiseIssue(val ssa.Value, funcsToTrack map[string][]int, ssaFuncs []*ssa.Fu
 					trackedFunctions[valType.Parent().String()] = []int{len(valType.Parent().Params), index}
 				}
 			}
-			result := getArgsFromTrackedFunctions(ssaFuncs, trackedFunctions)
+			args := getArgsFromTrackedFunctions(ssaFuncs, trackedFunctions)
 
 			issueDescription += " by passing a parameter to a function and"
 			// recursively backtrack to where the origin of a variable passed to multiple functions is
-			for _, trackedVariable := range result {
-				if trackedVariable == nil {
+			for _, arg := range args {
+				if arg == nil {
 					continue
 				}
-				tmp, hasErr := raiseIssue(*trackedVariable, trackedFunctions, ssaFuncs, pass, issueDescription)
-				gosecIssue = append(gosecIssue, tmp...)
-				err = hasErr
+				issues, err = raiseIssue(*arg, trackedFunctions, ssaFuncs, pass, issueDescription)
+				gosecIssue = append(gosecIssue, issues...)
 			}
 		}
 	}
