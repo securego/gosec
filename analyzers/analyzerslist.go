@@ -68,6 +68,7 @@ func NewAnalyzerFilter(action bool, analyzerIDs ...string) AnalyzerFilter {
 var defaultAnalyzers = []AnalyzerDefinition{
 	{"G115", "Type conversion which leads to integer overflow", newConversionOverflowAnalyzer},
 	{"G602", "Possible slice bounds out of range", newSliceBoundsAnalyzer},
+	{"G407", "Use of hardcoded IV/nonce for encryption", newHardCodedNonce},
 }
 
 // Generate the list of analyzers to use

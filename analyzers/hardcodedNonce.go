@@ -98,11 +98,13 @@ func raiseIssue(val *ssa.Value, funcsToTrack *map[string][]int, ssaFuncs []*ssa.
 	// It goes and check if this function contains call to crypto/rand.Read in it's body(Assuming that calling crypto/rand.Read in a function, is used for the generation of nonce/iv )
 	case *ssa.Call:
 		if calledFunction, ok := valType.Call.Value.(*ssa.Function); ok {
-			if contains, funcErr := isFuncContainsCryptoRand(calledFunction); !contains && funcErr != nil {
+			if contains, funcErr := isFuncContainsCryptoRand(calledFunction); !contains && funcErr == nil {
 				issueDescription += " by passing a value from function which doesn't use crypto/rand"
 				tmp, hasErr := iterateThroughReferrers(val, funcsToTrack, pass.Analyzer.Name, issueDescription, pass.Fset, issue.High, issue.Medium)
 				gosecIssue = append(gosecIssue, tmp...)
 				err = hasErr
+			} else if funcErr != nil {
+				err = funcErr
 			}
 		}
 
