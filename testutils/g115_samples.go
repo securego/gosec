@@ -684,4 +684,17 @@ func main() {
 }
 	`,
 	}, 0, gosec.NewConfig()},
+	{[]string{
+		`
+package main
+
+import "unsafe"
+
+func main() {
+	i := uintptr(123)
+	p := unsafe.Pointer(i)
+	_ = p
+}
+	`,
+	}, 0, gosec.NewConfig()},
 }
