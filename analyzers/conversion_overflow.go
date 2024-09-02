@@ -38,20 +38,20 @@ type integer struct {
 }
 
 type rangeResult struct {
-	MinValue             int
-	MaxValue             uint
-	ExplixitPositiveVals []uint
-	ExplicitNegativeVals []int
-	IsRangeCheck         bool
-	ConvertFound         bool
+	minValue             int
+	maxValue             uint
+	explixitPositiveVals []uint
+	explicitNegativeVals []int
+	isRangeCheck         bool
+	convertFound         bool
 }
 
 type branchResults struct {
-	MinValue             *int
-	MaxValue             *uint
-	ExplixitPositiveVals []uint
-	ExplicitNegativeVals []int
-	ConvertFound         bool
+	minValue             *int
+	maxValue             *uint
+	explixitPositiveVals []uint
+	explicitNegativeVals []int
+	convertFound         bool
 }
 
 func newConversionOverflowAnalyzer(id string, description string) *analysis.Analyzer {
@@ -127,7 +127,7 @@ func parseIntType(intType string) (integer, error) {
 
 	signed := it == "int"
 
-	// use default system int type in case size is not present in the type
+	// use default system int type in case size is not present in the type.
 	intSize := strconv.IntSize
 	if is != "" {
 		var err error
@@ -147,7 +147,7 @@ func parseIntType(intType string) (integer, error) {
 	if signed {
 		shiftAmount := intSize - 1
 
-		// Perform a bounds check
+		// Perform a bounds check.
 		if shiftAmount < 0 {
 			return integer{}, fmt.Errorf("invalid shift amount: %d", shiftAmount)
 		}
@@ -171,19 +171,19 @@ func parseIntType(intType string) (integer, error) {
 func isSafeConversion(instr *ssa.Convert) bool {
 	dstType := instr.Type().Underlying().String()
 
-	// Check for constant conversions
+	// Check for constant conversions.
 	if constVal, ok := instr.X.(*ssa.Const); ok {
 		if isConstantInRange(constVal, dstType) {
 			return true
 		}
 	}
 
-	// Check for string to integer conversions with specified bit size
+	// Check for string to integer conversions with specified bit size.
 	if isStringToIntConversion(instr, dstType) {
 		return true
 	}
 
-	// Check for explicit range checks
+	// Check for explicit range checks.
 	if hasExplicitRangeCheck(instr, dstType) {
 		return true
 	}
@@ -209,7 +209,7 @@ func isConstantInRange(constVal *ssa.Const, dstType string) bool {
 }
 
 func isStringToIntConversion(instr *ssa.Convert, dstType string) bool {
-	// Traverse the SSA instructions to find the original variable
+	// Traverse the SSA instructions to find the original variable.
 	original := instr.X
 	for {
 		switch v := original.(type) {
@@ -268,14 +268,14 @@ func hasExplicitRangeCheck(instr *ssa.Convert, dstType string) bool {
 			switch v := blockInstr.(type) {
 			case *ssa.If:
 				result := getResultRange(v, instr, visitedIfs)
-				if result.IsRangeCheck {
-					minValue = max(minValue, &result.MinValue)
-					maxValue = min(maxValue, &result.MaxValue)
-					explicitPositiveVals = append(explicitPositiveVals, result.ExplixitPositiveVals...)
-					explicitNegativeVals = append(explicitNegativeVals, result.ExplicitNegativeVals...)
+				if result.isRangeCheck {
+					minValue = max(minValue, &result.minValue)
+					maxValue = min(maxValue, &result.maxValue)
+					explicitPositiveVals = append(explicitPositiveVals, result.explixitPositiveVals...)
+					explicitNegativeVals = append(explicitNegativeVals, result.explicitNegativeVals...)
 				}
 			case *ssa.Call:
-				// these function return an int of a guaranteed size
+				// These function return an int of a guaranteed size.
 				if v != instr.X {
 					continue
 				}
@@ -301,44 +301,48 @@ func hasExplicitRangeCheck(instr *ssa.Convert, dstType string) bool {
 	return false
 }
 
-// getResultRange is a recursive function that walks the branches of the if statement to find the range of the variable
+// getResultRange is a recursive function that walks the branches of the if statement to find the range of the variable.
 func getResultRange(ifInstr *ssa.If, instr *ssa.Convert, visitedIfs map[*ssa.If]bool) rangeResult {
 	if visitedIfs[ifInstr] {
-		return rangeResult{MinValue: math.MinInt, MaxValue: math.MaxUint}
+		return rangeResult{minValue: math.MinInt, maxValue: math.MaxUint}
 	}
 	visitedIfs[ifInstr] = true
 
 	cond := ifInstr.Cond
 	binOp, ok := cond.(*ssa.BinOp)
 	if !ok || !isRangeCheck(binOp, instr.X) {
-		return rangeResult{MinValue: math.MinInt, MaxValue: math.MaxUint}
+		return rangeResult{minValue: math.MinInt, maxValue: math.MaxUint}
 	}
 
 	result := rangeResult{
-		MinValue:     math.MinInt,
-		MaxValue:     math.MaxUint,
-		IsRangeCheck: true,
+		minValue:     math.MinInt,
+		maxValue:     math.MaxUint,
+		isRangeCheck: true,
 	}
 
 	thenBounds := walkBranchForConvert(ifInstr.Block().Succs[0], instr, visitedIfs)
 	elseBounds := walkBranchForConvert(ifInstr.Block().Succs[1], instr, visitedIfs)
 
-	updateResultFromBinOp(&result, binOp, instr, thenBounds.ConvertFound)
+	updateResultFromBinOp(&result, binOp, instr, thenBounds.convertFound)
 
-	if thenBounds.ConvertFound {
-		result.ConvertFound = true
-		result.MinValue = max(result.MinValue, thenBounds.MinValue)
-		result.MaxValue = min(result.MaxValue, thenBounds.MaxValue)
-	} else if elseBounds.ConvertFound {
-		result.ConvertFound = true
-		result.MinValue = max(result.MinValue, elseBounds.MinValue)
-		result.MaxValue = min(result.MaxValue, elseBounds.MaxValue)
+	if thenBounds.convertFound {
+		result.convertFound = true
+		result.minValue = max(result.minValue, thenBounds.minValue)
+		result.maxValue = min(result.maxValue, thenBounds.maxValue)
+		result.explixitPositiveVals = append(result.explixitPositiveVals, thenBounds.explixitPositiveVals...)
+		result.explicitNegativeVals = append(result.explicitNegativeVals, thenBounds.explicitNegativeVals...)
+	} else if elseBounds.convertFound {
+		result.convertFound = true
+		result.minValue = max(result.minValue, elseBounds.minValue)
+		result.maxValue = min(result.maxValue, elseBounds.maxValue)
+		result.explixitPositiveVals = append(result.explixitPositiveVals, elseBounds.explixitPositiveVals...)
+		result.explicitNegativeVals = append(result.explicitNegativeVals, elseBounds.explicitNegativeVals...)
 	}
 
 	return result
 }
 
-// updateResultFromBinOp updates the rangeResult based on the BinOp instruction and the location of the Convert instruction
+// updateResultFromBinOp updates the rangeResult based on the BinOp instruction and the location of the Convert instruction.
 func updateResultFromBinOp(result *rangeResult, binOp *ssa.BinOp, instr *ssa.Convert, successPathConvert bool) {
 	x, y := binOp.X, binOp.Y
 	operandsFlipped := false
@@ -361,11 +365,11 @@ func updateResultFromBinOp(result *rangeResult, binOp *ssa.BinOp, instr *ssa.Con
 			break
 		}
 
-		// determine if the constant value is positive or negative
+		// Determine if the constant value is positive or negative.
 		if strings.Contains(constVal.String(), "-") {
-			result.ExplicitNegativeVals = append(result.ExplicitNegativeVals, int(constVal.Int64()))
+			result.explicitNegativeVals = append(result.explicitNegativeVals, int(constVal.Int64()))
 		} else {
-			result.ExplixitPositiveVals = append(result.ExplixitPositiveVals, uint(constVal.Uint64()))
+			result.explixitPositiveVals = append(result.explixitPositiveVals, uint(constVal.Uint64()))
 		}
 
 	case token.NEQ:
@@ -373,46 +377,46 @@ func updateResultFromBinOp(result *rangeResult, binOp *ssa.BinOp, instr *ssa.Con
 			break
 		}
 
-		// determine if the constant value is positive or negative
+		// Determine if the constant value is positive or negative.
 		if strings.Contains(constVal.String(), "-") {
-			result.ExplicitNegativeVals = append(result.ExplicitNegativeVals, int(constVal.Int64()))
+			result.explicitNegativeVals = append(result.explicitNegativeVals, int(constVal.Int64()))
 		} else {
-			result.ExplixitPositiveVals = append(result.ExplixitPositiveVals, uint(constVal.Uint64()))
+			result.explixitPositiveVals = append(result.explixitPositiveVals, uint(constVal.Uint64()))
 		}
 	}
 }
 
 func updateMinMaxForLessOrEqual(result *rangeResult, constVal *ssa.Const, op token.Token, operandsFlipped bool, successPathConvert bool) {
-	// If the success path has a conversion and the operands are not flipped, then the constant value is the maximum value
+	// If the success path has a conversion and the operands are not flipped, then the constant value is the maximum value.
 	if successPathConvert && !operandsFlipped {
-		result.MaxValue = uint(constVal.Uint64())
+		result.maxValue = uint(constVal.Uint64())
 		if op == token.LEQ {
-			result.MaxValue--
+			result.maxValue--
 		}
 	} else {
-		result.MinValue = int(constVal.Int64())
+		result.minValue = int(constVal.Int64())
 		if op == token.GTR {
-			result.MinValue++
+			result.minValue++
 		}
 	}
 }
 
 func updateMinMaxForGreaterOrEqual(result *rangeResult, constVal *ssa.Const, op token.Token, operandsFlipped bool, successPathConvert bool) {
-	// If the success path has a conversion and the operands are not flipped, then the constant value is the minimum value
+	// If the success path has a conversion and the operands are not flipped, then the constant value is the minimum value.
 	if successPathConvert && !operandsFlipped {
-		result.MinValue = int(constVal.Int64())
+		result.minValue = int(constVal.Int64())
 		if op == token.GEQ {
-			result.MinValue++
+			result.minValue++
 		}
 	} else {
-		result.MaxValue = uint(constVal.Uint64())
+		result.maxValue = uint(constVal.Uint64())
 		if op == token.LSS {
-			result.MaxValue--
+			result.maxValue--
 		}
 	}
 }
 
-// walkBranchForConvert walks the branch of the if statement to find the range of the variable and where the conversion is
+// walkBranchForConvert walks the branch of the if statement to find the range of the variable and where the conversion is.
 func walkBranchForConvert(block *ssa.BasicBlock, instr *ssa.Convert, visitedIfs map[*ssa.If]bool) branchResults {
 	bounds := branchResults{}
 
@@ -420,21 +424,21 @@ func walkBranchForConvert(block *ssa.BasicBlock, instr *ssa.Convert, visitedIfs 
 		switch v := blockInstr.(type) {
 		case *ssa.If:
 			result := getResultRange(v, instr, visitedIfs)
-			bounds.ConvertFound = bounds.ConvertFound || result.ConvertFound
+			bounds.convertFound = bounds.convertFound || result.convertFound
 
-			if result.IsRangeCheck {
-				bounds.MinValue = toPtr(max(result.MinValue, bounds.MinValue))
-				bounds.MaxValue = toPtr(min(result.MaxValue, bounds.MaxValue))
+			if result.isRangeCheck {
+				bounds.minValue = toPtr(max(result.minValue, bounds.minValue))
+				bounds.maxValue = toPtr(min(result.maxValue, bounds.maxValue))
 			}
 		case *ssa.Call:
 			if v == instr.X {
 				if fn, isBuiltin := v.Call.Value.(*ssa.Builtin); isBuiltin && (fn.Name() == "len" || fn.Name() == "cap") {
-					bounds.MinValue = toPtr(0)
+					bounds.minValue = toPtr(0)
 				}
 			}
 		case *ssa.Convert:
 			if v == instr {
-				bounds.ConvertFound = true
+				bounds.convertFound = true
 				return bounds
 			}
 		}
