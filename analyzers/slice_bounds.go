@@ -118,8 +118,12 @@ func runSliceBounds(pass *analysis.Pass) (interface{}, error) {
 			if i == 1 {
 				bound = invBound(bound)
 			}
-			var processBlock func(block *ssa.BasicBlock)
-			processBlock = func(block *ssa.BasicBlock) {
+			var processBlock func(block *ssa.BasicBlock, depth int)
+			processBlock = func(block *ssa.BasicBlock, depth int) {
+				if depth == maxDepth {
+					return
+				}
+				depth++
 				for _, instr := range block.Instrs {
 					if _, ok := issues[instr]; ok {
 						switch bound {
@@ -146,13 +150,13 @@ func runSliceBounds(pass *analysis.Pass) (interface{}, error) {
 						}
 					} else if nestedIfInstr, ok := instr.(*ssa.If); ok {
 						for _, nestedBlock := range nestedIfInstr.Block().Succs {
-							processBlock(nestedBlock)
+							processBlock(nestedBlock, depth)
 						}
 					}
 				}
 			}
 
-			processBlock(block)
+			processBlock(block, 0)
 		}
 	}
 
