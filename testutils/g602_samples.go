@@ -195,13 +195,13 @@ package main
 import "fmt"
 
 func main() {
-  testMap := make(map[string]any, 0)
-  testMap["test1"] = map[string]interface{}{
-    "test2": map[string]interface{}{
-      "value": 0,
-    },
-  }
-  fmt.Println(testMap)
+	testMap := make(map[string]any, 0)
+	testMap["test1"] = map[string]interface{}{
+	"test2": map[string]interface{}{
+			"value": 0,
+		},
+	}
+	fmt.Println(testMap)
 }
 `}, 0, gosec.NewConfig()},
 	{[]string{`
@@ -210,12 +210,99 @@ package main
 import "fmt"
 
 func main() {
-  s := make([]byte, 0)
-  if len(s) > 0 {
-    fmt.Println(s[0])
-  }
+	s := make([]byte, 0)
+	if len(s) > 0 {
+		fmt.Println(s[0])
+	}
 }
 `}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]byte, 0)
+	if len(s) > 0 {
+		switch s[0] {
+		case 0:
+			fmt.Println("zero")
+			return
+		default:
+			fmt.Println(s[0])
+			return
+		}
+	}
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]byte, 0)
+	if len(s) > 0 {
+		switch s[0] {
+		case 0:
+			b := true
+			if b == true {
+				// Should work for many-levels of nesting when the condition is not on the target slice
+				fmt.Println(s[0])
+			}
+			return
+		default:
+			fmt.Println(s[0])
+			return
+		}
+	}
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]byte, 0)
+	if len(s) > 0 {
+		if len(s) > 1 {
+			fmt.Println(s[1])
+		}
+		fmt.Println(s[0])
+	}
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+s := make([]byte, 2)
+fmt.Println(s[1])
+s = make([]byte, 0)
+fmt.Println(s[1])
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]byte, 0)
+	if len(s) > 0 {
+		if len(s) > 4 {
+			fmt.Println(s[3])
+		} else {
+			// Should error
+			fmt.Println(s[2])
+		}
+		fmt.Println(s[0])
+	}
+}
+`}, 1, gosec.NewConfig()},
 	{[]string{`
 package main
 
@@ -249,5 +336,6 @@ func main() {
 		fmt.Println(s[i])
 	}
 }
+
 `}, 0, gosec.NewConfig()},
 }
