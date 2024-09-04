@@ -391,7 +391,7 @@ func updateResultFromBinOp(result *rangeResult, binOp *ssa.BinOp, instr *ssa.Con
 			result.maxValue = uint(min)
 		}
 		if max <= math.MaxInt {
-			result.minValue = int(max)
+			result.minValue = int(max) //nolint:gosec
 		}
 	}
 }
