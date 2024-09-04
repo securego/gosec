@@ -285,10 +285,6 @@ func hasExplicitRangeCheck(instr *ssa.Convert, dstType string) bool {
 						minValue = 0
 					}
 				}
-			case *ssa.Convert:
-				if v == instr {
-					break
-				}
 			}
 
 			if explicitValsInRange(explicitPositiveVals, explicitNegativeVals, dstInt) {
@@ -346,7 +342,9 @@ func getResultRange(ifInstr *ssa.If, instr *ssa.Convert, visitedIfs map[*ssa.If]
 func updateResultFromBinOp(result *rangeResult, binOp *ssa.BinOp, instr *ssa.Convert, successPathConvert bool) {
 	x, y := binOp.X, binOp.Y
 	operandsFlipped := false
-	if x != instr.X {
+
+	compareVal, op := getRealValueFromOperation(instr.X)
+	if x != compareVal {
 		y, operandsFlipped = x, true
 	}
 
@@ -382,6 +380,18 @@ func updateResultFromBinOp(result *rangeResult, binOp *ssa.BinOp, instr *ssa.Con
 			result.explicitNegativeVals = append(result.explicitNegativeVals, int(constVal.Int64()))
 		} else {
 			result.explixitPositiveVals = append(result.explixitPositiveVals, uint(constVal.Uint64()))
+		}
+	}
+
+	if op == "neg" {
+		min := result.minValue
+		max := result.maxValue
+
+		if min > 0 {
+			result.maxValue = uint(min)
+		}
+		if max < math.MaxInt {
+			result.minValue = int(max)
 		}
 	}
 }
@@ -448,15 +458,27 @@ func walkBranchForConvert(block *ssa.BasicBlock, instr *ssa.Convert, visitedIfs 
 }
 
 func isRangeCheck(v ssa.Value, x ssa.Value) bool {
+	compareVal, _ := getRealValueFromOperation(x)
+
 	switch op := v.(type) {
 	case *ssa.BinOp:
 		switch op.Op {
 		case token.LSS, token.LEQ, token.GTR, token.GEQ,
 			token.EQL, token.NEQ:
-			return op.X == x || op.Y == x
+			return op.X == compareVal || op.Y == compareVal
 		}
 	}
 	return false
+}
+
+func getRealValueFromOperation(v ssa.Value) (ssa.Value, string) {
+	switch v := v.(type) {
+	case *ssa.UnOp:
+		if v.Op == token.SUB {
+			return v.X, "neg"
+		}
+	}
+	return v, ""
 }
 
 func explicitValsInRange(explicitPosVals []uint, explicitNegVals []int, dstInt integer) bool {

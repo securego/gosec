@@ -697,4 +697,23 @@ func main() {
 }
 	`,
 	}, 0, gosec.NewConfig()},
+	{[]string{
+		`
+        package main
+
+        import (
+            "fmt"
+            "math/rand"
+        )
+
+        func main() {
+            a := rand.Int63()
+            if a >= 0 {
+                panic("no positivity allowed")
+            }
+            b := uint64(-a)
+            fmt.Printf("%d\n", b)
+        }
+            `,
+	}, 0, gosec.NewConfig()},
 }
