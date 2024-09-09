@@ -18,5 +18,5 @@ const (
 	// Version : SARIF Schema version
 	Version = "2.1.0"
 	// Schema : SARIF Schema URL
-	Schema = "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.json"
+	Schema = "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json"
 )
