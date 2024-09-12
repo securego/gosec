@@ -40,7 +40,7 @@ type integer struct {
 type rangeResult struct {
 	minValue             int
 	maxValue             uint
-	explixitPositiveVals []uint
+	explicitPositiveVals []uint
 	explicitNegativeVals []int
 	isRangeCheck         bool
 	convertFound         bool
@@ -271,7 +271,7 @@ func hasExplicitRangeCheck(instr *ssa.Convert, dstType string) bool {
 				if result.isRangeCheck {
 					minValue = max(minValue, &result.minValue)
 					maxValue = min(maxValue, &result.maxValue)
-					explicitPositiveVals = append(explicitPositiveVals, result.explixitPositiveVals...)
+					explicitPositiveVals = append(explicitPositiveVals, result.explicitPositiveVals...)
 					explicitNegativeVals = append(explicitNegativeVals, result.explicitNegativeVals...)
 				}
 			case *ssa.Call:
@@ -325,13 +325,13 @@ func getResultRange(ifInstr *ssa.If, instr *ssa.Convert, visitedIfs map[*ssa.If]
 		result.convertFound = true
 		result.minValue = max(result.minValue, thenBounds.minValue)
 		result.maxValue = min(result.maxValue, thenBounds.maxValue)
-		result.explixitPositiveVals = append(result.explixitPositiveVals, thenBounds.explixitPositiveVals...)
+		result.explicitPositiveVals = append(result.explicitPositiveVals, thenBounds.explixitPositiveVals...)
 		result.explicitNegativeVals = append(result.explicitNegativeVals, thenBounds.explicitNegativeVals...)
 	} else if elseBounds.convertFound {
 		result.convertFound = true
 		result.minValue = max(result.minValue, elseBounds.minValue)
 		result.maxValue = min(result.maxValue, elseBounds.maxValue)
-		result.explixitPositiveVals = append(result.explixitPositiveVals, elseBounds.explixitPositiveVals...)
+		result.explicitPositiveVals = append(result.explicitPositiveVals, elseBounds.explixitPositiveVals...)
 		result.explicitNegativeVals = append(result.explicitNegativeVals, elseBounds.explicitNegativeVals...)
 	}
 
@@ -344,8 +344,15 @@ func updateResultFromBinOp(result *rangeResult, binOp *ssa.BinOp, instr *ssa.Con
 	operandsFlipped := false
 
 	compareVal, op := getRealValueFromOperation(instr.X)
-	if x != compareVal {
-		y, operandsFlipped = x, true
+
+	// Handle FieldAddr
+	if fieldAddr, ok := compareVal.(*ssa.FieldAddr); ok {
+		compareVal = fieldAddr
+	}
+
+	if !isSameOrRelated(x, compareVal) {
+		y = x
+		operandsFlipped = true
 	}
 
 	constVal, ok := y.(*ssa.Const)
@@ -362,25 +369,12 @@ func updateResultFromBinOp(result *rangeResult, binOp *ssa.BinOp, instr *ssa.Con
 		if !successPathConvert {
 			break
 		}
-
-		// Determine if the constant value is positive or negative.
-		if strings.Contains(constVal.String(), "-") {
-			result.explicitNegativeVals = append(result.explicitNegativeVals, int(constVal.Int64()))
-		} else {
-			result.explixitPositiveVals = append(result.explixitPositiveVals, uint(constVal.Uint64()))
-		}
-
+		updateExplicitValues(result, constVal)
 	case token.NEQ:
 		if successPathConvert {
 			break
 		}
-
-		// Determine if the constant value is positive or negative.
-		if strings.Contains(constVal.String(), "-") {
-			result.explicitNegativeVals = append(result.explicitNegativeVals, int(constVal.Int64()))
-		} else {
-			result.explixitPositiveVals = append(result.explixitPositiveVals, uint(constVal.Uint64()))
-		}
+		updateExplicitValues(result, constVal)
 	}
 
 	if op == "neg" {
@@ -393,6 +387,14 @@ func updateResultFromBinOp(result *rangeResult, binOp *ssa.BinOp, instr *ssa.Con
 		if max <= math.MaxInt {
 			result.minValue = int(max) //nolint:gosec
 		}
+	}
+}
+
+func updateExplicitValues(result *rangeResult, constVal *ssa.Const) {
+	if strings.Contains(constVal.String(), "-") {
+		result.explicitNegativeVals = append(result.explicitNegativeVals, int(constVal.Int64()))
+	} else {
+		result.explicitPositiveVals = append(result.explicitPositiveVals, uint(constVal.Uint64()))
 	}
 }
 
@@ -463,9 +465,10 @@ func isRangeCheck(v ssa.Value, x ssa.Value) bool {
 	switch op := v.(type) {
 	case *ssa.BinOp:
 		switch op.Op {
-		case token.LSS, token.LEQ, token.GTR, token.GEQ,
-			token.EQL, token.NEQ:
-			return op.X == compareVal || op.Y == compareVal
+		case token.LSS, token.LEQ, token.GTR, token.GEQ, token.EQL, token.NEQ:
+			leftMatch := isSameOrRelated(op.X, compareVal)
+			rightMatch := isSameOrRelated(op.Y, compareVal)
+			return leftMatch || rightMatch
 		}
 	}
 	return false
@@ -475,10 +478,34 @@ func getRealValueFromOperation(v ssa.Value) (ssa.Value, string) {
 	switch v := v.(type) {
 	case *ssa.UnOp:
 		if v.Op == token.SUB {
-			return v.X, "neg"
+			val, _ := getRealValueFromOperation(v.X)
+			return val, "neg"
 		}
+		return getRealValueFromOperation(v.X)
+	case *ssa.FieldAddr:
+		return v, "field"
+	case *ssa.Alloc:
+		return v, "alloc"
 	}
 	return v, ""
+}
+
+func isSameOrRelated(a, b ssa.Value) bool {
+	aVal, _ := getRealValueFromOperation(a)
+	bVal, _ := getRealValueFromOperation(b)
+
+	if aVal == bVal {
+		return true
+	}
+
+	// Check if both are FieldAddr operations referring to the same field of the same struct
+	if aField, aOk := aVal.(*ssa.FieldAddr); aOk {
+		if bField, bOk := bVal.(*ssa.FieldAddr); bOk {
+			return aField.X == bField.X && aField.Field == bField.Field
+		}
+	}
+
+	return false
 }
 
 func explicitValsInRange(explicitPosVals []uint, explicitNegVals []int, dstInt integer) bool {

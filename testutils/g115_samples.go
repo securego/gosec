@@ -716,4 +716,97 @@ func main() {
         }
             `,
 	}, 0, gosec.NewConfig()},
+	{[]string{
+		`
+        package main
+
+        import (
+            "fmt"
+            "math"
+        )
+
+        type CustomStruct struct {
+            Value int
+        }
+
+        func main() {
+            results := CustomStruct{Value: 0}
+            if results.Value < math.MinInt32 || results.Value > math.MaxInt32 {
+                panic("value out of range for int32")
+            }
+            convertedValue := int32(results.Value)
+
+            fmt.Println(convertedValue)
+        }
+        `,
+	}, 0, gosec.NewConfig()},
+	{[]string{
+		`
+        package main
+
+        import (
+            "fmt"
+            "math"
+        )
+
+        type CustomStruct struct {
+            Value int
+        }
+
+        func main() {
+            results := CustomStruct{Value: 0}
+            if results.Value >= math.MinInt32 && results.Value <= math.MaxInt32 {
+                convertedValue := int32(results.Value)
+                fmt.Println(convertedValue)
+            }
+            panic("value out of range for int32")
+        }
+        `,
+	}, 0, gosec.NewConfig()},
+	{[]string{
+		`
+        package main
+
+        import (
+            "fmt"
+            "math"
+        )
+
+        type CustomStruct struct {
+            Value int
+        }
+
+        func main() {
+            results := CustomStruct{Value: 0}
+            if results.Value < math.MinInt32 || results.Value > math.MaxInt32 {
+                panic("value out of range for int32")
+            }
+            // checked value is decremented by 1 before conversion which is unsafe
+            convertedValue := int32(results.Value-1)
+
+            fmt.Println(convertedValue)
+        }
+        `,
+	}, 1, gosec.NewConfig()},
+	{[]string{
+		`
+        package main
+
+        import (
+                "fmt"
+                "math"
+                "math/rand"
+        )
+
+        func main() {
+            a := rand.Int63()
+            if a < math.MinInt32 || a > math.MaxInt32 {
+                panic("out of range")
+            }
+            // checked value is incremented by 1 before conversion which is unsafe
+            b := int32(a+1)
+            fmt.Printf("%d\n", b)
+        }
+	`,
+	}, 1, gosec.NewConfig()},
 }
