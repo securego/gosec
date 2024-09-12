@@ -325,15 +325,16 @@ func getResultRange(ifInstr *ssa.If, instr *ssa.Convert, visitedIfs map[*ssa.If]
 		result.convertFound = true
 		result.minValue = max(result.minValue, thenBounds.minValue)
 		result.maxValue = min(result.maxValue, thenBounds.maxValue)
-		result.explicitPositiveVals = append(result.explicitPositiveVals, thenBounds.explixitPositiveVals...)
-		result.explicitNegativeVals = append(result.explicitNegativeVals, thenBounds.explicitNegativeVals...)
 	} else if elseBounds.convertFound {
 		result.convertFound = true
 		result.minValue = max(result.minValue, elseBounds.minValue)
 		result.maxValue = min(result.maxValue, elseBounds.maxValue)
-		result.explicitPositiveVals = append(result.explicitPositiveVals, elseBounds.explixitPositiveVals...)
-		result.explicitNegativeVals = append(result.explicitNegativeVals, elseBounds.explicitNegativeVals...)
 	}
+
+	result.explicitPositiveVals = append(result.explicitPositiveVals, thenBounds.explixitPositiveVals...)
+	result.explicitNegativeVals = append(result.explicitNegativeVals, thenBounds.explicitNegativeVals...)
+	result.explicitPositiveVals = append(result.explicitPositiveVals, elseBounds.explixitPositiveVals...)
+	result.explicitNegativeVals = append(result.explicitNegativeVals, elseBounds.explicitNegativeVals...)
 
 	return result
 }
@@ -385,7 +386,7 @@ func updateResultFromBinOp(result *rangeResult, binOp *ssa.BinOp, instr *ssa.Con
 			result.maxValue = uint(min)
 		}
 		if max <= math.MaxInt {
-			result.minValue = int(max) //nolint:gosec
+			result.minValue = int(max)
 		}
 	}
 }
@@ -441,6 +442,8 @@ func walkBranchForConvert(block *ssa.BasicBlock, instr *ssa.Convert, visitedIfs 
 			if result.isRangeCheck {
 				bounds.minValue = toPtr(max(result.minValue, bounds.minValue))
 				bounds.maxValue = toPtr(min(result.maxValue, bounds.maxValue))
+				bounds.explixitPositiveVals = append(bounds.explixitPositiveVals, result.explicitPositiveVals...)
+				bounds.explicitNegativeVals = append(bounds.explicitNegativeVals, result.explicitNegativeVals...)
 			}
 		case *ssa.Call:
 			if v == instr.X {
