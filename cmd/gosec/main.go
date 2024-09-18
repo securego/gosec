@@ -309,7 +309,7 @@ func saveReport(filename, format string, rootPaths []string, reportInfo *gosec.R
 	if err != nil {
 		return err
 	}
-	defer outfile.Close() // #nosec G307
+	defer outfile.Close()
 	err = report.CreateReport(outfile, format, false, rootPaths, reportInfo)
 	if err != nil {
 		return err
