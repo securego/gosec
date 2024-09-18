@@ -207,7 +207,7 @@ func loadConfig(configFile string) (gosec.Config, error) {
 		if err != nil {
 			return nil, err
 		}
-		defer file.Close() // #nosec G307
+		defer file.Close()
 		if _, err := config.ReadFrom(file); err != nil {
 			return nil, err
 		}
