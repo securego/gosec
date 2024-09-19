@@ -14,7 +14,9 @@
 
 package rules
 
-import "github.com/securego/gosec/v2"
+import (
+	"github.com/securego/gosec/v2"
+)
 
 // RuleDefinition contains the description of a rule and a mechanism to
 // create it.
