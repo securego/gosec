@@ -224,11 +224,11 @@ func loadConfig(configFile string) (gosec.Config, error) {
 	if *flagEnableAudit {
 		config.SetGlobal(gosec.Audit, "true")
 	}
-	// set global option IncludeRules ,when flag set or global option IncludeRules  is nil
+	// set global option IncludeRules, when flag set or global option IncludeRules  is nil
 	if v, _ := config.GetGlobal(gosec.IncludeRules); *flagRulesInclude != "" || v == "" {
 		config.SetGlobal(gosec.IncludeRules, *flagRulesInclude)
 	}
-	// set global option ExcludeRules ,when flag set or global option IncludeRules  is nil
+	// set global option ExcludeRules, when flag set or global option ExcludeRules  is nil
 	if v, _ := config.GetGlobal(gosec.ExcludeRules); flagRulesExclude.String() != "" || v == "" {
 		config.SetGlobal(gosec.ExcludeRules, flagRulesExclude.String())
 	}
@@ -438,11 +438,12 @@ func main() {
 	}
 
 	ruleList := loadRules(includeRules, excludeRules)
-	if len(ruleList.Rules) == 0 {
-		logger.Fatal("No rules are configured")
-	}
 
 	analyzerList := loadAnalyzers(includeRules, excludeRules)
+
+	if len(ruleList.Rules) == 0 && len(analyzerList.Analyzers) == 0 {
+		logger.Fatal("No rules/analyzers are configured")
+	}
 
 	// Create the analyzer
 	analyzer := gosec.NewAnalyzer(config, *flagScanTests, *flagExcludeGenerated, *flagTrackSuppressions, *flagConcurrency, logger)
