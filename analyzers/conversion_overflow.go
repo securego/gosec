@@ -360,7 +360,11 @@ func updateResultFromBinOp(result *rangeResult, binOp *ssa.BinOp, instr *ssa.Con
 	if !ok {
 		return
 	}
-
+	// TODO: constVal.Value nil check avoids #1229 panic but seems to be hiding a bug in the code above or in x/tools/go/ssa.
+	if constVal.Value == nil {
+		// log.Fatalf("[gosec] constVal.Value is nil flipped=%t, constVal=%#v, binOp=%#v", operandsFlipped, constVal, binOp)
+		return
+	}
 	switch binOp.Op {
 	case token.LEQ, token.LSS:
 		updateMinMaxForLessOrEqual(result, constVal, binOp.Op, operandsFlipped, successPathConvert)
