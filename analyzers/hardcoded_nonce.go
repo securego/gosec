@@ -48,10 +48,7 @@ func runHardCodedNonce(pass *analysis.Pass) (interface{}, error) {
 	// Example "Test" 3, 1 -- means the function "Test" which accepts 3 arguments, and has the nonce arg as second argument
 	calls := map[string][]int{
 		"(crypto/cipher.AEAD).Seal":     {4, 1},
-		"(crypto/cipher.AEAD).Open":     {4, 1},
-		"crypto/cipher.NewCBCDecrypter": {2, 1},
 		"crypto/cipher.NewCBCEncrypter": {2, 1},
-		"crypto/cipher.NewCFBDecrypter": {2, 1},
 		"crypto/cipher.NewCFBEncrypter": {2, 1},
 		"crypto/cipher.NewCTR":          {2, 1},
 		"crypto/cipher.NewOFB":          {2, 1},
