@@ -226,7 +226,12 @@ func isStringToIntConversion(instr *ssa.Convert, dstType string) bool {
 						if err != nil {
 							return false
 						}
-						isSafe := bitSizeValue <= dstInt.size && signed == dstInt.signed
+
+						// we're good if:
+						// - signs match and bit size is <= than destination
+						// - parsing unsigned and bit size is < than destination
+						isSafe := (bitSizeValue <= dstInt.size && signed == dstInt.signed) ||
+							(bitSizeValue < dstInt.size && !signed)
 						return isSafe
 					}
 				}
