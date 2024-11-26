@@ -173,7 +173,7 @@ func main() {
 	cipherText, _ = aesGCM.Open(nil, []byte("ILoveMyNonce"), cipherText, nil)
 	fmt.Println(string(cipherText))
 }
-`}, 2, gosec.NewConfig()},
+`}, 1, gosec.NewConfig()},
 
 	{[]string{`package main
 
@@ -193,7 +193,7 @@ func main() {
 	cipherText, _ = aesGCM.Open(nil, []byte{}, cipherText, nil)
 	fmt.Println(string(cipherText))
 }
-`}, 2, gosec.NewConfig()},
+`}, 1, gosec.NewConfig()},
 
 	{[]string{`package main
 
@@ -214,7 +214,7 @@ func main() {
 	cipherText, _ = aesGCM.Open(nil, []byte{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}, cipherText, nil)
 	fmt.Println(string(cipherText))
 }
-`}, 2, gosec.NewConfig()},
+`}, 1, gosec.NewConfig()},
 
 	{[]string{`package main
 
@@ -248,7 +248,7 @@ func main() {
 
 	fmt.Println(string(cipherText))
 }
-`}, 2, gosec.NewConfig()},
+`}, 1, gosec.NewConfig()},
 
 	{[]string{`package main
 
@@ -281,7 +281,7 @@ func main() {
 	}(), cipherText, nil)
 	fmt.Println(string(cipherText))
 }
-`}, 2, gosec.NewConfig()},
+`}, 1, gosec.NewConfig()},
 
 	{[]string{`package main
 
@@ -301,7 +301,7 @@ func main() {
 	fmt.Println(string(cipheredText))
 
 }
-`}, 2, gosec.NewConfig()},
+`}, 1, gosec.NewConfig()},
 
 	{[]string{`package main
 
@@ -321,7 +321,7 @@ func main() {
 	fmt.Println(string(cipheredText))
 
 }
-`}, 2, gosec.NewConfig()},
+`}, 1, gosec.NewConfig()},
 
 	{[]string{`package main
 
@@ -342,7 +342,7 @@ func main() {
 	aesCFB.XORKeyStream(output, output)
 	fmt.Println(string(output))
 
-}`}, 2, gosec.NewConfig()},
+}`}, 1, gosec.NewConfig()},
 
 	{[]string{`package main
 
@@ -363,7 +363,7 @@ func main() {
 	aesCFB.XORKeyStream(output, output)
 	fmt.Println(string(output))
 
-}`}, 2, gosec.NewConfig()},
+}`}, 1, gosec.NewConfig()},
 
 	{[]string{`package main
 
@@ -386,7 +386,7 @@ func main() {
 	aesCBC.CryptBlocks(output, output)
 	fmt.Println(string(output))
 
-}`}, 2, gosec.NewConfig()},
+}`}, 1, gosec.NewConfig()},
 
 	{[]string{`package main
 
@@ -410,7 +410,7 @@ func main() {
 	fmt.Println(string(output))
 
 }
-`}, 2, gosec.NewConfig()},
+`}, 1, gosec.NewConfig()},
 
 	{[]string{`package main
 
