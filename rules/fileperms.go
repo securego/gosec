@@ -157,7 +157,7 @@ func (r *osCreatePermissions) Match(n ast.Node, c *gosec.Context) (*issue.Issue,
 	return nil, nil
 }
 
-// NewOsCreatePerms reates a rule to detect file creation with a more permissive than configured
+// NewOsCreatePerms creates a rule to detect file creation with a more permissive than configured
 // permission mask.
 func NewOsCreatePerms(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 	mode := getConfiguredMode(conf, id, 0o666)

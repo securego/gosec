@@ -160,9 +160,9 @@ func iterateThroughReferrers(variable ssa.Value, funcsToTrack map[string][]int,
 	if refs == nil {
 		return gosecIssues, nil
 	}
-	// Go trough all functions that use the given arg variable
+	// Go through all functions that use the given arg variable
 	for _, ref := range *refs {
-		// Iterate trough the functions we are interested
+		// Iterate through the functions we are interested
 		for trackedFunc := range funcsToTrack {
 
 			// Split the functions we are interested in, by the '.' because we will use the function name to do the comparison
