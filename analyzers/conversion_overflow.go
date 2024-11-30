@@ -49,7 +49,7 @@ type rangeResult struct {
 type branchResults struct {
 	minValue             *int
 	maxValue             *uint
-	explixitPositiveVals []uint
+	explicitPositiveVals []uint
 	explicitNegativeVals []int
 	convertFound         bool
 }
@@ -336,9 +336,9 @@ func getResultRange(ifInstr *ssa.If, instr *ssa.Convert, visitedIfs map[*ssa.If]
 		result.maxValue = minWithPtr(result.maxValue, elseBounds.maxValue)
 	}
 
-	result.explicitPositiveVals = append(result.explicitPositiveVals, thenBounds.explixitPositiveVals...)
+	result.explicitPositiveVals = append(result.explicitPositiveVals, thenBounds.explicitPositiveVals...)
 	result.explicitNegativeVals = append(result.explicitNegativeVals, thenBounds.explicitNegativeVals...)
-	result.explicitPositiveVals = append(result.explicitPositiveVals, elseBounds.explixitPositiveVals...)
+	result.explicitPositiveVals = append(result.explicitPositiveVals, elseBounds.explicitPositiveVals...)
 	result.explicitNegativeVals = append(result.explicitNegativeVals, elseBounds.explicitNegativeVals...)
 
 	return result
@@ -452,7 +452,6 @@ func walkBranchForConvert(block *ssa.BasicBlock, instr *ssa.Convert, visitedIfs 
 				bounds.minValue = toPtr(maxWithPtr(result.minValue, bounds.minValue))
 				bounds.maxValue = toPtr(minWithPtr(result.maxValue, bounds.maxValue))
 				bounds.explixitPositiveVals = append(bounds.explixitPositiveVals, result.explicitPositiveVals...)
-				bounds.explicitNegativeVals = append(bounds.explicitNegativeVals, result.explicitNegativeVals...)
 			}
 		case *ssa.Call:
 			if v == instr.X {
