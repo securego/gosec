@@ -15,6 +15,7 @@
 package analyzers
 
 import (
+	"cmp"
 	"fmt"
 	"go/token"
 	"math"
@@ -22,7 +23,6 @@ import (
 	"strconv"
 	"strings"
 
-	"golang.org/x/exp/constraints"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/buildssa"
 	"golang.org/x/tools/go/ssa"
@@ -141,8 +141,8 @@ func parseIntType(intType string) (integer, error) {
 		return integer{}, fmt.Errorf("invalid bit size: %d", intSize)
 	}
 
-	var min int
-	var max uint
+	var minVal int
+	var maxVal uint
 
 	if signed {
 		shiftAmount := intSize - 1
@@ -152,19 +152,19 @@ func parseIntType(intType string) (integer, error) {
 			return integer{}, fmt.Errorf("invalid shift amount: %d", shiftAmount)
 		}
 
-		max = (1 << uint(shiftAmount)) - 1
-		min = -1 << (intSize - 1)
+		maxVal = (1 << uint(shiftAmount)) - 1
+		minVal = -1 << (intSize - 1)
 
 	} else {
-		max = (1 << uint(intSize)) - 1
-		min = 0
+		maxVal = (1 << uint(intSize)) - 1
+		minVal = 0
 	}
 
 	return integer{
 		signed: signed,
 		size:   intSize,
-		min:    min,
-		max:    max,
+		min:    minVal,
+		max:    maxVal,
 	}, nil
 }
 
@@ -274,8 +274,8 @@ func hasExplicitRangeCheck(instr *ssa.Convert, dstType string) bool {
 			case *ssa.If:
 				result := getResultRange(v, instr, visitedIfs)
 				if result.isRangeCheck {
-					minValue = max(minValue, &result.minValue)
-					maxValue = min(maxValue, &result.maxValue)
+					minValue = max(minValue, result.minValue)
+					maxValue = min(maxValue, result.maxValue)
 					explicitPositiveVals = append(explicitPositiveVals, result.explicitPositiveVals...)
 					explicitNegativeVals = append(explicitNegativeVals, result.explicitNegativeVals...)
 				}
@@ -328,12 +328,12 @@ func getResultRange(ifInstr *ssa.If, instr *ssa.Convert, visitedIfs map[*ssa.If]
 
 	if thenBounds.convertFound {
 		result.convertFound = true
-		result.minValue = max(result.minValue, thenBounds.minValue)
-		result.maxValue = min(result.maxValue, thenBounds.maxValue)
+		result.minValue = maxWithPtr(result.minValue, thenBounds.minValue)
+		result.maxValue = minWithPtr(result.maxValue, thenBounds.maxValue)
 	} else if elseBounds.convertFound {
 		result.convertFound = true
-		result.minValue = max(result.minValue, elseBounds.minValue)
-		result.maxValue = min(result.maxValue, elseBounds.maxValue)
+		result.minValue = maxWithPtr(result.minValue, elseBounds.minValue)
+		result.maxValue = minWithPtr(result.maxValue, elseBounds.maxValue)
 	}
 
 	result.explicitPositiveVals = append(result.explicitPositiveVals, thenBounds.explicitPositiveVals...)
@@ -388,14 +388,14 @@ func updateResultFromBinOp(result *rangeResult, binOp *ssa.BinOp, instr *ssa.Con
 	}
 
 	if op == "neg" {
-		min := result.minValue
-		max := result.maxValue
+		minVal := result.minValue
+		maxVal := result.maxValue
 
-		if min >= 0 {
-			result.maxValue = uint(min)
+		if minVal >= 0 {
+			result.maxValue = uint(minVal)
 		}
-		if max <= math.MaxInt {
-			result.minValue = int(max)
+		if maxVal <= math.MaxInt {
+			result.minValue = int(maxVal)
 		}
 	}
 }
@@ -449,8 +449,8 @@ func walkBranchForConvert(block *ssa.BasicBlock, instr *ssa.Convert, visitedIfs 
 			bounds.convertFound = bounds.convertFound || result.convertFound
 
 			if result.isRangeCheck {
-				bounds.minValue = toPtr(max(result.minValue, bounds.minValue))
-				bounds.maxValue = toPtr(min(result.maxValue, bounds.maxValue))
+				bounds.minValue = toPtr(maxWithPtr(result.minValue, bounds.minValue))
+				bounds.maxValue = toPtr(minWithPtr(result.maxValue, bounds.maxValue))
 				bounds.explicitPositiveVals = append(bounds.explicitPositiveVals, result.explicitPositiveVals...)
 				bounds.explicitNegativeVals = append(bounds.explicitNegativeVals, result.explicitNegativeVals...)
 			}
@@ -540,24 +540,18 @@ func explicitValsInRange(explicitPosVals []uint, explicitNegVals []int, dstInt i
 	return true
 }
 
-func min[T constraints.Integer](a T, b *T) T {
+func minWithPtr[T cmp.Ordered](a T, b *T) T {
 	if b == nil {
 		return a
 	}
-	if a < *b {
-		return a
-	}
-	return *b
+	return min(a, *b)
 }
 
-func max[T constraints.Integer](a T, b *T) T {
+func maxWithPtr[T cmp.Ordered](a T, b *T) T {
 	if b == nil {
 		return a
 	}
-	if a > *b {
-		return a
-	}
-	return *b
+	return max(a, *b)
 }
 
 func toPtr[T any](a T) *T {
