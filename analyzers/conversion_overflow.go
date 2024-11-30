@@ -452,6 +452,7 @@ func walkBranchForConvert(block *ssa.BasicBlock, instr *ssa.Convert, visitedIfs 
 				bounds.minValue = toPtr(maxWithPtr(result.minValue, bounds.minValue))
 				bounds.maxValue = toPtr(minWithPtr(result.maxValue, bounds.maxValue))
 				bounds.explixitPositiveVals = append(bounds.explixitPositiveVals, result.explicitPositiveVals...)
+				bounds.explicitNegativeVals = append(bounds.explicitNegativeVals, result.explicitNegativeVals...)
 			}
 		case *ssa.Call:
 			if v == instr.X {
