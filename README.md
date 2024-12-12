@@ -386,7 +386,7 @@ $ gosec -fmt=json -out=results.json -stdout -verbose=text *.go
 **Note:** gosec generates the [generic issue import format](https://docs.sonarqube.org/latest/analysis/generic-issue/) for SonarQube, and a report has to be imported into SonarQube using `sonar.externalIssuesReportPaths=path/to/gosec-report.json`.
 
 ## Development
-
+For help understanding the code structure and how to add a new rule, consult [CONTRIBUTING.md](https://github.com/securego/gosec/blob/master/CONTRIBUTING.md)
 ### Build
 
 You can build the binary with:
