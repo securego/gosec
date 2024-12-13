@@ -17,14 +17,8 @@ var _ = Describe("Helpers", func() {
 	Context("when listing package paths", func() {
 		var dir string
 		JustBeforeEach(func() {
-			var err error
-			dir, err = os.MkdirTemp("", "gosec")
-			Expect(err).ShouldNot(HaveOccurred())
-			_, err = os.MkdirTemp(dir, "test*.go")
-			Expect(err).ShouldNot(HaveOccurred())
-		})
-		AfterEach(func() {
-			err := os.RemoveAll(dir)
+			dir = GinkgoT().TempDir()
+			_, err := os.MkdirTemp(dir, "test*.go")
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 		It("should return the root directory as package path", func() {
