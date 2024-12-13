@@ -7,6 +7,7 @@ New rules can be implemented in two ways:
 - as an Analyzer -- these can operate on the entire program, and receive an [SSA](https://pkg.go.dev/golang.org/x/tools/go/ssa) representation of the package. This type of rule is useful when you need to perform a more complex analysis that requires a great deal of context. 
 
 ### Adding a gosec.Rule
+
 1. Copy an existing rule file as a starting point-- `./rules/unsafe.go` is a good option, as it implements a very simple rule with no additional supporting logic. Put the copied file in the `./rules/` directory.
 2. Change the name of the rule constructor function and of the types in the rule file you've copied so they will be unique.
 3. Edit the `Generate` function in `./rules/rulelist.go` to include your rule.
