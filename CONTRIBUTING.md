@@ -1,6 +1,7 @@
 # Contributing
 
 ## Adding a new rule
+
 New rules can be implemented in two ways:
 - as a `gosec.Rule` -- these define an arbitrary function which will be called on every AST node in the analyzed file, and are appropriate for rules that mostly need to reason about a single statement.
 - as an Analyzer -- these can operate on the entire program, and receive an [SSA](https://pkg.go.dev/golang.org/x/tools/go/ssa) representation of the package. This type of rule is useful when you need to perform a more complex analysis that requires a great deal of context. 
