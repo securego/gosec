@@ -17,7 +17,9 @@ New rules can be implemented in two ways:
 To make your rule actually useful, you will likely want to use the support functions defined in `./resolve.go`, `./helpers.go` and `./call_list.go`. There are inline comments explaining the purpose of most of these functions, and you can find usage examples in the existing rule files.
 
 ### Adding an Analyzer
+
 1. Create a new go file under `./analyzers/` with the following scaffolding in it:
+
 ```go
 package analyzers
 
