@@ -12,7 +12,7 @@ New rules can be implemented in two ways:
 2. Change the name of the rule constructor function and of the types in the rule file you've copied so they will be unique.
 3. Edit the `Generate` function in `./rules/rulelist.go` to include your rule.
 4. Add a RuleID to CWE ID mapping for your rule to the `ruleToCWE` map in `./issue/issue.go`. If you need a CWE that isn't already defined in `./cwe/data.go`, add it to the `idWeaknessess` map in that file.
-4. Use `make` to compile `gosec`. The binary will now contain your rule.
+5. Use `make` to compile `gosec`. The binary will now contain your rule.
 
 To make your rule actually useful, you will likely want to use the support functions defined in `./resolve.go`, `./helpers.go` and `./call_list.go`. There are inline comments explaining the purpose of most of these functions, and you can find usage examples in the existing rule files.
 
