@@ -58,7 +58,7 @@ func runMyAnalyzer(pass *analysis.Pass) (interface{}, error) {
 2. Add the analyzer to `./analyzers/analyzerslist.go` in the `defaultAnalyzers` variable under an entry like `{"G999", "My test analyzer", newMyAnalyzer}`
 3. Add a RuleID to CWE ID mapping for your rule to the `ruleToCWE` map in `./issue/issue.go`. If you need a CWE that isn't already defined in `./cwe/data.go`, add it to the `idWeaknessess` map in that file.
 4. `make`; then run the `gosec` binary produced. You should see the output from our print statement.
-5. You now have a working example analyzer to play with-- look at theother implemented analyzers for ideas on how to make useful rules.
+5. You now have a working example analyzer to play with-- look at the other implemented analyzers for ideas on how to make useful rules.
 
 ## Developing your rule
 
