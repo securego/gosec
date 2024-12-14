@@ -3,8 +3,9 @@
 ## Adding a new rule
 
 New rules can be implemented in two ways:
+
 - as a `gosec.Rule` -- these define an arbitrary function which will be called on every AST node in the analyzed file, and are appropriate for rules that mostly need to reason about a single statement.
-- as an Analyzer -- these can operate on the entire program, and receive an [SSA](https://pkg.go.dev/golang.org/x/tools/go/ssa) representation of the package. This type of rule is useful when you need to perform a more complex analysis that requires a great deal of context. 
+- as an Analyzer -- these can operate on the entire program, and receive an [SSA](https://pkg.go.dev/golang.org/x/tools/go/ssa) representation of the package. This type of rule is useful when you need to perform a more complex analysis that requires a great deal of context.
 
 ### Adding a gosec.Rule
 
@@ -57,23 +58,24 @@ func runMyAnalyzer(pass *analysis.Pass) (interface{}, error) {
 2. Add the analyzer to `./analyzers/analyzerslist.go` in the `defaultAnalyzers` variable under an entry like `{"G999", "My test analyzer", newMyAnalyzer}`
 3. Add a RuleID to CWE ID mapping for your rule to the `ruleToCWE` map in `./issue/issue.go`. If you need a CWE that isn't already defined in `./cwe/data.go`, add it to the `idWeaknessess` map in that file.
 4. `make`; then run the `gosec` binary produced. You should see the output from our print statement.
-5. You now have a working example analyzer to play with-- look at the other implemented analyzers for ideas on how to make useful rules.
+5. You now have a working example analyzer to play with-- look at theother implemented analyzers for ideas on how to make useful rules.
 
 ## Developing your rule
 
 There are some utility tools which are useful for analyzing the SSA and AST representation `gosec` works with before writing rules or analyzers.
- 
-For instance to dump the SSA, the [ssadump](https://pkg.go.dev/golang.org/x/tools/cmd/ssadump) tool can be used as following:
- 
- ```
-  ssadump -build F main.go
- ```
- Consult the documentation for ssadump for an overview of available output flags and options.
- 
- For outputting the AST and supporting information, there is a utility tool in https://github.com/securego/gosec/blob/master/cmd/gosecutil/tools.go which can be compiled and used as standalone.
- 
- ```
- gosecutil -tool ast main.go
- ```
 
- Valid tool arguments for this command are `ast`, `callobj`, `uses`, `types`, `defs`, `comments`, and `imports`. 
+For instance to dump the SSA, the [ssadump](https://pkg.go.dev/golang.org/x/tools/cmd/ssadump) tool can be used as following:
+
+```bash
+ssadump -build F main.go
+```
+
+Consult the documentation for ssadump for an overview of available output flags and options.
+
+For outputting the AST and supporting information, there is a utility tool in <https://github.com/securego/gosec/blob/master/cmd/gosecutil/tools.go> which can be compiled and used as standalone.
+
+```bash
+gosecutil -tool ast main.go
+```
+
+Valid tool arguments for this command are `ast`, `callobj`, `uses`, `types`, `defs`, `comments`, and `imports`.
