@@ -558,66 +558,71 @@ func (gosec *Analyzer) AppendError(file string, err error) {
 
 // ignore a node (and sub-tree) if it is tagged with a nosec tag comment
 func (gosec *Analyzer) ignore(n ast.Node) map[string]issue.SuppressionInfo {
-	if groups, ok := gosec.context.Comments[n]; ok && !gosec.ignoreNosec {
+	if gosec.ignoreNosec {
+		return nil
+	}
+	groups, ok := gosec.context.Comments[n]
+	if !ok {
+		return nil
+	}
 
-		// Checks if an alternative for #nosec is set and, if not, uses the default.
-		noSecDefaultTag, err := gosec.config.GetGlobal(Nosec)
-		if err != nil {
-			noSecDefaultTag = NoSecTag(string(Nosec))
-		} else {
-			noSecDefaultTag = NoSecTag(noSecDefaultTag)
-		}
-		noSecAlternativeTag, err := gosec.config.GetGlobal(NoSecAlternative)
-		if err != nil {
-			noSecAlternativeTag = noSecDefaultTag
-		} else {
-			noSecAlternativeTag = NoSecTag(noSecAlternativeTag)
-		}
+	// Checks if an alternative for #nosec is set and, if not, uses the default.
+	noSecDefaultTag, err := gosec.config.GetGlobal(Nosec)
+	if err != nil {
+		noSecDefaultTag = NoSecTag(string(Nosec))
+	} else {
+		noSecDefaultTag = NoSecTag(noSecDefaultTag)
+	}
+	noSecAlternativeTag, err := gosec.config.GetGlobal(NoSecAlternative)
+	if err != nil {
+		noSecAlternativeTag = noSecDefaultTag
+	} else {
+		noSecAlternativeTag = NoSecTag(noSecAlternativeTag)
+	}
 
-		for _, group := range groups {
-			comment := strings.TrimSpace(group.Text())
-			foundDefaultTag := strings.HasPrefix(comment, noSecDefaultTag) || regexp.MustCompile("\n *"+noSecDefaultTag).MatchString(comment)
-			foundAlternativeTag := strings.HasPrefix(comment, noSecAlternativeTag) || regexp.MustCompile("\n *"+noSecAlternativeTag).MatchString(comment)
+	for _, group := range groups {
+		comment := strings.TrimSpace(group.Text())
+		foundDefaultTag := strings.HasPrefix(comment, noSecDefaultTag) || regexp.MustCompile("\n *"+noSecDefaultTag).MatchString(comment)
+		foundAlternativeTag := strings.HasPrefix(comment, noSecAlternativeTag) || regexp.MustCompile("\n *"+noSecAlternativeTag).MatchString(comment)
 
-			if foundDefaultTag || foundAlternativeTag {
-				gosec.stats.NumNosec++
+		if foundDefaultTag || foundAlternativeTag {
+			gosec.stats.NumNosec++
 
-				// Discard what's in front of the nosec tag.
-				if foundDefaultTag {
-					comment = strings.SplitN(comment, noSecDefaultTag, 2)[1]
-				} else {
-					comment = strings.SplitN(comment, noSecAlternativeTag, 2)[1]
-				}
-
-				// Extract the directive and the justification.
-				justification := ""
-				commentParts := regexp.MustCompile(`-{2,}`).Split(comment, 2)
-				directive := commentParts[0]
-				if len(commentParts) > 1 {
-					justification = strings.TrimSpace(strings.TrimRight(commentParts[1], "\n"))
-				}
-
-				// Pull out the specific rules that are listed to be ignored.
-				re := regexp.MustCompile(`(G\d{3})`)
-				matches := re.FindAllStringSubmatch(directive, -1)
-
-				suppression := issue.SuppressionInfo{
-					Kind:          "inSource",
-					Justification: justification,
-				}
-
-				// Find the rule IDs to ignore.
-				ignores := make(map[string]issue.SuppressionInfo)
-				for _, v := range matches {
-					ignores[v[1]] = suppression
-				}
-
-				// If no specific rules were given, ignore everything.
-				if len(matches) == 0 {
-					ignores[aliasOfAllRules] = suppression
-				}
-				return ignores
+			// Discard what's in front of the nosec tag.
+			if foundDefaultTag {
+				comment = strings.SplitN(comment, noSecDefaultTag, 2)[1]
+			} else {
+				comment = strings.SplitN(comment, noSecAlternativeTag, 2)[1]
 			}
+
+			// Extract the directive and the justification.
+			justification := ""
+			commentParts := regexp.MustCompile(`-{2,}`).Split(comment, 2)
+			directive := commentParts[0]
+			if len(commentParts) > 1 {
+				justification = strings.TrimSpace(strings.TrimRight(commentParts[1], "\n"))
+			}
+
+			// Pull out the specific rules that are listed to be ignored.
+			re := regexp.MustCompile(`(G\d{3})`)
+			matches := re.FindAllStringSubmatch(directive, -1)
+
+			suppression := issue.SuppressionInfo{
+				Kind:          "inSource",
+				Justification: justification,
+			}
+
+			// Find the rule IDs to ignore.
+			ignores := make(map[string]issue.SuppressionInfo)
+			for _, v := range matches {
+				ignores[v[1]] = suppression
+			}
+
+			// If no specific rules were given, ignore everything.
+			if len(matches) == 0 {
+				ignores[aliasOfAllRules] = suppression
+			}
+			return ignores
 		}
 	}
 	return nil
