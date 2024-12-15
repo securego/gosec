@@ -387,7 +387,7 @@ $ gosec -fmt=json -out=results.json -stdout -verbose=text *.go
 
 ## Development
 
-For help understanding the code structure and how to add a new rule, consult [CONTRIBUTING.md](https://github.com/securego/gosec/blob/master/CONTRIBUTING.md)
+[CONTRIBUTING.md](https://github.com/securego/gosec/blob/master/CONTRIBUTING.md) contains detailed information about adding new rules to gosec.
 
 ### Build
 
