@@ -308,7 +308,7 @@ func main() {
 	}
 
 	client := &http.Client{Transport: tr}
-	_, err := client.Get("https://golang.org/")
+	_, err := client.Get("https://go.dev/")
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -355,7 +355,7 @@ comment.
 
 ### Build tags
 
-gosec is able to pass your [Go build tags](https://golang.org/pkg/go/build/) to the analyzer.
+gosec is able to pass your [Go build tags](https://pkg.go.dev/go/build/) to the analyzer.
 They can be provided as a comma separated list as follows:
 
 ```bash

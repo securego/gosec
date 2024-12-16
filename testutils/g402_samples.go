@@ -20,7 +20,7 @@ func main() {
 	}
 
 	client := &http.Client{Transport: tr}
-	_, err := client.Get("https://golang.org/")
+	_, err := client.Get("https://go.dev/")
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -54,7 +54,7 @@ func main() {
 		TLSClientConfig: &tls.Config{MinVersion: 0},
 	}
 	client := &http.Client{Transport: tr}
-	_, err := client.Get("https://golang.org/")
+	_, err := client.Get("https://go.dev/")
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -164,7 +164,7 @@ func main() {
 		TLSClientConfig: &tls.Config{MinVersion: theValue},
 	}
 	client := &http.Client{Transport: tr}
-	_, err := client.Get("https://golang.org/")
+	_, err := client.Get("https://go.dev/")
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -185,7 +185,7 @@ func main() {
 		TLSClientConfig: &tls.Config{MaxVersion: 0},
 	}
 	client := &http.Client{Transport: tr}
-	_, err := client.Get("https://golang.org/")
+	_, err := client.Get("https://go.dev/")
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -211,7 +211,7 @@ func main() {
 		},
 	}
 	client := &http.Client{Transport: tr}
-	_, err := client.Get("https://golang.org/")
+	_, err := client.Get("https://go.dev/")
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -230,12 +230,12 @@ import (
 func main() {
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{
-			MaxVersion: 0, 
+			MaxVersion: 0,
 			MinVersion: tls.VersionTLS13,
 		},
 	}
 	client := &http.Client{Transport: tr}
-	_, err := client.Get("https://golang.org/")
+	_, err := client.Get("https://go.dev/")
 	if err != nil {
 		fmt.Println(err)
 	}
