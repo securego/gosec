@@ -211,30 +211,9 @@ A number of global settings can be provided in a configuration file as follows:
 $ gosec -conf config.json .
 ```
 
-Also some rules accept configuration. For instance on rule `G104`, it is possible to define packages along with a list
-of functions which will be skipped when auditing the not checked errors:
+#### Rule Configuration
 
-```JSON
-{
-    "G104": {
-        "ioutil": ["WriteFile"]
-    }
-}
-```
-
-You can also configure the hard-coded credentials rule `G101` with additional patterns, or adjust the entropy threshold:
-
-```JSON
-{
-    "G101": {
-        "pattern": "(?i)passwd|pass|password|pwd|secret|private_key|token",
-         "ignore_entropy": false,
-         "entropy_threshold": "80.0",
-         "per_char_threshold": "3.0",
-         "truncate": "32"
-    }
-}
-```
+Some rules accept configuration flags as well; these flags are documented in [RULES.md](https://github.com/securego/gosec/blob/master/RULES.md).
 
 #### Go version
 
