@@ -11,7 +11,6 @@ require (
 	github.com/onsi/gomega v1.36.1
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/crypto v0.31.0
-	golang.org/x/lint v0.0.0-20241112194109-818c5a804067
 	golang.org/x/text v0.21.0
 	golang.org/x/tools v0.28.0
 	google.golang.org/api v0.211.0
