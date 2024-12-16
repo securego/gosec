@@ -387,6 +387,8 @@ $ gosec -fmt=json -out=results.json -stdout -verbose=text *.go
 
 ## Development
 
+[CONTRIBUTING.md](https://github.com/securego/gosec/blob/master/CONTRIBUTING.md) contains detailed information about adding new rules to gosec.
+
 ### Build
 
 You can build the binary with:
