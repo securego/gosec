@@ -157,10 +157,10 @@ var (
 	flagAiApiProvider = flag.String("ai-api-provider", "", "AI API provider to generate auto fixes to issues.\nValid options are: gemini")
 
 	// key to implementing AI provider services
-	flagAiApiKey = flag.String("ai-api-key", "", "key to access the AI API")
+	flagAiApiKey = flag.String("ai-api-key", "", "Key to access the AI API")
 
 	// endpoint to the AI provider
-	flagAiEndpoint = flag.String("ai-endpoint", "", "endpoint AI API.\nThis is optional, the default API endpoint will be used when not provided.")
+	flagAiEndpoint = flag.String("ai-endpoint", "", "Endpoint AI API.\nThis is optional, the default API endpoint will be used when not provided.")
 
 	// exclude the folders from scan
 	flagDirsExclude arrayFlags
