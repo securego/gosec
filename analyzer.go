@@ -16,6 +16,7 @@
 package gosec
 
 import (
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/build"
@@ -543,7 +544,8 @@ func (gosec *Analyzer) ParseErrors(pkg *packages.Package) error {
 // AppendError appends an error to the file errors
 func (gosec *Analyzer) AppendError(file string, err error) {
 	// Do not report the error for empty packages (e.g. files excluded from build with a tag)
-	if strings.Contains(err.Error(), "no buildable Go source files in") {
+	var noGoErr *build.NoGoError
+	if errors.As(err, &noGoErr) {
 		return
 	}
 	errors := make([]Error, 0)
