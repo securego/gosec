@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	"github.com/securego/gosec/v2/issue"
 )
@@ -44,17 +45,16 @@ func TestGenerateSolutionByGemini_Success(t *testing.T) {
 
 	mockClient := new(MockGenAIClient)
 	mockModel := new(MockGenAIGenerativeModel)
-	mockClient.On("GenerativeModel", GeminiModel).Return(mockModel)
-	mockModel.On("GenerateContent", mock.Anything, mock.Anything).Return("Autofix for issue 1", nil)
+	mockClient.On("GenerativeModel", GeminiModel).Return(mockModel).Once()
+	mockModel.On("GenerateContent", mock.Anything, mock.Anything).Return("Autofix for issue 1", nil).Once()
 
 	// Act
 	err := generateSolutionByGemini(mockClient, issues)
 
 	// Assert
-	assert.NoError(t, err)
-	assert.Equal(t, "Autofix for issue 1", issues[0].Autofix)
-	mockClient.AssertExpectations(t)
-	mockModel.AssertExpectations(t)
+	require.NoError(t, err)
+	assert.Equal(t, []*issue.Issue{{What: "Example issue 1", Autofix: "Autofix for issue 1"}}, issues)
+	mock.AssertExpectationsForObjects(t, mockClient, mockModel)
 }
 
 func TestGenerateSolutionByGemini_NoCandidates(t *testing.T) {
@@ -65,17 +65,15 @@ func TestGenerateSolutionByGemini_NoCandidates(t *testing.T) {
 
 	mockClient := new(MockGenAIClient)
 	mockModel := new(MockGenAIGenerativeModel)
-	mockClient.On("GenerativeModel", GeminiModel).Return(mockModel)
-	mockModel.On("GenerateContent", mock.Anything, mock.Anything).Return("", nil)
+	mockClient.On("GenerativeModel", GeminiModel).Return(mockModel).Once()
+	mockModel.On("GenerateContent", mock.Anything, mock.Anything).Return("", nil).Once()
 
 	// Act
 	err := generateSolutionByGemini(mockClient, issues)
 
 	// Assert
-	assert.Error(t, err)
-	assert.Equal(t, "no autofix returned by gemini", err.Error())
-	mockClient.AssertExpectations(t)
-	mockModel.AssertExpectations(t)
+	require.EqualError(t, err, "no autofix returned by gemini")
+	mock.AssertExpectationsForObjects(t, mockClient, mockModel)
 }
 
 func TestGenerateSolutionByGemini_APIError(t *testing.T) {
@@ -86,17 +84,15 @@ func TestGenerateSolutionByGemini_APIError(t *testing.T) {
 
 	mockClient := new(MockGenAIClient)
 	mockModel := new(MockGenAIGenerativeModel)
-	mockClient.On("GenerativeModel", GeminiModel).Return(mockModel)
-	mockModel.On("GenerateContent", mock.Anything, mock.Anything).Return("", errors.New("API error"))
+	mockClient.On("GenerativeModel", GeminiModel).Return(mockModel).Once()
+	mockModel.On("GenerateContent", mock.Anything, mock.Anything).Return("", errors.New("API error")).Once()
 
 	// Act
 	err := generateSolutionByGemini(mockClient, issues)
 
 	// Assert
-	assert.Error(t, err)
-	assert.Equal(t, "generating autofix with gemini: API error", err.Error())
-	mockClient.AssertExpectations(t)
-	mockModel.AssertExpectations(t)
+	require.EqualError(t, err, "generating autofix with gemini: API error")
+	mock.AssertExpectationsForObjects(t, mockClient, mockModel)
 }
 
 func TestGenerateSolution_UnsupportedProvider(t *testing.T) {
@@ -109,6 +105,5 @@ func TestGenerateSolution_UnsupportedProvider(t *testing.T) {
 	err := GenerateSolution("unsupported-provider", "test-api-key", "", issues)
 
 	// Assert
-	assert.Error(t, err)
-	assert.Equal(t, "ai provider not supported", err.Error())
+	require.EqualError(t, err, "ai provider not supported")
 }
