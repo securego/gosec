@@ -23,6 +23,7 @@ linters:
     - nolintlint
     - revive
     - staticcheck
+    - testifylint
     - typecheck
     - unconvert
     - unparam
@@ -39,6 +40,9 @@ linters-settings:
     checks:
      - all
      - '-SA1019'
+
+  testifylint:
+    enable-all: true
 
   revive:
     rules:
