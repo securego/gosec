@@ -1,7 +1,8 @@
 package main
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -14,26 +15,14 @@ func extractLineNumber(s string) int {
 	return lineNumber
 }
 
-type sortBySeverity []*issue.Issue
-
-func (s sortBySeverity) Len() int { return len(s) }
-
-func (s sortBySeverity) Less(i, j int) bool {
-	if s[i].Severity == s[j].Severity {
-		if s[i].What == s[j].What {
-			if s[i].File == s[j].File {
-				return extractLineNumber(s[i].Line) > extractLineNumber(s[j].Line)
-			}
-			return s[i].File > s[j].File
-		}
-		return s[i].What > s[j].What
-	}
-	return s[i].Severity > s[j].Severity
-}
-
-func (s sortBySeverity) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
-
 // sortIssues sorts the issues by severity in descending order
 func sortIssues(issues []*issue.Issue) {
-	sort.Sort(sortBySeverity(issues))
+	slices.SortFunc(issues, func(i, j *issue.Issue) int {
+		return -cmp.Or(
+			cmp.Compare(i.Severity, j.Severity),
+			cmp.Compare(i.What, j.What),
+			cmp.Compare(i.File, j.File),
+			cmp.Compare(extractLineNumber(i.Line), extractLineNumber(j.Line)),
+		)
+	})
 }
