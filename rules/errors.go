@@ -105,7 +105,7 @@ func NewNoErrorCheck(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 			ID:         id,
 			Severity:   issue.Low,
 			Confidence: issue.High,
-			What:       "Errors unhandled.",
+			What:       "Errors unhandled",
 		},
 		whitelist: whitelist,
 	}, []ast.Node{(*ast.AssignStmt)(nil), (*ast.ExprStmt)(nil)}
