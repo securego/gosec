@@ -843,4 +843,23 @@ func main() {
         }
 	`,
 	}, 1, gosec.NewConfig()},
+	{[]string{
+		`
+        package main
+
+        import (
+                "fmt"
+                "strconv"
+        )
+
+        func main() {
+            a, err := strconv.ParseUint("100", 10, 16)
+            if err != nil {
+              panic("parse error")
+            }
+            b := uint16(a)
+            fmt.Printf("%d\n", b)
+        }
+	`,
+	}, 0, gosec.NewConfig()},
 }
