@@ -304,7 +304,13 @@ You could put the description or justification text for the annotation. The
 justification should be after the rule(s) to suppress and start with two or
 more dashes, e.g: `//#nosec G101 G102 -- This is a false positive`
 
-In some cases you may also want to revisit places where `#nosec` annotations
+Alternatively, gosec also supports the `//gosec:disable` directive, which functions similar to `#nosec`:
+
+```go
+//gosec:disable G101 -- This is a false positive
+```
+
+In some cases you may also want to revisit places where `#nosec` or `//gosec:disable` annotations
 have been used. To run the scanner and ignore any `#nosec` annotations you
 can do the following:
 
