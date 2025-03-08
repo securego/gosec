@@ -230,6 +230,23 @@ var _ = Describe("Analyzer", func() {
 			Expect(nosecIssues).Should(BeEmpty())
 		})
 
+		It("should not report errors when a disable directive is present", func() {
+			sample := testutils.SampleCodeG401[0]
+			source := sample.Code[0]
+			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G401")).RulesInfo())
+
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() //gosec:disable", 1)
+			nosecPackage.AddFile("md5.go", nosecSource)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			nosecIssues, _, _ := analyzer.Report()
+			Expect(nosecIssues).Should(BeEmpty())
+		})
+
 		It("should not report errors when a nosec line comment is present", func() {
 			sample := testutils.SampleCodeG405[0]
 			source := sample.Code[0]
@@ -247,6 +264,23 @@ var _ = Describe("Analyzer", func() {
 			Expect(nosecIssues).Should(BeEmpty())
 		})
 
+		It("should not report errors when a disable directive is present", func() {
+			sample := testutils.SampleCodeG405[0]
+			source := sample.Code[0]
+			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G405")).RulesInfo())
+
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecSource := strings.Replace(source, "c, e := des.NewCipher([]byte(\"mySecret\"))", "c, e := des.NewCipher([]byte(\"mySecret\")) //gosec:disable", 1)
+			nosecPackage.AddFile("cipher.go", nosecSource)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			nosecIssues, _, _ := analyzer.Report()
+			Expect(nosecIssues).Should(BeEmpty())
+		})
+
 		It("should not report errors when a nosec line comment is present", func() {
 			sample := testutils.SampleCodeG406[0]
 			source := sample.Code[0]
@@ -255,6 +289,23 @@ var _ = Describe("Analyzer", func() {
 			nosecPackage := testutils.NewTestPackage()
 			defer nosecPackage.Close()
 			nosecSource := strings.Replace(source, "h := md4.New()", "h := md4.New() //#nosec", 1)
+			nosecPackage.AddFile("md4.go", nosecSource)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			nosecIssues, _, _ := analyzer.Report()
+			Expect(nosecIssues).Should(BeEmpty())
+		})
+
+		It("should not report errors when a disable directive is present", func() {
+			sample := testutils.SampleCodeG406[0]
+			source := sample.Code[0]
+			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G406")).RulesInfo())
+
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecSource := strings.Replace(source, "h := md4.New()", "h := md4.New() //gosec:disable", 1)
 			nosecPackage.AddFile("md4.go", nosecSource)
 			err := nosecPackage.Build()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -334,6 +385,24 @@ var _ = Describe("Analyzer", func() {
 		})
 
 		It("should not report errors when an exclude comment is present for the correct rule", func() {
+			// Rule for MD5 weak crypto usage
+			sample := testutils.SampleCodeG401[0]
+			source := sample.Code[0]
+			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G401")).RulesInfo())
+
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() //gosec:disable G401", 1)
+			nosecPackage.AddFile("md5.go", nosecSource)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			nosecIssues, _, _ := analyzer.Report()
+			Expect(nosecIssues).Should(BeEmpty())
+		})
+
+		It("should not report errors when an exclude comment is present for the correct rule", func() {
 			// Rule for DES weak crypto usage
 			sample := testutils.SampleCodeG405[0]
 			source := sample.Code[0]
@@ -352,6 +421,24 @@ var _ = Describe("Analyzer", func() {
 		})
 
 		It("should not report errors when an exclude comment is present for the correct rule", func() {
+			// Rule for DES weak crypto usage
+			sample := testutils.SampleCodeG405[0]
+			source := sample.Code[0]
+			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G405")).RulesInfo())
+
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecSource := strings.Replace(source, "c, e := des.NewCipher([]byte(\"mySecret\"))", "c, e := des.NewCipher([]byte(\"mySecret\")) //gosec:disable G405", 1)
+			nosecPackage.AddFile("cipher.go", nosecSource)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			nosecIssues, _, _ := analyzer.Report()
+			Expect(nosecIssues).Should(BeEmpty())
+		})
+
+		It("should not report errors when an exclude comment is present for the correct rule", func() {
 			// Rule for MD4 deprecated weak crypto usage
 			sample := testutils.SampleCodeG406[0]
 			source := sample.Code[0]
@@ -360,6 +447,24 @@ var _ = Describe("Analyzer", func() {
 			nosecPackage := testutils.NewTestPackage()
 			defer nosecPackage.Close()
 			nosecSource := strings.Replace(source, "h := md4.New()", "h := md4.New() //#nosec G406", 1)
+			nosecPackage.AddFile("md4.go", nosecSource)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			nosecIssues, _, _ := analyzer.Report()
+			Expect(nosecIssues).Should(BeEmpty())
+		})
+
+		It("should not report errors when an exclude comment is present for the correct rule", func() {
+			// Rule for MD4 deprecated weak crypto usage
+			sample := testutils.SampleCodeG406[0]
+			source := sample.Code[0]
+			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G406")).RulesInfo())
+
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecSource := strings.Replace(source, "h := md4.New()", "h := md4.New() //gosec:disable G406", 1)
 			nosecPackage.AddFile("md4.go", nosecSource)
 			err := nosecPackage.Build()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -415,6 +520,52 @@ var _ = Describe("Analyzer", func() {
 			Expect(nosecIssues).Should(BeEmpty())
 		})
 
+		It("should not report errors when a disable directive block and line comment are present", func() {
+			sample := testutils.SampleCodeG101[26]
+			source := sample.Code[0]
+			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G101")).RulesInfo())
+
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecPackage.AddFile("g101.go", source)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			nosecIssues, _, _ := analyzer.Report()
+			Expect(nosecIssues).Should(BeEmpty())
+		})
+		It("should not report errors when only a disable directive block is present", func() {
+			sample := testutils.SampleCodeG101[27]
+			source := sample.Code[0]
+			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G101")).RulesInfo())
+
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecPackage.AddFile("g101.go", source)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			nosecIssues, _, _ := analyzer.Report()
+			Expect(nosecIssues).Should(BeEmpty())
+		})
+		It("should not report errors when a single line nosec  is present on a multi-line issue", func() {
+			sample := testutils.SampleCodeG112[4]
+			source := sample.Code[0]
+			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G112")).RulesInfo())
+
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecPackage.AddFile("g112.go", source)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			nosecIssues, _, _ := analyzer.Report()
+			Expect(nosecIssues).Should(BeEmpty())
+		})
+
 		It("should report errors when an exclude comment is present for a different rule", func() {
 			sample := testutils.SampleCodeG401[0]
 			source := sample.Code[0]
@@ -423,6 +574,23 @@ var _ = Describe("Analyzer", func() {
 			nosecPackage := testutils.NewTestPackage()
 			defer nosecPackage.Close()
 			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() //#nosec G301", 1)
+			nosecPackage.AddFile("md5.go", nosecSource)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			nosecIssues, _, _ := analyzer.Report()
+			Expect(nosecIssues).Should(HaveLen(sample.Errors))
+		})
+
+		It("should report errors when an exclude comment is present for a different rule", func() {
+			sample := testutils.SampleCodeG401[0]
+			source := sample.Code[0]
+			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G401")).RulesInfo())
+
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() //gosec:disable G301", 1)
 			nosecPackage.AddFile("md5.go", nosecSource)
 			err := nosecPackage.Build()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -450,6 +618,23 @@ var _ = Describe("Analyzer", func() {
 		})
 
 		It("should report errors when an exclude comment is present for a different rule", func() {
+			sample := testutils.SampleCodeG405[0]
+			source := sample.Code[0]
+			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G405")).RulesInfo())
+
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecSource := strings.Replace(source, "c, e := des.NewCipher([]byte(\"mySecret\"))", "c, e := des.NewCipher([]byte(\"mySecret\")) //gosec:disable G301", 1)
+			nosecPackage.AddFile("cipher.go", nosecSource)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			nosecIssues, _, _ := analyzer.Report()
+			Expect(nosecIssues).Should(HaveLen(sample.Errors))
+		})
+
+		It("should report errors when an exclude comment is present for a different rule", func() {
 			sample := testutils.SampleCodeG406[0]
 			source := sample.Code[0]
 			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G406")).RulesInfo())
@@ -457,6 +642,23 @@ var _ = Describe("Analyzer", func() {
 			nosecPackage := testutils.NewTestPackage()
 			defer nosecPackage.Close()
 			nosecSource := strings.Replace(source, "h := md4.New()", "h := md4.New() //#nosec G301", 1)
+			nosecPackage.AddFile("md4.go", nosecSource)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			nosecIssues, _, _ := analyzer.Report()
+			Expect(nosecIssues).Should(HaveLen(sample.Errors))
+		})
+
+		It("should report errors when an exclude comment is present for a different rule", func() {
+			sample := testutils.SampleCodeG406[0]
+			source := sample.Code[0]
+			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G406")).RulesInfo())
+
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecSource := strings.Replace(source, "h := md4.New()", "h := md4.New() //gosec:disable G301", 1)
 			nosecPackage.AddFile("md4.go", nosecSource)
 			err := nosecPackage.Build()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -474,6 +676,25 @@ var _ = Describe("Analyzer", func() {
 			nosecPackage := testutils.NewTestPackage()
 			defer nosecPackage.Close()
 			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() //#nosec G301 G401", 1)
+			nosecPackage.AddFile("md5.go", nosecSource)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			nosecIssues, _, _ := analyzer.Report()
+			Expect(nosecIssues).Should(BeEmpty())
+		})
+
+		It("should not report errors when an exclude comment is present for multiple rules, including the correct rule", func() {
+			sample := testutils.SampleCodeG401[0]
+			source := sample.Code[0]
+			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G401")).RulesInfo())
+
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() //gosec:disable G301 G401", 1)
 			nosecPackage.AddFile("md5.go", nosecSource)
 			err := nosecPackage.Build()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -505,6 +726,25 @@ var _ = Describe("Analyzer", func() {
 		})
 
 		It("should not report errors when an exclude comment is present for multiple rules, including the correct rule", func() {
+			sample := testutils.SampleCodeG405[0]
+			source := sample.Code[0]
+			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G405")).RulesInfo())
+
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecSource := strings.Replace(source, "c, e := des.NewCipher([]byte(\"mySecret\"))", "c, e := des.NewCipher([]byte(\"mySecret\")) //gosec:disable G301 G405", 1)
+			nosecPackage.AddFile("cipher.go", nosecSource)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			nosecIssues, _, _ := analyzer.Report()
+			Expect(nosecIssues).Should(BeEmpty())
+		})
+
+		It("should not report errors when an exclude comment is present for multiple rules, including the correct rule", func() {
 			sample := testutils.SampleCodeG406[0]
 			source := sample.Code[0]
 			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G406")).RulesInfo())
@@ -512,6 +752,25 @@ var _ = Describe("Analyzer", func() {
 			nosecPackage := testutils.NewTestPackage()
 			defer nosecPackage.Close()
 			nosecSource := strings.Replace(source, "h := md4.New()", "h := md4.New() //#nosec G301 G406", 1)
+			nosecPackage.AddFile("md4.go", nosecSource)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			nosecIssues, _, _ := analyzer.Report()
+			Expect(nosecIssues).Should(BeEmpty())
+		})
+
+		It("should not report errors when an exclude comment is present for multiple rules, including the correct rule", func() {
+			sample := testutils.SampleCodeG406[0]
+			source := sample.Code[0]
+			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G406")).RulesInfo())
+
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecSource := strings.Replace(source, "h := md4.New()", "h := md4.New() //gosec:disable G301 G406", 1)
 			nosecPackage.AddFile("md4.go", nosecSource)
 			err := nosecPackage.Build()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -573,6 +832,29 @@ var _ = Describe("Analyzer", func() {
 			Expect(nosecIssues).Should(HaveLen(sample.Errors))
 		})
 
+		It("should be possible to overwrite disable directive, and report issues", func() {
+			// Rule for MD5 weak crypto usage
+			sample := testutils.SampleCodeG401[0]
+			source := sample.Code[0]
+
+			// overwrite nosec option
+			nosecIgnoreConfig := gosec.NewConfig()
+			nosecIgnoreConfig.SetGlobal(gosec.Nosec, "true")
+			customAnalyzer := gosec.NewAnalyzer(nosecIgnoreConfig, tests, false, false, 1, logger)
+			customAnalyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G401")).RulesInfo())
+
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() //gosec:disable", 1)
+			nosecPackage.AddFile("md5.go", nosecSource)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = customAnalyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			nosecIssues, _, _ := customAnalyzer.Report()
+			Expect(nosecIssues).Should(HaveLen(sample.Errors))
+		})
+
 		It("should be possible to overwrite nosec comments, and report issues", func() {
 			// Rule for DES weak crypto usage
 			sample := testutils.SampleCodeG405[0]
@@ -596,6 +878,29 @@ var _ = Describe("Analyzer", func() {
 			Expect(nosecIssues).Should(HaveLen(sample.Errors))
 		})
 
+		It("should be possible to overwrite disable directive comments, and report issues", func() {
+			// Rule for DES weak crypto usage
+			sample := testutils.SampleCodeG405[0]
+			source := sample.Code[0]
+
+			// overwrite nosec option
+			nosecIgnoreConfig := gosec.NewConfig()
+			nosecIgnoreConfig.SetGlobal(gosec.Nosec, "true")
+			customAnalyzer := gosec.NewAnalyzer(nosecIgnoreConfig, tests, false, false, 1, logger)
+			customAnalyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G405")).RulesInfo())
+
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecSource := strings.Replace(source, "c, e := des.NewCipher([]byte(\"mySecret\"))", "c, e := des.NewCipher([]byte(\"mySecret\")) //gosec:disable", 1)
+			nosecPackage.AddFile("cipher.go", nosecSource)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = customAnalyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			nosecIssues, _, _ := customAnalyzer.Report()
+			Expect(nosecIssues).Should(HaveLen(sample.Errors))
+		})
+
 		It("should be possible to overwrite nosec comments, and report issues", func() {
 			// Rule for MD4 weak crypto usage
 			sample := testutils.SampleCodeG406[0]
@@ -610,6 +915,29 @@ var _ = Describe("Analyzer", func() {
 			nosecPackage := testutils.NewTestPackage()
 			defer nosecPackage.Close()
 			nosecSource := strings.Replace(source, "h := md4.New()", "h := md4.New() //#nosec", 1)
+			nosecPackage.AddFile("md4.go", nosecSource)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = customAnalyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			nosecIssues, _, _ := customAnalyzer.Report()
+			Expect(nosecIssues).Should(HaveLen(sample.Errors))
+		})
+
+		It("should be possible to overwrite disable directive comments, and report issues", func() {
+			// Rule for MD4 weak crypto usage
+			sample := testutils.SampleCodeG406[0]
+			source := sample.Code[0]
+
+			// overwrite nosec option
+			nosecIgnoreConfig := gosec.NewConfig()
+			nosecIgnoreConfig.SetGlobal(gosec.Nosec, "true")
+			customAnalyzer := gosec.NewAnalyzer(nosecIgnoreConfig, tests, false, false, 1, logger)
+			customAnalyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G406")).RulesInfo())
+
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecSource := strings.Replace(source, "h := md4.New()", "h := md4.New() //gosec:disable", 1)
 			nosecPackage.AddFile("md4.go", nosecSource)
 			err := nosecPackage.Build()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -714,6 +1042,23 @@ var _ = Describe("Analyzer", func() {
 			Expect(nosecIssues).Should(BeEmpty())
 		})
 
+		It("should not report errors when disable directive is in front of a line", func() {
+			sample := testutils.SampleCodeG401[0]
+			source := sample.Code[0]
+			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G401")).RulesInfo())
+
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecSource := strings.Replace(source, "h := md5.New()", "//Some description\n//gosec:disable G401\nh := md5.New()", 1)
+			nosecPackage.AddFile("md5.go", nosecSource)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			nosecIssues, _, _ := analyzer.Report()
+			Expect(nosecIssues).Should(BeEmpty())
+		})
+
 		It("should not report errors when nosec tag is in front of a line", func() {
 			sample := testutils.SampleCodeG405[0]
 			source := sample.Code[0]
@@ -731,6 +1076,23 @@ var _ = Describe("Analyzer", func() {
 			Expect(nosecIssues).Should(BeEmpty())
 		})
 
+		It("should not report errors when disable directive is in front of a line", func() {
+			sample := testutils.SampleCodeG405[0]
+			source := sample.Code[0]
+			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G405")).RulesInfo())
+
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecSource := strings.Replace(source, "c, e := des.NewCipher([]byte(\"mySecret\"))", "//Some description\n//gosec:disable G405\nc, e := des.NewCipher([]byte(\"mySecret\"))", 1)
+			nosecPackage.AddFile("cipher.go", nosecSource)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			nosecIssues, _, _ := analyzer.Report()
+			Expect(nosecIssues).Should(BeEmpty())
+		})
+
 		It("should not report errors when nosec tag is in front of a line", func() {
 			sample := testutils.SampleCodeG406[0]
 			source := sample.Code[0]
@@ -739,6 +1101,23 @@ var _ = Describe("Analyzer", func() {
 			nosecPackage := testutils.NewTestPackage()
 			defer nosecPackage.Close()
 			nosecSource := strings.Replace(source, "h := md4.New()", "//Some description\n//#nosec G406\nh := md4.New()", 1)
+			nosecPackage.AddFile("md4.go", nosecSource)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			nosecIssues, _, _ := analyzer.Report()
+			Expect(nosecIssues).Should(BeEmpty())
+		})
+
+		It("should not report errors when disable directive is in front of a line", func() {
+			sample := testutils.SampleCodeG406[0]
+			source := sample.Code[0]
+			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G406")).RulesInfo())
+
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecSource := strings.Replace(source, "h := md4.New()", "//Some description\n//gosec:disable G406\nh := md4.New()", 1)
 			nosecPackage.AddFile("md4.go", nosecSource)
 			err := nosecPackage.Build()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -867,6 +1246,23 @@ var _ = Describe("Analyzer", func() {
 			Expect(nosecIssues).Should(HaveLen(sample.Errors))
 		})
 
+		It("should report errors when there are disable directives after a //gosec:disable WrongRuleList", func() {
+			sample := testutils.SampleCodeG401[0]
+			source := sample.Code[0]
+			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G401")).RulesInfo())
+
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecSource := strings.Replace(source, "h := md5.New()", "//gosec:disable G301\n//gosec:disable\nh := md5.New()", 1)
+			nosecPackage.AddFile("md5.go", nosecSource)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			nosecIssues, _, _ := analyzer.Report()
+			Expect(nosecIssues).Should(HaveLen(sample.Errors))
+		})
+
 		It("should report errors when there are nosec tags after a #nosec WrongRuleList annotation", func() {
 			sample := testutils.SampleCodeG405[0]
 			source := sample.Code[0]
@@ -884,6 +1280,23 @@ var _ = Describe("Analyzer", func() {
 			Expect(nosecIssues).Should(HaveLen(sample.Errors))
 		})
 
+		It("should report errors when there are disable directives after a //gosec:disable WrongRuleList", func() {
+			sample := testutils.SampleCodeG405[0]
+			source := sample.Code[0]
+			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G405")).RulesInfo())
+
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecSource := strings.Replace(source, "c, e := des.NewCipher([]byte(\"mySecret\"))", "//gosec:disable G301\n//gosec:disable\nc, e := des.NewCipher([]byte(\"mySecret\"))", 1)
+			nosecPackage.AddFile("cipher.go", nosecSource)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			nosecIssues, _, _ := analyzer.Report()
+			Expect(nosecIssues).Should(HaveLen(sample.Errors))
+		})
+
 		It("should report errors when there are nosec tags after a #nosec WrongRuleList annotation", func() {
 			sample := testutils.SampleCodeG406[0]
 			source := sample.Code[0]
@@ -892,6 +1305,23 @@ var _ = Describe("Analyzer", func() {
 			nosecPackage := testutils.NewTestPackage()
 			defer nosecPackage.Close()
 			nosecSource := strings.Replace(source, "h := md4.New()", "//#nosec\n//G301\n//#nosec\nh := md4.New()", 1)
+			nosecPackage.AddFile("md4.go", nosecSource)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			nosecIssues, _, _ := analyzer.Report()
+			Expect(nosecIssues).Should(HaveLen(sample.Errors))
+		})
+
+		It("should report errors when there are disable directives after a //gosec:disable WrongRuleList", func() {
+			sample := testutils.SampleCodeG406[0]
+			source := sample.Code[0]
+			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G406")).RulesInfo())
+
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecSource := strings.Replace(source, "h := md4.New()", "//gosec:disable G301\n//gosec:disable\nh := md4.New()", 1)
 			nosecPackage.AddFile("md4.go", nosecSource)
 			err := nosecPackage.Build()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -1366,6 +1796,26 @@ var _ = Describe("Analyzer", func() {
 		})
 
 		It("should not report an error if the violation is suppressed", func() {
+			sample := testutils.SampleCodeG401[0]
+			source := sample.Code[0]
+			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G401")).RulesInfo())
+
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() //gosec:disable G401 -- Justification", 1)
+			nosecPackage.AddFile("md5.go", nosecSource)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			issues, _, _ := analyzer.Report()
+			Expect(issues).To(HaveLen(sample.Errors))
+			Expect(issues[0].Suppressions).To(HaveLen(1))
+			Expect(issues[0].Suppressions[0].Kind).To(Equal("inSource"))
+			Expect(issues[0].Suppressions[0].Justification).To(Equal("Justification"))
+		})
+
+		It("should not report an error if the violation is suppressed", func() {
 			sample := testutils.SampleCodeG405[0]
 			source := sample.Code[0]
 			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G405")).RulesInfo())
@@ -1386,6 +1836,26 @@ var _ = Describe("Analyzer", func() {
 		})
 
 		It("should not report an error if the violation is suppressed", func() {
+			sample := testutils.SampleCodeG405[0]
+			source := sample.Code[0]
+			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G405")).RulesInfo())
+
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecSource := strings.Replace(source, "c, e := des.NewCipher([]byte(\"mySecret\"))", "c, e := des.NewCipher([]byte(\"mySecret\")) //gosec:disable G405 -- Justification", 1)
+			nosecPackage.AddFile("cipher.go", nosecSource)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			issues, _, _ := analyzer.Report()
+			Expect(issues).To(HaveLen(sample.Errors))
+			Expect(issues[0].Suppressions).To(HaveLen(1))
+			Expect(issues[0].Suppressions[0].Kind).To(Equal("inSource"))
+			Expect(issues[0].Suppressions[0].Justification).To(Equal("Justification"))
+		})
+
+		It("should not report an error if the violation is suppressed", func() {
 			sample := testutils.SampleCodeG406[0]
 			source := sample.Code[0]
 			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G406")).RulesInfo())
@@ -1393,6 +1863,26 @@ var _ = Describe("Analyzer", func() {
 			nosecPackage := testutils.NewTestPackage()
 			defer nosecPackage.Close()
 			nosecSource := strings.Replace(source, "h := md4.New()", "h := md4.New() //#nosec G406 -- Justification", 1)
+			nosecPackage.AddFile("md4.go", nosecSource)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			issues, _, _ := analyzer.Report()
+			Expect(issues).To(HaveLen(sample.Errors))
+			Expect(issues[0].Suppressions).To(HaveLen(1))
+			Expect(issues[0].Suppressions[0].Kind).To(Equal("inSource"))
+			Expect(issues[0].Suppressions[0].Justification).To(Equal("Justification"))
+		})
+
+		It("should not report an error if the violation is suppressed", func() {
+			sample := testutils.SampleCodeG406[0]
+			source := sample.Code[0]
+			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G406")).RulesInfo())
+
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecSource := strings.Replace(source, "h := md4.New()", "h := md4.New() //gosec:disable G406 -- Justification", 1)
 			nosecPackage.AddFile("md4.go", nosecSource)
 			err := nosecPackage.Build()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -1426,6 +1916,26 @@ var _ = Describe("Analyzer", func() {
 		})
 
 		It("should not report an error if the violation is suppressed without certain rules", func() {
+			sample := testutils.SampleCodeG401[0]
+			source := sample.Code[0]
+			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G401")).RulesInfo())
+
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() //gosec:disable", 1)
+			nosecPackage.AddFile("md5.go", nosecSource)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			issues, _, _ := analyzer.Report()
+			Expect(issues).To(HaveLen(sample.Errors))
+			Expect(issues[0].Suppressions).To(HaveLen(1))
+			Expect(issues[0].Suppressions[0].Kind).To(Equal("inSource"))
+			Expect(issues[0].Suppressions[0].Justification).To(Equal(""))
+		})
+
+		It("should not report an error if the violation is suppressed without certain rules", func() {
 			sample := testutils.SampleCodeG405[0]
 			source := sample.Code[0]
 			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G405")).RulesInfo())
@@ -1446,6 +1956,26 @@ var _ = Describe("Analyzer", func() {
 		})
 
 		It("should not report an error if the violation is suppressed without certain rules", func() {
+			sample := testutils.SampleCodeG405[0]
+			source := sample.Code[0]
+			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G405")).RulesInfo())
+
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecSource := strings.Replace(source, "c, e := des.NewCipher([]byte(\"mySecret\"))", "c, e := des.NewCipher([]byte(\"mySecret\")) //gosec:disable", 1)
+			nosecPackage.AddFile("cipher.go", nosecSource)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			issues, _, _ := analyzer.Report()
+			Expect(issues).To(HaveLen(sample.Errors))
+			Expect(issues[0].Suppressions).To(HaveLen(1))
+			Expect(issues[0].Suppressions[0].Kind).To(Equal("inSource"))
+			Expect(issues[0].Suppressions[0].Justification).To(Equal(""))
+		})
+
+		It("should not report an error if the violation is suppressed without certain rules", func() {
 			sample := testutils.SampleCodeG406[0]
 			source := sample.Code[0]
 			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G406")).RulesInfo())
@@ -1453,6 +1983,26 @@ var _ = Describe("Analyzer", func() {
 			nosecPackage := testutils.NewTestPackage()
 			defer nosecPackage.Close()
 			nosecSource := strings.Replace(source, "h := md4.New()", "h := md4.New() //#nosec", 1)
+			nosecPackage.AddFile("md4.go", nosecSource)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			issues, _, _ := analyzer.Report()
+			Expect(issues).To(HaveLen(sample.Errors))
+			Expect(issues[0].Suppressions).To(HaveLen(1))
+			Expect(issues[0].Suppressions[0].Kind).To(Equal("inSource"))
+			Expect(issues[0].Suppressions[0].Justification).To(Equal(""))
+		})
+
+		It("should not report an error if the violation is suppressed without certain rules", func() {
+			sample := testutils.SampleCodeG406[0]
+			source := sample.Code[0]
+			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G406")).RulesInfo())
+
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecSource := strings.Replace(source, "h := md4.New()", "h := md4.New() //gosec:disable", 1)
 			nosecPackage.AddFile("md4.go", nosecSource)
 			err := nosecPackage.Build()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -1618,6 +2168,27 @@ var _ = Describe("Analyzer", func() {
 			Expect(issues[0].Suppressions[0].Kind).To(Equal("inSource"))
 		})
 
+		It("should not report an error if the violation is suppressed on a struct filed", func() {
+			sample := testutils.SampleCodeG402[0]
+			source := sample.Code[0]
+			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G402")).RulesInfo())
+
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecSource := strings.Replace(source,
+				"TLSClientConfig: &tls.Config{InsecureSkipVerify: true}",
+				"TLSClientConfig: &tls.Config{InsecureSkipVerify: true} //gosec:disable G402", 1)
+			nosecPackage.AddFile("tls.go", nosecSource)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			issues, _, _ := analyzer.Report()
+			Expect(issues).To(HaveLen(sample.Errors))
+			Expect(issues[0].Suppressions).To(HaveLen(1))
+			Expect(issues[0].Suppressions[0].Kind).To(Equal("inSource"))
+		})
+
 		It("should not report an error if the violation is suppressed on multi-lien issue", func() {
 			source := `
 package main
@@ -1630,6 +2201,37 @@ const TokenLabel = `
 			source += "`" + `
 f62e5bcda4fae4f82370da0c6f20697b8f8447ef
       ` + "`" + "//#nosec G101 -- false positive, this is not a private data" + `
+func main() {
+	fmt.Printf("Label: %s ", TokenLabel)
+}
+      `
+			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G101")).RulesInfo())
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecPackage.AddFile("pwd.go", source)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			issues, _, _ := analyzer.Report()
+			Expect(issues).To(HaveLen(1))
+			Expect(issues[0].Suppressions).To(HaveLen(1))
+			Expect(issues[0].Suppressions[0].Kind).To(Equal("inSource"))
+			Expect(issues[0].Suppressions[0].Justification).To(Equal("false positive, this is not a private data"))
+		})
+
+		It("should not report an error if the violation is suppressed on multi-lien issue", func() {
+			source := `
+package main
+
+import (
+	"fmt"
+)
+
+const TokenLabel = `
+			source += "`" + `
+f62e5bcda4fae4f82370da0c6f20697b8f8447ef
+      ` + "`" + "//gosec:disable G101 -- false positive, this is not a private data" + `
 func main() {
 	fmt.Printf("Label: %s ", TokenLabel)
 }
