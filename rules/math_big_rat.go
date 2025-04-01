@@ -21,13 +21,12 @@ func (r *usingOldMathBig) Match(node ast.Node, ctx *gosec.Context) (gi *issue.Is
 		return nil, nil
 	}
 
-	confidence := issue.Low
 	major, minor, build := gosec.GoVersion()
 	if major == 1 && (minor == 16 && build < 14 || minor == 17 && build < 7) {
-		confidence = issue.Medium
+		return ctx.NewIssue(node, r.ID(), r.What, r.Severity, issue.Medium), nil
+	} else {
+		return nil, nil
 	}
-
-	return ctx.NewIssue(node, r.ID(), r.What, r.Severity, confidence), nil
 }
 
 // NewUsingOldMathBig rule detects the use of Rat.SetString from math/big.
