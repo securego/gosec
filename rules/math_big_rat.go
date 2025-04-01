@@ -22,7 +22,7 @@ func (r *usingOldMathBig) Match(node ast.Node, ctx *gosec.Context) (gi *issue.Is
 	}
 
 	major, minor, build := gosec.GoVersion()
-	if major == 1 && (minor == 16 && build < 14 || minor == 17 && build < 7) {
+	if major == 1 && (minor < 16 || minor == 16 && build < 14 || minor == 17 && build < 7) {
 		return ctx.NewIssue(node, r.ID(), r.What, r.Severity, issue.Medium), nil
 	} else {
 		return nil, nil
