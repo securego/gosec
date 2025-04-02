@@ -138,7 +138,7 @@ directory you can supply `./...` as the input argument.
 - G110: Potential DoS vulnerability via decompression bomb
 - G111: Potential directory traversal
 - G112: Potential slowloris attack
-- G113: Usage of Rat.SetString in math/big with an overflow (CVE-2022-23772)
+- G113: ~~Usage of Rat.SetString in math/big with an overflow (CVE-2022-23772)~~. This has been removed. This affected Go <1.16.14 and Go <1.17.7, which are no longer supported versions in gosec. 
 - G114: Use of net/http serve function that has no support for setting timeouts
 - G115: Potential integer overflow when converting between integer types
 - G201: SQL query construction using format string
