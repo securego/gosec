@@ -138,7 +138,6 @@ directory you can supply `./...` as the input argument.
 - G110: Potential DoS vulnerability via decompression bomb
 - G111: Potential directory traversal
 - G112: Potential slowloris attack
-- G113: Usage of Rat.SetString in math/big with an overflow (CVE-2022-23772)
 - G114: Use of net/http serve function that has no support for setting timeouts
 - G115: Potential integer overflow when converting between integer types
 - G201: SQL query construction using format string
@@ -172,6 +171,7 @@ directory you can supply `./...` as the input argument.
 ### Retired rules
 
 - G105: Audit the use of math/big.Int.Exp - [CVE is fixed](https://github.com/golang/go/issues/15184)
+- G113: Usage of Rat.SetString in math/big with an overflow (CVE-2022-23772). This affected Go <1.16.14 and Go <1.17.7, which are no longer supported by gosec. 
 - G307: Deferring a method which returns an error - causing more inconvenience than fixing a security issue, despite the details from this [blog post](https://www.joeshaw.org/dont-defer-close-on-writable-files/)
 
 ### Selecting rules
