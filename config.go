@@ -95,7 +95,7 @@ func (c Config) WriteTo(w io.Writer) (int64, error) {
 func (c Config) Get(section string) (interface{}, error) {
 	settings, found := c[section]
 	if !found {
-		return nil, fmt.Errorf("Section %s not in configuration", section)
+		return nil, fmt.Errorf("section %s not in configuration", section)
 	}
 	return settings, nil
 }

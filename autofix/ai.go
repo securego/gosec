@@ -76,8 +76,8 @@ func (w *genAIGenerativeModelWrapper) GenerateContent(ctx context.Context, promp
 }
 
 // NewGenAIClient creates a new gemini API client.
-func NewGenAIClient(ctx context.Context, aiApiKey, endpoint string) (GenAIClient, error) {
-	clientOptions := []option.ClientOption{option.WithAPIKey(aiApiKey)}
+func NewGenAIClient(ctx context.Context, aiAPIKey, endpoint string) (GenAIClient, error) {
+	clientOptions := []option.ClientOption{option.WithAPIKey(aiAPIKey)}
 	if endpoint != "" {
 		clientOptions = append(clientOptions, option.WithEndpoint(endpoint))
 	}
@@ -119,16 +119,16 @@ func generateSolutionByGemini(client GenAIClient, issues []*issue.Issue) error {
 }
 
 // GenerateSolution generates a solution for the given issues using the specified AI provider
-func GenerateSolution(aiApiProvider, aiApiKey, endpoint string, issues []*issue.Issue) error {
+func GenerateSolution(aiAPIProvider, aiAPIKey, endpoint string, issues []*issue.Issue) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	var client GenAIClient
 
-	switch aiApiProvider {
+	switch aiAPIProvider {
 	case GeminiProvider:
 		var err error
-		client, err = NewGenAIClient(ctx, aiApiKey, endpoint)
+		client, err = NewGenAIClient(ctx, aiAPIKey, endpoint)
 		if err != nil {
 			return fmt.Errorf("generating autofix: %w", err)
 		}

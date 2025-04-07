@@ -51,9 +51,9 @@ func createReportInfo(rule string, weakness *cwe.Weakness) gosec.ReportInfo {
 }
 
 func stripString(str string) string {
-	ret := strings.Replace(str, "\n", "", -1)
-	ret = strings.Replace(ret, " ", "", -1)
-	ret = strings.Replace(ret, "\t", "", -1)
+	ret := strings.ReplaceAll(str, "\n", "")
+	ret = strings.ReplaceAll(ret, " ", "")
+	ret = strings.ReplaceAll(ret, "\t", "")
 	return ret
 }
 

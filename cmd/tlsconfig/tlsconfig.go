@@ -108,7 +108,7 @@ func getGoCipherConfig(name string, sstls ServerSideTLSJson) (goCipherConfigurat
 		cipherConf.MinVersion = fmt.Sprintf("0x%04x", versions[0])
 		cipherConf.MaxVersion = fmt.Sprintf("0x%04x", versions[len(versions)-1])
 	} else {
-		return cipherConf, fmt.Errorf("No TLS versions found for configuration '%s'", name)
+		return cipherConf, fmt.Errorf("no TLS versions found for configuration '%s'", name)
 	}
 	return cipherConf, nil
 }
