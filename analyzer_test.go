@@ -23,11 +23,12 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"golang.org/x/tools/go/packages"
+
 	"github.com/securego/gosec/v2"
 	"github.com/securego/gosec/v2/analyzers"
 	"github.com/securego/gosec/v2/rules"
 	"github.com/securego/gosec/v2/testutils"
-	"golang.org/x/tools/go/packages"
 )
 
 var _ = Describe("Analyzer", func() {

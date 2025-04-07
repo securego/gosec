@@ -61,7 +61,7 @@ USAGE:
 
 `
 	// Environment variable for AI API key.
-	aiApiKeyEnv = "GOSEC_AI_API_KEY" // #nosec G101
+	aiAPIKeyEnv = "GOSEC_AI_API_KEY" // #nosec G101
 )
 
 type arrayFlags []string
@@ -154,10 +154,10 @@ var (
 	flagTerse = flag.Bool("terse", false, "Shows only the results and summary")
 
 	// AI platform provider to generate solutions to issues
-	flagAiApiProvider = flag.String("ai-api-provider", "", "AI API provider to generate auto fixes to issues.\nValid options are: gemini")
+	flagAiAPIProvider = flag.String("ai-api-provider", "", "AI API provider to generate auto fixes to issues.\nValid options are: gemini")
 
 	// key to implementing AI provider services
-	flagAiApiKey = flag.String("ai-api-key", "", "Key to access the AI API")
+	flagAiAPIKey = flag.String("ai-api-key", "", "Key to access the AI API")
 
 	// endpoint to the AI provider
 	flagAiEndpoint = flag.String("ai-endpoint", "", "Endpoint AI API.\nThis is optional, the default API endpoint will be used when not provided.")
@@ -504,12 +504,12 @@ func main() {
 	reportInfo := gosec.NewReportInfo(issues, metrics, errors).WithVersion(Version)
 
 	// Call AI request to solve the issues
-	aiApiKey := os.Getenv(aiApiKeyEnv)
-	if aiApiKeyEnv == "" {
-		aiApiKey = *flagAiApiKey
+	aiAPIKey := os.Getenv(aiAPIKeyEnv)
+	if aiAPIKeyEnv == "" {
+		aiAPIKey = *flagAiAPIKey
 	}
-	if *flagAiApiProvider != "" && aiApiKey != "" {
-		err := autofix.GenerateSolution(*flagAiApiProvider, aiApiKey, *flagAiEndpoint, issues)
+	if *flagAiAPIProvider != "" && aiAPIKey != "" {
+		err := autofix.GenerateSolution(*flagAiAPIProvider, aiAPIKey, *flagAiEndpoint, issues)
 		if err != nil {
 			logger.Print(err)
 		}
