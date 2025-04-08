@@ -62,6 +62,7 @@ func newIssue(analyzerID string, desc string, fileSet *token.FileSet,
 	pos token.Pos, severity, confidence issue.Score,
 ) *issue.Issue {
 	file := fileSet.File(pos)
+	// This can occur when there is a compilation issue into the code.
 	if file == nil {
 		return &issue.Issue{}
 	}
