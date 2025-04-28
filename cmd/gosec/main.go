@@ -505,7 +505,7 @@ func main() {
 
 	// Call AI request to solve the issues
 	aiAPIKey := os.Getenv(aiAPIKeyEnv)
-	if aiAPIKeyEnv == "" {
+	if aiAPIKey == "" {
 		aiAPIKey = *flagAiAPIKey
 	}
 	if *flagAiAPIProvider != "" && aiAPIKey != "" {
