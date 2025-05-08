@@ -18,6 +18,10 @@ GINKGO ?= $(GOBIN)/ginkgo
 GO_MINOR_VERSION = $(shell $(GO) version | cut -c 14- | cut -d' ' -f1 | cut -d'.' -f2)
 GOVULN_MIN_VERSION = 17
 GO_VERSION = 1.23
+LDFLAGS = -ldflags "\
+	-X 'main.Version=$(shell git describe --tags --always)' \
+	-X 'main.GitTag=$(shell git describe --tags --abbrev=0)' \
+	-X 'main.BuildDate=$(shell date -u +%Y-%m-%dT%H:%M:%SZ)'"
 
 default:
 	$(MAKE) build
@@ -62,10 +66,10 @@ test-coverage: install-test-deps
 	go test -race -v -count=1 -coverprofile=coverage.out ./...
 
 build:
-	go build -o $(BIN) ./cmd/gosec/
+	go build $(LDFLAGS) -o $(BIN) ./cmd/gosec/
 
 build-race:
-	go build -race -o $(BIN) ./cmd/gosec/
+	go build -race $(LDFLAGS) -o $(BIN) ./cmd/gosec/
 
 clean:
 	rm -rf build vendor dist coverage.out
