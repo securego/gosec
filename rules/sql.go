@@ -32,6 +32,12 @@ type sqlStatement struct {
 }
 
 var sqlCallIdents = map[string]map[string]int{
+	"*database/sql.Conn": {
+		"ExecContext":     1,
+		"QueryContext":    1,
+		"QueryRowContext": 1,
+		"PrepareContext":  1,
+	},
 	"*database/sql.DB": {
 		"Exec":            0,
 		"ExecContext":     1,

@@ -105,6 +105,36 @@ func main(){
 }
 `}, 1, gosec.NewConfig()},
 	{[]string{`
+// Format string without proper quoting with connection
+package main
+import (
+	"context"
+	"database/sql"
+	"fmt"
+	"os"
+)
+
+func main(){
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	conn, err := db.Conn(context.Background())
+	if err != nil {
+		panic(err)
+	}
+	q := fmt.Sprintf("select * from foo where name = '%s'", os.Args[1])
+	rows, err := conn.QueryContext(context.Background(), q)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+	if err := conn.Close(); err != nil {
+		panic(err)
+	}
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
 // Format string false positive, safe string spec.
 package main
 
