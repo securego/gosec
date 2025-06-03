@@ -121,6 +121,35 @@ func main(){
 }
 `}, 1, gosec.NewConfig()},
 	{[]string{`
+// DB connection check
+package main
+
+import (
+    "context"
+	"database/sql"
+	"os"
+)
+
+func main(){
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	conn, err := db.Conn(context.Background())
+	if err != nil {
+		panic(err)
+	}
+	rows, err := conn.QueryContext(context.Background(), "select * from foo where name = " + os.Args[1])
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+	if err := conn.Close(); err != nil {
+		panic(err)
+	}
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
 // multiple string concatenation
 package main
 
