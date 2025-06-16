@@ -17,7 +17,7 @@ GOSEC ?= $(GOBIN)/gosec
 GINKGO ?= $(GOBIN)/ginkgo
 GO_MINOR_VERSION = $(shell $(GO) version | cut -c 14- | cut -d' ' -f1 | cut -d'.' -f2)
 GOVULN_MIN_VERSION = 17
-GO_VERSION = 1.23
+GO_VERSION = 1.24
 LDFLAGS = -ldflags "\
 	-X 'main.Version=$(shell git describe --tags --always)' \
 	-X 'main.GitTag=$(shell git describe --tags --abbrev=0)' \
