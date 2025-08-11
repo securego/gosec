@@ -48,7 +48,7 @@ jobs:
       - name: Setup go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24.5'
+          go-version: '1.24.6'
       - name: Checkout Source
         uses: actions/checkout@v4
       - uses: actions/cache@v4
