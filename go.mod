@@ -4,14 +4,14 @@ require (
 	github.com/ccojocar/zxcvbn-go v1.0.4
 	github.com/google/generative-ai-go v0.20.1
 	github.com/google/uuid v1.6.0
-	github.com/gookit/color v1.5.4
+	github.com/gookit/color v1.6.0
 	github.com/lib/pq v1.10.9
 	github.com/mozilla/tls-observatory v0.0.0-20210609171429-7bc42856d2e5
-	github.com/onsi/ginkgo/v2 v2.25.1
-	github.com/onsi/gomega v1.38.1
-	github.com/stretchr/testify v1.11.0
+	github.com/onsi/ginkgo/v2 v2.25.3
+	github.com/onsi/gomega v1.38.2
+	github.com/stretchr/testify v1.11.1
 	golang.org/x/crypto v0.41.0
-	golang.org/x/text v0.28.0
+	golang.org/x/text v0.29.0
 	golang.org/x/tools v0.36.0
 	google.golang.org/api v0.248.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -49,7 +49,7 @@ require (
 	golang.org/x/mod v0.27.0 // indirect
 	golang.org/x/net v0.43.0 // indirect
 	golang.org/x/oauth2 v0.30.0 // indirect
-	golang.org/x/sync v0.16.0 // indirect
+	golang.org/x/sync v0.17.0 // indirect
 	golang.org/x/sys v0.35.0 // indirect
 	golang.org/x/time v0.12.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250603155806-513f23925822 // indirect
