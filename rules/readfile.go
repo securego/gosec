@@ -27,7 +27,10 @@ type readfile struct {
 	gosec.CallList
 	pathJoin   gosec.CallList
 	clean      gosec.CallList
+	// cleanedVar maps the declaration node of an identifier to the Clean() call node
 	cleanedVar map[any]ast.Node
+	// joinedVar maps the declaration node of an identifier to the Join() call node
+	joinedVar map[any]ast.Node
 }
 
 // ID returns the identifier for this rule
@@ -61,6 +64,7 @@ func (r *readfile) isJoinFunc(n ast.Node, c *gosec.Context) bool {
 
 // isFilepathClean checks if there is a filepath.Clean for given variable
 func (r *readfile) isFilepathClean(n *ast.Ident, c *gosec.Context) bool {
+	// quick lookup: was this var's declaration recorded as a Clean() call?
 	if _, ok := r.cleanedVar[n.Obj.Decl]; ok {
 		return true
 	}
@@ -90,35 +94,157 @@ func (r *readfile) trackFilepathClean(n ast.Node) {
 	}
 }
 
-// Match inspects AST nodes to determine if the match the methods `os.Open` or `ioutil.ReadFile`
+// trackJoin records when a Join() call result is assigned to an identifier
+// example: fullPath := filepath.Join(baseDir, cleanPath)
+func (r *readfile) trackJoin(n ast.Node) {
+	// n is expected to be a *ast.CallExpr (Join(...)) but the assignment is a different node.
+	// We will look for an enclosing AssignStmt if provided (the caller passes n which is the call)
+	if joinCall, ok := n.(*ast.CallExpr); ok && len(joinCall.Args) > 0 {
+		// We don't have direct access to the enclosing assignment here (since Match receives call exprs),
+		// so the practical approach is: when Match sees a Join call used in an assignment, it should call this helper
+		// with the assignment node. For simplicity, we will expect the caller to pass an AssignStmt.
+		_ = joinCall // caller should call trackJoin on the AssignStmt (see Match where we call it)
+	}
+}
+
+// trackJoinAssignStmt tracks assignments where RHS is a Join(...) call and LHS is an identifier
+func (r *readfile) trackJoinAssignStmt(node *ast.AssignStmt, c *gosec.Context) {
+	if len(node.Rhs) == 0 {
+		return
+	}
+	if call, ok := node.Rhs[0].(*ast.CallExpr); ok {
+		if r.pathJoin.ContainsPkgCallExpr(call, c, false) != nil {
+			// LHS must be an identifier (simple case)
+			if len(node.Lhs) > 0 {
+				if ident, ok := node.Lhs[0].(*ast.Ident); ok && ident.Obj != nil {
+					r.joinedVar[ident.Obj.Decl] = call
+				}
+			}
+		}
+	}
+}
+
+// isSafeJoin checks if path is baseDir + filepath.Clean(fn) joined.
+// improvements over earlier naive version:
+// - allow baseDir as a BasicLit or as an identifier that resolves to a string constant
+// - accept Clean(...) being either a CallExpr or an identifier previously recorded as Clean result
+func (r *readfile) isSafeJoin(call *ast.CallExpr, c *gosec.Context) bool {
+	join := r.pathJoin.ContainsPkgCallExpr(call, c, false)
+	if join == nil {
+		return false
+	}
+
+	// We expect join.Args to include a baseDir-like arg and a cleaned path arg.
+	var foundBaseDir bool
+	var foundCleanArg bool
+
+	for _, arg := range join.Args {
+		switch a := arg.(type) {
+		case *ast.BasicLit:
+			// literal string or similar — treat as possible baseDir
+			foundBaseDir = true
+		case *ast.Ident:
+			// If ident is resolvable to a constant string (TryResolve true), treat as baseDir.
+			// Or if ident refers to a variable that was itself assigned from a constant BasicLit,
+			// it's considered safe as baseDir.
+			if gosec.TryResolve(a, c) {
+				foundBaseDir = true
+			} else {
+				// It might be a cleaned variable: e.g. cleanPath := filepath.Clean(fn)
+				if r.isFilepathClean(a, c) {
+					foundCleanArg = true
+				}
+			}
+		case *ast.CallExpr:
+			// If an argument is a Clean() call directly, mark clean arg found.
+			if r.clean.ContainsPkgCallExpr(a, c, false) != nil {
+				foundCleanArg = true
+			}
+		default:
+			// ignore other types
+		}
+	}
+
+	return foundBaseDir && foundCleanArg
+}
+
 func (r *readfile) Match(n ast.Node, c *gosec.Context) (*issue.Issue, error) {
+	// Track filepath.Clean usages so identifiers assigned from Clean() are known.
 	if node := r.clean.ContainsPkgCallExpr(n, c, false); node != nil {
 		r.trackFilepathClean(n)
 		return nil, nil
-	} else if node := r.ContainsPkgCallExpr(n, c, false); node != nil {
-		for _, arg := range node.Args {
-			// handles path joining functions in Arg
-			// eg. os.Open(filepath.Join("/tmp/", file))
-			if callExpr, ok := arg.(*ast.CallExpr); ok {
-				if r.isJoinFunc(callExpr, c) {
-					return c.NewIssue(n, r.ID(), r.What, r.Severity, r.Confidence), nil
-				}
-			}
-			// handles binary string concatenation eg. ioutil.Readfile("/tmp/" + file + "/blob")
-			if binExp, ok := arg.(*ast.BinaryExpr); ok {
-				// resolve all found identities from the BinaryExpr
-				if _, ok := gosec.FindVarIdentities(binExp, c); ok {
-					return c.NewIssue(n, r.ID(), r.What, r.Severity, r.Confidence), nil
-				}
-			}
+	}
 
-			if ident, ok := arg.(*ast.Ident); ok {
-				obj := c.Info.ObjectOf(ident)
-				if _, ok := obj.(*types.Var); ok &&
-					!gosec.TryResolve(ident, c) &&
-					!r.isFilepathClean(ident, c) {
-					return c.NewIssue(n, r.ID(), r.What, r.Severity, r.Confidence), nil
+	// Track Join assignments if we see an AssignStmt whose RHS is a Join call.
+	if assign, ok := n.(*ast.AssignStmt); ok {
+		// track join result assigned to a variable, e.g., fullPath := filepath.Join(baseDir, cleanPath)
+		r.trackJoinAssignStmt(assign, c)
+		// also track Clean assignment if present on RHS
+		if len(assign.Rhs) > 0 {
+			if call, ok := assign.Rhs[0].(*ast.CallExpr); ok {
+				if r.clean.ContainsPkgCallExpr(call, c, false) != nil {
+					r.trackFilepathClean(call)
 				}
+			}
+		}
+		// continue, don't return here — other checks may apply
+	}
+
+	// Now check for file-reading calls (os.Open, os.OpenFile, ioutil.ReadFile etc.)
+	if node := r.ContainsPkgCallExpr(n, c, false); node != nil {
+		if len(node.Args) == 0 {
+			return nil, nil
+		}
+		arg := node.Args[0]
+
+		// If argument is a call expression, check for Join/Clean patterns.
+		if callExpr, ok := arg.(*ast.CallExpr); ok {
+			// If this call matches a safe Join(baseDir, Clean(...)) pattern, treat as safe.
+			if r.isSafeJoin(callExpr, c) {
+				// safe pattern detected; do not raise an issue
+				return nil, nil
+			}
+			// If the argument is a Join call but not safe per above, flag it (as before)
+			if r.isJoinFunc(callExpr, c) {
+				return c.NewIssue(n, r.ID(), r.What, r.Severity, r.Confidence), nil
+			}
+		}
+
+		// If arg is an identifier that was assigned from a Join(...) call, check that recorded Join call.
+		if ident, ok := arg.(*ast.Ident); ok {
+			if ident.Obj != nil {
+				if joinCall, ok := r.joinedVar[ident.Obj.Decl]; ok {
+					// If the identifier itself was later cleaned, treat as safe regardless of original Join args
+					if r.isFilepathClean(ident, c) {
+						return nil, nil
+					}
+					// joinCall is a *ast.CallExpr; check if that join is a safe join
+					if jc, ok := joinCall.(*ast.CallExpr); ok {
+						if r.isSafeJoin(jc, c) {
+							return nil, nil
+						}
+						// join exists but is not safe: flag it
+						return c.NewIssue(n, r.ID(), r.What, r.Severity, r.Confidence), nil
+					}
+				}
+			}
+		}
+
+		// handles binary string concatenation eg. ioutil.Readfile("/tmp/" + file + "/blob")
+		if binExp, ok := arg.(*ast.BinaryExpr); ok {
+			// resolve all found identities from the BinaryExpr
+			if _, ok := gosec.FindVarIdentities(binExp, c); ok {
+				return c.NewIssue(n, r.ID(), r.What, r.Severity, r.Confidence), nil
+			}
+		}
+
+		// if it's a plain identifier, and not resolved and not cleaned, flag it
+		if ident, ok := arg.(*ast.Ident); ok {
+			obj := c.Info.ObjectOf(ident)
+			if _, ok := obj.(*types.Var); ok &&
+				!gosec.TryResolve(ident, c) &&
+				!r.isFilepathClean(ident, c) {
+				return c.NewIssue(n, r.ID(), r.What, r.Severity, r.Confidence), nil
 			}
 		}
 	}
@@ -128,9 +254,9 @@ func (r *readfile) Match(n ast.Node, c *gosec.Context) (*issue.Issue, error) {
 // NewReadFile detects cases where we read files
 func NewReadFile(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	rule := &readfile{
-		pathJoin: gosec.NewCallList(),
-		clean:    gosec.NewCallList(),
-		CallList: gosec.NewCallList(),
+		pathJoin:   gosec.NewCallList(),
+		clean:      gosec.NewCallList(),
+		CallList:   gosec.NewCallList(),
 		MetaData: issue.MetaData{
 			ID:         id,
 			What:       "Potential file inclusion via variable",
@@ -138,6 +264,7 @@ func NewReadFile(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 			Confidence: issue.High,
 		},
 		cleanedVar: map[any]ast.Node{},
+		joinedVar:  map[any]ast.Node{},
 	}
 	rule.pathJoin.Add("path/filepath", "Join")
 	rule.pathJoin.Add("path", "Join")
@@ -149,5 +276,5 @@ func NewReadFile(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	rule.Add("os", "Open")
 	rule.Add("os", "OpenFile")
 	rule.Add("os", "Create")
-	return rule, []ast.Node{(*ast.CallExpr)(nil)}
+	return rule, []ast.Node{(*ast.CallExpr)(nil), (*ast.AssignStmt)(nil)}
 }
