@@ -25,8 +25,8 @@ import (
 type readfile struct {
 	issue.MetaData
 	gosec.CallList
-	pathJoin   gosec.CallList
-	clean      gosec.CallList
+	pathJoin gosec.CallList
+	clean    gosec.CallList
 	// cleanedVar maps the declaration node of an identifier to the Clean() call node
 	cleanedVar map[any]ast.Node
 	// joinedVar maps the declaration node of an identifier to the Join() call node
@@ -254,9 +254,9 @@ func (r *readfile) Match(n ast.Node, c *gosec.Context) (*issue.Issue, error) {
 // NewReadFile detects cases where we read files
 func NewReadFile(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	rule := &readfile{
-		pathJoin:   gosec.NewCallList(),
-		clean:      gosec.NewCallList(),
-		CallList:   gosec.NewCallList(),
+		pathJoin: gosec.NewCallList(),
+		clean:    gosec.NewCallList(),
+		CallList: gosec.NewCallList(),
 		MetaData: issue.MetaData{
 			ID:         id,
 			What:       "Potential file inclusion via variable",
