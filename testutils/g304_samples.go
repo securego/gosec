@@ -302,4 +302,46 @@ package main
 
 var THEWD string
 `}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import (
+	"os"
+	"path/filepath"
+)
+
+func open(fn string, perm os.FileMode) {
+	fh, err := os.OpenFile(filepath.Clean(fn), os.O_RDONLY, perm)
+	if err != nil {
+		panic(err)
+	}
+	defer fh.Close()
+}
+
+func main() {
+	fn := "filename"
+	open(fn, 0o600)
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import (
+	"os"
+	"path/filepath"
+)
+
+func open(fn string, flag int) {
+	fh, err := os.OpenFile(filepath.Clean(fn), flag, 0o600)
+	if err != nil {
+		panic(err)
+	}
+	defer fh.Close()
+}
+
+func main() {
+	fn := "filename"
+	open(fn, os.O_RDONLY)
+}
+`}, 0, gosec.NewConfig()},
 }
