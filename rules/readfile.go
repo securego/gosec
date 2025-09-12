@@ -94,19 +94,6 @@ func (r *readfile) trackFilepathClean(n ast.Node) {
 	}
 }
 
-// trackJoin records when a Join() call result is assigned to an identifier
-// example: fullPath := filepath.Join(baseDir, cleanPath)
-func (r *readfile) trackJoin(n ast.Node) {
-	// n is expected to be a *ast.CallExpr (Join(...)) but the assignment is a different node.
-	// We will look for an enclosing AssignStmt if provided (the caller passes n which is the call)
-	if joinCall, ok := n.(*ast.CallExpr); ok && len(joinCall.Args) > 0 {
-		// We don't have direct access to the enclosing assignment here (since Match receives call exprs),
-		// so the practical approach is: when Match sees a Join call used in an assignment, it should call this helper
-		// with the assignment node. For simplicity, we will expect the caller to pass an AssignStmt.
-		_ = joinCall // caller should call trackJoin on the AssignStmt (see Match where we call it)
-	}
-}
-
 // trackJoinAssignStmt tracks assignments where RHS is a Join(...) call and LHS is an identifier
 func (r *readfile) trackJoinAssignStmt(node *ast.AssignStmt, c *gosec.Context) {
 	if len(node.Rhs) == 0 {
