@@ -308,4 +308,32 @@ func main() {
 	fmt.Println(result)
 }
 `}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import (
+	"database/sql"
+	"fmt"
+	_ "github.com/lib/pq"
+)
+
+func main() {
+	db, err := sql.Open("postgres", "user=postgres password=password dbname=mydb sslmode=disable")
+	if err!= nil {
+		panic(err)
+	}
+	defer db.Close()
+
+	var username string
+	fmt.Println("请输入用户名:")
+	fmt.Scanln(&username)
+
+	var query string = "SELECT * FROM users WHERE username = '" + username + "'"
+	rows, err := db.Query(query)
+	if err!= nil {
+		panic(err)
+	}
+	defer rows.Close()
+}
+`}, 1, gosec.NewConfig()},
 }

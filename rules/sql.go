@@ -191,6 +191,11 @@ func (s *sqlStrConcat) checkQuery(call *ast.CallExpr, ctx *gosec.Context) (*issu
 			if injection := s.findInjectionInBranch(ctx, decl.Rhs); injection != nil {
 				return ctx.NewIssue(injection, s.ID(), s.What, s.Severity, s.Confidence), nil
 			}
+		case *ast.ValueSpec:
+			// handle: var query string = "SELECT ...'" + user
+			if injection := s.findInjectionInBranch(ctx, decl.Values); injection != nil {
+				return ctx.NewIssue(injection, s.ID(), s.What, s.Severity, s.Confidence), nil
+			}
 		}
 	}
 
