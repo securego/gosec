@@ -111,6 +111,16 @@ func (r *readfile) trackJoinAssignStmt(node *ast.AssignStmt, c *gosec.Context) {
 	}
 }
 
+// osRootSuggestion returns an Autofix suggesting the use of os.Root where supported
+// to constrain file access under a fixed directory and mitigate traversal risks.
+func (r *readfile) osRootSuggestion() string {
+	major, minor, _ := gosec.GoVersion()
+	if major == 1 && minor >= 24 {
+		return "Consider using os.Root to scope file access under a fixed root (Go >=1.24). Prefer root.Open/root.Stat over os.Open/os.Stat to prevent directory traversal."
+	}
+	return ""
+}
+
 // isSafeJoin checks if path is baseDir + filepath.Clean(fn) joined.
 // improvements over earlier naive version:
 // - allow baseDir as a BasicLit or as an identifier that resolves to a string constant
@@ -193,7 +203,11 @@ func (r *readfile) Match(n ast.Node, c *gosec.Context) (*issue.Issue, error) {
 			}
 			// If the argument is a Join call but not safe per above, flag it (as before)
 			if r.isJoinFunc(callExpr, c) {
-				return c.NewIssue(n, r.ID(), r.What, r.Severity, r.Confidence), nil
+				iss := c.NewIssue(n, r.ID(), r.What, r.Severity, r.Confidence)
+				if s := r.osRootSuggestion(); s != "" {
+					iss.Autofix = s
+				}
+				return iss, nil
 			}
 		}
 
@@ -211,7 +225,11 @@ func (r *readfile) Match(n ast.Node, c *gosec.Context) (*issue.Issue, error) {
 							return nil, nil
 						}
 						// join exists but is not safe: flag it
-						return c.NewIssue(n, r.ID(), r.What, r.Severity, r.Confidence), nil
+						iss := c.NewIssue(n, r.ID(), r.What, r.Severity, r.Confidence)
+						if s := r.osRootSuggestion(); s != "" {
+							iss.Autofix = s
+						}
+						return iss, nil
 					}
 				}
 			}
@@ -221,7 +239,11 @@ func (r *readfile) Match(n ast.Node, c *gosec.Context) (*issue.Issue, error) {
 		if binExp, ok := arg.(*ast.BinaryExpr); ok {
 			// resolve all found identities from the BinaryExpr
 			if _, ok := gosec.FindVarIdentities(binExp, c); ok {
-				return c.NewIssue(n, r.ID(), r.What, r.Severity, r.Confidence), nil
+				iss := c.NewIssue(n, r.ID(), r.What, r.Severity, r.Confidence)
+				if s := r.osRootSuggestion(); s != "" {
+					iss.Autofix = s
+				}
+				return iss, nil
 			}
 		}
 
@@ -231,7 +253,11 @@ func (r *readfile) Match(n ast.Node, c *gosec.Context) (*issue.Issue, error) {
 			if _, ok := obj.(*types.Var); ok &&
 				!gosec.TryResolve(ident, c) &&
 				!r.isFilepathClean(ident, c) {
-				return c.NewIssue(n, r.ID(), r.What, r.Severity, r.Confidence), nil
+				iss := c.NewIssue(n, r.ID(), r.What, r.Severity, r.Confidence)
+				if s := r.osRootSuggestion(); s != "" {
+					iss.Autofix = s
+				}
+				return iss, nil
 			}
 		}
 	}
