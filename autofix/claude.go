@@ -39,7 +39,7 @@ func NewClaudeClient(model, apiKey string) (GenAIClient, error) {
 
 func (c *claudeWrapper) GenerateSolution(ctx context.Context, prompt string) (string, error) {
 	resp, err := c.client.Messages.New(ctx, anthropic.MessageNewParams{
-		Model:     anthropic.Model(c.model),
+		Model:     c.model,
 		MaxTokens: 1024,
 		Messages: []anthropic.MessageParam{
 			anthropic.NewUserMessage(anthropic.NewTextBlock(prompt)),
