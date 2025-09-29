@@ -414,7 +414,17 @@ func (gosec *Analyzer) CheckRules(pkg *packages.Package) {
 func (gosec *Analyzer) CheckAnalyzers(pkg *packages.Package) {
 	ssaResult, err := gosec.buildSSA(pkg)
 	if err != nil || ssaResult == nil {
-		gosec.logger.Printf("Error building the SSA representation of the package %q: %s", pkg.Name, err)
+		errMessage := "Error building the SSA representation of the package " + pkg.Name + ": "
+		if err != nil {
+			errMessage += err.Error()
+		}
+		if ssaResult == nil {
+			if err != nil {
+				errMessage += ", "
+			}
+			errMessage += "no ssa result"
+		}
+		gosec.logger.Print(errMessage)
 		return
 	}
 
