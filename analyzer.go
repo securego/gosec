@@ -28,6 +28,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -485,7 +486,10 @@ func (gosec *Analyzer) generatedFiles(pkg *packages.Package) map[string]bool {
 func (gosec *Analyzer) buildSSA(pkg *packages.Package) (interface{}, error) {
 	defer func() {
 		if r := recover(); r != nil {
-			gosec.logger.Printf("Panic when running SSA analyser on package: %s", pkg.Name)
+			gosec.logger.Printf(
+				"Panic when running SSA analyzer on package: %s. Panic: %v\nStack trace:\n%s",
+				pkg.Name, r, debug.Stack(),
+			)
 		}
 	}()
 	ssaPass := &analysis.Pass{
