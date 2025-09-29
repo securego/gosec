@@ -104,6 +104,22 @@ func runSliceBounds(pass *analysis.Pass) (interface{}, error) {
 							}
 						}
 					}
+				case *ssa.Store: // check store to nil slice or out of bounds
+				case *ssa.IndexAddr:
+					if constantValue, ok := instr.X.(*ssa.Const); ok && constantValue.Type().String()[:2] == "[]" {
+						if constantValue.Value == nil {
+							issue := newIssue(
+								pass.Analyzer.Name,
+								"slice index out of range",
+								pass.Fset,
+								instr.Pos(),
+								issue.Low,
+								issue.High)
+							issues[instr] = issue
+
+							break
+						}
+					}
 				}
 			}
 		}
@@ -191,7 +207,11 @@ func trackSliceBounds(depth int, sliceCap int, slice ssa.Node, violations *[]ssa
 					trackSliceBounds(depth, newCap, refinstr, violations, ifs)
 				}
 			case *ssa.IndexAddr:
-				indexValue, err := extractIntValue(refinstr.Index.String())
+				indexValue, err := extractIntValue(refinstr.Index.String()) //lower bound
+				if err == nil && !isSliceIndexInsideBounds(0, sliceCap, indexValue) {
+					*violations = append(*violations, refinstr)
+				}
+				indexValue, err = extractIntValueIndexAddr(refinstr, sliceCap) //lower bound
 				if err == nil && !isSliceIndexInsideBounds(0, sliceCap, indexValue) {
 					*violations = append(*violations, refinstr)
 				}
@@ -215,6 +235,22 @@ func trackSliceBounds(depth int, sliceCap int, slice ssa.Node, violations *[]ssa
 			}
 		}
 	}
+}
+
+func extractIntValueIndexAddr(refinstr *ssa.IndexAddr, sliceCap int) (int, error) {
+	for _, block := range refinstr.Block().Preds {
+		for _, instr := range block.Instrs {
+			switch instr := instr.(type) {
+			case *ssa.BinOp:
+				_, index, err := extractBinOpBound(instr)
+				if err == nil && !isSliceIndexInsideBounds(0, sliceCap, index) {
+					return index, nil
+				}
+			}
+		}
+	}
+
+	return 0, errors.New("no found")
 }
 
 func checkAllSlicesBounds(depth int, sliceCap int, slice *ssa.Slice, violations *[]ssa.Instruction, ifs map[ssa.If]*ssa.BinOp) {
@@ -370,6 +406,10 @@ func extractSliceBounds(slice *ssa.Slice) (int, int) {
 }
 
 func extractIntValue(value string) (int, error) {
+	if i, err := extractIntValuePhi(value); err == nil {
+		return i, nil
+	}
+
 	parts := strings.Split(value, ":")
 	if len(parts) != 2 {
 		return 0, fmt.Errorf("invalid value: %s", value)
@@ -381,7 +421,7 @@ func extractIntValue(value string) (int, error) {
 }
 
 func extractSliceCapFromAlloc(instr string) (int, error) {
-	re := regexp.MustCompile(`new \[(\d+)\]*`)
+	re := regexp.MustCompile(`new \[(\d+)\].*`)
 	var sliceCap int
 	matches := re.FindAllStringSubmatch(instr, -1)
 	if matches == nil {
@@ -396,4 +436,22 @@ func extractSliceCapFromAlloc(instr string) (int, error) {
 	}
 
 	return 0, errors.New("no slice cap found")
+}
+
+func extractIntValuePhi(value string) (int, error) {
+	re := regexp.MustCompile(`phi \[.+: (\d+):.+, .*\].*`)
+	var sliceCap int
+	matches := re.FindAllStringSubmatch(value, -1)
+	if matches == nil {
+		return sliceCap, fmt.Errorf("invalid value: %s", value)
+	}
+
+	if len(matches) > 0 {
+		m := matches[0]
+		if len(m) > 1 {
+			return strconv.Atoi(m[1])
+		}
+	}
+
+	return 0, fmt.Errorf("invalid value: %s", value)
 }
