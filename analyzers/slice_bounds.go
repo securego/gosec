@@ -104,21 +104,44 @@ func runSliceBounds(pass *analysis.Pass) (interface{}, error) {
 							}
 						}
 					}
-				case *ssa.Store: // check store to nil slice or out of bounds
 				case *ssa.IndexAddr:
-					if constantValue, ok := instr.X.(*ssa.Const); ok && constantValue.Type().String()[:2] == "[]" {
-						if constantValue.Value == nil {
-							issue := newIssue(
-								pass.Analyzer.Name,
-								"slice index out of range",
-								pass.Fset,
-								instr.Pos(),
-								issue.Low,
-								issue.High)
-							issues[instr] = issue
+					switch indexInstr := instr.X.(type) {
+					case *ssa.Const:
+						if indexInstr.Type().String()[:2] == "[]" {
+							if indexInstr.Value == nil {
+								issue := newIssue(
+									pass.Analyzer.Name,
+									"slice index out of range",
+									pass.Fset,
+									instr.Pos(),
+									issue.Low,
+									issue.High)
+								issues[instr] = issue
 
+								break
+							}
+						}
+					case *ssa.Alloc:
+						typeStr := indexInstr.Type().String()
+						fmt.Println(typeStr)
+						arrayLen, err := extractArrayAllocValue(typeStr) // preallocated array
+						if err != nil {
 							break
 						}
+
+						_, err = extractIntValueIndexAddr(instr, arrayLen)
+						if err != nil {
+							break
+						}
+
+						issue := newIssue(
+							pass.Analyzer.Name,
+							"slice index out of range",
+							pass.Fset,
+							instr.Pos(),
+							issue.Low,
+							issue.High)
+						issues[instr] = issue
 					}
 				}
 			}
@@ -207,11 +230,11 @@ func trackSliceBounds(depth int, sliceCap int, slice ssa.Node, violations *[]ssa
 					trackSliceBounds(depth, newCap, refinstr, violations, ifs)
 				}
 			case *ssa.IndexAddr:
-				indexValue, err := extractIntValue(refinstr.Index.String()) //lower bound
+				indexValue, err := extractIntValue(refinstr.Index.String())
 				if err == nil && !isSliceIndexInsideBounds(0, sliceCap, indexValue) {
 					*violations = append(*violations, refinstr)
 				}
-				indexValue, err = extractIntValueIndexAddr(refinstr, sliceCap) //lower bound
+				indexValue, err = extractIntValueIndexAddr(refinstr, sliceCap)
 				if err == nil && !isSliceIndexInsideBounds(0, sliceCap, indexValue) {
 					*violations = append(*violations, refinstr)
 				}
@@ -238,12 +261,25 @@ func trackSliceBounds(depth int, sliceCap int, slice ssa.Node, violations *[]ssa
 }
 
 func extractIntValueIndexAddr(refinstr *ssa.IndexAddr, sliceCap int) (int, error) {
+	var (
+		indexIncr, sliceIncr int
+	)
+
 	for _, block := range refinstr.Block().Preds {
 		for _, instr := range block.Instrs {
 			switch instr := instr.(type) {
 			case *ssa.BinOp:
 				_, index, err := extractBinOpBound(instr)
-				if err == nil && !isSliceIndexInsideBounds(0, sliceCap, index) {
+				if err != nil {
+					return 0, err
+				}
+				switch instr.Op { // 1<2 1<=2 1>2 1>=2
+				case token.LSS:
+					indexIncr--
+				}
+
+				fmt.Println(sliceCap+sliceIncr, index+indexIncr)
+				if !isSliceIndexInsideBounds(0, sliceCap+sliceIncr, index+indexIncr) {
 					return index, nil
 				}
 			}
@@ -339,9 +375,14 @@ func invBound(bound bound) bound {
 	}
 }
 
+var errExtractBinOp = fmt.Errorf("unable to extract constant from binop")
+
 func extractBinOpBound(binop *ssa.BinOp) (bound, int, error) {
 	if binop.X != nil {
 		if x, ok := binop.X.(*ssa.Const); ok {
+			if x == nil {
+				return lowerUnbounded, 0, errExtractBinOp
+			}
 			value, err := strconv.Atoi(x.Value.String())
 			if err != nil {
 				return lowerUnbounded, value, err
@@ -360,6 +401,9 @@ func extractBinOpBound(binop *ssa.BinOp) (bound, int, error) {
 	}
 	if binop.Y != nil {
 		if y, ok := binop.Y.(*ssa.Const); ok {
+			if y == nil {
+				return lowerUnbounded, 0, errExtractBinOp
+			}
 			value, err := strconv.Atoi(y.Value.String())
 			if err != nil {
 				return lowerUnbounded, value, err
@@ -376,7 +420,7 @@ func extractBinOpBound(binop *ssa.BinOp) (bound, int, error) {
 			}
 		}
 	}
-	return lowerUnbounded, 0, fmt.Errorf("unable to extract constant from binop")
+	return lowerUnbounded, 0, errExtractBinOp
 }
 
 func isSliceIndexInsideBounds(l, h int, index int) bool {
@@ -440,6 +484,24 @@ func extractSliceCapFromAlloc(instr string) (int, error) {
 
 func extractIntValuePhi(value string) (int, error) {
 	re := regexp.MustCompile(`phi \[.+: (\d+):.+, .*\].*`)
+	var sliceCap int
+	matches := re.FindAllStringSubmatch(value, -1)
+	if matches == nil {
+		return sliceCap, fmt.Errorf("invalid value: %s", value)
+	}
+
+	if len(matches) > 0 {
+		m := matches[0]
+		if len(m) > 1 {
+			return strconv.Atoi(m[1])
+		}
+	}
+
+	return 0, fmt.Errorf("invalid value: %s", value)
+}
+
+func extractArrayAllocValue(value string) (int, error) {
+	re := regexp.MustCompile(`.*\[(\d+)\].*`)
 	var sliceCap int
 	matches := re.FindAllStringSubmatch(value, -1)
 	if matches == nil {
