@@ -123,7 +123,6 @@ func runSliceBounds(pass *analysis.Pass) (interface{}, error) {
 						}
 					case *ssa.Alloc:
 						typeStr := indexInstr.Type().String()
-						fmt.Println(typeStr)
 						arrayLen, err := extractArrayAllocValue(typeStr) // preallocated array
 						if err != nil {
 							break
@@ -273,12 +272,11 @@ func extractIntValueIndexAddr(refinstr *ssa.IndexAddr, sliceCap int) (int, error
 				if err != nil {
 					return 0, err
 				}
-				switch instr.Op { // 1<2 1<=2 1>2 1>=2
+				switch instr.Op {
 				case token.LSS:
 					indexIncr--
 				}
 
-				fmt.Println(sliceCap+sliceIncr, index+indexIncr)
 				if !isSliceIndexInsideBounds(0, sliceCap+sliceIncr, index+indexIncr) {
 					return index, nil
 				}
