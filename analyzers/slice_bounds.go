@@ -81,23 +81,21 @@ func runSliceBounds(pass *analysis.Pass) (interface{}, error) {
 									for _, s := range violations {
 										switch s := s.(type) {
 										case *ssa.Slice:
-											issue := newIssue(
+											issues[s] = newIssue(
 												pass.Analyzer.Name,
 												"slice bounds out of range",
 												pass.Fset,
 												s.Pos(),
 												issue.Low,
 												issue.High)
-											issues[s] = issue
 										case *ssa.IndexAddr:
-											issue := newIssue(
+											issues[s] = newIssue(
 												pass.Analyzer.Name,
 												"slice index out of range",
 												pass.Fset,
 												s.Pos(),
 												issue.Low,
 												issue.High)
-											issues[s] = issue
 										}
 									}
 								}
@@ -109,14 +107,13 @@ func runSliceBounds(pass *analysis.Pass) (interface{}, error) {
 					case *ssa.Const:
 						if indexInstr.Type().String()[:2] == "[]" {
 							if indexInstr.Value == nil {
-								issue := newIssue(
+								issues[instr] = newIssue(
 									pass.Analyzer.Name,
 									"slice index out of range",
 									pass.Fset,
 									instr.Pos(),
 									issue.Low,
 									issue.High)
-								issues[instr] = issue
 
 								break
 							}
@@ -133,14 +130,13 @@ func runSliceBounds(pass *analysis.Pass) (interface{}, error) {
 							break
 						}
 
-						issue := newIssue(
+						issues[instr] = newIssue(
 							pass.Analyzer.Name,
 							"slice index out of range",
 							pass.Fset,
 							instr.Pos(),
 							issue.Low,
 							issue.High)
-						issues[instr] = issue
 					}
 				}
 			}
@@ -181,7 +177,7 @@ func runSliceBounds(pass *analysis.Pass) (interface{}, error) {
 								if err != nil {
 									break
 								}
-								if isSliceIndexInsideBounds(0, value, indexValue) {
+								if isSliceIndexInsideBounds(value, indexValue) {
 									delete(issues, instr)
 								}
 							}
@@ -199,8 +195,8 @@ func runSliceBounds(pass *analysis.Pass) (interface{}, error) {
 	}
 
 	foundIssues := []*issue.Issue{}
-	for _, issue := range issues {
-		foundIssues = append(foundIssues, issue)
+	for _, v := range issues {
+		foundIssues = append(foundIssues, v)
 	}
 	if len(foundIssues) > 0 {
 		return foundIssues, nil
@@ -230,11 +226,11 @@ func trackSliceBounds(depth int, sliceCap int, slice ssa.Node, violations *[]ssa
 				}
 			case *ssa.IndexAddr:
 				indexValue, err := extractIntValue(refinstr.Index.String())
-				if err == nil && !isSliceIndexInsideBounds(0, sliceCap, indexValue) {
+				if err == nil && !isSliceIndexInsideBounds(sliceCap, indexValue) {
 					*violations = append(*violations, refinstr)
 				}
 				indexValue, err = extractIntValueIndexAddr(refinstr, sliceCap)
-				if err == nil && !isSliceIndexInsideBounds(0, sliceCap, indexValue) {
+				if err == nil && !isSliceIndexInsideBounds(sliceCap, indexValue) {
 					*violations = append(*violations, refinstr)
 				}
 			case *ssa.Call:
@@ -260,9 +256,7 @@ func trackSliceBounds(depth int, sliceCap int, slice ssa.Node, violations *[]ssa
 }
 
 func extractIntValueIndexAddr(refinstr *ssa.IndexAddr, sliceCap int) (int, error) {
-	var (
-		indexIncr, sliceIncr int
-	)
+	var indexIncr, sliceIncr int
 
 	for _, block := range refinstr.Block().Preds {
 		for _, instr := range block.Instrs {
@@ -277,7 +271,7 @@ func extractIntValueIndexAddr(refinstr *ssa.IndexAddr, sliceCap int) (int, error
 					indexIncr--
 				}
 
-				if !isSliceIndexInsideBounds(0, sliceCap+sliceIncr, index+indexIncr) {
+				if !isSliceIndexInsideBounds(sliceCap+sliceIncr, index+indexIncr) {
 					return index, nil
 				}
 			}
@@ -421,8 +415,8 @@ func extractBinOpBound(binop *ssa.BinOp) (bound, int, error) {
 	return lowerUnbounded, 0, errExtractBinOp
 }
 
-func isSliceIndexInsideBounds(l, h int, index int) bool {
-	return (l <= index && index < h)
+func isSliceIndexInsideBounds(h int, index int) bool {
+	return (0 <= index && index < h)
 }
 
 func isSliceInsideBounds(l, h int, cl, ch int) bool {
