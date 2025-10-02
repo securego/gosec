@@ -372,7 +372,7 @@ var errExtractBinOp = fmt.Errorf("unable to extract constant from binop")
 func extractBinOpBound(binop *ssa.BinOp) (bound, int, error) {
 	if binop.X != nil {
 		if x, ok := binop.X.(*ssa.Const); ok {
-			if x == nil || ok {
+			if x.Value == nil {
 				return lowerUnbounded, 0, errExtractBinOp
 			}
 			value, err := strconv.Atoi(x.Value.String())
@@ -393,7 +393,7 @@ func extractBinOpBound(binop *ssa.BinOp) (bound, int, error) {
 	}
 	if binop.Y != nil {
 		if y, ok := binop.Y.(*ssa.Const); ok {
-			if y == nil || ok {
+			if y.Value == nil {
 				return lowerUnbounded, 0, errExtractBinOp
 			}
 			value, err := strconv.Atoi(y.Value.String())
