@@ -119,24 +119,25 @@ func runSliceBounds(pass *analysis.Pass) (interface{}, error) {
 							}
 						}
 					case *ssa.Alloc:
-						typeStr := indexInstr.Type().String()
-						arrayLen, err := extractArrayAllocValue(typeStr) // preallocated array
-						if err != nil {
-							break
-						}
+						if instr.Pos() > 0 {
+							typeStr := indexInstr.Type().String()
+							arrayLen, err := extractArrayAllocValue(typeStr) // preallocated array
+							if err != nil {
+								break
+							}
 
-						_, err = extractIntValueIndexAddr(instr, arrayLen)
-						if err != nil {
-							break
+							_, err = extractIntValueIndexAddr(instr, arrayLen)
+							if err != nil {
+								break
+							}
+							issues[instr] = newIssue(
+								pass.Analyzer.Name,
+								"slice index out of range",
+								pass.Fset,
+								instr.Pos(),
+								issue.Low,
+								issue.High)
 						}
-
-						issues[instr] = newIssue(
-							pass.Analyzer.Name,
-							"slice index out of range",
-							pass.Fset,
-							instr.Pos(),
-							issue.Low,
-							issue.High)
 					}
 				}
 			}
