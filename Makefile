@@ -56,7 +56,7 @@ govulncheck: install-govulncheck
 		govulncheck ./...; \
 	fi
 
-test-coverage: install-test-deps
+test-coverage:
 	go test -race -v -count=1 -coverprofile=coverage.out ./...
 
 build:
