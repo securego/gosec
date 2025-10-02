@@ -26,17 +26,12 @@ LDFLAGS = -ldflags "\
 default:
 	$(MAKE) build
 
-install-test-deps:
-	go install github.com/onsi/ginkgo/v2/ginkgo@latest
-	go install golang.org/x/crypto/...@latest
-	go install github.com/lib/pq/...@latest
-
 install-govulncheck:
 	@if [ $(GO_MINOR_VERSION) -gt $(GOVULN_MIN_VERSION) ]; then \
 		go install golang.org/x/vuln/cmd/govulncheck@latest; \
 	fi
 
-test: install-test-deps build-race fmt vet sec govulncheck
+test: build-race fmt vet sec govulncheck
 	$(GINKGO) -v --fail-fast
 
 fmt:
