@@ -338,4 +338,79 @@ func main() {
 }
 
 `}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+func main() {
+	s := make([]int, 16)
+	for i := 10; i < 17; i++ {
+        s[i]=i
+	}
+}
+
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+func main() {
+	var s []int
+	for i := 10; i < 17; i++ {
+        s[i]=i
+	}
+}
+
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+func main() {
+	s := make([]int,5, 16)
+	for i := 1; i < 6; i++ {
+        s[i]=i
+	}
+}
+
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+func main() {
+	var s [20]int
+	for i := 10; i < 17; i++ {
+        s[i]=i
+	}
+}`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+func main() {
+	var s [20]int
+	for i := 1; i < len(s); i++ {
+        s[i]=i
+	}
+}
+
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+func main() {
+	var s [20]int
+	for i := 1; i <= len(s); i++ {
+        s[i]=i
+	}
+}
+
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+func main() {
+	var s [20]int
+	for i := 18; i <= 22; i++ {
+        s[i]=i
+	}
+}
+
+`}, 1, gosec.NewConfig()},
 }
