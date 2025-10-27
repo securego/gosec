@@ -7,13 +7,13 @@ require (
 	github.com/gookit/color v1.6.0
 	github.com/lib/pq v1.10.9
 	github.com/mozilla/tls-observatory v0.0.0-20250923143331-eef96233227e
-	github.com/onsi/ginkgo/v2 v2.26.0
+	github.com/onsi/ginkgo/v2 v2.27.1
 	github.com/onsi/gomega v1.38.2
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/crypto v0.43.0
 	golang.org/x/text v0.30.0
 	golang.org/x/tools v0.38.0
-	google.golang.org/genai v1.31.0
+	google.golang.org/genai v1.32.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
