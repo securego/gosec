@@ -1,19 +1,19 @@
 module github.com/securego/gosec/v2
 
 require (
-	github.com/anthropics/anthropic-sdk-go v1.14.0
+	github.com/anthropics/anthropic-sdk-go v1.16.0
 	github.com/ccojocar/zxcvbn-go v1.0.4
 	github.com/google/uuid v1.6.0
 	github.com/gookit/color v1.6.0
 	github.com/lib/pq v1.10.9
 	github.com/mozilla/tls-observatory v0.0.0-20250923143331-eef96233227e
-	github.com/onsi/ginkgo/v2 v2.27.1
+	github.com/onsi/ginkgo/v2 v2.27.2
 	github.com/onsi/gomega v1.38.2
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/crypto v0.43.0
 	golang.org/x/text v0.30.0
 	golang.org/x/tools v0.38.0
-	google.golang.org/genai v1.32.0
+	google.golang.org/genai v1.33.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -45,7 +45,6 @@ require (
 	go.opentelemetry.io/otel v1.37.0 // indirect
 	go.opentelemetry.io/otel/metric v1.37.0 // indirect
 	go.opentelemetry.io/otel/trace v1.37.0 // indirect
-	go.uber.org/automaxprocs v1.6.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/mod v0.29.0 // indirect
 	golang.org/x/net v0.46.0 // indirect
