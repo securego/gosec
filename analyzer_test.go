@@ -814,7 +814,7 @@ var _ = Describe("Analyzer", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			issues, _, _ := analyzer.Report()
-			Expect(issues).Should(HaveLen(0))
+			Expect(issues).Should(BeEmpty())
 		})
 
 		It("should attempt to analyse a file with build tags", func() {
