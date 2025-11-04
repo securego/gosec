@@ -206,16 +206,4 @@ func main() {
 }
 `}, 1, gosec.NewConfig()},
 	}
-
-	// SampleCodeBuildTag - G601 build tags
-	SampleCodeBuildTag = []CodeSample{
-		{[]string{`
-// +build tag
-package main
-		
-func main() {
-  fmt.Println("no package imported error")
-}
-`}, 1, gosec.NewConfig()},
-	}
 )
