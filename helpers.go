@@ -553,3 +553,24 @@ func parseGoVersion(version string) (int, int, int) {
 
 	return major, minor, build
 }
+
+// CLIBuildTags converts a list of Go build tags into the corresponding CLI
+// build flag (-tags=form) by trimming whitespace, removing empty entries,
+// and joining them into a comma-separated -tags argument for use with go build
+// commands.
+func CLIBuildTags(buildTags []string) []string {
+	var buildFlags []string
+	if len(buildTags) > 0 {
+		for _, tag := range buildTags {
+			// remove empty entries and surrounding whitespace
+			if t := strings.TrimSpace(tag); t != "" {
+				buildFlags = append(buildFlags, t)
+			}
+		}
+		if len(buildFlags) > 0 {
+			buildFlags = []string{"-tags=" + strings.Join(buildFlags, ",")}
+		}
+	}
+
+	return buildFlags
+}

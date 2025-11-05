@@ -27,6 +27,17 @@ type TestPackage struct {
 	build  *buildObj
 }
 
+// Option provides a way to adjust the package config depending on testing
+// requirements
+type Option func(conf *packages.Config)
+
+// WithBuildTags enables injecting build tags into the package config on build.
+func WithBuildTags(tags []string) Option {
+	return func(conf *packages.Config) {
+		conf.BuildFlags = tags
+	}
+}
+
 // NewTestPackage will create a new and empty package. Must call Close() to cleanup
 // auxiliary files
 func NewTestPackage() *TestPackage {
@@ -62,14 +73,26 @@ func (p *TestPackage) write() error {
 }
 
 // Build ensures all files are persisted to disk and built
-func (p *TestPackage) Build() error {
+func (p *TestPackage) Build(opts ...Option) error {
 	if p.build != nil {
 		return nil
 	}
 	if err := p.write(); err != nil {
 		return err
 	}
-	basePackage, err := build.Default.ImportDir(p.Path, build.ImportComment)
+
+	conf := &packages.Config{
+		Mode:  gosec.LoadMode,
+		Tests: false,
+	}
+	for _, opt := range opts {
+		opt(conf)
+	}
+
+	// step 1/2: build context requires the array of build tags.
+	builder := build.Default
+	builder.BuildTags = conf.BuildFlags
+	basePackage, err := builder.ImportDir(p.Path, build.ImportComment)
 	if err != nil {
 		return err
 	}
@@ -79,10 +102,8 @@ func (p *TestPackage) Build() error {
 		packageFiles = append(packageFiles, path.Join(p.Path, filename))
 	}
 
-	conf := &packages.Config{
-		Mode:  gosec.LoadMode,
-		Tests: false,
-	}
+	// step 2/2: normalise to cli build flags for package loading
+	conf.BuildFlags = gosec.CLIBuildTags(conf.BuildFlags)
 	pkgs, err := packages.Load(conf, packageFiles...)
 	if err != nil {
 		return err
@@ -96,8 +117,8 @@ func (p *TestPackage) Build() error {
 }
 
 // CreateContext builds a context out of supplied package context
-func (p *TestPackage) CreateContext(filename string) *gosec.Context {
-	if err := p.Build(); err != nil {
+func (p *TestPackage) CreateContext(filename string, opts ...Option) *gosec.Context {
+	if err := p.Build(opts...); err != nil {
 		log.Fatal(err)
 		return nil
 	}

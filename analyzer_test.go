@@ -16,6 +16,7 @@ package gosec_test
 
 import (
 	"errors"
+	"fmt"
 	"go/build"
 	"log"
 	"regexp"
@@ -783,16 +784,79 @@ var _ = Describe("Analyzer", func() {
 			Expect(nosecIssues).Should(BeEmpty())
 		})
 
-		It("should pass the build tags", func() {
+		It("should not panic if a file can not compile", func() {
+			sample := testutils.SampleCodeCompilationFail[0]
+			source := sample.Code[0]
+			analyzer.LoadRules(rules.Generate(false).RulesInfo())
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+
+			pkg.AddFile("main.go", source)
+			err := pkg.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, pkg.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+		})
+
+		It("should exclude a reportable file, if excluded by build tags", func() {
+			// file has a reportable security issue, but should only be flagged
+			// to only being compiled in via a build flag.
+			sample := testutils.SampleCodeG501BuildTag[0]
+			source := sample.Code[0]
+			analyzer.LoadRules(rules.Generate(false).RulesInfo())
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+
+			pkg.AddFile("main.go", source)
+			err := pkg.Build()
+			Expect(err).To(BeEquivalentTo(&build.NoGoError{Dir: pkg.Path})) // no files should be found for scanning.
+			err = analyzer.Process(buildTags, pkg.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			issues, _, _ := analyzer.Report()
+			Expect(issues).Should(BeEmpty())
+		})
+
+		It("should attempt to analyse a file with build tags", func() {
 			sample := testutils.SampleCodeBuildTag[0]
 			source := sample.Code[0]
 			analyzer.LoadRules(rules.Generate(false).RulesInfo())
 			pkg := testutils.NewTestPackage()
 			defer pkg.Close()
-			pkg.AddFile("tags.go", source)
+
 			tags := []string{"tag"}
-			err := analyzer.Process(tags, pkg.Path)
+			pkg.AddFile("main.go", source)
+			err := pkg.Build(testutils.WithBuildTags(tags))
 			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(tags, pkg.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			issues, _, _ := analyzer.Report()
+			if len(issues) != sample.Errors {
+				fmt.Println(sample.Code)
+			}
+			Expect(issues).Should(HaveLen(sample.Errors))
+		})
+
+		It("should report issues from a file with build tags", func() {
+			sample := testutils.SampleCodeG501BuildTag[0]
+			source := sample.Code[0]
+			analyzer.LoadRules(rules.Generate(false).RulesInfo())
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+
+			tags := []string{"tag"}
+			pkg.AddFile("main.go", source)
+			err := pkg.Build(testutils.WithBuildTags(tags))
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(tags, pkg.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			issues, _, _ := analyzer.Report()
+			if len(issues) != sample.Errors {
+				fmt.Println(sample.Code)
+			}
+			Expect(issues).Should(HaveLen(sample.Errors))
 		})
 
 		It("should process an empty package with test file", func() {

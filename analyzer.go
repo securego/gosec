@@ -187,7 +187,6 @@ type Analyzer struct {
 	trackSuppressions bool
 	concurrency       int
 	analyzerSet       *analyzers.AnalyzerSet
-	mu                sync.Mutex
 }
 
 // NewAnalyzer builds a new analyzer.
@@ -251,12 +250,6 @@ func (gosec *Analyzer) LoadAnalyzers(analyzerDefinitions map[string]analyzers.An
 
 // Process kicks off the analysis process for a given package
 func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error {
-	config := &packages.Config{
-		Mode:       LoadMode,
-		BuildFlags: buildTags,
-		Tests:      gosec.tests,
-	}
-
 	type result struct {
 		pkgPath string
 		pkgs    []*packages.Package
@@ -273,7 +266,7 @@ func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error
 		for {
 			select {
 			case s := <-j:
-				pkgs, err := gosec.load(s, config)
+				pkgs, err := gosec.load(s, buildTags)
 				select {
 				case r <- result{pkgPath: s, pkgs: pkgs, err: err}:
 				case <-quit:
@@ -326,7 +319,7 @@ func (gosec *Analyzer) Process(buildTags []string, packagePaths ...string) error
 	return nil
 }
 
-func (gosec *Analyzer) load(pkgPath string, conf *packages.Config) ([]*packages.Package, error) {
+func (gosec *Analyzer) load(pkgPath string, buildTags []string) ([]*packages.Package, error) {
 	abspath, err := GetPkgAbsPath(pkgPath)
 	if err != nil {
 		gosec.logger.Printf("Skipping: %s. Path doesn't exist.", abspath)
@@ -334,12 +327,10 @@ func (gosec *Analyzer) load(pkgPath string, conf *packages.Config) ([]*packages.
 	}
 
 	gosec.logger.Println("Import directory:", abspath)
-	// step 1/3 create build context.
+
+	// step 1/2: build context requires the array of build tags.
 	buildD := build.Default
-	// step 2/3: add build tags to get env dependent files into basePackage.
-	gosec.mu.Lock()
-	buildD.BuildTags = conf.BuildFlags
-	gosec.mu.Unlock()
+	buildD.BuildTags = buildTags
 	basePackage, err := buildD.ImportDir(pkgPath, build.ImportComment)
 	if err != nil {
 		return []*packages.Package{}, fmt.Errorf("importing dir %q: %w", pkgPath, err)
@@ -362,10 +353,12 @@ func (gosec *Analyzer) load(pkgPath string, conf *packages.Config) ([]*packages.
 		}
 	}
 
-	// step 3/3 remove build tags from conf to proceed build correctly.
-	gosec.mu.Lock()
-	conf.BuildFlags = nil
-	defer gosec.mu.Unlock()
+	// step 2/2: pass in cli encoded build flags to build correctly.
+	conf := &packages.Config{
+		Mode:       LoadMode,
+		BuildFlags: CLIBuildTags(buildTags),
+		Tests:      gosec.tests,
+	}
 	pkgs, err := packages.Load(conf, packageFiles...)
 	if err != nil {
 		return []*packages.Package{}, fmt.Errorf("loading files from package %q: %w", pkgPath, err)
