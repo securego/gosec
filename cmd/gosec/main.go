@@ -106,6 +106,9 @@ var (
 	// rules to explicitly exclude
 	flagRulesExclude = vflag.ValidatedFlag{}
 
+	// exclude Analyzer-based rules
+	flagExcludeAnalyzers = flag.Bool("exclude-analyzers", false, "Exclude rules that require SSA analysis, which improves performance considerably")
+
 	// rules to explicitly exclude
 	flagExcludeGenerated = flag.Bool("exclude-generated", false, "Exclude generated files")
 
@@ -252,8 +255,12 @@ func loadRules(include, exclude string) rules.RuleList {
 	return rules.Generate(*flagTrackSuppressions, filters...)
 }
 
-func loadAnalyzers(include, exclude string) *analyzers.AnalyzerList {
+func loadAnalyzers(include, exclude string, excludeAnalyzers bool) *analyzers.AnalyzerList {
 	var filters []analyzers.AnalyzerFilter
+	if excludeAnalyzers {
+		logger.Println("Excluding all analyzers")
+		filters = append(filters, analyzers.NewAnalyzerFilter(false))
+	} else {
 	if include != "" {
 		logger.Printf("Including analyzers: %s", include)
 		including := strings.Split(include, ",")
@@ -268,6 +275,7 @@ func loadAnalyzers(include, exclude string) *analyzers.AnalyzerList {
 		filters = append(filters, analyzers.NewAnalyzerFilter(true, excluding...))
 	} else {
 		logger.Println("Excluding analyzers: default")
+		}
 	}
 	return analyzers.Generate(*flagTrackSuppressions, filters...)
 }
@@ -436,7 +444,7 @@ func main() {
 
 	ruleList := loadRules(includeRules, excludeRules)
 
-	analyzerList := loadAnalyzers(includeRules, excludeRules)
+	analyzerList := loadAnalyzers(includeRules, excludeRules, *flagExcludeAnalyzers)
 
 	if len(ruleList.Rules) == 0 && len(analyzerList.Analyzers) == 0 {
 		logger.Fatal("No rules/analyzers are configured")
