@@ -95,6 +95,18 @@ func NewResult(ruleID string, ruleIndex int, level Level, message string, suppre
 					Text:     autofix, // TODO: ensure this is plain text
 					Markdown: autofix,
 				},
+				ArtifactChanges: []*ArtifactChange{ // TODO: this is a placeholder to pass validation. The values are not of use right now
+					{
+						ArtifactLocation: &ArtifactLocation{
+							Description: NewMessage("unknown"),
+						},
+						Replacements: []*Replacement{
+							{
+								DeletedRegion: NewRegion(1, 1, 1, 1, "unknown"),
+							},
+						},
+					},
+				},
 			},
 		}
 	}
