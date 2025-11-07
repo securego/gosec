@@ -1,16 +1,79 @@
 package sarif_test
 
 import (
+	"bufio"
 	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
 	"regexp"
+	"sync"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/santhosh-tekuri/jsonschema/v6"
 
 	"github.com/securego/gosec/v2"
 	"github.com/securego/gosec/v2/issue"
 	"github.com/securego/gosec/v2/report/sarif"
 )
+
+var (
+	sarifSchemaOnce   sync.Once
+	sarifSchema       *jsonschema.Schema
+	sarifSchemaErr    error
+	sarifSchemaClient = &http.Client{Timeout: 30 * time.Second}
+)
+
+func validateSarifSchema(report *sarif.Report) error {
+	GinkgoHelper()
+	sarifSchemaOnce.Do(func() {
+		resp, err := sarifSchemaClient.Get(sarif.Schema)
+		if err != nil {
+			sarifSchemaErr = fmt.Errorf("fetch sarif schema: %w", err)
+			return
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			sarifSchemaErr = fmt.Errorf("fetch sarif schema: unexpected status %s", resp.Status)
+			return
+		}
+
+		schema, err := jsonschema.UnmarshalJSON(resp.Body)
+		if err != nil {
+			sarifSchemaErr = fmt.Errorf("error unmarshaling schema: %w", err)
+			return
+		}
+
+		compiler := jsonschema.NewCompiler()
+		if err := compiler.AddResource(sarif.Schema, schema); err != nil {
+			sarifSchemaErr = fmt.Errorf("compile sarif schema: %w", err)
+			return
+		}
+
+		sarifSchema, sarifSchemaErr = compiler.Compile(sarif.Schema)
+	})
+
+	if sarifSchemaErr != nil {
+		return sarifSchemaErr
+	}
+
+	// Marshal the report to JSON
+	v, err := json.MarshalIndent(report, "", "\t")
+	if err != nil {
+		return err
+	}
+
+	// Unmarshal into any for schema validation
+	data, err := jsonschema.UnmarshalJSON(bufio.NewReader(bytes.NewReader(v)))
+	if err != nil {
+		return err
+	}
+
+	return sarifSchema.Validate(data)
+}
 
 var _ = Describe("Sarif Formatter", func() {
 	BeforeEach(func() {
@@ -23,6 +86,9 @@ var _ = Describe("Sarif Formatter", func() {
 			result := buf.String()
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(result).To(ContainSubstring("\"results\": ["))
+			sarifReport, err := sarif.GenerateReport([]string{}, reportInfo)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(validateSarifSchema(sarifReport)).To(Succeed())
 		})
 
 		It("sarif formatted report should contain the suppressed results", func() {
@@ -40,7 +106,7 @@ var _ = Describe("Sarif Formatter", func() {
 				Cwe:        cwe,
 				Suppressions: []issue.SuppressionInfo{
 					{
-						Kind:          "kind",
+						Kind:          "inSource",
 						Justification: "justification",
 					},
 				},
@@ -57,6 +123,9 @@ var _ = Describe("Sarif Formatter", func() {
 
 			hasSuppressions, _ := regexp.MatchString(`"suppressions": \[(\s*){`, result)
 			Expect(hasSuppressions).To(BeTrue())
+			sarifReport, err := sarif.GenerateReport([]string{}, reportInfo)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(validateSarifSchema(sarifReport)).To(Succeed())
 		})
 		It("sarif formatted report should contain the formatted one line code snippet", func() {
 			ruleID := "G101"
@@ -75,7 +144,7 @@ var _ = Describe("Sarif Formatter", func() {
 				Cwe:        cwe,
 				Suppressions: []issue.SuppressionInfo{
 					{
-						Kind:          "kind",
+						Kind:          "inSource",
 						Justification: "justification",
 					},
 				},
@@ -84,6 +153,7 @@ var _ = Describe("Sarif Formatter", func() {
 			sarifReport, err := sarif.GenerateReport([]string{}, reportInfo)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(sarifReport.Runs[0].Results[0].Locations[0].PhysicalLocation.Region.Snippet.Text).Should(Equal(expectedCode))
+			Expect(validateSarifSchema(sarifReport)).To(Succeed())
 		})
 		It("sarif formatted report should contain the formatted multiple line code snippet", func() {
 			ruleID := "G101"
@@ -102,7 +172,7 @@ var _ = Describe("Sarif Formatter", func() {
 				Cwe:        cwe,
 				Suppressions: []issue.SuppressionInfo{
 					{
-						Kind:          "kind",
+						Kind:          "inSource",
 						Justification: "justification",
 					},
 				},
@@ -111,6 +181,7 @@ var _ = Describe("Sarif Formatter", func() {
 			sarifReport, err := sarif.GenerateReport([]string{}, reportInfo)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(sarifReport.Runs[0].Results[0].Locations[0].PhysicalLocation.Region.Snippet.Text).Should(Equal(expectedCode))
+			Expect(validateSarifSchema(sarifReport)).To(Succeed())
 		})
 		It("sarif formatted report should have proper rule index", func() {
 			rules := []string{"G404", "G101", "G102", "G103"}
@@ -128,7 +199,7 @@ var _ = Describe("Sarif Formatter", func() {
 					Cwe:        cwe,
 					Suppressions: []issue.SuppressionInfo{
 						{
-							Kind:          "kind",
+							Kind:          "inSource",
 							Justification: "justification",
 						},
 					},
@@ -150,7 +221,7 @@ var _ = Describe("Sarif Formatter", func() {
 					Cwe:        cwe,
 					Suppressions: []issue.SuppressionInfo{
 						{
-							Kind:          "kind",
+							Kind:          "inSource",
 							Justification: "justification",
 						},
 					},
@@ -171,6 +242,7 @@ var _ = Describe("Sarif Formatter", func() {
 				driverRuleIndexes[rule.ID] = ruleIndex
 			}
 			Expect(resultRuleIndexes).Should(Equal(driverRuleIndexes))
+			Expect(validateSarifSchema(sarifReport)).To(Succeed())
 		})
 	})
 })
