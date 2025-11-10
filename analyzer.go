@@ -405,6 +405,11 @@ func (gosec *Analyzer) CheckRules(pkg *packages.Package) {
 
 // CheckAnalyzers runs analyzers on a given package.
 func (gosec *Analyzer) CheckAnalyzers(pkg *packages.Package) {
+	// significant performance improvement if no analyzers are loaded
+	if len(gosec.analyzerSet.Analyzers) == 0 {
+		return
+	}
+
 	ssaResult, err := gosec.buildSSA(pkg)
 	if err != nil || ssaResult == nil {
 		errMessage := "Error building the SSA representation of the package " + pkg.Name + ": "
