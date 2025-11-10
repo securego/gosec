@@ -9,6 +9,7 @@ require (
 	github.com/mozilla/tls-observatory v0.0.0-20250923143331-eef96233227e
 	github.com/onsi/ginkgo/v2 v2.27.2
 	github.com/onsi/gomega v1.38.2
+	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/crypto v0.43.0
 	golang.org/x/text v0.30.0
