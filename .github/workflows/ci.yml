@@ -32,7 +32,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
       - name: lint
-        uses: golangci/golangci-lint-action@v8
+        uses: golangci/golangci-lint-action@v9
         with:
           version: ${{ matrix.version.golangci }}
       - name: Run Gosec Security Scanner
