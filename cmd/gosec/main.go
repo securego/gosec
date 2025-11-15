@@ -159,6 +159,12 @@ var (
 	// key to implementing AI provider services
 	flagAiAPIKey = flag.String("ai-api-key", "", "Key to access the AI API")
 
+	// base URL for AI API (optional, for OpenAI-compatible APIs)
+	flagAiBaseURL = flag.String("ai-base-url", "", "Base URL for AI API (e.g., for OpenAI-compatible services)")
+
+	// skip SSL verification for AI API
+	flagAiSkipSSL = flag.Bool("ai-skip-ssl", false, "Skip SSL certificate verification for AI API")
+
 	// exclude the folders from scan
 	flagDirsExclude arrayFlags
 
@@ -509,7 +515,7 @@ func main() {
 	aiEnabled := *flagAiAPIProvider != ""
 
 	if len(issues) > 0 && aiEnabled {
-		err := autofix.GenerateSolution(*flagAiAPIProvider, aiAPIKey, issues)
+		err := autofix.GenerateSolution(*flagAiAPIProvider, aiAPIKey, *flagAiBaseURL, *flagAiSkipSSL, issues)
 		if err != nil {
 			logger.Print(err)
 		}
