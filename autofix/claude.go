@@ -13,6 +13,8 @@ const (
 	ModelClaudeOpus4_0   = anthropic.ModelClaudeOpus4_0
 	ModelClaudeOpus4_1   = anthropic.ModelClaudeOpus4_1_20250805
 	ModelClaudeSonnet4_0 = anthropic.ModelClaudeSonnet4_0
+	ModelClaudeSonnet4_5 = anthropic.ModelClaudeSonnet4_5_20250929
+	ModelClaudeHaiku4_5  = anthropic.ModelClaudeHaiku4_5_20251001
 )
 
 var _ GenAIClient = (*claudeWrapper)(nil)
@@ -68,6 +70,10 @@ func parseAnthropicModel(model string) anthropic.Model {
 		return anthropic.ModelClaudeOpus4_0
 	case "claude-opus-4-1":
 		return anthropic.ModelClaudeOpus4_1_20250805
+	case "claude-sonnet-4-5", "claude-sonnet-4-5-20250929":
+		return anthropic.ModelClaudeSonnet4_5_20250929
+	case "claude-haiku-4-5", "claude-haiku-4-5-20251001":
+		return anthropic.ModelClaudeHaiku4_5_20251001
 	}
 
 	return anthropic.ModelClaudeSonnet4_0
