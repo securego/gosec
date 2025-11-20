@@ -11,7 +11,7 @@ jobs:
       ACTIONS_ALLOW_UNSECURE_COMMANDS: true
     steps:
       - name: Checkout Source
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Unshallow
         run: git fetch --prune --unshallow
       - name: Set up Go
