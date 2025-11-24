@@ -81,8 +81,11 @@ func TestGenerateSolution_UnsupportedProvider(t *testing.T) {
 	}
 
 	// Act
-	err := GenerateSolution("unsupported-provider", "test-api-key", issues)
+	// Note: With default OpenAI-compatible fallback, this will attempt to create an OpenAI client
+	// The test will fail during client initialization due to missing/invalid API key or base URL
+	err := GenerateSolution("custom-model", "", "", false, issues)
 
 	// Assert
-	require.EqualError(t, err, "unsupported AI backend: unsupported-provider")
+	// Expect an error during client initialization or API call
+	require.Error(t, err)
 }
