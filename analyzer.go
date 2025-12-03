@@ -35,6 +35,8 @@ import (
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/buildssa"
+	"golang.org/x/tools/go/analysis/passes/ctrlflow"
+	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/packages"
 
 	"github.com/securego/gosec/v2/analyzers"
@@ -430,7 +432,7 @@ func (gosec *Analyzer) CheckAnalyzers(pkg *packages.Package) {
 		buildssa.Analyzer: &analyzers.SSAAnalyzerResult{
 			Config: gosec.Config(),
 			Logger: gosec.logger,
-			SSA:    ssaResult.(*buildssa.SSA),
+			SSA:    ssaResult,
 		},
 	}
 
@@ -491,7 +493,7 @@ func (gosec *Analyzer) generatedFiles(pkg *packages.Package) map[string]bool {
 }
 
 // buildSSA runs the SSA pass which builds the SSA representation of the package. It handles gracefully any panic.
-func (gosec *Analyzer) buildSSA(pkg *packages.Package) (interface{}, error) {
+func (gosec *Analyzer) buildSSA(pkg *packages.Package) (*buildssa.SSA, error) {
 	defer func() {
 		if r := recover(); r != nil {
 			gosec.logger.Printf(
@@ -500,26 +502,62 @@ func (gosec *Analyzer) buildSSA(pkg *packages.Package) (interface{}, error) {
 			)
 		}
 	}()
-	ssaPass := &analysis.Pass{
-		Analyzer:          buildssa.Analyzer,
-		Fset:              pkg.Fset,
-		Files:             pkg.Syntax,
-		OtherFiles:        pkg.OtherFiles,
-		IgnoredFiles:      pkg.IgnoredFiles,
-		Pkg:               pkg.Types,
-		TypesInfo:         pkg.TypesInfo,
-		TypesSizes:        pkg.TypesSizes,
-		ResultOf:          nil,
-		Report:            nil,
-		ImportObjectFact:  nil,
-		ExportObjectFact:  nil,
-		ImportPackageFact: nil,
-		ExportPackageFact: nil,
-		AllObjectFacts:    nil,
-		AllPackageFacts:   nil,
+	if pkg == nil {
+		return nil, errors.New("nil package provided")
+	}
+	if pkg.Types == nil {
+		return nil, fmt.Errorf("package %s has no type information (compilation failed?)", pkg.Name)
+	}
+	if pkg.TypesInfo == nil {
+		return nil, fmt.Errorf("package %s has no type information", pkg.Name)
+	}
+	// The SSA and CtrlFlow builders require architecture sizing (WordSize/MaxAlign).
+	// If go/packages didn't provide it, we MUST provide a default to prevent panics.
+	typesSizes := pkg.TypesSizes
+	if typesSizes == nil {
+		// Fallback to standard 64-bit sizes (WordSize: 8, MaxAlign: 8)
+		// This is safe for most analysis contexts.
+		typesSizes = &types.StdSizes{WordSize: 8, MaxAlign: 8}
+	}
+	pass := &analysis.Pass{
+		Fset:             pkg.Fset,
+		Files:            pkg.Syntax,
+		OtherFiles:       pkg.OtherFiles,
+		IgnoredFiles:     pkg.IgnoredFiles,
+		Pkg:              pkg.Types,
+		TypesInfo:        pkg.TypesInfo,
+		TypesSizes:       pkg.TypesSizes,
+		ResultOf:         make(map[*analysis.Analyzer]interface{}),
+		Report:           func(d analysis.Diagnostic) {},
+		ImportObjectFact: func(obj types.Object, fact analysis.Fact) bool { return false },
+		ExportObjectFact: func(obj types.Object, fact analysis.Fact) {},
 	}
 
-	return ssaPass.Analyzer.Run(ssaPass)
+	pass.Analyzer = inspect.Analyzer
+	i, err := inspect.Analyzer.Run(pass)
+	if err != nil {
+		return nil, fmt.Errorf("running inspect analysis: %w", err)
+	}
+	pass.ResultOf[inspect.Analyzer] = i
+
+	pass.Analyzer = ctrlflow.Analyzer
+	cf, err := ctrlflow.Analyzer.Run(pass)
+	if err != nil {
+		return nil, fmt.Errorf("running control flow analysis: %w", err)
+	}
+	pass.ResultOf[ctrlflow.Analyzer] = cf
+
+	pass.Analyzer = buildssa.Analyzer
+	result, err := buildssa.Analyzer.Run(pass)
+	if err != nil {
+		return nil, fmt.Errorf("running SSA analysis: %w", err)
+	}
+
+	ssaResult, ok := result.(*buildssa.SSA)
+	if !ok {
+		return nil, fmt.Errorf("unexpected SSA analysis result type: %T", result)
+	}
+	return ssaResult, nil
 }
 
 // ParseErrors parses the errors from given package
