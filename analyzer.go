@@ -511,14 +511,6 @@ func (gosec *Analyzer) buildSSA(pkg *packages.Package) (*buildssa.SSA, error) {
 	if pkg.TypesInfo == nil {
 		return nil, fmt.Errorf("package %s has no type information", pkg.Name)
 	}
-	// The SSA and CtrlFlow builders require architecture sizing (WordSize/MaxAlign).
-	// If go/packages didn't provide it, we MUST provide a default to prevent panics.
-	typesSizes := pkg.TypesSizes
-	if typesSizes == nil {
-		// Fallback to standard 64-bit sizes (WordSize: 8, MaxAlign: 8)
-		// This is safe for most analysis contexts.
-		typesSizes = &types.StdSizes{WordSize: 8, MaxAlign: 8}
-	}
 	pass := &analysis.Pass{
 		Fset:             pkg.Fset,
 		Files:            pkg.Syntax,
