@@ -39,6 +39,38 @@ func (r *trojanSource) Match(node ast.Node, c *gosec.Context) (*issue.Issue, err
 	return nil, nil
 }
 
+// func (r *trojanSource) Match(node ast.Node, c *gosec.Context) (*issue.Issue, error) {
+// 	if file, ok := node.(*ast.File); ok {
+// 		fobj := c.FileSet.File(file.Pos())
+// 		if fobj == nil {
+// 			return nil, nil
+// 		}
+
+// 		file, err := os.Open(fobj.Name())
+// 		if err != nil {
+// 			log.Fatal(err)
+// 		}
+
+// 		defer file.Close()
+
+// 		scanner := bufio.NewScanner(file)
+// 		for scanner.Scan() {
+// 			line := scanner.Text()
+// 			for _, ch := range line {
+// 				if _, exists := r.bidiChars[ch]; exists {
+// 					return c.NewIssue(node, r.ID(), r.What, r.Severity, r.Confidence), nil
+// 				}
+// 			}
+// 		}
+
+// 		if err := scanner.Err(); err != nil {
+// 			log.Fatal(err)
+// 		}
+// 	}
+
+// 	return nil, nil
+// }
+
 func NewTrojanSource(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	return &trojanSource{
 		MetaData: issue.MetaData{
