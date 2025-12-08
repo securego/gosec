@@ -14,7 +14,7 @@ require (
 	golang.org/x/crypto v0.45.0
 	golang.org/x/text v0.31.0
 	golang.org/x/tools v0.39.0
-	google.golang.org/genai v1.36.0
+	google.golang.org/genai v1.37.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
