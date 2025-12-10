@@ -11,13 +11,13 @@ jobs:
       ACTIONS_ALLOW_UNSECURE_COMMANDS: true
     steps:
       - name: Checkout Source
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Unshallow
         run: git fetch --prune --unshallow
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: "1.25.4"
+          go-version: "1.25.5"
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3
         with:

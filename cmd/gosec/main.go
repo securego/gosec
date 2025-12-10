@@ -300,11 +300,7 @@ func getPrintedFormat(format string, verbose string) string {
 }
 
 func printReport(format string, color bool, rootPaths []string, reportInfo *gosec.ReportInfo) error {
-	err := report.CreateReport(os.Stdout, format, color, rootPaths, reportInfo)
-	if err != nil {
-		return err
-	}
-	return nil
+	return report.CreateReport(os.Stdout, format, color, rootPaths, reportInfo)
 }
 
 func saveReport(filename, format string, rootPaths []string, reportInfo *gosec.ReportInfo) error {
@@ -313,11 +309,7 @@ func saveReport(filename, format string, rootPaths []string, reportInfo *gosec.R
 		return err
 	}
 	defer outfile.Close() // #nosec G307
-	err = report.CreateReport(outfile, format, false, rootPaths, reportInfo)
-	if err != nil {
-		return err
-	}
-	return nil
+	return report.CreateReport(outfile, format, false, rootPaths, reportInfo)
 }
 
 func convertToScore(value string) (issue.Score, error) {

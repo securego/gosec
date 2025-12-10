@@ -13,7 +13,7 @@ import (
 const (
 	AIProviderFlagHelp = `AI API provider to generate auto fixes to issues. Valid options are:
 - gemini-2.5-pro, gemini-2.5-flash, gemini-2.5-flash-lite, gemini-2.0-flash, gemini-2.0-flash-lite (gemini, default);
-- claude-sonnet-4-0 (claude, default), claude-opus-4-0, claude-opus-4-1, claude-sonnet-3-7;
+- claude-sonnet-4-0 (claude, default), claude-sonnet-4-5, claude-opus-4-0, claude-opus-4-1, claude-haiku-4-5, claude-sonnet-3-7`
 - gpt-4o (openai, default), gpt-4o-mini`
 
 	AIPrompt = `Provide a brief explanation and a solution to fix this security issue
