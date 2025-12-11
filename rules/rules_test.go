@@ -107,6 +107,10 @@ var _ = Describe("gosec rules", func() {
 			runner("G114", testutils.SampleCodeG114)
 		})
 
+		It("should detect Trojan Source attacks using bidirectional Unicode characters", func() {
+			runner("G116", testutils.SampleCodeG116)
+		})
+
 		It("should detect sql injection via format strings", func() {
 			runner("G201", testutils.SampleCodeG201)
 		})
