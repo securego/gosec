@@ -10,153 +10,19 @@ import "github.com/securego/gosec/v2"
 var (
 	// SampleCodeG116 - TrojanSource code snippets
 	SampleCodeG116 = []CodeSample{
-		{[]string{`
-package main
-
-import "fmt"
-
-func main() {
-	// This comment contains bidirectional unicode: access‮⁦ granted⁩‭
-	isAdmin := false
-	fmt.Println("Access status:", isAdmin)
-}
-`}, 1, gosec.NewConfig()},
-		{[]string{`
-package main
-
-import "fmt"
-
-func main() {
-	// Trojan source with RLO character
-	accessLevel := "user"
-	// Actually assigns "nimda" due to bidi chars: accessLevel = "‮nimda"
-	if accessLevel == "admin" {
-		fmt.Println("Access granted")
-	}
-}
-`}, 1, gosec.NewConfig()},
-		{[]string{`
-package main
-
-import "fmt"
-
-func main() {
-	// String with bidirectional override
-	username := "admin‮ ⁦Check if admin⁩ ⁦"
-	password := "secret"
-	fmt.Println(username, password)
-}
-`}, 1, gosec.NewConfig()},
-		{[]string{`
-package main
-
-import "fmt"
-
-func main() {
-	// Contains LRI (Left-to-Right Isolate) U+2066
-	comment := "Safe comment ⁦with hidden text⁩"
-	fmt.Println(comment)
-}
-`}, 1, gosec.NewConfig()},
-		{[]string{`
-package main
-
-import "fmt"
-
-func main() {
-	// Contains RLI (Right-to-Left Isolate) U+2067
-	message := "Normal text ⁧hidden⁩"
-	fmt.Println(message)
-}
-`}, 1, gosec.NewConfig()},
-		{[]string{`
-package main
-
-import "fmt"
-
-func main() {
-	// Contains FSI (First Strong Isolate) U+2068
-	text := "Text with ⁨hidden content⁩"
-	fmt.Println(text)
-}
-`}, 1, gosec.NewConfig()},
-		{[]string{`
-package main
-
-import "fmt"
-
-func main() {
-	// Contains LRE (Left-to-Right Embedding) U+202A
-	embedded := "Text with ‪embedded‬ content"
-	fmt.Println(embedded)
-}
-`}, 1, gosec.NewConfig()},
-		{[]string{`
-package main
-
-import "fmt"
-
-func main() {
-	// Contains RLE (Right-to-Left Embedding) U+202B
-	rtlEmbedded := "Text with ‫embedded‬ content"
-	fmt.Println(rtlEmbedded)
-}
-`}, 1, gosec.NewConfig()},
-		{[]string{`
-package main
-
-import "fmt"
-
-func main() {
-	// Contains PDF (Pop Directional Formatting) U+202C
-	formatted := "Text with ‬formatting"
-	fmt.Println(formatted)
-}
-`}, 1, gosec.NewConfig()},
-		{[]string{`
-package main
-
-import "fmt"
-
-func main() {
-	// Contains LRO (Left-to-Right Override) U+202D
-	override := "Text ‭override"
-	fmt.Println(override)
-}
-`}, 1, gosec.NewConfig()},
-		{[]string{`
-package main
-
-import "fmt"
-
-func main() {
-	// Contains RLO (Right-to-Left Override) U+202E
-	rloText := "Text ‮override"
-	fmt.Println(rloText)
-}
-`}, 1, gosec.NewConfig()},
-		{[]string{`
-package main
-
-import "fmt"
-
-func main() {
-	// Contains RLM (Right-to-Left Mark) U+200F
-	marked := "Text ‏marked"
-	fmt.Println(marked)
-}
-`}, 1, gosec.NewConfig()},
-		{[]string{`
-package main
-
-import "fmt"
-
-func main() {
-	// Contains LRM (Left-to-Right Mark) U+200E
-	lrmText := "Text ‎marked"
-	fmt.Println(lrmText)
-}
-`}, 1, gosec.NewConfig()},
+		{[]string{"\npackage main\n\nimport \"fmt\"\n\nfunc main() {\n\t// This comment contains bidirectional unicode: access\u202e\u2066 granted\u2069\u202d\n\tisAdmin := false\n\tfmt.Println(\"Access status:\", isAdmin)\n}\n"}, 1, gosec.NewConfig()},
+		{[]string{"\npackage main\n\nimport \"fmt\"\n\nfunc main() {\n\t// Trojan source with RLO character\n\taccessLevel := \"user\"\n\t// Actually assigns \"nimda\" due to bidi chars: accessLevel = \"\u202enimda\"\n\tif accessLevel == \"admin\" {\n\t\tfmt.Println(\"Access granted\")\n\t}\n}\n"}, 1, gosec.NewConfig()},
+		{[]string{"\npackage main\n\nimport \"fmt\"\n\nfunc main() {\n\t// String with bidirectional override\n\tusername := \"admin\u202e \u2066Check if admin\u2069 \u2066\"\n\tpassword := \"secret\"\n\tfmt.Println(username, password)\n}\n"}, 1, gosec.NewConfig()},
+		{[]string{"\npackage main\n\nimport \"fmt\"\n\nfunc main() {\n\t// Contains LRI (Left-to-Right Isolate) U+2066\n\tcomment := \"Safe comment \u2066with hidden text\u2069\"\n\tfmt.Println(comment)\n}\n"}, 1, gosec.NewConfig()},
+		{[]string{"\npackage main\n\nimport \"fmt\"\n\nfunc main() {\n\t// Contains RLI (Right-to-Left Isolate) U+2067\n\tmessage := \"Normal text \u2067hidden\u2069\"\n\tfmt.Println(message)\n}\n"}, 1, gosec.NewConfig()},
+		{[]string{"\npackage main\n\nimport \"fmt\"\n\nfunc main() {\n\t// Contains FSI (First Strong Isolate) U+2068\n\ttext := \"Text with \u2068hidden content\u2069\"\n\tfmt.Println(text)\n}\n"}, 1, gosec.NewConfig()},
+		{[]string{"\npackage main\n\nimport \"fmt\"\n\nfunc main() {\n\t// Contains LRE (Left-to-Right Embedding) U+202A\n\tembedded := \"Text with \u202aembedded\u202c content\"\n\tfmt.Println(embedded)\n}\n"}, 1, gosec.NewConfig()},
+		{[]string{"\npackage main\n\nimport \"fmt\"\n\nfunc main() {\n\t// Contains RLE (Right-to-Left Embedding) U+202B\n\trtlEmbedded := \"Text with \u202bembedded\u202c content\"\n\tfmt.Println(rtlEmbedded)\n}\n"}, 1, gosec.NewConfig()},
+		{[]string{"\npackage main\n\nimport \"fmt\"\n\nfunc main() {\n\t// Contains PDF (Pop Directional Formatting) U+202C\n\tformatted := \"Text with \u202cformatting\"\n\tfmt.Println(formatted)\n}\n"}, 1, gosec.NewConfig()},
+		{[]string{"\npackage main\n\nimport \"fmt\"\n\nfunc main() {\n\t// Contains LRO (Left-to-Right Override) U+202D\n\toverride := \"Text \u202doverride\"\n\tfmt.Println(override)\n}\n"}, 1, gosec.NewConfig()},
+		{[]string{"\npackage main\n\nimport \"fmt\"\n\nfunc main() {\n\t// Contains RLO (Right-to-Left Override) U+202E\n\trloText := \"Text \u202eoverride\"\n\tfmt.Println(rloText)\n}\n"}, 1, gosec.NewConfig()},
+		{[]string{"\npackage main\n\nimport \"fmt\"\n\nfunc main() {\n\t// Contains RLM (Right-to-Left Mark) U+200F\n\tmarked := \"Text \u200fmarked\"\n\tfmt.Println(marked)\n}\n"}, 1, gosec.NewConfig()},
+		{[]string{"\npackage main\n\nimport \"fmt\"\n\nfunc main() {\n\t// Contains LRM (Left-to-Right Mark) U+200E\n\tlrmText := \"Text \u200emarked\"\n\tfmt.Println(lrmText)\n}\n"}, 1, gosec.NewConfig()},
 		{[]string{`
 package main
 
