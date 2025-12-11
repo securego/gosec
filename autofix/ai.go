@@ -13,7 +13,8 @@ import (
 const (
 	AIProviderFlagHelp = `AI API provider to generate auto fixes to issues. Valid options are:
 - gemini-2.5-pro, gemini-2.5-flash, gemini-2.5-flash-lite, gemini-2.0-flash, gemini-2.0-flash-lite (gemini, default);
-- claude-sonnet-4-0 (claude, default), claude-sonnet-4-5, claude-opus-4-0, claude-opus-4-1, claude-haiku-4-5, claude-sonnet-3-7`
+- claude-sonnet-4-0 (claude, default), claude-sonnet-4-5, claude-opus-4-0, claude-opus-4-1, claude-haiku-4-5, claude-sonnet-3-7
+- gpt-4o (openai, default), gpt-4o-mini`
 
 	AIPrompt = `Provide a brief explanation and a solution to fix this security issue
   in Go programming language: %q.
@@ -27,7 +28,7 @@ type GenAIClient interface {
 }
 
 // GenerateSolution generates a solution for the given issues using the specified AI provider
-func GenerateSolution(model, aiAPIKey string, issues []*issue.Issue) (err error) {
+func GenerateSolution(model, aiAPIKey, baseURL string, skipSSL bool, issues []*issue.Issue) (err error) {
 	var client GenAIClient
 
 	switch {
@@ -35,13 +36,27 @@ func GenerateSolution(model, aiAPIKey string, issues []*issue.Issue) (err error)
 		client, err = NewClaudeClient(model, aiAPIKey)
 	case strings.HasPrefix(model, "gemini"):
 		client, err = NewGeminiClient(model, aiAPIKey)
+	case strings.HasPrefix(model, "gpt"):
+		config := OpenAIConfig{
+			Model:   model,
+			APIKey:  aiAPIKey,
+			BaseURL: baseURL,
+			SkipSSL: skipSSL,
+		}
+		client, err = NewOpenAIClient(config)
+	default:
+		// Default to OpenAI-compatible API for custom models
+		config := OpenAIConfig{
+			Model:   model,
+			APIKey:  aiAPIKey,
+			BaseURL: baseURL,
+			SkipSSL: skipSSL,
+		}
+		client, err = NewOpenAIClient(config)
 	}
 
-	switch {
-	case err != nil:
+	if err != nil {
 		return fmt.Errorf("initializing AI client: %w", err)
-	case client == nil:
-		return fmt.Errorf("unsupported AI backend: %s", model)
 	}
 
 	return generateSolution(client, issues)
