@@ -115,6 +115,6 @@ func parseOpenAIModel(model string) openai.ChatModel {
 	case "gpt-4o-mini":
 		return openai.ChatModelGPT4oMini
 	default:
-		return openai.ChatModel(model)
+		return model
 	}
 }
