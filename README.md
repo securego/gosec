@@ -140,6 +140,7 @@ directory you can supply `./...` as the input argument.
 - G112: Potential slowloris attack
 - G114: Use of net/http serve function that has no support for setting timeouts
 - G115: Potential integer overflow when converting between integer types
+- G116: Detect Trojan Source attacks using bidirectional Unicode control characters
 - G201: SQL query construction using format string
 - G202: SQL query construction using string concatenation
 - G203: Use of unescaped data in HTML templates
