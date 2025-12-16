@@ -25,7 +25,7 @@ jobs:
           go-version: ${{ matrix.version.go-version }}
       - name: Checkout Source
         uses: actions/checkout@v6
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -55,7 +55,7 @@ jobs:
           go-version: "1.25.5"
       - name: Checkout Source
         uses: actions/checkout@v6
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
