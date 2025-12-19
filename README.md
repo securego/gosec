@@ -76,6 +76,38 @@ jobs:
           args: ./...
 ```
 
+#### Scanning Projects with Private Modules
+
+If your project imports private Go modules, you need to configure authentication so that `gosec` can fetch the dependencies. Set the following environment variables in your workflow:
+
+- `GOPRIVATE`: A comma-separated list of module path prefixes that should be considered private (e.g., `github.com/your-org/*`).
+- `GITHUB_AUTHENTICATION_TOKEN`: A GitHub token with read access to your private repositories.
+
+```yaml
+name: Run Gosec
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    env:
+      GO111MODULE: on
+      GOPRIVATE: github.com/your-org/*
+      GITHUB_AUTHENTICATION_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v3
+      - name: Run Gosec Security Scanner
+        uses: securego/gosec@master
+        with:
+          args: ./...
+```
+
 ### Integrating with code scanning
 
 You can [integrate third-party code analysis tools](https://docs.github.com/en/github/finding-security-vulnerabilities-and-errors-in-your-code/integrating-with-code-scanning) with GitHub code scanning by uploading data as SARIF files.
