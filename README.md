@@ -108,8 +108,6 @@ jobs:
           args: ./...
 ```
 
-**Note:** The `GITHUB_AUTHENTICATION_TOKEN` should be stored as a [repository secret](https://docs.github.com/en/actions/security-guides/encrypted-secrets) and should have sufficient permissions to read your private modules.
-
 ### Integrating with code scanning
 
 You can [integrate third-party code analysis tools](https://docs.github.com/en/github/finding-security-vulnerabilities-and-errors-in-your-code/integrating-with-code-scanning) with GitHub code scanning by uploading data as SARIF files.
