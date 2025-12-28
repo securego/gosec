@@ -413,4 +413,39 @@ func main() {
 }
 
 `}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+func main() {
+	args := []any{"1"}
+	switch len(args) - 1 {
+	case 1:
+		_ = args[1]
+	}
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	value := "1234567890"
+	weight := []int{2, 3, 4, 5, 6, 7}
+	wLen := len(weight)
+	l := len(value) - 1
+	addr := make([]any, 7)
+	sum := 0
+	weight[2] = 3
+	for i := l; i >= 0; i-- {
+		v := int(value[i] - '0')
+		if v < 0 || v > 9 {
+			fmt.Println("invalid number at column", i+1)
+			break
+		}
+		addr[2] = v
+		sum += v * weight[(l-i)%wLen]
+	}
+	fmt.Println(sum)
+}
+`}, 0, gosec.NewConfig()},
 }
