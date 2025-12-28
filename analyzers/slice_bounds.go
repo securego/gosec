@@ -36,6 +36,7 @@ const (
 	upperUnbounded
 	unbounded
 	upperBounded
+	bounded
 )
 
 const maxDepth = 20
@@ -182,6 +183,22 @@ func runSliceBounds(pass *analysis.Pass) (interface{}, error) {
 									delete(issues, instr)
 								}
 							}
+						case bounded:
+							switch tinstr := instr.(type) {
+							case *ssa.Slice:
+								lower, upper := extractSliceBounds(tinstr)
+								if isSliceInsideBounds(value, value, lower, upper) {
+									delete(issues, instr)
+								}
+							case *ssa.IndexAddr:
+								indexValue, err := extractIntValue(tinstr.Index.String())
+								if err != nil {
+									break
+								}
+								if indexValue == value {
+									delete(issues, instr)
+								}
+							}
 						}
 					} else if nestedIfInstr, ok := instr.(*ssa.If); ok {
 						for _, nestedBlock := range nestedIfInstr.Block().Succs {
@@ -258,23 +275,24 @@ func trackSliceBounds(depth int, sliceCap int, slice ssa.Node, violations *[]ssa
 
 func extractIntValueIndexAddr(refinstr *ssa.IndexAddr, sliceCap int) (int, error) {
 	var indexIncr, sliceIncr int
+	idxRefs := refinstr.Index.Referrers()
+	if idxRefs == nil {
+		return 0, errors.New("no found")
+	}
+	for _, instr := range *idxRefs {
+		switch instr := instr.(type) {
+		case *ssa.BinOp:
+			_, index, err := extractBinOpBound(instr)
+			if err != nil {
+				return 0, err
+			}
+			switch instr.Op {
+			case token.LSS:
+				indexIncr--
+			}
 
-	for _, block := range refinstr.Block().Preds {
-		for _, instr := range block.Instrs {
-			switch instr := instr.(type) {
-			case *ssa.BinOp:
-				_, index, err := extractBinOpBound(instr)
-				if err != nil {
-					return 0, err
-				}
-				switch instr.Op {
-				case token.LSS:
-					indexIncr--
-				}
-
-				if !isSliceIndexInsideBounds(sliceCap+sliceIncr, index+indexIncr) {
-					return index, nil
-				}
+			if !isSliceIndexInsideBounds(sliceCap+sliceIncr, index+indexIncr) {
+				return index, nil
 			}
 		}
 	}
@@ -322,19 +340,28 @@ func checkAllSlicesBounds(depth int, sliceCap int, slice *ssa.Slice, violations 
 func extractSliceIfLenCondition(call *ssa.Call) (*ssa.If, *ssa.BinOp) {
 	if builtInLen, ok := call.Call.Value.(*ssa.Builtin); ok {
 		if builtInLen.Name() == "len" {
-			refs := call.Referrers()
-			if refs != nil {
-				for _, ref := range *refs {
+			refs := []ssa.Instruction{}
+			if call.Referrers() != nil {
+				refs = append(refs, *call.Referrers()...)
+			}
+			depth := 0
+			for len(refs) > 0 && depth < maxDepth {
+				newrefs := []ssa.Instruction{}
+				for _, ref := range refs {
 					if binop, ok := ref.(*ssa.BinOp); ok {
 						binoprefs := binop.Referrers()
 						for _, ref := range *binoprefs {
 							if ifref, ok := ref.(*ssa.If); ok {
 								return ifref, binop
 							}
+							newrefs = append(newrefs, ref)
 						}
 					}
 				}
+				refs = newrefs
+				depth++
 			}
+
 		}
 	}
 	return nil, nil
@@ -363,6 +390,8 @@ func invBound(bound bound) bound {
 		return unbounded
 	case unbounded:
 		return upperBounded
+	case bounded:
+		return bounded
 	default:
 		return unbounded
 	}
@@ -386,7 +415,7 @@ func extractBinOpBound(binop *ssa.BinOp) (bound, int, error) {
 			case token.GTR, token.GEQ:
 				return lowerUnbounded, value, nil
 			case token.EQL:
-				return upperBounded, value, nil
+				return bounded, value, nil
 			case token.NEQ:
 				return unbounded, value, nil
 			}
@@ -407,7 +436,7 @@ func extractBinOpBound(binop *ssa.BinOp) (bound, int, error) {
 			case token.GTR, token.GEQ:
 				return upperUnbounded, value, nil
 			case token.EQL:
-				return upperBounded, value, nil
+				return bounded, value, nil
 			case token.NEQ:
 				return unbounded, value, nil
 			}
