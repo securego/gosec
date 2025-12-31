@@ -143,6 +143,17 @@ func main() {
 	b.WriteString("*bytes.Buffer")
 }
 `}, 0, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "crypto/rand"
+
+func main() {
+	b := make([]byte, 8)
+	rand.Read(b)
+	_ = b
+}
+`}, 0, gosec.NewConfig()},
 	} // it shouldn't return any errors because all method calls are whitelisted by default
 
 	// SampleCodeG104Audit finds errors that aren't being handled in audit mode
