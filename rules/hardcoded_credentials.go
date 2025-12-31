@@ -229,6 +229,8 @@ func (r *credentials) Match(n ast.Node, ctx *gosec.Context) (*issue.Issue, error
 		return r.matchValueSpec(node, ctx)
 	case *ast.BinaryExpr:
 		return r.matchEqualityCheck(node, ctx)
+	case *ast.CompositeLit:
+		return r.matchCompositeLit(node, ctx)
 	}
 	return nil, nil
 }
@@ -334,6 +336,44 @@ func (r *credentials) matchEqualityCheck(binaryExpr *ast.BinaryExpr, ctx *gosec.
 	return nil, nil
 }
 
+func (r *credentials) matchCompositeLit(lit *ast.CompositeLit, ctx *gosec.Context) (*issue.Issue, error) {
+	for _, elt := range lit.Elts {
+		if kv, ok := elt.(*ast.KeyValueExpr); ok {
+			// Check if the key matches the credential pattern (struct field name or map string literal key)
+			matchedKey := false
+			if ident, ok := kv.Key.(*ast.Ident); ok {
+				if r.pattern.MatchString(ident.Name) {
+					matchedKey = true
+				}
+			}
+			if keyStr, err := gosec.GetString(kv.Key); err == nil {
+				if r.pattern.MatchString(keyStr) {
+					matchedKey = true
+				}
+			}
+
+			// If key matches, check value for high entropy (generic credential warning)
+			if matchedKey {
+				if val, err := gosec.GetString(kv.Value); err == nil {
+					if r.ignoreEntropy || r.isHighEntropyString(val) {
+						return ctx.NewIssue(lit, r.ID(), r.What, r.Severity, r.Confidence), nil
+					}
+				}
+			}
+
+			// Separately check value for specific secret patterns (regardless of key)
+			if val, err := gosec.GetString(kv.Value); err == nil {
+				if r.ignoreEntropy || r.isHighEntropyString(val) {
+					if ok, patternName := r.isSecretPattern(val); ok {
+						return ctx.NewIssue(lit, r.ID(), fmt.Sprintf("%s: %s", r.What, patternName), r.Severity, r.Confidence), nil
+					}
+				}
+			}
+		}
+	}
+	return nil, nil
+}
+
 // NewHardcodedCredentials attempts to find high entropy string constants being
 // assigned to variables that appear to be related to credentials.
 func NewHardcodedCredentials(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
@@ -390,5 +430,5 @@ func NewHardcodedCredentials(id string, conf gosec.Config) (gosec.Rule, []ast.No
 			Confidence: issue.Low,
 			Severity:   issue.High,
 		},
-	}, []ast.Node{(*ast.AssignStmt)(nil), (*ast.ValueSpec)(nil), (*ast.BinaryExpr)(nil)}
+	}, []ast.Node{(*ast.AssignStmt)(nil), (*ast.ValueSpec)(nil), (*ast.BinaryExpr)(nil), (*ast.CompositeLit)(nil)}
 }
