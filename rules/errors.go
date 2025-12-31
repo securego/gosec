@@ -89,6 +89,7 @@ func NewNoErrorCheck(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 	whitelist.Add("io.PipeWriter", "CloseWithError")
 	whitelist.Add("hash.Hash", "Write")
 	whitelist.Add("os", "Unsetenv")
+	whitelist.Add("rand", "Read")
 
 	if configured, ok := conf[id]; ok {
 		if whitelisted, ok := configured.(map[string]interface{}); ok {
