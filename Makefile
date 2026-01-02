@@ -48,7 +48,7 @@ golangci:
 
 sec:
 	@echo "SECURITY SCANNING"
-	./$(BIN) ./...
+	./$(BIN) -exclude-dir=testdata ./...
 
 govulncheck: install-govulncheck
 	@echo "CHECKING VULNERABILITIES"
