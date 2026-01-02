@@ -364,7 +364,123 @@ const (
 func main() {
 	fmt.Printf("%s\n", ConfigLearnerTokenAuth)
 }
-	
+
+`}, 0, gosec.NewConfig()},
+		{[]string{`
+package main
+
+type DBConfig struct {
+	Password string
+}
+
+func main() {
+	_ = DBConfig{
+		Password: "f62e5bcda4fae4f82370da0c6f20697b8f8447ef",
+	}
+}
+`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+type DBConfig struct {
+	Password string
+}
+
+func main() {
+	_ = &DBConfig{
+		Password: "f62e5bcda4fae4f82370da0c6f20697b8f8447ef",
+	}
+}
+`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+func main() {
+	_ = struct{ Password string }{
+		Password: "f62e5bcda4fae4f82370da0c6f20697b8f8447ef",
+	}
+}
+`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+func main() {
+	_ = map[string]string{
+		"password": "f62e5bcda4fae4f82370da0c6f20697b8f8447ef",
+	}
+}
+`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+func main() {
+	_ = map[string]string{
+		"apiKey": "f62e5bcda4fae4f82370da0c6f20697b8f8447ef",
+	}
+}
+`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+type Config struct {
+	Username string
+	Password string
+}
+
+func main() {
+	_ = Config{
+		Username: "admin",
+		Password: "f62e5bcda4fae4f82370da0c6f20697b8f8447ef",
+	}
+}
+`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+type DBConfig struct {
+	Password string
+}
+
+func main() {
+	_ = DBConfig{ // #nosec G101
+		Password: "f62e5bcda4fae4f82370da0c6f20697b8f8447ef",
+	}
+}
+`}, 0, gosec.NewConfig()},
+		// Negatives
+		{[]string{`
+package main
+
+func main() {
+	_ = struct{ Password string }{
+		Password: "secret", // low entropy
+	}
+}
+`}, 0, gosec.NewConfig()},
+		{[]string{`
+package main
+
+func main() {
+	_ = map[string]string{
+		"password": "secret", // low entropy
+	}
+}
+`}, 0, gosec.NewConfig()},
+		{[]string{`
+package main
+
+func main() {
+	_ = struct{ Username string }{
+		Username: "f62e5bcda4fae4f82370da0c6f20697b8f8447ef", // non-sensitive key
+	}
+}
+`}, 0, gosec.NewConfig()},
+		{[]string{`
+package main
+
+func main() {
+	_ = []string{"f62e5bcda4fae4f82370da0c6f20697b8f8447ef"} // unkeyed – no trigger
+}
 `}, 0, gosec.NewConfig()},
 	}
 
@@ -429,6 +545,24 @@ func main() {
 	compareGoogleAPI := "test"
 	if compareGoogleAPI == "AIzajtGS_aJGkoiAmSbXzu9I-1eytAi9Lrlh-vT" {
 		fmt.Println(compareGoogleAPI)
+	}
+}	
+`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+func main() {
+	_ = struct{ SomeKey string }{
+		SomeKey: "AKIAI44QH8DHBEXAMPLE",
+	}
+}
+`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+func main() {
+	_ = map[string]string{
+		"github_token": "ghp_iR54dhCYg9Tfmoywi9xLmmKZrrnAw438BYh3",
 	}
 }
 `}, 1, gosec.NewConfig()},
