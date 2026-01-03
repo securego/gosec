@@ -12,13 +12,28 @@ type Config struct {
 	Password string
 }
 `}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+type Config struct {
+	APIKey *string ` + "`json:\"api_key\"`" + `
+}
+`}, 1, gosec.NewConfig()},
+
+	{[]string{`
+package main
+
+type Config struct {
+	PrivateKey []byte ` + "`json:\"private_key\"`" + `
+}
+`}, 1, gosec.NewConfig()},
 
 	// Positive: match on field name (explicit non-sensitive JSON key)
 	{[]string{`
 package main
 
 type Config struct {
-	Password string ` + "`json:\"pwd_field\"`" + `
+	Password string ` + "`json:\"text_field\"`" + `
 }
 `}, 1, gosec.NewConfig()},
 
@@ -82,6 +97,20 @@ type Config struct {
 	AccessTokens []*string
 }
 `}, 1, gosec.NewConfig()},
+
+	{[]string{`
+package main
+
+type Config struct {
+	CustomSecret string ` + "`json:\"my_custom_secret\"`" + `
+}
+`}, 1, func() gosec.Config {
+		cfg := gosec.NewConfig()
+		cfg.Set("G117", map[string]interface{}{
+			"pattern": "(?i)custom[_-]?secret",
+		})
+		return cfg
+	}()},
 
 	// Negative: json:"-" (omitted)
 	{[]string{`
