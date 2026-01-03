@@ -242,8 +242,7 @@ func main() {
 	log.Printf("Command finished with error: %v", err)
 }
 `}, 1, gosec.NewConfig()},
-	{
-		[]string{`
+	{[]string{`
 package main
 
 import (
