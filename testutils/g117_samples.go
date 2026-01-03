@@ -58,6 +58,31 @@ type Config struct {
 }
 `}, 1, gosec.NewConfig()},
 
+	// Positive: plural forms
+	{[]string{`
+package main
+
+type Config struct {
+	ApiTokens []string
+}
+`}, 1, gosec.NewConfig()},
+
+	{[]string{`
+package main
+
+type Config struct {
+	RefreshTokens []string ` + "`json:\"refresh_tokens\"`" + `
+}
+`}, 1, gosec.NewConfig()},
+
+	{[]string{`
+package main
+
+type Config struct {
+	AccessTokens []*string
+}
+`}, 1, gosec.NewConfig()},
+
 	// Negative: json:"-" (omitted)
 	{[]string{`
 package main
@@ -82,6 +107,24 @@ package main
 
 type Config struct {
 	password string
+}
+`}, 0, gosec.NewConfig()},
+
+	// Negative: non-sensitive type (int) even with "token"
+	{[]string{`
+package main
+
+type Config struct {
+	MaxTokens int
+}
+`}, 0, gosec.NewConfig()},
+
+	// Negative: non-secret plural slice (common FP like redaction placeholders)
+	{[]string{`
+package main
+
+type Config struct {
+	RedactionTokens []string ` + "`json:\"redactionTokens,omitempty\"`" + `
 }
 `}, 0, gosec.NewConfig()},
 

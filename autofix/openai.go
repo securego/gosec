@@ -21,7 +21,7 @@ var _ GenAIClient = (*openaiWrapper)(nil)
 
 type OpenAIConfig struct {
 	Model       string
-	APIKey      string
+	APIKey      string `json:"-"`
 	BaseURL     string
 	MaxTokens   int
 	Temperature float64
