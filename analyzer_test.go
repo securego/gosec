@@ -2316,4 +2316,53 @@ func main() {
 			Expect(issues[0].Suppressions[0].Justification).To(Equal("false positive, this is not a private data"))
 		})
 	})
+	It("should detect potential secret serialization in struct fields (G117 positives)", func() {
+		for _, sample := range testutils.SampleCodeG117 {
+			if sample.Errors == 0 {
+				continue // skip negatives and suppressions here
+			}
+
+			analyzer := gosec.NewAnalyzer(nil, tests, false, false, 1, logger)
+			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G117")).RulesInfo())
+
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("config.go", sample.Code[0])
+
+			err := pkg.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+
+			err = analyzer.Process(buildTags, pkg.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			issues, _, _ := analyzer.Report()
+			Expect(issues).To(HaveLen(sample.Errors),
+				fmt.Sprintf("Positive sample failed (expected %d issue(s)):\n%s", sample.Errors, sample.Code[0]))
+		}
+	})
+
+	It("should not detect issues in safe fields or respect suppressions (G117 negatives/suppressions)", func() {
+		for _, sample := range testutils.SampleCodeG117 {
+			if sample.Errors != 0 {
+				continue // skip positives here
+			}
+
+			analyzer := gosec.NewAnalyzer(nil, tests, false, false, 1, logger)
+			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G117")).RulesInfo())
+
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("config.go", sample.Code[0])
+
+			err := pkg.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+
+			err = analyzer.Process(buildTags, pkg.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			issues, _, _ := analyzer.Report()
+			Expect(issues).To(BeEmpty(),
+				fmt.Sprintf("Negative/suppression sample triggered unexpected issue(s):\n%s", sample.Code[0]))
+		}
+	})
 })
