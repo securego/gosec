@@ -46,49 +46,28 @@ func (r *subprocess) Match(n ast.Node, c *gosec.Context) (*issue.Issue, error) {
 		if r.isContext(n, c) {
 			args = args[1:]
 		}
-		for _, arg := range args {
+		for i, arg := range args {
 			if ident, ok := arg.(*ast.Ident); ok {
 				obj := c.Info.ObjectOf(ident)
-
-				// need to cast and check whether it is for a variable ?
 				_, variable := obj.(*types.Var)
-
-				// .. indeed it is a variable then processing is different than a normal
-				// field assignment
 				if variable {
 					// skip the check when the declaration is not available
 					if ident.Obj == nil {
 						continue
 					}
-					switch ident.Obj.Decl.(type) {
-					case *ast.AssignStmt:
-						_, assignment := ident.Obj.Decl.(*ast.AssignStmt)
-						if variable && assignment {
-							if !gosec.TryResolve(ident, c) {
-								return c.NewIssue(n, r.ID(), "Subprocess launched with variable", issue.Medium, issue.High), nil
-							}
-						}
-					case *ast.Field:
-						_, field := ident.Obj.Decl.(*ast.Field)
-						if variable && field {
-							// check if the variable exist in the scope
-							vv, vvok := obj.(*types.Var)
-
-							if vvok && vv.Parent().Lookup(ident.Name) == nil {
-								return c.NewIssue(n, r.ID(), "Subprocess launched with variable", issue.Medium, issue.High), nil
-							}
-						}
-					case *ast.ValueSpec:
-						_, valueSpec := ident.Obj.Decl.(*ast.ValueSpec)
-						if variable && valueSpec {
-							if !gosec.TryResolve(ident, c) {
-								return c.NewIssue(n, r.ID(), "Subprocess launched with variable", issue.Medium, issue.High), nil
-							}
-						}
+					// Special case: function parameters used directly as the executable name (i==0)
+					// do not flag them.
+					if _, isField := ident.Obj.Decl.(*ast.Field); isField && i == 0 {
+						continue
+					}
+					// For all other variables (locals, or params in data position, or tainted locals),
+					// flag if not resolvable to a constant.
+					if !gosec.TryResolve(ident, c) {
+						return c.NewIssue(n, r.ID(), "Subprocess launched with variable", issue.Medium, issue.High), nil
 					}
 				}
 			} else if !gosec.TryResolve(arg, c) {
-				// the arg is not a constant or a variable but instead a function call or os.Args[i]
+				// Non-identifier arguments that cannot be resolved (e.g., function calls, os.Args[i])
 				return c.NewIssue(n, r.ID(), "Subprocess launched with a potential tainted input or cmd arguments", issue.Medium, issue.High), nil
 			}
 		}
