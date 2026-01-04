@@ -242,4 +242,40 @@ func main() {
 	log.Printf("Command finished with error: %v", err)
 }
 `}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import (
+	"os/exec"
+	"runtime"
+)
+
+// Safe OS-specific command selection using a hard-coded map and slice operations.
+// Closely matches the pattern in https://github.com/securego/gosec/issues/1199.
+// The command name and fixed arguments are fully resolved from constant composite literals,
+// even though the map key is runtime.GOOS (non-constant in analysis).
+func main() {
+	commands := map[string][]string{
+		"darwin":  {"open"},
+		"freebsd": {"xdg-open"},
+		"linux":   {"xdg-open"},
+		"netbsd":  {"xdg-open"},
+		"openbsd": {"xdg-open"},
+		"windows": {"cmd", "/c", "start"},
+	}
+
+	platform := runtime.GOOS
+
+	cmdArgs := commands[platform]
+	if cmdArgs == nil {
+		return // unsupported platform
+	}
+
+	exe := cmdArgs[0]
+	args := cmdArgs[1:]
+
+	// No dynamic/tainted input; fixed args passed via ... expansion
+	_ = exec.Command(exe, args...)
+}
+`}, 0, gosec.NewConfig()},
 }
