@@ -118,6 +118,11 @@ var idWeaknesses = map[string]*Weakness{
 		Description: "The software does not handle or incorrectly handles a compressed input with a very high compression ratio that produces a large output.",
 		Name:        "Improper Handling of Highly Compressed Data (Data Amplification)",
 	},
+	"499": {
+		ID:          "499",
+		Description: "The code contains a class with sensitive data, but the class does not explicitly deny serialization. The data can be accessed by serializing the class through another class.",
+		Name:        "Serializable Class Containing Sensitive Data",
+	},
 	"676": {
 		ID:          "676",
 		Description: "The program invokes a potentially dangerous function that could introduce a vulnerability if it is used incorrectly, but the function can also be used safely.",

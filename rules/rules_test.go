@@ -111,6 +111,10 @@ var _ = Describe("gosec rules", func() {
 			runner("G116", testutils.SampleCodeG116)
 		})
 
+		It("should detect exported struct fields that may contain secrets and are JSON serializable", func() {
+			runner("G117", testutils.SampleCodeG117)
+		})
+
 		It("should detect sql injection via format strings", func() {
 			runner("G201", testutils.SampleCodeG201)
 		})
