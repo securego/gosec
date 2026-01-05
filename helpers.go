@@ -589,3 +589,18 @@ func CLIBuildTags(buildTags []string) []string {
 
 	return buildFlags
 }
+
+// ContainingFile returns the *ast.File from ctx.PkgFiles that contains the given node.
+// Returns nil if not found (shouldn't happen for nodes from the analyzed package).
+func ContainingFile(n ast.Node, ctx *Context) *ast.File {
+	if n == nil {
+		return nil
+	}
+	pos := n.Pos()
+	for _, f := range ctx.PkgFiles {
+		if f.Pos() <= pos && pos < f.End() {
+			return f
+		}
+	}
+	return nil
+}

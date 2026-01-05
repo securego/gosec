@@ -415,4 +415,58 @@ func main() {
 	defer rows.Close()
 }
 `}, 0, gosec.NewConfig()},
+	{[]string{`
+// Shadowing edge case: tainted mutation on shadowed variable - should NOT flag
+// The outer 'query' is safe and passed to db.Query.
+// The inner shadowed 'query' is mutated with tainted input (irrelevant).
+package main
+
+import (
+	"database/sql"
+	"os"
+)
+
+func main() {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	query := "SELECT * FROM foo WHERE id = 42" // safe outer query
+	{
+		query := "base"                    // shadows outer query
+		query += os.Args[1]                // tainted mutation on shadow - should be ignored
+		_ = query                          // prevent unused warning
+	}
+	rows, err := db.Query(query) // uses safe outer query
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+// Shadowing edge case: no mutation on shadow, safe outer - regression guard
+package main
+
+import (
+	"database/sql"
+)
+
+func main() {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	query := "SELECT * FROM foo WHERE id = 42"
+	{
+		query := "shadowed but unused"
+		_ = query
+	}
+	rows, err := db.Query(query)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}
+`}, 0, gosec.NewConfig()},
 }

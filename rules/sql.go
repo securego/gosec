@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+	"go/types"
 	"regexp"
 	"slices"
 
@@ -165,18 +166,43 @@ func (s *sqlStrConcat) checkQuery(call *ast.CallExpr, ctx *gosec.Context) (*issu
 				return ctx.NewIssue(injection, s.ID(), s.What, s.Severity, s.Confidence), nil
 			}
 		}
+	} else {
+		// Unresolved identifier - nothing more to check
+		return nil, nil
 	}
 
 	// Check for risky mutations (query += tainted or query = query + tainted)
-	for _, file := range ctx.PkgFiles {
-		var found *ast.AssignStmt
-		ast.Inspect(file, func(node ast.Node) bool {
+	callFile := gosec.ContainingFile(call, ctx)
+	if callFile == nil {
+		return nil, nil
+	}
+
+	// Determine if the variable is package-level
+	isPkgLevel := false
+	if ctx.Info != nil {
+		if obj := ctx.Info.ObjectOf(id); obj != nil {
+			if tv, ok := obj.(*types.Var); ok && ctx.Pkg != nil && ctx.Pkg.Scope() != nil {
+				isPkgLevel = tv.Parent() == ctx.Pkg.Scope()
+			}
+		}
+	}
+
+	var filesToSearch []*ast.File
+	if isPkgLevel {
+		filesToSearch = ctx.PkgFiles // all files (rare case)
+	} else {
+		filesToSearch = []*ast.File{callFile} // common case: local var
+	}
+
+	var found *ast.AssignStmt
+	for _, f := range filesToSearch {
+		ast.Inspect(f, func(node ast.Node) bool {
 			assign, ok := node.(*ast.AssignStmt)
 			if !ok || len(assign.Lhs) != 1 || len(assign.Rhs) != 1 {
 				return true
 			}
 			lIdent, ok := assign.Lhs[0].(*ast.Ident)
-			if !ok || lIdent.Name != id.Name {
+			if !ok || lIdent.Obj != id.Obj {
 				return true
 			}
 
@@ -190,9 +216,10 @@ func (s *sqlStrConcat) checkQuery(call *ast.CallExpr, ctx *gosec.Context) (*issu
 					return true
 				}
 				left, ok := be.X.(*ast.Ident)
-				if !ok || left.Name != id.Name {
+				if !ok || left.Obj != id.Obj {
 					return true
 				}
+
 				appended = be.Y
 			default:
 				return true
