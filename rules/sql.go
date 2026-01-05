@@ -62,25 +62,20 @@ var sqlCallIdents = map[string]map[string]int{
 	},
 }
 
-// findQueryArg locates the argument taking raw SQL
+// findQueryArg locates the argument taking raw SQL.
 func findQueryArg(call *ast.CallExpr, ctx *gosec.Context) (ast.Expr, error) {
 	typeName, fnName, err := gosec.GetCallInfo(call, ctx)
 	if err != nil {
 		return nil, err
 	}
-	i := -1
-	if ni, ok := sqlCallIdents[typeName]; ok {
-		if i, ok = ni[fnName]; !ok {
-			i = -1
+
+	if methods, ok := sqlCallIdents[typeName]; ok {
+		if i, ok := methods[fnName]; ok && i < len(call.Args) {
+			return call.Args[i], nil
 		}
 	}
-	if i == -1 {
-		return nil, fmt.Errorf("SQL argument index not found for %s.%s", typeName, fnName)
-	}
-	if i >= len(call.Args) {
-		return nil, nil
-	}
-	return call.Args[i], nil
+
+	return nil, fmt.Errorf("SQL argument index not found for %s.%s", typeName, fnName)
 }
 
 func (s *sqlStatement) ID() string {
@@ -115,9 +110,7 @@ func (s *sqlStrConcat) findInjectionInBranch(ctx *gosec.Context, branch []ast.Ex
 			continue
 		}
 
-		operands := gosec.GetBinaryExprOperands(be)
-
-		for _, op := range operands {
+		for _, op := range gosec.GetBinaryExprOperands(be) {
 			if gosec.TryResolve(op, ctx) {
 				continue
 			}
@@ -138,16 +131,13 @@ func (s *sqlStrConcat) checkQuery(call *ast.CallExpr, ctx *gosec.Context) (*issu
 	if be, ok := query.(*ast.BinaryExpr); ok {
 		operands := gosec.GetBinaryExprOperands(be)
 		if start, ok := operands[0].(*ast.BasicLit); ok {
-			if str, e := gosec.GetString(start); e == nil {
-				if !s.MatchPatterns(str) {
-					return nil, nil
+			if str, e := gosec.GetString(start); e == nil && s.MatchPatterns(str) {
+				for _, op := range operands[1:] {
+					if gosec.TryResolve(op, ctx) {
+						continue
+					}
+					return ctx.NewIssue(be, s.ID(), s.What, s.Severity, s.Confidence), nil
 				}
-			}
-			for _, op := range operands[1:] {
-				if gosec.TryResolve(op, ctx) {
-					continue
-				}
-				return ctx.NewIssue(be, s.ID(), s.What, s.Severity, s.Confidence), nil
 			}
 		}
 	}
@@ -159,11 +149,7 @@ func (s *sqlStrConcat) checkQuery(call *ast.CallExpr, ctx *gosec.Context) (*issu
 	}
 
 	// Confirm the identifier resolves to a string containing SQL patterns
-	var match bool
-	if slices.ContainsFunc(gosec.GetIdentStringValuesRecursive(id), s.MatchPatterns) {
-		match = true
-	}
-	if !match {
+	if !slices.ContainsFunc(gosec.GetIdentStringValuesRecursive(id), s.MatchPatterns) {
 		return nil, nil
 	}
 
@@ -182,8 +168,8 @@ func (s *sqlStrConcat) checkQuery(call *ast.CallExpr, ctx *gosec.Context) (*issu
 	}
 
 	// Check for risky mutations (query += tainted or query = query + tainted)
-	var badMutation *ast.AssignStmt
 	for _, file := range ctx.PkgFiles {
+		var found *ast.AssignStmt
 		ast.Inspect(file, func(node ast.Node) bool {
 			assign, ok := node.(*ast.AssignStmt)
 			if !ok || len(assign.Lhs) != 1 || len(assign.Rhs) != 1 {
@@ -213,13 +199,13 @@ func (s *sqlStrConcat) checkQuery(call *ast.CallExpr, ctx *gosec.Context) (*issu
 			}
 
 			if !gosec.TryResolve(appended, ctx) {
-				badMutation = assign
+				found = assign
 				return false
 			}
 			return true
 		})
-		if badMutation != nil {
-			return ctx.NewIssue(badMutation, s.ID(), s.What, s.Severity, s.Confidence), nil
+		if found != nil {
+			return ctx.NewIssue(found, s.ID(), s.What, s.Severity, s.Confidence), nil
 		}
 	}
 
@@ -231,19 +217,19 @@ func (s *sqlStrConcat) Match(n ast.Node, ctx *gosec.Context) (*issue.Issue, erro
 	switch stmt := n.(type) {
 	case *ast.AssignStmt:
 		for _, expr := range stmt.Rhs {
-			if sqlQueryCall, ok := expr.(*ast.CallExpr); ok && s.ContainsCallExpr(expr, ctx) != nil {
-				return s.checkQuery(sqlQueryCall, ctx)
+			if call, ok := expr.(*ast.CallExpr); ok && s.ContainsCallExpr(expr, ctx) != nil {
+				return s.checkQuery(call, ctx)
 			}
 		}
 	case *ast.ExprStmt:
-		if sqlQueryCall, ok := stmt.X.(*ast.CallExpr); ok && s.ContainsCallExpr(stmt.X, ctx) != nil {
-			return s.checkQuery(sqlQueryCall, ctx)
+		if call, ok := stmt.X.(*ast.CallExpr); ok && s.ContainsCallExpr(call, ctx) != nil {
+			return s.checkQuery(call, ctx)
 		}
 	}
 	return nil, nil
 }
 
-// NewSQLStrConcat looks for cases where we are building SQL strings via concatenation
+// NewSQLStrConcat creates a rule for detecting SQL string concatenation.
 func NewSQLStrConcat(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	rule := &sqlStrConcat{
 		sqlStatement: sqlStatement{
@@ -276,26 +262,7 @@ type sqlStrFormat struct {
 	noIssueQuoted gosec.CallList
 }
 
-// constObject returns true if the expression is a constant.
-func (s *sqlStrFormat) constObject(e ast.Expr, c *gosec.Context) bool {
-	n, ok := e.(*ast.Ident)
-	if !ok {
-		return false
-	}
-
-	if n.Obj != nil {
-		return n.Obj.Kind == ast.Con
-	}
-
-	// Try to resolve unresolved identifiers using other files in same package
-	for _, file := range c.PkgFiles {
-		if node, ok := file.Scope.Objects[n.String()]; ok {
-			return node.Kind == ast.Con
-		}
-	}
-	return false
-}
-
+// checkQuery verifies if the query parameter involves risky formatting.
 func (s *sqlStrFormat) checkQuery(call *ast.CallExpr, ctx *gosec.Context) (*issue.Issue, error) {
 	query, err := findQueryArg(call, ctx)
 	if err != nil {
@@ -315,6 +282,7 @@ func (s *sqlStrFormat) checkQuery(call *ast.CallExpr, ctx *gosec.Context) (*issu
 	return nil, nil
 }
 
+// checkFormatting checks if a formatting call builds a risky SQL query.
 func (s *sqlStrFormat) checkFormatting(n ast.Node, ctx *gosec.Context) *issue.Issue {
 	// argIndex changes the function argument which gets matched to the regex
 	argIndex := 0
@@ -336,11 +304,8 @@ func (s *sqlStrFormat) checkFormatting(n ast.Node, ctx *gosec.Context) *issue.Is
 			return nil
 		}
 
-		var formatter string
-		if str, ok := gosec.ConcatString(node.Args[argIndex], ctx); ok {
-			formatter = str
-		}
-		if formatter == "" {
+		formatter, ok := gosec.ConcatString(node.Args[argIndex], ctx)
+		if !ok || formatter == "" {
 			return nil
 		}
 
@@ -348,7 +313,7 @@ func (s *sqlStrFormat) checkFormatting(n ast.Node, ctx *gosec.Context) *issue.Is
 		if argIndex+1 < len(node.Args) {
 			allSafe := true
 			for _, arg := range node.Args[argIndex+1:] {
-				if s.noIssueQuoted.ContainsPkgCallExpr(arg, ctx, true) == nil && !s.constObject(arg, ctx) {
+				if s.noIssueQuoted.ContainsPkgCallExpr(arg, ctx, true) == nil && !gosec.TryResolve(arg, ctx) {
 					allSafe = false
 					break
 				}
@@ -389,7 +354,7 @@ func (s *sqlStrFormat) Match(n ast.Node, ctx *gosec.Context) (*issue.Issue, erro
 	return nil, nil
 }
 
-// NewSQLStrFormat looks for cases where we're building SQL query strings using format strings
+// NewSQLStrFormat creates a rule for detecting SQL string formatting.
 func NewSQLStrFormat(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	rule := &sqlStrFormat{
 		CallList:      gosec.NewCallList(),
