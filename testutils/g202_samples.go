@@ -336,4 +336,83 @@ func main() {
 	defer rows.Close()
 }
 `}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import (
+	"database/sql"
+	"os"
+)
+
+func main() {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	query := "SELECT * FROM album WHERE id = "
+	query += os.Args[0]
+	rows, err := db.Query(query)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import (
+	"fmt"
+	"os"
+)
+
+func main() {
+	query := "SELECT * FROM album WHERE id = "
+	query += os.Args[0]
+	fmt.Println(query)
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import (
+	"database/sql"
+	"os"
+)
+
+func main() {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	query := "SELECT * FROM album WHERE id = "
+	query = query + os.Args[0] // risky reassignment concatenation
+	rows, err := db.Query(query)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import (
+	"database/sql"
+)
+
+func main() {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	query := "SELECT * FROM album WHERE id = "
+	query = query + "42" // safe literal reassignment concatenation
+	rows, err := db.Query(query)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}
+`}, 0, gosec.NewConfig()},
 }
