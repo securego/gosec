@@ -469,4 +469,29 @@ func main() {
 	defer rows.Close()
 }
 `}, 0, gosec.NewConfig()},
+	{[]string{`
+// package-level SQL string with tainted concatenation in init()
+package main
+
+import (
+	"os"
+)
+
+var query string = "SELECT * FROM foo WHERE name = "
+
+func init() {
+	query += os.Args[1]
+}
+`, `
+package main
+
+import (
+	"database/sql"
+)
+
+func main() {
+	db, _ := sql.Open("sqlite3", ":memory:")
+	_, _ = db.Query(query)
+}
+`}, 1, gosec.NewConfig()},
 }

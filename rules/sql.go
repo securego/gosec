@@ -20,7 +20,6 @@ import (
 	"go/token"
 	"go/types"
 	"regexp"
-	"slices"
 
 	"github.com/securego/gosec/v2"
 	"github.com/securego/gosec/v2/issue"
@@ -141,68 +140,111 @@ func (s *sqlStrConcat) checkQuery(call *ast.CallExpr, ctx *gosec.Context) (*issu
 				}
 			}
 		}
+		return nil, nil
 	}
 
-	// Identifier-based query (e.g., var query = ...; query += ...; query = query + ...)
-	id, ok := query.(*ast.Ident)
+	// Must be an identifier to continue (e.g., var query = ...; query += ...)
+	ident, ok := query.(*ast.Ident)
 	if !ok {
 		return nil, nil
 	}
 
-	// Confirm the identifier resolves to a string containing SQL patterns
-	if !slices.ContainsFunc(gosec.GetIdentStringValuesRecursive(id), s.MatchPatterns) {
+	v, ok := ctx.Info.ObjectOf(ident).(*types.Var)
+	if !ok {
 		return nil, nil
 	}
 
-	// Check initial declaration for direct risky concatenation
-	if id.Obj != nil {
-		switch decl := id.Obj.Decl.(type) {
-		case *ast.AssignStmt:
-			if injection := s.findInjectionInBranch(ctx, decl.Rhs); injection != nil {
-				return ctx.NewIssue(injection, s.ID(), s.What, s.Severity, s.Confidence), nil
-			}
-		case *ast.ValueSpec:
-			if injection := s.findInjectionInBranch(ctx, decl.Values); injection != nil {
-				return ctx.NewIssue(injection, s.ID(), s.What, s.Severity, s.Confidence), nil
+	// Determine search scope (package-level or local)
+	isPkgLevel := ctx.Pkg != nil && v.Parent() == ctx.Pkg.Scope()
+
+	var filesToSearch []*ast.File
+	if isPkgLevel {
+		filesToSearch = ctx.PkgFiles
+	} else {
+		callFile := gosec.ContainingFile(call, ctx)
+		if callFile == nil {
+			return nil, nil
+		}
+		filesToSearch = []*ast.File{callFile}
+	}
+
+	// Find the defining declaration and check for SQL patterns / initial risky concatenation
+	declRHS := []ast.Expr{}
+	foundDecl := false
+
+	// Determine the file containing the variable's defining position
+	var declFile *ast.File
+	if ctx.FileSet != nil {
+		if posFile := ctx.FileSet.File(v.Pos()); posFile != nil {
+			targetName := posFile.Name()
+			for _, f := range filesToSearch {
+				if fileInfo := ctx.FileSet.File(f.Pos()); fileInfo != nil && fileInfo.Name() == targetName {
+					declFile = f
+					break
+				}
 			}
 		}
+	}
+
+	if declFile != nil {
+		ast.Inspect(declFile, func(n ast.Node) bool {
+			switch d := n.(type) {
+			case *ast.ValueSpec:
+				for _, name := range d.Names {
+					if name.Pos() == v.Pos() && ctx.Info.ObjectOf(name) == v {
+						declRHS = d.Values
+						foundDecl = true
+						return false // Stop inspection
+					}
+				}
+			case *ast.AssignStmt:
+				if d.Tok == token.DEFINE { // Only short variable declarations define new vars
+					for _, lhs := range d.Lhs {
+						if id, ok := lhs.(*ast.Ident); ok && id.Pos() == v.Pos() && ctx.Info.ObjectOf(id) == v {
+							declRHS = d.Rhs
+							foundDecl = true
+							return false // Stop inspection
+						}
+					}
+				}
+			}
+			return true
+		})
+	}
+
+	if foundDecl {
+		// Check for SQL patterns in initial values
+		hasSQLPattern := false
+		for _, val := range declRHS {
+			if str, err := gosec.GetStringRecursive(val); err == nil && s.MatchPatterns(str) {
+				hasSQLPattern = true
+				break
+			}
+		}
+
+		// Check for risky initial concatenation
+		if inj := s.findInjectionInBranch(ctx, declRHS); inj != nil {
+			return ctx.NewIssue(inj, s.ID(), s.What, s.Severity, s.Confidence), nil
+		}
+
+		if !hasSQLPattern {
+			return nil, nil
+		}
 	} else {
-		// Unresolved identifier - nothing more to check
+		// No defining declaration found → assume not SQL-related
 		return nil, nil
 	}
 
 	// Check for risky mutations (query += tainted or query = query + tainted)
-	callFile := gosec.ContainingFile(call, ctx)
-	if callFile == nil {
-		return nil, nil
-	}
-
-	// Determine if the variable is package-level
-	isPkgLevel := false
-	if ctx.Info != nil {
-		if obj := ctx.Info.ObjectOf(id); obj != nil {
-			if tv, ok := obj.(*types.Var); ok && ctx.Pkg != nil && ctx.Pkg.Scope() != nil {
-				isPkgLevel = tv.Parent() == ctx.Pkg.Scope()
-			}
-		}
-	}
-
-	var filesToSearch []*ast.File
-	if isPkgLevel {
-		filesToSearch = ctx.PkgFiles // all files (rare case)
-	} else {
-		filesToSearch = []*ast.File{callFile} // common case: local var
-	}
-
-	var found *ast.AssignStmt
 	for _, f := range filesToSearch {
-		ast.Inspect(f, func(node ast.Node) bool {
-			assign, ok := node.(*ast.AssignStmt)
+		var found *ast.AssignStmt
+		ast.Inspect(f, func(n ast.Node) bool {
+			assign, ok := n.(*ast.AssignStmt)
 			if !ok || len(assign.Lhs) != 1 || len(assign.Rhs) != 1 {
 				return true
 			}
 			lIdent, ok := assign.Lhs[0].(*ast.Ident)
-			if !ok || lIdent.Obj != id.Obj {
+			if !ok || ctx.Info.ObjectOf(lIdent) != v {
 				return true
 			}
 
@@ -216,10 +258,9 @@ func (s *sqlStrConcat) checkQuery(call *ast.CallExpr, ctx *gosec.Context) (*issu
 					return true
 				}
 				left, ok := be.X.(*ast.Ident)
-				if !ok || left.Obj != id.Obj {
+				if !ok || ctx.Info.ObjectOf(left) != v {
 					return true
 				}
-
 				appended = be.Y
 			default:
 				return true
@@ -296,17 +337,53 @@ func (s *sqlStrFormat) checkQuery(call *ast.CallExpr, ctx *gosec.Context) (*issu
 		return nil, err
 	}
 
-	if ident, ok := query.(*ast.Ident); ok && ident.Obj != nil {
-		if assign, ok := ident.Obj.Decl.(*ast.AssignStmt); ok {
-			for _, expr := range assign.Rhs {
-				if issue := s.checkFormatting(expr, ctx); issue != nil {
-					return issue, nil
-				}
-			}
-		}
+	// Must be a variable identifier (short-declared with :=)
+	ident, ok := query.(*ast.Ident)
+	if !ok {
+		return nil, nil
 	}
 
-	return nil, nil
+	v, ok := ctx.Info.ObjectOf(ident).(*types.Var)
+	if !ok {
+		return nil, nil
+	}
+
+	// Short variable declarations are always local → use the file containing the call
+	callFile := gosec.ContainingFile(call, ctx)
+	if callFile == nil {
+		return nil, nil
+	}
+
+	// Find the defining short declaration (query := fmt.Sprintf(...))
+	var foundIssue *issue.Issue
+	ast.Inspect(callFile, func(n ast.Node) bool {
+		assign, ok := n.(*ast.AssignStmt)
+		if !ok || assign.Tok != token.DEFINE {
+			return true
+		}
+
+		// Find the LHS identifier that defines this variable
+		for _, lhs := range assign.Lhs {
+			if defIdent, ok := lhs.(*ast.Ident); ok &&
+				defIdent.Pos() == v.Pos() && ctx.Info.ObjectOf(defIdent) == v {
+
+				// Check every initializer expression on the RHS
+				for _, expr := range assign.Rhs {
+					if expr == nil {
+						continue
+					}
+					if iss := s.checkFormatting(expr, ctx); iss != nil {
+						foundIssue = iss
+						return false // Stop entire inspection
+					}
+				}
+				return false // Declaration found and processed
+			}
+		}
+		return true
+	})
+
+	return foundIssue, nil
 }
 
 // checkFormatting checks if a formatting call builds a risky SQL query.
