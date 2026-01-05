@@ -574,3 +574,22 @@ func CLIBuildTags(buildTags []string) []string {
 
 	return buildFlags
 }
+
+// ContainingFile returns the *ast.File from ctx.PkgFiles that contains the given position provider.
+// A position provider can be an ast.Node, a types.Object, or any type with a Pos() token.Pos method.
+// Returns nil if not found or if the provider is nil/invalid.
+func ContainingFile(p interface{ Pos() token.Pos }, ctx *Context) *ast.File {
+	if p == nil {
+		return nil
+	}
+	pos := p.Pos()
+	if !pos.IsValid() {
+		return nil
+	}
+	for _, f := range ctx.PkgFiles {
+		if f.Pos() <= pos && pos < f.End() {
+			return f
+		}
+	}
+	return nil
+}

@@ -17,6 +17,7 @@ package rules
 import (
 	"fmt"
 	"go/ast"
+	"go/types"
 
 	"github.com/securego/gosec/v2"
 	"github.com/securego/gosec/v2/issue"
@@ -32,39 +33,45 @@ func (i *integerOverflowCheck) ID() string {
 }
 
 func (i *integerOverflowCheck) Match(node ast.Node, ctx *gosec.Context) (*issue.Issue, error) {
-	var atoiVarObj map[*ast.Object]ast.Node
+	var atoiVars map[*types.Var]struct{}
 
-	// To check multiple lines, ctx.PassedValues is used to store temporary data.
+	// Stateful tracking via ctx.PassedValues
 	if _, ok := ctx.PassedValues[i.ID()]; !ok {
-		atoiVarObj = make(map[*ast.Object]ast.Node)
-		ctx.PassedValues[i.ID()] = atoiVarObj
-	} else if pv, ok := ctx.PassedValues[i.ID()].(map[*ast.Object]ast.Node); ok {
-		atoiVarObj = pv
+		atoiVars = make(map[*types.Var]struct{})
+		ctx.PassedValues[i.ID()] = atoiVars
+	} else if pv, ok := ctx.PassedValues[i.ID()].(map[*types.Var]struct{}); ok {
+		atoiVars = pv
 	} else {
-		return nil, fmt.Errorf("PassedValues[%s] of Context is not map[*ast.Object]ast.Node, but %T", i.ID(), ctx.PassedValues[i.ID()])
+		return nil, fmt.Errorf("PassedValues[%s] of Context is not map[*types.Var]struct{}, but %T", i.ID(), ctx.PassedValues[i.ID()])
 	}
 
-	// strconv.Atoi is a common function.
-	// To reduce false positives, This rule detects code which is converted to int32/int16 only.
 	switch n := node.(type) {
 	case *ast.AssignStmt:
 		for _, expr := range n.Rhs {
 			if callExpr, ok := expr.(*ast.CallExpr); ok && i.calls.ContainsPkgCallExpr(callExpr, ctx, false) != nil {
-				if idt, ok := n.Lhs[0].(*ast.Ident); ok && idt.Name != "_" {
-					// Example:
-					//  v, _ := strconv.Atoi("1111")
-					// Add v's Obj to atoiVarObj map
-					atoiVarObj[idt.Obj] = n
+				if len(n.Lhs) > 0 {
+					if idt, ok := n.Lhs[0].(*ast.Ident); ok && idt.Name != "_" {
+						if obj := ctx.Info.ObjectOf(idt); obj != nil {
+							if v, ok := obj.(*types.Var); ok {
+								atoiVars[v] = struct{}{}
+							}
+						}
+					}
 				}
 			}
 		}
 	case *ast.CallExpr:
 		if fun, ok := n.Fun.(*ast.Ident); ok {
 			if fun.Name == "int32" || fun.Name == "int16" {
-				if idt, ok := n.Args[0].(*ast.Ident); ok {
-					if _, ok := atoiVarObj[idt.Obj]; ok {
-						// Detect int32(v) and int16(v)
-						return ctx.NewIssue(n, i.ID(), i.What, i.Severity, i.Confidence), nil
+				if len(n.Args) > 0 {
+					if idt, ok := n.Args[0].(*ast.Ident); ok {
+						if obj := ctx.Info.ObjectOf(idt); obj != nil {
+							if v, ok := obj.(*types.Var); ok {
+								if _, tracked := atoiVars[v]; tracked {
+									return ctx.NewIssue(n, i.ID(), i.What, i.Severity, i.Confidence), nil
+								}
+							}
+						}
 					}
 				}
 			}
@@ -74,7 +81,7 @@ func (i *integerOverflowCheck) Match(node ast.Node, ctx *gosec.Context) (*issue.
 	return nil, nil
 }
 
-// NewIntegerOverflowCheck detects if there is potential Integer OverFlow
+// NewIntegerOverflowCheck detects potential integer overflow from strconv.Atoi conversion to int16/int32
 func NewIntegerOverflowCheck(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	calls := gosec.NewCallList()
 	calls.Add("strconv", "Atoi")
@@ -86,5 +93,5 @@ func NewIntegerOverflowCheck(id string, _ gosec.Config) (gosec.Rule, []ast.Node)
 			What:       "Potential Integer overflow made by strconv.Atoi result conversion to int16/32",
 		},
 		calls: calls,
-	}, []ast.Node{(*ast.FuncDecl)(nil), (*ast.AssignStmt)(nil), (*ast.CallExpr)(nil)}
+	}, []ast.Node{(*ast.AssignStmt)(nil), (*ast.CallExpr)(nil)}
 }
