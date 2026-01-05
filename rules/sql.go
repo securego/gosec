@@ -19,6 +19,7 @@ import (
 	"go/ast"
 	"go/token"
 	"regexp"
+	"slices"
 
 	"github.com/securego/gosec/v2"
 	"github.com/securego/gosec/v2/issue"
@@ -152,91 +153,73 @@ func (s *sqlStrConcat) checkQuery(call *ast.CallExpr, ctx *gosec.Context) (*issu
 	}
 
 	// Identifier-based query (e.g., var query = ...; query += ...; query = query + ...)
-	if id, ok := query.(*ast.Ident); ok {
-		// Confirm the identifier resolves to a string containing SQL patterns
-		var match bool
-		for _, str := range gosec.GetIdentStringValuesRecursive(id) {
-			if s.MatchPatterns(str) {
-				match = true
-				break
+	id, ok := query.(*ast.Ident)
+	if !ok {
+		return nil, nil
+	}
+
+	// Confirm the identifier resolves to a string containing SQL patterns
+	var match bool
+	if slices.ContainsFunc(gosec.GetIdentStringValuesRecursive(id), s.MatchPatterns) {
+		match = true
+	}
+	if !match {
+		return nil, nil
+	}
+
+	// Check initial declaration for direct risky concatenation
+	if id.Obj != nil {
+		switch decl := id.Obj.Decl.(type) {
+		case *ast.AssignStmt:
+			if injection := s.findInjectionInBranch(ctx, decl.Rhs); injection != nil {
+				return ctx.NewIssue(injection, s.ID(), s.What, s.Severity, s.Confidence), nil
+			}
+		case *ast.ValueSpec:
+			if injection := s.findInjectionInBranch(ctx, decl.Values); injection != nil {
+				return ctx.NewIssue(injection, s.ID(), s.What, s.Severity, s.Confidence), nil
 			}
 		}
-		if !match {
-			return nil, nil
-		}
+	}
 
-		// Check initial declaration for direct risky concatenation
-		if id.Obj != nil {
-			switch decl := id.Obj.Decl.(type) {
-			case *ast.AssignStmt:
-				if injection := s.findInjectionInBranch(ctx, decl.Rhs); injection != nil {
-					return ctx.NewIssue(injection, s.ID(), s.What, s.Severity, s.Confidence), nil
-				}
-			case *ast.ValueSpec:
-				if injection := s.findInjectionInBranch(ctx, decl.Values); injection != nil {
-					return ctx.NewIssue(injection, s.ID(), s.What, s.Severity, s.Confidence), nil
-				}
+	// Check for risky mutations (query += tainted or query = query + tainted)
+	var badMutation *ast.AssignStmt
+	for _, file := range ctx.PkgFiles {
+		ast.Inspect(file, func(node ast.Node) bool {
+			assign, ok := node.(*ast.AssignStmt)
+			if !ok || len(assign.Lhs) != 1 || len(assign.Rhs) != 1 {
+				return true
 			}
-		}
+			lIdent, ok := assign.Lhs[0].(*ast.Ident)
+			if !ok || lIdent.Name != id.Name {
+				return true
+			}
 
-		// Check for risky augmented assignment (query += tainted)
-		var badAugment *ast.AssignStmt
-		for _, file := range ctx.PkgFiles {
-			ast.Inspect(file, func(node ast.Node) bool {
-				assign, ok := node.(*ast.AssignStmt)
-				if !ok || assign.Tok != token.ADD_ASSIGN || len(assign.Lhs) != 1 || len(assign.Rhs) != 1 {
+			var appended ast.Expr
+			switch assign.Tok {
+			case token.ADD_ASSIGN:
+				appended = assign.Rhs[0]
+			case token.ASSIGN:
+				be, ok := assign.Rhs[0].(*ast.BinaryExpr)
+				if !ok || be.Op != token.ADD {
 					return true
 				}
-				if lIdent, ok := assign.Lhs[0].(*ast.Ident); ok && lIdent.Name == id.Name {
-					rhs := assign.Rhs[0]
-					if gosec.TryResolve(rhs, ctx) {
-						return true
-					}
-					badAugment = assign
-					return false
-				}
-				return true
-			})
-			if badAugment != nil {
-				break
-			}
-		}
-		if badAugment != nil {
-			return ctx.NewIssue(badAugment, s.ID(), s.What, s.Severity, s.Confidence), nil
-		}
-
-		// Check for risky reassignment concatenation (query = query + tainted)
-		var badReassign *ast.AssignStmt
-		for _, file := range ctx.PkgFiles {
-			ast.Inspect(file, func(node ast.Node) bool {
-				assign, ok := node.(*ast.AssignStmt)
-				if !ok || assign.Tok != token.ASSIGN || len(assign.Lhs) != 1 || len(assign.Rhs) != 1 {
+				left, ok := be.X.(*ast.Ident)
+				if !ok || left.Name != id.Name {
 					return true
 				}
-				if lIdent, ok := assign.Lhs[0].(*ast.Ident); ok && lIdent.Name == id.Name {
-					be, ok := assign.Rhs[0].(*ast.BinaryExpr)
-					if !ok || be.Op != token.ADD {
-						return true
-					}
-					left, ok := be.X.(*ast.Ident)
-					if !ok || left.Name != id.Name {
-						return true
-					}
-					rhs := be.Y
-					if gosec.TryResolve(rhs, ctx) {
-						return true
-					}
-					badReassign = assign
-					return false
-				}
+				appended = be.Y
+			default:
 				return true
-			})
-			if badReassign != nil {
-				break
 			}
-		}
-		if badReassign != nil {
-			return ctx.NewIssue(badReassign, s.ID(), s.What, s.Severity, s.Confidence), nil
+
+			if !gosec.TryResolve(appended, ctx) {
+				badMutation = assign
+				return false
+			}
+			return true
+		})
+		if badMutation != nil {
+			return ctx.NewIssue(badMutation, s.ID(), s.What, s.Severity, s.Confidence), nil
 		}
 	}
 
