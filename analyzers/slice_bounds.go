@@ -160,7 +160,6 @@ func runSliceBounds(pass *analysis.Pass) (interface{}, error) {
 				lenOffset = off
 				isLenBound = true
 				bound = upperBounded // Assume i < len... is an upper bound check
-				err = nil
 			} else {
 				continue
 			}
