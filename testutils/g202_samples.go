@@ -336,4 +336,162 @@ func main() {
 	defer rows.Close()
 }
 `}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import (
+	"database/sql"
+	"os"
+)
+
+func main() {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	query := "SELECT * FROM album WHERE id = "
+	query += os.Args[0]
+	rows, err := db.Query(query)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import (
+	"fmt"
+	"os"
+)
+
+func main() {
+	query := "SELECT * FROM album WHERE id = "
+	query += os.Args[0]
+	fmt.Println(query)
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import (
+	"database/sql"
+	"os"
+)
+
+func main() {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	query := "SELECT * FROM album WHERE id = "
+	query = query + os.Args[0] // risky reassignment concatenation
+	rows, err := db.Query(query)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import (
+	"database/sql"
+)
+
+func main() {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	query := "SELECT * FROM album WHERE id = "
+	query = query + "42" // safe literal reassignment concatenation
+	rows, err := db.Query(query)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+// Shadowing edge case: tainted mutation on shadowed variable - should NOT flag
+// The outer 'query' is safe and passed to db.Query.
+// The inner shadowed 'query' is mutated with tainted input (irrelevant).
+package main
+
+import (
+	"database/sql"
+	"os"
+)
+
+func main() {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	query := "SELECT * FROM foo WHERE id = 42" // safe outer query
+	{
+		query := "base"                    // shadows outer query
+		query += os.Args[1]                // tainted mutation on shadow - should be ignored
+		_ = query                          // prevent unused warning
+	}
+	rows, err := db.Query(query) // uses safe outer query
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+// Shadowing edge case: no mutation on shadow, safe outer - regression guard
+package main
+
+import (
+	"database/sql"
+)
+
+func main() {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	query := "SELECT * FROM foo WHERE id = 42"
+	{
+		query := "shadowed but unused"
+		_ = query
+	}
+	rows, err := db.Query(query)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+// package-level SQL string with tainted concatenation in init()
+package main
+
+import (
+	"os"
+)
+
+var query string = "SELECT * FROM foo WHERE name = "
+
+func init() {
+	query += os.Args[1]
+}
+`, `
+package main
+
+import (
+	"database/sql"
+)
+
+func main() {
+	db, _ := sql.Open("sqlite3", ":memory:")
+	_, _ = db.Query(query)
+}
+`}, 1, gosec.NewConfig()},
 }

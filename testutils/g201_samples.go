@@ -428,4 +428,146 @@ func main() {
 	defer stmt.Close()
 }
 `}, 0, gosec.NewConfig()},
+	{[]string{`
+// Safe verb (%d) with tainted input - no string injection risk
+package main
+
+import (
+	"database/sql"
+	"fmt"
+	"os"
+	"strconv"
+)
+
+func main() {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	id, _ := strconv.Atoi(os.Args[1]) // tainted but used with %d
+	q := fmt.Sprintf("SELECT * FROM foo WHERE id = %d", id)
+	rows, err := db.Query(q)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+// Mixed args: unsafe %s (tainted) + safe %d (constant)
+package main
+
+import (
+	"database/sql"
+	"fmt"
+	"os"
+)
+
+func main() {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	q := fmt.Sprintf("SELECT * FROM %s WHERE id = %d", os.Args[1], 42) // tainted table + safe int
+	rows, err := db.Query(q)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+// All args constant but unsafe verb present - safe
+package main
+
+import (
+	"database/sql"
+	"fmt"
+)
+
+const name = "admin"
+
+func main() {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	q := fmt.Sprintf("SELECT * FROM users WHERE name = '%s'", name)
+	rows, err := db.Query(q)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+// Formatter from concatenation - risky
+package main
+
+import (
+	"database/sql"
+	"fmt"
+	"os"
+)
+
+func main() {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	base := "SELECT * FROM foo WHERE"
+	q := fmt.Sprintf(base + " name = '%s'", os.Args[1])
+	rows, err := db.Query(q)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+// No unsafe % verb but SQL pattern + tainted concat - G202, not G201
+package main
+
+import (
+	"database/sql"
+	"os"
+)
+
+func main() {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	q := "SELECT * FROM foo WHERE name = " + os.Args[1] // concat, no %
+	rows, err := db.Query(q)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}
+`}, 0, gosec.NewConfig()}, // G201 should NOT flag (G202 does)
+	{[]string{`
+// Fprintf to os.Stderr - no issue
+package main
+
+import (
+	"database/sql"
+	"fmt"
+	"os"
+)
+
+func main() {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	q := fmt.Sprintf("SELECT * FROM foo WHERE name = '%s'", os.Args[1])
+	fmt.Fprintf(os.Stderr, "Debug query: %s\n", q) // log, not exec
+	rows, err := db.Query("SELECT * FROM foo")
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}
+`}, 0, gosec.NewConfig()},
 }
