@@ -246,38 +246,100 @@ func runSliceBounds(pass *analysis.Pass) (interface{}, error) {
 	return nil, nil
 }
 
-// extractLenBound checks if the binop is of form "Var < Len + Offset"
+// extractLenBound checks if the binop is of form "Var < Len + Offset" or equivalent patterns
+// (including offsets on the left-hand side like "(Var + Const) < Len")
 func extractLenBound(binop *ssa.BinOp) (ssa.Value, int, bool) {
 	// Only handle Less Than for now
 	if binop.Op != token.LSS {
 		return nil, 0, false
 	}
 
-	// Assume LHS is the loop variable
-	loopVar := binop.X
+	var loopVar ssa.Value
+	var lenOffset int
 
-	// Check RHS. It is either the Len instruction itself, or a BinOp (Len +/- Const)
-	rhs := binop.Y
+	// First, try to interpret RHS as the length expression (len +/- const) and LHS as plain loop var
+	loopVar = binop.X // candidate loop variable
 
-	if _, ok := rhs.(*ssa.Const); !ok {
-		if rOp, ok := rhs.(*ssa.BinOp); ok {
-			// Assume Len is on the left of the arithmetic
-			if c, ok := rOp.Y.(*ssa.Const); ok {
-				val, err := strconv.Atoi(c.Value.String())
-				if err == nil {
-					switch rOp.Op {
-					case token.ADD:
-						return loopVar, val, true
-					case token.SUB:
-						return loopVar, -val, true
-					}
-				}
+	if _, isConst := binop.Y.(*ssa.Const); isConst {
+		// RHS is a constant → cannot be a length-bound check
+		return nil, 0, false
+	}
+
+	// Try to pull an offset from RHS if it is len +/- const
+	if rhsBinOp, ok := binop.Y.(*ssa.BinOp); ok && (rhsBinOp.Op == token.ADD || rhsBinOp.Op == token.SUB) {
+		var constVal int
+		var foundConst bool
+
+		// Check both sides for the constant (symmetric for ADD, careful for SUB)
+		if c, ok := rhsBinOp.Y.(*ssa.Const); ok {
+			if v, err := strconv.Atoi(c.Value.String()); err == nil {
+				constVal = v
+				foundConst = true
+			}
+		} else if c, ok := rhsBinOp.X.(*ssa.Const); ok {
+			if v, err := strconv.Atoi(c.Value.String()); err == nil {
+				constVal = v
+				foundConst = true
 			}
 		}
-		// If it's not a BinOp but just a value (result of len call), offset is 0
-		return loopVar, 0, true
+
+		if foundConst {
+			switch rhsBinOp.Op {
+			case token.ADD:
+				// len + k or k + len → same meaning
+				lenOffset = constVal
+			case token.SUB:
+				if _, isConstOnLeft := rhsBinOp.X.(*ssa.Const); isConstOnLeft {
+					// k - len → unusual for a strict upper bound, skip this pattern
+					foundConst = false
+				} else {
+					// len - k
+					lenOffset = -constVal
+				}
+			}
+			if foundConst {
+				return loopVar, lenOffset, true
+			}
+		}
 	}
-	return nil, 0, false
+
+	// If we get here, RHS is a plain length (no extractable offset) or extraction failed.
+	// Now try the alternative pattern: LHS is (loopVar +/- const), RHS is plain len
+	if lhsBinOp, ok := binop.X.(*ssa.BinOp); ok && (lhsBinOp.Op == token.ADD || lhsBinOp.Op == token.SUB) {
+		var constVal int
+		var varVal ssa.Value
+		var found bool
+
+		if c, ok := lhsBinOp.Y.(*ssa.Const); ok {
+			if v, err := strconv.Atoi(c.Value.String()); err == nil {
+				constVal = v
+				varVal = lhsBinOp.X
+				found = true
+			}
+		} else if c, ok := lhsBinOp.X.(*ssa.Const); ok {
+			if v, err := strconv.Atoi(c.Value.String()); err == nil {
+				constVal = v
+				varVal = lhsBinOp.Y
+				found = true
+			}
+		}
+
+		if found {
+			loopVar = varVal
+			switch lhsBinOp.Op {
+			case token.ADD:
+				// (i + k) < len  → equivalent to i < len - k
+				lenOffset = -constVal
+			case token.SUB:
+				// (i - k) < len  → equivalent to i < len + k (rare but safe)
+				lenOffset = constVal
+			}
+			return loopVar, lenOffset, true
+		}
+	}
+
+	// Fallback: plain i < len (offset 0)
+	return loopVar, 0, true
 }
 
 // extractIndexOffset checks if indexVal is "loopVar + C"

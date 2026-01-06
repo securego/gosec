@@ -500,4 +500,23 @@ func main() {
 	safeTriples([]int{1,2,3,4,5})
 }
 `}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func pairwise(list []any) {
+	for i := 0; i+1 < len(list); i += 2 {
+		// Safe: i+1 < len implies i < len-1
+		fmt.Printf("%v %v\n", list[i], list[i+1])
+	}
+}
+
+func main() {
+	// Calls with both even and odd lengths (and empty) to exercise the path
+	pairwise([]any{"a", "b", "c", "d"})
+	pairwise([]any{"x", "y", "z"})
+	pairwise([]any{})
+}
+`}, 0, gosec.NewConfig()},
 }
