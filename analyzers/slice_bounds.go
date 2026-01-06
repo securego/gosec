@@ -147,9 +147,25 @@ func runSliceBounds(pass *analysis.Pass) (interface{}, error) {
 
 	for ifref, binop := range ifs {
 		bound, value, err := extractBinOpBound(binop)
+
+		// New logic: attempt to handle dynamic bounds (e.g. i < len - 1)
+		var loopVar ssa.Value
+		var lenOffset int
+		var isLenBound bool
+
 		if err != nil {
-			continue
+			// If constant extraction failed, try extracting length-based bound
+			if v, off, ok := extractLenBound(binop); ok {
+				loopVar = v
+				lenOffset = off
+				isLenBound = true
+				bound = upperBounded // Assume i < len... is an upper bound check
+				err = nil
+			} else {
+				continue
+			}
 		}
+
 		for i, block := range ifref.Block().Succs {
 			if i == 1 {
 				bound = invBound(bound)
@@ -171,16 +187,24 @@ func runSliceBounds(pass *analysis.Pass) (interface{}, error) {
 							switch tinstr := instr.(type) {
 							case *ssa.Slice:
 								lower, upper := extractSliceBounds(tinstr)
-								if isSliceInsideBounds(0, value, lower, upper) {
+								if !isLenBound && isSliceInsideBounds(0, value, lower, upper) {
 									delete(issues, instr)
 								}
 							case *ssa.IndexAddr:
-								indexValue, err := extractIntValue(tinstr.Index.String())
-								if err != nil {
-									break
-								}
-								if isSliceIndexInsideBounds(value, indexValue) {
-									delete(issues, instr)
+								if isLenBound {
+									if idxOffset, ok := extractIndexOffset(tinstr.Index, loopVar); ok {
+										if lenOffset+idxOffset-1 < 0 {
+											delete(issues, instr)
+										}
+									}
+								} else {
+									indexValue, err := extractIntValue(tinstr.Index.String())
+									if err != nil {
+										break
+									}
+									if isSliceIndexInsideBounds(value, indexValue) {
+										delete(issues, instr)
+									}
 								}
 							}
 						case bounded:
@@ -220,6 +244,80 @@ func runSliceBounds(pass *analysis.Pass) (interface{}, error) {
 		return foundIssues, nil
 	}
 	return nil, nil
+}
+
+// extractLenBound checks if the binop is of form "Var < Len + Offset"
+func extractLenBound(binop *ssa.BinOp) (ssa.Value, int, bool) {
+	// Only handle Less Than for now
+	if binop.Op != token.LSS {
+		return nil, 0, false
+	}
+
+	// Assume LHS is the loop variable
+	loopVar := binop.X
+
+	// Check RHS. It is either the Len instruction itself, or a BinOp (Len +/- Const)
+	rhs := binop.Y
+
+	if _, ok := rhs.(*ssa.Const); !ok {
+		if rOp, ok := rhs.(*ssa.BinOp); ok {
+			// Assume Len is on the left of the arithmetic
+			if c, ok := rOp.Y.(*ssa.Const); ok {
+				val, err := strconv.Atoi(c.Value.String())
+				if err == nil {
+					switch rOp.Op {
+					case token.ADD:
+						return loopVar, val, true
+					case token.SUB:
+						return loopVar, -val, true
+					}
+				}
+			}
+		}
+		// If it's not a BinOp but just a value (result of len call), offset is 0
+		return loopVar, 0, true
+	}
+	return nil, 0, false
+}
+
+// extractIndexOffset checks if indexVal is "loopVar + C"
+// returns the constant C and true if successful
+func extractIndexOffset(indexVal ssa.Value, loopVar ssa.Value) (int, bool) {
+	if indexVal == loopVar {
+		return 0, true
+	}
+
+	if binOp, ok := indexVal.(*ssa.BinOp); ok {
+		switch binOp.Op {
+		case token.ADD:
+			if binOp.X == loopVar {
+				if c, ok := binOp.Y.(*ssa.Const); ok {
+					val, err := strconv.Atoi(c.Value.String())
+					if err == nil {
+						return val, true
+					}
+				}
+			}
+			if binOp.Y == loopVar {
+				if c, ok := binOp.X.(*ssa.Const); ok {
+					val, err := strconv.Atoi(c.Value.String())
+					if err == nil {
+						return val, true
+					}
+				}
+			}
+		case token.SUB:
+			if binOp.X == loopVar {
+				if c, ok := binOp.Y.(*ssa.Const); ok {
+					val, err := strconv.Atoi(c.Value.String())
+					if err == nil {
+						return -val, true
+					}
+				}
+			}
+		}
+	}
+	return 0, false
 }
 
 func trackSliceBounds(depth int, sliceCap int, slice ssa.Node, violations *[]ssa.Instruction, ifs map[ssa.If]*ssa.BinOp) {
