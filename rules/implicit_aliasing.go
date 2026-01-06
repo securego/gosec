@@ -11,7 +11,7 @@ import (
 
 type implicitAliasing struct {
 	issue.MetaData
-	aliases         map[*ast.Object]struct{}
+	aliases         map[*types.Var]struct{}
 	rightBrace      token.Pos
 	acceptableAlias []*ast.UnaryExpr
 }
@@ -47,68 +47,64 @@ func doGetIdentExpr(expr ast.Expr, hasSelector bool) (*ast.Ident, bool) {
 }
 
 func (r *implicitAliasing) Match(n ast.Node, c *gosec.Context) (*issue.Issue, error) {
-	// This rule does not apply for Go 1.22, see https://go.dev/doc/go1.22#language.
+	// This rule does not apply for Go 1.22+, where range loop variables have per-iteration scope.
+	// See https://go.dev/doc/go1.22#language.
 	major, minor, _ := gosec.GoVersion()
-	if major >= 1 && minor >= 22 {
+	if major == 1 && minor >= 22 || major > 1 {
 		return nil, nil
 	}
 
 	switch node := n.(type) {
 	case *ast.RangeStmt:
-		// When presented with a range statement, get the underlying Object bound to
-		// by assignment and add it to our set (r.aliases) of objects to check for.
-		if key, ok := node.Value.(*ast.Ident); ok {
-			if key.Obj != nil {
-				if assignment, ok := key.Obj.Decl.(*ast.AssignStmt); ok {
-					if len(assignment.Lhs) < 2 {
-						return nil, nil
-					}
-
-					if object, ok := assignment.Lhs[1].(*ast.Ident); ok {
-						r.aliases[object.Obj] = struct{}{}
-
-						if r.rightBrace < node.Body.Rbrace {
-							r.rightBrace = node.Body.Rbrace
-						}
+		// Add the range value variable (if it's an identifier) to the set of aliased loop vars.
+		if valueIdent, ok := node.Value.(*ast.Ident); ok {
+			if obj := c.Info.ObjectOf(valueIdent); obj != nil {
+				if v, ok := obj.(*types.Var); ok {
+					r.aliases[v] = struct{}{}
+					if r.rightBrace < node.Body.Rbrace {
+						r.rightBrace = node.Body.Rbrace
 					}
 				}
 			}
 		}
 
 	case *ast.UnaryExpr:
-		// If this unary expression is outside of the last range statement we were looking at
-		// then clear the list of objects we're concerned about because they're no longer in
-		// scope
+		// Clear aliases if we're outside the last tracked range loop body.
 		if node.Pos() > r.rightBrace {
-			r.aliases = make(map[*ast.Object]struct{})
+			r.aliases = make(map[*types.Var]struct{})
 			r.acceptableAlias = make([]*ast.UnaryExpr, 0)
 		}
 
-		// Short circuit logic to skip checking aliases if we have nothing to check against.
+		// Short-circuit if no aliases to check.
 		if len(r.aliases) == 0 {
 			return nil, nil
 		}
 
-		// If this unary is at the top level of a return statement then it is okay--
-		// see *ast.ReturnStmt comment below.
+		// Acceptable if this &expr is directly returned (top-level in return stmt).
 		if containsUnary(r.acceptableAlias, node) {
 			return nil, nil
 		}
 
-		// If we find a unary op of & (reference) of an object within r.aliases, complain.
-		if identExpr, hasSelector := getIdentExpr(node); identExpr != nil && node.Op.String() == "&" {
-			if _, contains := r.aliases[identExpr.Obj]; contains {
-				_, isPointer := c.Info.TypeOf(identExpr).(*types.Pointer)
-
-				if !hasSelector || !isPointer {
-					return c.NewIssue(n, r.ID(), r.What, r.Severity, r.Confidence), nil
+		// Check for & on a tracked loop variable.
+		if node.Op == token.AND {
+			if identExpr, hasSelector := getIdentExpr(node.X); identExpr != nil {
+				if obj := c.Info.ObjectOf(identExpr); obj != nil {
+					if v, ok := obj.(*types.Var); ok {
+						if _, aliased := r.aliases[v]; aliased {
+							_, isPointer := c.Info.TypeOf(identExpr).(*types.Pointer)
+							if !hasSelector || !isPointer {
+								return c.NewIssue(n, r.ID(), r.What, r.Severity, r.Confidence), nil
+							}
+						}
+					}
 				}
 			}
 		}
+
 	case *ast.ReturnStmt:
-		// Returning a rangeStmt yielded value is acceptable since only one value will be returned
-		for _, item := range node.Results {
-			if unary, ok := item.(*ast.UnaryExpr); ok && unary.Op.String() == "&" {
+		// Mark direct &loopVar in return statements as acceptable (only one iteration's value returned).
+		for _, res := range node.Results {
+			if unary, ok := res.(*ast.UnaryExpr); ok && unary.Op == token.AND {
 				r.acceptableAlias = append(r.acceptableAlias, unary)
 			}
 		}
@@ -117,10 +113,10 @@ func (r *implicitAliasing) Match(n ast.Node, c *gosec.Context) (*issue.Issue, er
 	return nil, nil
 }
 
-// NewImplicitAliasing detects implicit memory aliasing of type: for blah := SomeCall() {... SomeOtherCall(&blah) ...}
+// NewImplicitAliasing detects implicit memory aliasing in range loops (pre-Go 1.22).
 func NewImplicitAliasing(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	return &implicitAliasing{
-		aliases:         make(map[*ast.Object]struct{}),
+		aliases:         make(map[*types.Var]struct{}),
 		rightBrace:      token.NoPos,
 		acceptableAlias: make([]*ast.UnaryExpr, 0),
 		MetaData: issue.MetaData{

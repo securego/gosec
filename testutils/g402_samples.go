@@ -293,4 +293,90 @@ func main() {
 	_ = cryptotls.Config{MinVersion: cryptotls.VersionTLS12}
 }
 `}, 0, gosec.NewConfig()},
+	{[]string{`
+// InsecureSkipVerify with unary NOT (direct !false → true, high confidence)
+package main
+
+import "crypto/tls"
+
+func main() {
+	_ = &tls.Config{InsecureSkipVerify: !false}
+}
+`}, 1, gosec.NewConfig()},
+
+	{[]string{`
+// InsecureSkipVerify with unary NOT (direct !true → false, no issue)
+package main
+
+import "crypto/tls"
+
+func main() {
+	_ = &tls.Config{InsecureSkipVerify: !true}
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+// InsecureSkipVerify via const with NOT (resolves to true, high confidence)
+package main
+
+import "crypto/tls"
+
+const skipVerify = !false
+
+func main() {
+	_ = &tls.Config{InsecureSkipVerify: skipVerify}
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+// PreferServerCipherSuites false (direct, medium severity)
+package main
+
+import "crypto/tls"
+
+func main() {
+	_ = &tls.Config{PreferServerCipherSuites: false}
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+// PreferServerCipherSuites with !true (resolves to false)
+package main
+
+import "crypto/tls"
+
+func main() {
+	_ = &tls.Config{PreferServerCipherSuites: !true}
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+// PreferServerCipherSuites true (no issue)
+package main
+
+import "crypto/tls"
+
+func main() {
+	_ = &tls.Config{PreferServerCipherSuites: true}
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+// MaxVersion explicitly low via variable
+package main
+
+import "crypto/tls"
+
+func main() {
+	var lowMax uint16 = tls.VersionTLS10
+	_ = &tls.Config{MaxVersion: lowMax}
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+// PreferServerCipherSuites unknown → low-confidence
+package main
+
+import "crypto/tls"
+
+var prefer bool // unresolved
+
+func main() {
+	_ = &tls.Config{PreferServerCipherSuites: prefer}
+}
+`}, 1, gosec.NewConfig()},
 }

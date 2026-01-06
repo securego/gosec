@@ -20,8 +20,9 @@ import (
 	"crypto/tls"
 	"fmt"
 	"go/ast"
+	"go/token"
 	"go/types"
-	"strconv"
+	"slices"
 
 	"github.com/securego/gosec/v2"
 	"github.com/securego/gosec/v2/issue"
@@ -35,30 +36,157 @@ type insecureConfigTLS struct {
 	goodCiphers      []string
 	actualMinVersion int64
 	actualMaxVersion int64
+	minVersionSet    bool
+	maxVersionSet    bool
 }
 
 func (t *insecureConfigTLS) ID() string {
 	return t.MetaData.ID
 }
 
-func stringInSlice(a string, list []string) bool {
-	for _, b := range list {
-		if b == a {
-			return true
-		}
-	}
-	return false
+var tlsVersionMap = map[string]int64{
+	"VersionTLS10": tls.VersionTLS10,
+	"VersionTLS11": tls.VersionTLS11,
+	"VersionTLS12": tls.VersionTLS12,
+	"VersionTLS13": tls.VersionTLS13,
+}
+
+func (t *insecureConfigTLS) mapVersion(version string) int64 {
+	return tlsVersionMap[version]
 }
 
 func (t *insecureConfigTLS) processTLSCipherSuites(n ast.Node, c *gosec.Context) *issue.Issue {
 	if ciphers, ok := n.(*ast.CompositeLit); ok {
-		for _, cipher := range ciphers.Elts {
-			if ident, ok := cipher.(*ast.SelectorExpr); ok {
-				if !stringInSlice(ident.Sel.Name, t.goodCiphers) {
-					err := fmt.Sprintf("TLS Bad Cipher Suite: %s", ident.Sel.Name)
-					return c.NewIssue(ident, t.ID(), err, issue.High, issue.High)
+		for _, elt := range ciphers.Elts {
+			if ident, ok := elt.(*ast.SelectorExpr); ok {
+				cipherName := ident.Sel.Name
+				if !slices.Contains(t.goodCiphers, cipherName) {
+					msg := fmt.Sprintf("TLS Bad Cipher Suite: %s", cipherName)
+					return c.NewIssue(ident, t.ID(), msg, issue.High, issue.High)
 				}
 			}
+		}
+	}
+	return nil
+}
+
+func (t *insecureConfigTLS) resolveTLSVersion(expr ast.Expr, c *gosec.Context) int64 {
+	if val, err := gosec.GetInt(expr); err == nil {
+		return val
+	}
+
+	if se, ok := expr.(*ast.SelectorExpr); ok {
+		if x, ok := se.X.(*ast.Ident); ok {
+			if ip, ok := gosec.GetImportPath(x.Name, c); ok && ip == "crypto/tls" {
+				return t.mapVersion(se.Sel.Name)
+			}
+		}
+	}
+
+	if id, ok := expr.(*ast.Ident); ok {
+		obj := c.Info.ObjectOf(id)
+		if obj != nil {
+			init := t.findDefinition(obj, c)
+			if init != nil {
+				if val, err := gosec.GetInt(init); err == nil {
+					return val
+				}
+				if se, ok := init.(*ast.SelectorExpr); ok {
+					if x, ok := se.X.(*ast.Ident); ok {
+						if ip, ok := gosec.GetImportPath(x.Name, c); ok && ip == "crypto/tls" {
+							return t.mapVersion(se.Sel.Name)
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return 0 // unknown / unresolved
+}
+
+func (t *insecureConfigTLS) resolveBoolConst(expr ast.Expr, c *gosec.Context) (bool, bool) {
+	if id, ok := expr.(*ast.Ident); ok {
+		if id.Name == "true" {
+			return true, true
+		}
+		if id.Name == "false" {
+			return false, true
+		}
+	}
+
+	if u, ok := expr.(*ast.UnaryExpr); ok && u.Op == token.NOT {
+		if op, ok := u.X.(*ast.Ident); ok {
+			if op.Name == "true" {
+				return false, true
+			}
+			if op.Name == "false" {
+				return true, true
+			}
+		}
+	}
+
+	if id, ok := expr.(*ast.Ident); ok {
+		obj := c.Info.ObjectOf(id)
+		if obj != nil {
+			init := t.findDefinition(obj, c)
+			if init != nil {
+				if iid, ok := init.(*ast.Ident); ok {
+					if iid.Name == "true" {
+						return true, true
+					}
+					if iid.Name == "false" {
+						return false, true
+					}
+				}
+				if uu, ok := init.(*ast.UnaryExpr); ok && uu.Op == token.NOT {
+					if op, ok := uu.X.(*ast.Ident); ok {
+						if op.Name == "true" {
+							return false, true
+						}
+						if op.Name == "false" {
+							return true, true
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return false, false // unknown
+}
+
+func (t *insecureConfigTLS) processTLSConfVal(key ast.Expr, value ast.Expr, c *gosec.Context) *issue.Issue {
+	if ident, ok := key.(*ast.Ident); ok {
+		switch ident.Name {
+		case "InsecureSkipVerify":
+			val, known := t.resolveBoolConst(value, c)
+			if known && val {
+				return c.NewIssue(value, t.ID(), "TLS InsecureSkipVerify set to true.", issue.High, issue.High)
+			}
+			if !known {
+				return c.NewIssue(value, t.ID(), "TLS InsecureSkipVerify may be set to true.", issue.High, issue.Low)
+			}
+
+		case "PreferServerCipherSuites":
+			val, known := t.resolveBoolConst(value, c)
+			if known && !val {
+				return c.NewIssue(value, t.ID(), "TLS PreferServerCipherSuites set to false.", issue.Medium, issue.High)
+			}
+			if !known {
+				return c.NewIssue(value, t.ID(), "TLS PreferServerCipherSuites may be set to false.", issue.Medium, issue.Low)
+			}
+
+		case "MinVersion":
+			t.minVersionSet = true
+			t.actualMinVersion = t.resolveTLSVersion(value, c)
+
+		case "MaxVersion":
+			t.maxVersionSet = true
+			t.actualMaxVersion = t.resolveTLSVersion(value, c)
+
+		case "CipherSuites":
+			return t.processTLSCipherSuites(value, c)
 		}
 	}
 	return nil
@@ -66,146 +194,81 @@ func (t *insecureConfigTLS) processTLSCipherSuites(n ast.Node, c *gosec.Context)
 
 func (t *insecureConfigTLS) processTLSConf(n ast.Node, c *gosec.Context) *issue.Issue {
 	if kve, ok := n.(*ast.KeyValueExpr); ok {
-		issue := t.processTLSConfVal(kve.Key, kve.Value, c)
-		if issue != nil {
-			return issue
-		}
-	} else if assign, ok := n.(*ast.AssignStmt); ok {
+		return t.processTLSConfVal(kve.Key, kve.Value, c)
+	}
+
+	if assign, ok := n.(*ast.AssignStmt); ok {
 		if len(assign.Lhs) < 1 || len(assign.Rhs) < 1 {
 			return nil
 		}
 		if selector, ok := assign.Lhs[0].(*ast.SelectorExpr); ok {
-			issue := t.processTLSConfVal(selector.Sel, assign.Rhs[0], c)
-			if issue != nil {
-				return issue
-			}
+			return t.processTLSConfVal(selector.Sel, assign.Rhs[0], c)
 		}
 	}
 	return nil
 }
 
-func (t *insecureConfigTLS) processTLSConfVal(key ast.Expr, value ast.Expr, c *gosec.Context) *issue.Issue {
-	if ident, ok := key.(*ast.Ident); ok {
-		switch ident.Name {
-		case "InsecureSkipVerify":
-			if node, ok := value.(*ast.Ident); ok {
-				if node.Name != "false" {
-					return c.NewIssue(value, t.ID(), "TLS InsecureSkipVerify set true.", issue.High, issue.High)
-				}
-			} else {
-				// TODO(tk): symbol tab look up to get the actual value
-				return c.NewIssue(value, t.ID(), "TLS InsecureSkipVerify may be true.", issue.High, issue.Low)
-			}
+func (t *insecureConfigTLS) findDefinition(obj types.Object, c *gosec.Context) ast.Expr {
+	file := gosec.ContainingFile(obj, c)
+	if file == nil {
+		return nil
+	}
 
-		case "PreferServerCipherSuites":
-			if node, ok := value.(*ast.Ident); ok {
-				if node.Name == "false" {
-					return c.NewIssue(value, t.ID(), "TLS PreferServerCipherSuites set false.", issue.Medium, issue.High)
-				}
-			} else {
-				// TODO(tk): symbol tab look up to get the actual value
-				return c.NewIssue(value, t.ID(), "TLS PreferServerCipherSuites may be false.", issue.Medium, issue.Low)
-			}
-
-		case "MinVersion":
-			if d, ok := value.(*ast.Ident); ok {
-				obj := d.Obj
-				if obj == nil {
-					for _, f := range c.PkgFiles {
-						obj = f.Scope.Lookup(d.Name)
-						if obj != nil {
-							break
-						}
-					}
-				}
-				if vs, ok := obj.Decl.(*ast.ValueSpec); ok && len(vs.Values) > 0 {
-					if s, ok := vs.Values[0].(*ast.SelectorExpr); ok {
-						x := s.X.(*ast.Ident).Name
-						sel := s.Sel.Name
-
-						for _, imp := range c.Pkg.Imports() {
-							if imp.Name() == x {
-								tObj := imp.Scope().Lookup(sel)
-								if cst, ok := tObj.(*types.Const); ok {
-									// ..got the value check if this can be translated
-									if minVersion, err := strconv.ParseInt(cst.Val().String(), 0, 64); err == nil {
-										t.actualMinVersion = minVersion
-									}
-								}
-							}
-						}
-					}
-					if ival, ierr := gosec.GetInt(vs.Values[0]); ierr == nil {
-						t.actualMinVersion = ival
-					}
-				}
-			} else if ival, ierr := gosec.GetInt(value); ierr == nil {
-				t.actualMinVersion = ival
-			} else {
-				if se, ok := value.(*ast.SelectorExpr); ok {
-					if pkg, ok := se.X.(*ast.Ident); ok {
-						if ip, ok := gosec.GetImportPath(pkg.Name, c); ok && ip == "crypto/tls" {
-							t.actualMinVersion = t.mapVersion(se.Sel.Name)
-						}
-					}
-				}
-			}
-
-		case "MaxVersion":
-			if ival, ierr := gosec.GetInt(value); ierr == nil {
-				t.actualMaxVersion = ival
-			} else {
-				if se, ok := value.(*ast.SelectorExpr); ok {
-					if pkg, ok := se.X.(*ast.Ident); ok {
-						if ip, ok := gosec.GetImportPath(pkg.Name, c); ok && ip == "crypto/tls" {
-							t.actualMaxVersion = t.mapVersion(se.Sel.Name)
-						}
-					}
-				}
-			}
-
-		case "CipherSuites":
-			if ret := t.processTLSCipherSuites(value, c); ret != nil {
-				return ret
-			}
-
+	var initializer ast.Expr
+	ast.Inspect(file, func(n ast.Node) bool {
+		if initializer != nil {
+			return false
 		}
-	}
-	return nil
-}
-
-func (t *insecureConfigTLS) mapVersion(version string) int64 {
-	var v int64
-	switch version {
-	case "VersionTLS13":
-		v = tls.VersionTLS13
-	case "VersionTLS12":
-		v = tls.VersionTLS12
-	case "VersionTLS11":
-		v = tls.VersionTLS11
-	case "VersionTLS10":
-		v = tls.VersionTLS10
-	}
-	return v
+		switch n := n.(type) {
+		case *ast.ValueSpec:
+			for i, name := range n.Names {
+				if name.Pos() == obj.Pos() && i < len(n.Values) {
+					initializer = n.Values[i]
+					return false
+				}
+			}
+		case *ast.AssignStmt:
+			for i, lhs := range n.Lhs {
+				if id, ok := lhs.(*ast.Ident); ok && id.Pos() == obj.Pos() && i < len(n.Rhs) {
+					initializer = n.Rhs[i]
+					return false
+				}
+			}
+		}
+		return true
+	})
+	return initializer
 }
 
 func (t *insecureConfigTLS) checkVersion(n ast.Node, c *gosec.Context) *issue.Issue {
-	if t.actualMaxVersion == 0 && t.actualMinVersion >= t.MinVersion {
-		// no warning is generated since the min version is greater than the secure min version
-		return nil
-	}
-	if t.actualMinVersion < t.MinVersion {
+	// Flag explicitly low MinVersion (including explicit 0)
+	if t.minVersionSet && t.actualMinVersion < t.MinVersion {
 		return c.NewIssue(n, t.ID(), "TLS MinVersion too low.", issue.High, issue.High)
 	}
-	if t.actualMaxVersion < t.MaxVersion {
-		return c.NewIssue(n, t.ID(), "TLS MaxVersion too low.", issue.High, issue.High)
+
+	// Handle MaxVersion
+	if t.maxVersionSet {
+		// Special case for explicit MaxVersion: 0 (default latest) - suppress warning if MinVersion is securely set
+		if t.actualMaxVersion == 0 {
+			if t.minVersionSet && t.actualMinVersion >= t.MinVersion {
+				return nil
+			}
+			// Otherwise treat explicit 0 as potentially insecure (fall through to flag)
+		}
+		// Flag if explicitly capped too low (non-zero low values always flagged)
+		if t.actualMaxVersion < t.MaxVersion {
+			return c.NewIssue(n, t.ID(), "TLS MaxVersion too low.", issue.High, issue.High)
+		}
 	}
+
 	return nil
 }
 
 func (t *insecureConfigTLS) resetVersion() {
-	t.actualMaxVersion = 0
 	t.actualMinVersion = 0
+	t.actualMaxVersion = 0
+	t.minVersionSet = false
+	t.maxVersionSet = false
 }
 
 func (t *insecureConfigTLS) Match(n ast.Node, c *gosec.Context) (*issue.Issue, error) {
@@ -213,27 +276,26 @@ func (t *insecureConfigTLS) Match(n ast.Node, c *gosec.Context) (*issue.Issue, e
 		actualType := c.Info.TypeOf(complit.Type)
 		if actualType != nil && actualType.String() == t.requiredType {
 			for _, elt := range complit.Elts {
-				issue := t.processTLSConf(elt, c)
-				if issue != nil {
+				if issue := t.processTLSConf(elt, c); issue != nil {
 					return issue, nil
 				}
 			}
-			issue := t.checkVersion(complit, c)
+			if issue := t.checkVersion(complit, c); issue != nil {
+				return issue, nil
+			}
 			t.resetVersion()
-			return issue, nil
+			return nil, nil
 		}
-	} else {
-		if assign, ok := n.(*ast.AssignStmt); ok && len(assign.Lhs) > 0 {
-			if selector, ok := assign.Lhs[0].(*ast.SelectorExpr); ok {
-				actualType := c.Info.TypeOf(selector.X)
-				if actualType != nil && actualType.String() == t.requiredType {
-					issue := t.processTLSConf(assign, c)
-					if issue != nil {
-						return issue, nil
-					}
-				}
+	}
+
+	if assign, ok := n.(*ast.AssignStmt); ok && len(assign.Lhs) > 0 {
+		if selector, ok := assign.Lhs[0].(*ast.SelectorExpr); ok {
+			actualType := c.Info.TypeOf(selector.X)
+			if actualType != nil && actualType.String() == t.requiredType {
+				return t.processTLSConf(assign, c), nil
 			}
 		}
 	}
+
 	return nil, nil
 }
