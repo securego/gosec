@@ -385,29 +385,44 @@ func GetPkgAbsPath(pkgPath string) (string, error) {
 	return absPath, nil
 }
 
-// ConcatString recursively concatenates strings from a binary expression
-func ConcatString(n *ast.BinaryExpr) (string, bool) {
-	var s string
-	// sub expressions are found in X object, Y object is always last BasicLit
-	if rightOperand, ok := n.Y.(*ast.BasicLit); ok {
-		if str, err := GetString(rightOperand); err == nil {
-			s = str + s
-		}
-	} else {
+// ConcatString recursively concatenates constant strings from an expression
+// if the entire chain is fully constant-derived (using TryResolve).
+// Returns the concatenated string and true if successful.
+func ConcatString(expr ast.Expr, ctx *Context) (string, bool) {
+	if expr == nil || !TryResolve(expr, ctx) {
 		return "", false
 	}
-	if leftOperand, ok := n.X.(*ast.BinaryExpr); ok {
-		if recursion, ok := ConcatString(leftOperand); ok {
-			s = recursion + s
+
+	var build strings.Builder
+	var traverse func(ast.Expr) bool
+	traverse = func(e ast.Expr) bool {
+		switch node := e.(type) {
+		case *ast.BasicLit:
+			if str, err := GetString(node); err == nil {
+				build.WriteString(str)
+				return true
+			}
+			return false
+		case *ast.Ident:
+			values := GetIdentStringValuesRecursive(node)
+			for _, v := range values {
+				build.WriteString(v)
+			}
+			return len(values) > 0
+		case *ast.BinaryExpr:
+			if node.Op != token.ADD {
+				return false
+			}
+			return traverse(node.X) && traverse(node.Y)
+		default:
+			return false
 		}
-	} else if leftOperand, ok := n.X.(*ast.BasicLit); ok {
-		if str, err := GetString(leftOperand); err == nil {
-			s = str + s
-		}
-	} else {
-		return "", false
 	}
-	return s, true
+
+	if traverse(expr) {
+		return build.String(), true
+	}
+	return "", false
 }
 
 // FindVarIdentities returns array of all variable identities in a given binary expression

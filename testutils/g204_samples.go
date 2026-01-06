@@ -278,4 +278,41 @@ func main() {
 	_ = exec.Command(exe, args...)
 }
 `}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import (
+	"os/exec"
+)
+
+// Direct use of a function parameter in exec.Command.
+// This is clearly tainted input (parameter from caller, potentially user-controlled).
+func vulnerable(command string) {
+	// Dangerous pattern: passing unsanitized input to a shell
+	_ = exec.Command("bash", "-c", command)
+}
+
+func main() {
+	// In real scenarios, this could be user input (e.g., via flag, HTTP param, etc.)
+	vulnerable("echo safe")
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import (
+	"os/exec"
+)
+
+// Indirect use: assign parameter to local variable before use.
+// Included for comparison/regression testing.
+func vulnerable(command string) {
+	cmdStr := command // local assignment
+	_ = exec.Command("bash", "-c", cmdStr)
+}
+
+func main() {
+	vulnerable("echo safe")
+}
+`}, 1, gosec.NewConfig()},
 }
