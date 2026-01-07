@@ -24,13 +24,8 @@ import (
 
 // Looks for net.Listen("0.0.0.0") or net.Listen(":8080")
 type bindsToAllNetworkInterfaces struct {
-	issue.MetaData
-	calls   gosec.CallList
+	callListRule
 	pattern *regexp.Regexp
-}
-
-func (r *bindsToAllNetworkInterfaces) ID() string {
-	return r.MetaData.ID
 }
 
 func (r *bindsToAllNetworkInterfaces) Match(n ast.Node, c *gosec.Context) (*issue.Issue, error) {
@@ -72,13 +67,15 @@ func NewBindsToAllNetworkInterfaces(id string, _ gosec.Config) (gosec.Rule, []as
 	calls.Add("net", "Listen")
 	calls.Add("crypto/tls", "Listen")
 	return &bindsToAllNetworkInterfaces{
-		calls:   calls,
-		pattern: regexp.MustCompile(`^(0.0.0.0|:).*$`),
-		MetaData: issue.MetaData{
-			ID:         id,
-			Severity:   issue.Medium,
-			Confidence: issue.High,
-			What:       "Binds to all network interfaces",
+		callListRule: callListRule{
+			MetaData: issue.MetaData{
+				RuleID:     id,
+				Severity:   issue.Medium,
+				Confidence: issue.High,
+				What:       "Binds to all network interfaces",
+			},
+			calls: calls,
 		},
+		pattern: regexp.MustCompile(`^(0.0.0.0|:).*$`),
 	}, []ast.Node{(*ast.CallExpr)(nil)}
 }

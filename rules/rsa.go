@@ -23,15 +23,11 @@ import (
 )
 
 type weakKeyStrength struct {
-	issue.MetaData
-	calls gosec.CallList
-	bits  int
+	callListRule
+	bits int
 }
 
-func (w *weakKeyStrength) ID() string {
-	return w.MetaData.ID
-}
-
+// Match overrides the base to check the bits argument of rsa.GenerateKey
 func (w *weakKeyStrength) Match(n ast.Node, c *gosec.Context) (*issue.Issue, error) {
 	if callExpr := w.calls.ContainsPkgCallExpr(n, c, false); callExpr != nil {
 		if bits, err := gosec.GetInt(callExpr.Args[1]); err == nil && bits < (int64)(w.bits) {
@@ -47,13 +43,15 @@ func NewWeakKeyStrength(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	calls.Add("crypto/rsa", "GenerateKey")
 	bits := 2048
 	return &weakKeyStrength{
-		calls: calls,
-		bits:  bits,
-		MetaData: issue.MetaData{
-			ID:         id,
-			Severity:   issue.Medium,
-			Confidence: issue.High,
-			What:       fmt.Sprintf("RSA keys should be at least %d bits", bits),
+		callListRule: callListRule{
+			MetaData: issue.MetaData{
+				RuleID:     id,
+				Severity:   issue.Medium,
+				Confidence: issue.High,
+				What:       fmt.Sprintf("RSA keys should be at least %d bits", bits),
+			},
+			calls: calls,
 		},
+		bits: bits,
 	}, []ast.Node{(*ast.CallExpr)(nil)}
 }

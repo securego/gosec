@@ -192,10 +192,6 @@ type credentials struct {
 	ignoreEntropy    bool
 }
 
-func (r *credentials) ID() string {
-	return r.MetaData.ID
-}
-
 func truncate(s string, n int) string {
 	if n > len(s) {
 		return s
@@ -425,7 +421,7 @@ func NewHardcodedCredentials(id string, conf gosec.Config) (gosec.Rule, []ast.No
 		ignoreEntropy:    ignoreEntropy,
 		truncate:         truncateString,
 		MetaData: issue.MetaData{
-			ID:         id,
+			RuleID:     id,
 			What:       "Potential hardcoded credentials",
 			Confidence: issue.Low,
 			Severity:   issue.High,

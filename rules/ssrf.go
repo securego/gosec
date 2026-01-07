@@ -13,11 +13,6 @@ type ssrf struct {
 	gosec.CallList
 }
 
-// ID returns the identifier for this rule
-func (r *ssrf) ID() string {
-	return r.MetaData.ID
-}
-
 // ResolveVar tries to resolve the first argument of a call expression
 // The first argument is the url
 func (r *ssrf) ResolveVar(n *ast.CallExpr, c *gosec.Context) bool {
@@ -56,7 +51,7 @@ func NewSSRFCheck(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	rule := &ssrf{
 		CallList: gosec.NewCallList(),
 		MetaData: issue.MetaData{
-			ID:         id,
+			RuleID:     id,
 			What:       "Potential HTTP request made with variable url",
 			Severity:   issue.Medium,
 			Confidence: issue.Medium,

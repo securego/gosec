@@ -34,11 +34,6 @@ type readfile struct {
 	joinedVar map[*types.Var]ast.Node
 }
 
-// ID returns the identifier for this rule
-func (r *readfile) ID() string {
-	return r.MetaData.ID
-}
-
 // isJoinFunc checks if the call is a filepath.Join with at least one non-constant argument
 func (r *readfile) isJoinFunc(n ast.Node, c *gosec.Context) bool {
 	if call := r.pathJoin.ContainsPkgCallExpr(n, c, false); call != nil {
@@ -241,7 +236,7 @@ func NewReadFile(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 		cleanedVar: make(map[*types.Var]ast.Node),
 		joinedVar:  make(map[*types.Var]ast.Node),
 		MetaData: issue.MetaData{
-			ID:         id,
+			RuleID:     id,
 			What:       "Potential file inclusion via variable",
 			Severity:   issue.Medium,
 			Confidence: issue.High,

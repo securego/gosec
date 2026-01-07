@@ -40,10 +40,6 @@ type insecureConfigTLS struct {
 	maxVersionSet    bool
 }
 
-func (t *insecureConfigTLS) ID() string {
-	return t.MetaData.ID
-}
-
 var tlsVersionMap = map[string]int64{
 	"VersionTLS10": tls.VersionTLS10,
 	"VersionTLS11": tls.VersionTLS11,

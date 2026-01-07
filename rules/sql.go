@@ -78,10 +78,6 @@ func findQueryArg(call *ast.CallExpr, ctx *gosec.Context) (ast.Expr, error) {
 	return nil, fmt.Errorf("SQL argument index not found for %s.%s", typeName, fnName)
 }
 
-func (s *sqlStatement) ID() string {
-	return s.MetaData.ID
-}
-
 // MatchPatterns checks if the string matches all required SQL patterns.
 func (s *sqlStatement) MatchPatterns(str string) bool {
 	for _, pattern := range s.patterns {
@@ -94,10 +90,6 @@ func (s *sqlStatement) MatchPatterns(str string) bool {
 
 type sqlStrConcat struct {
 	sqlStatement
-}
-
-func (s *sqlStrConcat) ID() string {
-	return s.MetaData.ID
 }
 
 // findInjectionInBranch walks through a set of expressions and returns the first
@@ -305,7 +297,7 @@ func NewSQLStrConcat(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 				regexp.MustCompile("(?i)(SELECT|DELETE|INSERT|UPDATE|INTO|FROM|WHERE)( |\n|\r|\t)"),
 			},
 			MetaData: issue.MetaData{
-				ID:         id,
+				RuleID:     id,
 				Severity:   issue.Medium,
 				Confidence: issue.High,
 				What:       "SQL string concatenation",
@@ -471,7 +463,7 @@ func NewSQLStrFormat(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 				regexp.MustCompile("%[^bdoxXfFp]"),
 			},
 			MetaData: issue.MetaData{
-				ID:         id,
+				RuleID:     id,
 				Severity:   issue.Medium,
 				Confidence: issue.High,
 				What:       "SQL string formatting",

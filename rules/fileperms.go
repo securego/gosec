@@ -30,11 +30,6 @@ type filePermissions struct {
 	calls []string
 }
 
-// ID returns the ID of the rule.
-func (r *filePermissions) ID() string {
-	return r.MetaData.ID
-}
-
 func getConfiguredMode(conf map[string]interface{}, configKey string, defaultMode int64) int64 {
 	mode := defaultMode
 	if value, ok := conf[configKey]; ok {
@@ -89,7 +84,7 @@ func NewWritePerms(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 		pkgs:  []string{"io/ioutil", "os"},
 		calls: []string{"WriteFile"},
 		MetaData: issue.MetaData{
-			ID:         id,
+			RuleID:     id,
 			Severity:   issue.Medium,
 			Confidence: issue.High,
 			What:       fmt.Sprintf("Expect WriteFile permissions to be %#o or less", mode),
@@ -106,7 +101,7 @@ func NewFilePerms(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 		pkgs:  []string{"os"},
 		calls: []string{"OpenFile", "Chmod"},
 		MetaData: issue.MetaData{
-			ID:         id,
+			RuleID:     id,
 			Severity:   issue.Medium,
 			Confidence: issue.High,
 			What:       fmt.Sprintf("Expect file permissions to be %#o or less", mode),
@@ -123,7 +118,7 @@ func NewMkdirPerms(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 		pkgs:  []string{"os"},
 		calls: []string{"Mkdir", "MkdirAll"},
 		MetaData: issue.MetaData{
-			ID:         id,
+			RuleID:     id,
 			Severity:   issue.Medium,
 			Confidence: issue.High,
 			What:       fmt.Sprintf("Expect directory permissions to be %#o or less", mode),
@@ -139,11 +134,6 @@ type osCreatePermissions struct {
 }
 
 const defaultOsCreateMode = 0o666
-
-// ID returns the ID of the rule.
-func (r *osCreatePermissions) ID() string {
-	return r.MetaData.ID
-}
 
 // Match checks if the rule is matched.
 func (r *osCreatePermissions) Match(n ast.Node, c *gosec.Context) (*issue.Issue, error) {
@@ -166,7 +156,7 @@ func NewOsCreatePerms(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 		pkgs:  []string{"os"},
 		calls: []string{"Create"},
 		MetaData: issue.MetaData{
-			ID:         id,
+			RuleID:     id,
 			Severity:   issue.Medium,
 			Confidence: issue.High,
 			What: fmt.Sprintf("Expect file permissions to be %#o or less but os.Create used with default permissions %#o",

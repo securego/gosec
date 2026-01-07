@@ -16,10 +16,6 @@ type implicitAliasing struct {
 	acceptableAlias []*ast.UnaryExpr
 }
 
-func (r *implicitAliasing) ID() string {
-	return r.MetaData.ID
-}
-
 func containsUnary(exprs []*ast.UnaryExpr, expr *ast.UnaryExpr) bool {
 	for _, e := range exprs {
 		if e == expr {
@@ -120,7 +116,7 @@ func NewImplicitAliasing(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 		rightBrace:      token.NoPos,
 		acceptableAlias: make([]*ast.UnaryExpr, 0),
 		MetaData: issue.MetaData{
-			ID:         id,
+			RuleID:     id,
 			Severity:   issue.Medium,
 			Confidence: issue.Medium,
 			What:       "Implicit memory aliasing in for loop.",

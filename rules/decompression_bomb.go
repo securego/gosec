@@ -29,10 +29,6 @@ type decompressionBombCheck struct {
 	copyCalls   gosec.CallList
 }
 
-func (d *decompressionBombCheck) ID() string {
-	return d.MetaData.ID
-}
-
 func containsReaderCall(node ast.Node, ctx *gosec.Context, list gosec.CallList) bool {
 	if list.ContainsPkgCallExpr(node, ctx, false) != nil {
 		return true
@@ -107,7 +103,7 @@ func NewDecompressionBombCheck(id string, _ gosec.Config) (gosec.Rule, []ast.Nod
 
 	return &decompressionBombCheck{
 		MetaData: issue.MetaData{
-			ID:         id,
+			RuleID:     id,
 			Severity:   issue.Medium,
 			Confidence: issue.Medium,
 			What:       "Potential DoS vulnerability via decompression bomb",

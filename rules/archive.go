@@ -16,10 +16,6 @@ type archive struct {
 	argTypes []string
 }
 
-func (a *archive) ID() string {
-	return a.MetaData.ID
-}
-
 // getArchiveBaseType returns the underlying type (*archive/zip.File or *archive/tar.Header)
 // if the expression is a direct .Name selector on such a type or a short-declared variable
 // assigned from such a selector (e.g., name := file.Name).
@@ -79,7 +75,7 @@ func NewArchive(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 		calls:    calls,
 		argTypes: []string{"*archive/zip.File", "*archive/tar.Header"},
 		MetaData: issue.MetaData{
-			ID:         id,
+			RuleID:     id,
 			Severity:   issue.Medium,
 			Confidence: issue.High,
 			What:       "File traversal when extracting zip/tar archive",

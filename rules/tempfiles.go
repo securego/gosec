@@ -30,10 +30,6 @@ type badTempFile struct {
 	nestedCalls gosec.CallList
 }
 
-func (t *badTempFile) ID() string {
-	return t.MetaData.ID
-}
-
 func (t *badTempFile) findTempDirArgs(n ast.Node, c *gosec.Context, suspect ast.Node) *issue.Issue {
 	if s, e := gosec.GetString(suspect); e == nil {
 		if t.args.MatchString(s) {
@@ -79,7 +75,7 @@ func NewBadTempFile(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 		argCalls:    argCalls,
 		nestedCalls: nestedCalls,
 		MetaData: issue.MetaData{
-			ID:         id,
+			RuleID:     id,
 			Severity:   issue.Medium,
 			Confidence: issue.High,
 			What:       "File creation in shared tmp directory without using ioutil.Tempfile",

@@ -13,10 +13,6 @@ type trojanSource struct {
 	bidiChars map[rune]struct{}
 }
 
-func (r *trojanSource) ID() string {
-	return r.MetaData.ID
-}
-
 func (r *trojanSource) Match(node ast.Node, c *gosec.Context) (*issue.Issue, error) {
 	if file, ok := node.(*ast.File); ok {
 		fobj := c.FileSet.File(file.Pos())
@@ -74,7 +70,7 @@ func (r *trojanSource) Match(node ast.Node, c *gosec.Context) (*issue.Issue, err
 func NewTrojanSource(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	return &trojanSource{
 		MetaData: issue.MetaData{
-			ID:         id,
+			RuleID:     id,
 			Severity:   issue.High,
 			Confidence: issue.Medium,
 			What:       "Potential Trojan Source vulnerability via use of bidirectional text control characters",

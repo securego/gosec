@@ -22,33 +22,22 @@ import (
 )
 
 type usingUnsafe struct {
-	issue.MetaData
-	pkg   string
-	calls []string
-}
-
-func (r *usingUnsafe) ID() string {
-	return r.MetaData.ID
-}
-
-func (r *usingUnsafe) Match(n ast.Node, c *gosec.Context) (gi *issue.Issue, err error) {
-	if _, matches := gosec.MatchCallByPackage(n, c, r.pkg, r.calls...); matches {
-		return c.NewIssue(n, r.ID(), r.What, r.Severity, r.Confidence), nil
-	}
-	return nil, nil
+	callListRule
 }
 
 // NewUsingUnsafe rule detects the use of the unsafe package. This is only
 // really useful for auditing purposes.
 func NewUsingUnsafe(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
-	return &usingUnsafe{
-		pkg:   "unsafe",
-		calls: []string{"Pointer", "String", "StringData", "Slice", "SliceData"},
+	calls := gosec.NewCallList()
+	calls.AddAll("unsafe", "Pointer", "String", "StringData", "Slice", "SliceData")
+
+	return &usingUnsafe{callListRule{
 		MetaData: issue.MetaData{
-			ID:         id,
+			RuleID:     id,
 			What:       "Use of unsafe calls should be audited",
 			Severity:   issue.Low,
 			Confidence: issue.High,
 		},
-	}, []ast.Node{(*ast.CallExpr)(nil)}
+		calls: calls,
+	}}, []ast.Node{(*ast.CallExpr)(nil)}
 }

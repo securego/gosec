@@ -25,10 +25,6 @@ type slowloris struct {
 	issue.MetaData
 }
 
-func (r *slowloris) ID() string {
-	return r.MetaData.ID
-}
-
 func containsReadHeaderTimeout(node *ast.CompositeLit) bool {
 	if node == nil {
 		return false
@@ -62,7 +58,7 @@ func (r *slowloris) Match(n ast.Node, ctx *gosec.Context) (*issue.Issue, error) 
 func NewSlowloris(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	return &slowloris{
 		MetaData: issue.MetaData{
-			ID:         id,
+			RuleID:     id,
 			What:       "Potential Slowloris Attack because ReadHeaderTimeout is not configured in the http.Server",
 			Confidence: issue.Low,
 			Severity:   issue.Medium,

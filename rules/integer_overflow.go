@@ -28,10 +28,6 @@ type integerOverflowCheck struct {
 	calls gosec.CallList
 }
 
-func (i *integerOverflowCheck) ID() string {
-	return i.MetaData.ID
-}
-
 func (i *integerOverflowCheck) Match(node ast.Node, ctx *gosec.Context) (*issue.Issue, error) {
 	var atoiVars map[*types.Var]struct{}
 
@@ -87,7 +83,7 @@ func NewIntegerOverflowCheck(id string, _ gosec.Config) (gosec.Rule, []ast.Node)
 	calls.Add("strconv", "Atoi")
 	return &integerOverflowCheck{
 		MetaData: issue.MetaData{
-			ID:         id,
+			RuleID:     id,
 			Severity:   issue.High,
 			Confidence: issue.Medium,
 			What:       "Potential Integer overflow made by strconv.Atoi result conversion to int16/32",

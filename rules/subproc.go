@@ -28,10 +28,6 @@ type subprocess struct {
 	gosec.CallList
 }
 
-func (r *subprocess) ID() string {
-	return r.MetaData.ID
-}
-
 // getEnclosingBodyStart returns the position of the '{' for the innermost function body enclosing the given position.
 // Returns token.NoPos if no enclosing body found.
 func getEnclosingBodyStart(pos token.Pos, ctx *gosec.Context) token.Pos {
@@ -113,7 +109,7 @@ func (r *subprocess) isContext(n ast.Node, ctx *gosec.Context) bool {
 
 // NewSubproc detects cases where we are forking out to an external process
 func NewSubproc(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
-	rule := &subprocess{issue.MetaData{ID: id}, gosec.NewCallList()}
+	rule := &subprocess{issue.MetaData{RuleID: id}, gosec.NewCallList()}
 	rule.Add("os/exec", "Command")
 	rule.Add("os/exec", "CommandContext")
 	rule.Add("syscall", "Exec")
