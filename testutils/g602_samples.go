@@ -519,4 +519,40 @@ func main() {
 	pairwise([]any{})
 }
 `}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]byte, 0, 4)
+	// Extending length up to capacity is valid
+	x := s[:3]
+	fmt.Println(x)
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]byte, 0, 4)
+	// 3-index slice exceeding capacity
+	x := s[:2:5]
+	fmt.Println(x)
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]byte, 0, 10)
+	// 3-index slice within capacity
+	x := s[2:5:8]
+	fmt.Println(x)
+}
+`}, 0, gosec.NewConfig()},
 }
