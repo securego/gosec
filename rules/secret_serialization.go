@@ -108,12 +108,7 @@ func NewSecretSerialization(id string, conf gosec.Config) (gosec.Rule, []ast.Nod
 	}
 
 	return &secretSerialization{
-		pattern: regexp.MustCompile(patternStr),
-		MetaData: issue.MetaData{
-			RuleID:     id,
-			What:       "Exported struct field appears to be a secret and is not ignored by JSON marshaling",
-			Severity:   issue.Medium,
-			Confidence: issue.Medium,
-		},
+		pattern:  regexp.MustCompile(patternStr),
+		MetaData: issue.NewMetaData(id, "Exported struct field appears to be a secret and is not ignored by JSON marshaling", issue.Medium, issue.Medium),
 	}, []ast.Node{(*ast.Field)(nil)}
 }

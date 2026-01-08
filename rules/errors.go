@@ -98,12 +98,7 @@ func NewNoErrorCheck(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 	}
 
 	return &noErrorCheck{
-		MetaData: issue.MetaData{
-			RuleID:     id,
-			Severity:   issue.Low,
-			Confidence: issue.High,
-			What:       "Errors unhandled",
-		},
+		MetaData:  issue.NewMetaData(id, "Errors unhandled", issue.Low, issue.High),
 		whitelist: whitelist,
 	}, []ast.Node{(*ast.AssignStmt)(nil), (*ast.ExprStmt)(nil)}
 }

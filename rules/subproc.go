@@ -24,8 +24,7 @@ import (
 )
 
 type subprocess struct {
-	issue.MetaData
-	gosec.CallList
+	callListRule
 }
 
 // getEnclosingBodyStart returns the position of the '{' for the innermost function body enclosing the given position.
@@ -61,7 +60,7 @@ func getEnclosingBodyStart(pos token.Pos, ctx *gosec.Context) token.Pos {
 //
 // syscall.Exec("echo", "foobar" + tainted)
 func (r *subprocess) Match(n ast.Node, c *gosec.Context) (*issue.Issue, error) {
-	if node := r.ContainsPkgCallExpr(n, c, false); node != nil {
+	if node := r.calls.ContainsPkgCallExpr(n, c, false); node != nil {
 		args := node.Args
 		if r.isContext(n, c) {
 			args = args[1:]
@@ -109,7 +108,7 @@ func (r *subprocess) isContext(n ast.Node, ctx *gosec.Context) bool {
 
 // NewSubproc detects cases where we are forking out to an external process
 func NewSubproc(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
-	rule := &subprocess{issue.MetaData{RuleID: id}, gosec.NewCallList()}
+	rule := &subprocess{newCallListRule(id, "Subprocess launched with variable", issue.Medium, issue.High)}
 	rule.Add("os/exec", "Command")
 	rule.Add("os/exec", "CommandContext")
 	rule.Add("syscall", "Exec")

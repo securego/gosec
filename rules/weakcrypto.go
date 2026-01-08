@@ -27,51 +27,21 @@ type weakCryptoUsage struct {
 
 // NewUsesWeakCryptographyHash detects uses of md5.*, sha1.* (G401)
 func NewUsesWeakCryptographyHash(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
-	calls := gosec.NewCallList()
-	calls.AddAll("crypto/md5", "New", "Sum")
-	calls.AddAll("crypto/sha1", "New", "Sum")
-
-	return &weakCryptoUsage{callListRule{
-		MetaData: issue.MetaData{
-			RuleID:     id,
-			Severity:   issue.Medium,
-			Confidence: issue.High,
-			What:       "Use of weak cryptographic primitive",
-		},
-		calls: calls,
-	}}, []ast.Node{(*ast.CallExpr)(nil)}
+	rule := &weakCryptoUsage{newCallListRule(id, "Use of weak cryptographic primitive", issue.Medium, issue.High)}
+	rule.AddAll("crypto/md5", "New", "Sum").AddAll("crypto/sha1", "New", "Sum")
+	return rule, []ast.Node{(*ast.CallExpr)(nil)}
 }
 
 // NewUsesWeakCryptographyEncryption detects uses of des.*, rc4.* (G405)
 func NewUsesWeakCryptographyEncryption(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
-	calls := gosec.NewCallList()
-	calls.AddAll("crypto/des", "NewCipher", "NewTripleDESCipher")
-	calls.Add("crypto/rc4", "NewCipher")
-
-	return &weakCryptoUsage{callListRule{
-		MetaData: issue.MetaData{
-			RuleID:     id,
-			Severity:   issue.Medium,
-			Confidence: issue.High,
-			What:       "Use of weak cryptographic primitive",
-		},
-		calls: calls,
-	}}, []ast.Node{(*ast.CallExpr)(nil)}
+	rule := &weakCryptoUsage{newCallListRule(id, "Use of weak cryptographic primitive", issue.Medium, issue.High)}
+	rule.AddAll("crypto/des", "NewCipher", "NewTripleDESCipher").Add("crypto/rc4", "NewCipher")
+	return rule, []ast.Node{(*ast.CallExpr)(nil)}
 }
 
 // NewUsesWeakDeprecatedCryptographyHash detects uses of md4.New, ripemd160.New (G406)
 func NewUsesWeakDeprecatedCryptographyHash(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
-	calls := gosec.NewCallList()
-	calls.Add("golang.org/x/crypto/md4", "New")
-	calls.Add("golang.org/x/crypto/ripemd160", "New")
-
-	return &weakCryptoUsage{callListRule{
-		MetaData: issue.MetaData{
-			RuleID:     id,
-			Severity:   issue.Medium,
-			Confidence: issue.High,
-			What:       "Use of deprecated weak cryptographic primitive",
-		},
-		calls: calls,
-	}}, []ast.Node{(*ast.CallExpr)(nil)}
+	rule := &weakCryptoUsage{newCallListRule(id, "Use of deprecated weak cryptographic primitive", issue.Medium, issue.High)}
+	rule.Add("golang.org/x/crypto/md4", "New").Add("golang.org/x/crypto/ripemd160", "New")
+	return rule, []ast.Node{(*ast.CallExpr)(nil)}
 }

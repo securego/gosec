@@ -27,19 +27,13 @@ type weakRand struct {
 
 // NewWeakRandCheck detects the use of random number generator that isn't cryptographically secure
 func NewWeakRandCheck(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
-	calls := gosec.NewCallList()
-	calls.AddAll("math/rand", "New", "Read", "Float32", "Float64", "Int", "Int31", "Int31n",
+	rule := &weakRand{newCallListRule(id,
+		"Use of weak random number generator (math/rand or math/rand/v2 instead of crypto/rand)",
+		issue.High, issue.Medium)}
+	rule.AddAll("math/rand", "New", "Read", "Float32", "Float64", "Int", "Int31", "Int31n",
 		"Int63", "Int63n", "Intn", "NormFloat64", "Uint32", "Uint64")
-	calls.AddAll("math/rand/v2", "New", "Float32", "Float64", "Int", "Int32", "Int32N",
+	rule.AddAll("math/rand/v2", "New", "Float32", "Float64", "Int", "Int32", "Int32N",
 		"Int64", "Int64N", "IntN", "N", "NormFloat64", "Uint32", "Uint32N", "Uint64", "Uint64N", "UintN")
 
-	return &weakRand{callListRule{
-		MetaData: issue.MetaData{
-			RuleID:     id,
-			Severity:   issue.High,
-			Confidence: issue.Medium,
-			What:       "Use of weak random number generator (math/rand or math/rand/v2 instead of crypto/rand)",
-		},
-		calls: calls,
-	}}, []ast.Node{(*ast.CallExpr)(nil)}
+	return rule, []ast.Node{(*ast.CallExpr)(nil)}
 }

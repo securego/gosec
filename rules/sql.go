@@ -296,12 +296,7 @@ func NewSQLStrConcat(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 			patterns: []*regexp.Regexp{
 				regexp.MustCompile("(?i)(SELECT|DELETE|INSERT|UPDATE|INTO|FROM|WHERE)( |\n|\r|\t)"),
 			},
-			MetaData: issue.MetaData{
-				RuleID:     id,
-				Severity:   issue.Medium,
-				Confidence: issue.High,
-				What:       "SQL string concatenation",
-			},
+			MetaData: issue.NewMetaData(id, "SQL string concatenation", issue.Medium, issue.High),
 			CallList: gosec.NewCallList(),
 		},
 	}
@@ -462,12 +457,7 @@ func NewSQLStrFormat(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 				regexp.MustCompile("(?i)(SELECT|DELETE|INSERT|UPDATE|INTO|FROM|WHERE)( |\n|\r|\t)"),
 				regexp.MustCompile("%[^bdoxXfFp]"),
 			},
-			MetaData: issue.MetaData{
-				RuleID:     id,
-				Severity:   issue.Medium,
-				Confidence: issue.High,
-				What:       "SQL string formatting",
-			},
+			MetaData: issue.NewMetaData(id, "SQL string formatting", issue.Medium, issue.High),
 		},
 	}
 	for typ, methods := range sqlCallIdents {

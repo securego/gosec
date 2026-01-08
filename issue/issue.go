@@ -134,6 +134,16 @@ type MetaData struct {
 	What       string
 }
 
+// NewMetaData creates a new MetaData object
+func NewMetaData(id, what string, severity, confidence Score) MetaData {
+	return MetaData{
+		RuleID:     id,
+		What:       what,
+		Severity:   severity,
+		Confidence: confidence,
+	}
+}
+
 // ID returns the rule ID. This satisfies part of the gosec.Rule interface
 // when MetaData is embedded in a rule struct.
 func (m MetaData) ID() string {

@@ -46,11 +46,7 @@ func (r *blocklistedImport) Match(n ast.Node, c *gosec.Context) (*issue.Issue, e
 // Typically when a deprecated technology is being used.
 func NewBlocklistedImports(id string, _ gosec.Config, blocklist map[string]string) (gosec.Rule, []ast.Node) {
 	return &blocklistedImport{
-		MetaData: issue.MetaData{
-			RuleID:     id,
-			Severity:   issue.Medium,
-			Confidence: issue.High,
-		},
+		MetaData:    issue.NewMetaData(id, "", issue.Medium, issue.High),
 		Blocklisted: blocklist,
 	}, []ast.Node{(*ast.ImportSpec)(nil)}
 }

@@ -420,11 +420,6 @@ func NewHardcodedCredentials(id string, conf gosec.Config) (gosec.Rule, []ast.No
 		perCharThreshold: perCharThreshold,
 		ignoreEntropy:    ignoreEntropy,
 		truncate:         truncateString,
-		MetaData: issue.MetaData{
-			RuleID:     id,
-			What:       "Potential hardcoded credentials",
-			Confidence: issue.Low,
-			Severity:   issue.High,
-		},
+		MetaData:         issue.NewMetaData(id, "Potential hardcoded credentials", issue.High, issue.Low),
 	}, []ast.Node{(*ast.AssignStmt)(nil), (*ast.ValueSpec)(nil), (*ast.BinaryExpr)(nil), (*ast.CompositeLit)(nil)}
 }

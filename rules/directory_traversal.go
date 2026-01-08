@@ -50,12 +50,7 @@ func NewDirectoryTraversal(id string, conf gosec.Config) (gosec.Rule, []ast.Node
 	}
 
 	return &traversal{
-		pattern: regexp.MustCompile(pattern),
-		MetaData: issue.MetaData{
-			RuleID:     id,
-			What:       "Potential directory traversal",
-			Confidence: issue.Medium,
-			Severity:   issue.Medium,
-		},
+		pattern:  regexp.MustCompile(pattern),
+		MetaData: issue.NewMetaData(id, "Potential directory traversal", issue.Medium, issue.Medium),
 	}, []ast.Node{(*ast.CallExpr)(nil)}
 }

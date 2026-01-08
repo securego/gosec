@@ -63,19 +63,10 @@ func (r *bindsToAllNetworkInterfaces) Match(n ast.Node, c *gosec.Context) (*issu
 // NewBindsToAllNetworkInterfaces detects socket connections that are setup to
 // listen on all network interfaces.
 func NewBindsToAllNetworkInterfaces(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
-	calls := gosec.NewCallList()
-	calls.Add("net", "Listen")
-	calls.Add("crypto/tls", "Listen")
-	return &bindsToAllNetworkInterfaces{
-		callListRule: callListRule{
-			MetaData: issue.MetaData{
-				RuleID:     id,
-				Severity:   issue.Medium,
-				Confidence: issue.High,
-				What:       "Binds to all network interfaces",
-			},
-			calls: calls,
-		},
-		pattern: regexp.MustCompile(`^(0.0.0.0|:).*$`),
-	}, []ast.Node{(*ast.CallExpr)(nil)}
+	rule := &bindsToAllNetworkInterfaces{
+		callListRule: newCallListRule(id, "Binds to all network interfaces", issue.Medium, issue.High),
+		pattern:      regexp.MustCompile(`^(0.0.0.0|:).*$`),
+	}
+	rule.Add("net", "Listen").Add("crypto/tls", "Listen")
+	return rule, []ast.Node{(*ast.CallExpr)(nil)}
 }

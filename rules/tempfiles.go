@@ -23,8 +23,7 @@ import (
 )
 
 type badTempFile struct {
-	issue.MetaData
-	calls       gosec.CallList
+	callListRule
 	args        *regexp.Regexp
 	argCalls    gosec.CallList
 	nestedCalls gosec.CallList
@@ -61,24 +60,16 @@ func (t *badTempFile) Match(n ast.Node, c *gosec.Context) (gi *issue.Issue, err 
 
 // NewBadTempFile detects direct writes to predictable path in temporary directory
 func NewBadTempFile(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
-	calls := gosec.NewCallList()
-	calls.Add("io/ioutil", "WriteFile")
-	calls.AddAll("os", "Create", "WriteFile")
-	argCalls := gosec.NewCallList()
-	argCalls.Add("os", "TempDir")
-	nestedCalls := gosec.NewCallList()
-	nestedCalls.Add("path", "Join")
-	nestedCalls.Add("path/filepath", "Join")
-	return &badTempFile{
-		calls:       calls,
-		args:        regexp.MustCompile(`^(/(usr|var))?/tmp(/.*)?$`),
-		argCalls:    argCalls,
-		nestedCalls: nestedCalls,
-		MetaData: issue.MetaData{
-			RuleID:     id,
-			Severity:   issue.Medium,
-			Confidence: issue.High,
-			What:       "File creation in shared tmp directory without using ioutil.Tempfile",
-		},
-	}, []ast.Node{(*ast.CallExpr)(nil)}
+	rule := &badTempFile{
+		callListRule: newCallListRule(id, "File creation in shared tmp directory without using ioutil.Tempfile", issue.Medium, issue.High),
+		args:         regexp.MustCompile(`^(/(usr|var))?/tmp(/.*)?$`),
+		argCalls:     gosec.NewCallList(),
+		nestedCalls:  gosec.NewCallList(),
+	}
+	rule.Add("io/ioutil", "WriteFile")
+	rule.AddAll("os", "Create", "WriteFile")
+	rule.argCalls.Add("os", "TempDir")
+	rule.nestedCalls.AddAll("path", "Join")
+	rule.nestedCalls.Add("path/filepath", "Join")
+	return rule, []ast.Node{(*ast.CallExpr)(nil)}
 }

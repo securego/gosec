@@ -28,16 +28,9 @@ type usingUnsafe struct {
 // NewUsingUnsafe rule detects the use of the unsafe package. This is only
 // really useful for auditing purposes.
 func NewUsingUnsafe(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
-	calls := gosec.NewCallList()
-	calls.AddAll("unsafe", "Pointer", "String", "StringData", "Slice", "SliceData")
-
-	return &usingUnsafe{callListRule{
-		MetaData: issue.MetaData{
-			RuleID:     id,
-			What:       "Use of unsafe calls should be audited",
-			Severity:   issue.Low,
-			Confidence: issue.High,
-		},
-		calls: calls,
-	}}, []ast.Node{(*ast.CallExpr)(nil)}
+	rule := &usingUnsafe{
+		callListRule: newCallListRule(id, "Use of unsafe calls should be audited", issue.Low, issue.High),
+	}
+	rule.AddAll("unsafe", "Pointer", "String", "StringData", "Slice", "SliceData")
+	return rule, []ast.Node{(*ast.CallExpr)(nil)}
 }

@@ -13,16 +13,8 @@ type sshHostKey struct {
 
 // NewSSHHostKey rule detects the use of insecure ssh HostKeyCallback.
 func NewSSHHostKey(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
-	calls := gosec.NewCallList()
-	calls.Add("golang.org/x/crypto/ssh", "InsecureIgnoreHostKey")
-
-	return &sshHostKey{callListRule{
-		MetaData: issue.MetaData{
-			RuleID:     id,
-			What:       "Use of ssh InsecureIgnoreHostKey should be audited",
-			Severity:   issue.Medium,
-			Confidence: issue.High,
-		},
-		calls: calls,
-	}}, []ast.Node{(*ast.CallExpr)(nil)}
+	// This is a call list rule that checks for insecure SSH host key handling.
+	rule := &sshHostKey{newCallListRule(id, "Use of ssh InsecureIgnoreHostKey should be audited", issue.Medium, issue.High)}
+	rule.Add("golang.org/x/crypto/ssh", "InsecureIgnoreHostKey")
+	return rule, []ast.Node{(*ast.CallExpr)(nil)}
 }

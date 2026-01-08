@@ -115,12 +115,7 @@ func NewImplicitAliasing(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 		aliases:         make(map[*types.Var]struct{}),
 		rightBrace:      token.NoPos,
 		acceptableAlias: make([]*ast.UnaryExpr, 0),
-		MetaData: issue.MetaData{
-			RuleID:     id,
-			Severity:   issue.Medium,
-			Confidence: issue.Medium,
-			What:       "Implicit memory aliasing in for loop.",
-		},
+		MetaData:        issue.NewMetaData(id, "Implicit memory aliasing in for loop.", issue.Medium, issue.Medium),
 	}, []ast.Node{(*ast.RangeStmt)(nil), (*ast.UnaryExpr)(nil), (*ast.ReturnStmt)(nil)}
 }
 

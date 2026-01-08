@@ -13,16 +13,9 @@ type httpServeWithoutTimeouts struct {
 
 // NewHTTPServeWithoutTimeouts detects use of net/http serve functions that have no support for setting timeouts.
 func NewHTTPServeWithoutTimeouts(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
-	calls := gosec.NewCallList()
-	calls.AddAll("net/http", "ListenAndServe", "ListenAndServeTLS", "Serve", "ServeTLS")
-
-	return &httpServeWithoutTimeouts{callListRule{
-		MetaData: issue.MetaData{
-			RuleID:     id,
-			What:       "Use of net/http serve function that has no support for setting timeouts",
-			Severity:   issue.Medium,
-			Confidence: issue.High,
-		},
-		calls: calls,
-	}}, []ast.Node{(*ast.CallExpr)(nil)}
+	rule := &httpServeWithoutTimeouts{
+		callListRule: newCallListRule(id, "Use of net/http serve function that has no support for setting timeouts", issue.Medium, issue.High),
+	}
+	rule.AddAll("net/http", "ListenAndServe", "ListenAndServeTLS", "Serve", "ServeTLS")
+	return rule, []ast.Node{(*ast.CallExpr)(nil)}
 }

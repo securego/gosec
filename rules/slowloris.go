@@ -54,14 +54,8 @@ func (r *slowloris) Match(n ast.Node, ctx *gosec.Context) (*issue.Issue, error) 
 	return nil, nil
 }
 
-// NewSlowloris attempts to find the http.Server struct and check if the ReadHeaderTimeout is configured.
 func NewSlowloris(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	return &slowloris{
-		MetaData: issue.MetaData{
-			RuleID:     id,
-			What:       "Potential Slowloris Attack because ReadHeaderTimeout is not configured in the http.Server",
-			Confidence: issue.Low,
-			Severity:   issue.Medium,
-		},
+		MetaData: issue.NewMetaData(id, "Potential Slowloris Attack because ReadHeaderTimeout is not configured in the http.Server", issue.Medium, issue.Low),
 	}, []ast.Node{(*ast.CompositeLit)(nil)}
 }

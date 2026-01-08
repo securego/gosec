@@ -69,12 +69,7 @@ func (r *trojanSource) Match(node ast.Node, c *gosec.Context) (*issue.Issue, err
 
 func NewTrojanSource(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	return &trojanSource{
-		MetaData: issue.MetaData{
-			RuleID:     id,
-			Severity:   issue.High,
-			Confidence: issue.Medium,
-			What:       "Potential Trojan Source vulnerability via use of bidirectional text control characters",
-		},
+		MetaData: issue.NewMetaData(id, "Potential Trojan Source vulnerability via use of bidirectional text control characters", issue.High, issue.Medium),
 		bidiChars: map[rune]struct{}{
 			'\u202a': {},
 			'\u202b': {},
