@@ -390,6 +390,38 @@ func extractIndexOffset(indexVal ssa.Value, loopVar ssa.Value) (int, bool) {
 	return 0, false
 }
 
+// decomposeIndex splits an SSA Value into a base value and a constant offset.
+func decomposeIndex(v ssa.Value) (ssa.Value, int) {
+	if binOp, ok := v.(*ssa.BinOp); ok {
+		switch binOp.Op {
+		case token.ADD:
+			if c, ok := binOp.Y.(*ssa.Const); ok {
+				val, err := strconv.Atoi(c.Value.String())
+				if err == nil {
+					base, offset := decomposeIndex(binOp.X)
+					return base, offset + val
+				}
+			}
+			if c, ok := binOp.X.(*ssa.Const); ok {
+				val, err := strconv.Atoi(c.Value.String())
+				if err == nil {
+					base, offset := decomposeIndex(binOp.Y)
+					return base, offset + val
+				}
+			}
+		case token.SUB:
+			if c, ok := binOp.Y.(*ssa.Const); ok {
+				val, err := strconv.Atoi(c.Value.String())
+				if err == nil {
+					base, offset := decomposeIndex(binOp.X)
+					return base, offset - val
+				}
+			}
+		}
+	}
+	return v, 0
+}
+
 // trackSliceBounds recursively follows slice referrers to check for index and boundary violations.
 func trackSliceBounds(depth int, sliceCap int, slice ssa.Node, violations *[]ssa.Instruction, ifs map[ssa.If]*ssa.BinOp) {
 	if depth == maxDepth {
@@ -444,27 +476,148 @@ func trackSliceBounds(depth int, sliceCap int, slice ssa.Node, violations *[]ssa
 
 // extractIntValueIndexAddr attempts to derive a constant index value from an IndexAddr by checking its referrers.
 func extractIntValueIndexAddr(refinstr *ssa.IndexAddr, sliceCap int) (int, error) {
-	var indexIncr, sliceIncr int
-	idxRefs := refinstr.Index.Referrers()
-	if idxRefs == nil {
-		return 0, errors.New("no found")
-	}
-	for _, instr := range *idxRefs {
-		switch instr := instr.(type) {
-		case *ssa.BinOp:
-			_, index, err := extractBinOpBound(instr)
-			if err != nil {
-				return 0, err
-			}
-			switch instr.Op {
-			case token.LSS:
-				indexIncr--
-			}
+	base, offset := decomposeIndex(refinstr.Index)
+	var sliceIncr int
 
-			if !isSliceIndexInsideBounds(sliceCap+sliceIncr, index+indexIncr) {
-				return index, nil
+	// Check Phi node for loop counter patterns
+	if p, ok := base.(*ssa.Phi); ok {
+		var start int
+		var hasStart bool
+		var next ssa.Value
+		for _, edge := range p.Edges {
+			eBase, eOffset := decomposeIndex(edge)
+			if c, ok := eBase.(*ssa.Const); ok {
+				val, err := strconv.Atoi(c.Value.String())
+				if err == nil {
+					start = val + eOffset
+					hasStart = true
+					// Direct check for initial value violation
+					if !isSliceIndexInsideBounds(sliceCap+sliceIncr, start+offset) {
+						return start + offset, nil
+					}
+				}
+			} else {
+				next = edge
 			}
 		}
+
+		if hasStart && next != nil {
+			// Look for loop limit: next < limit or p < limit
+			nBase, nOffset := decomposeIndex(next)
+			searchVals := []ssa.Value{p, nBase}
+			if nBase != next {
+				searchVals = append(searchVals, next)
+			}
+
+			for _, v := range searchVals {
+				if v == nil {
+					continue
+				}
+				refs := v.Referrers()
+				if refs == nil {
+					continue
+				}
+				for _, r := range *refs {
+					if bin, ok := r.(*ssa.BinOp); ok {
+						bound, limit, err := extractBinOpBound(bin)
+						if err == nil {
+							incr := 0
+							if bin.Op == token.LSS {
+								incr = -1
+							}
+							maxV := limit + incr
+
+							// If the limit is on 'next' (i+1 < limit), it still bounds 'i'
+							// In 'range n', i reaches n-1.
+							// Here we use a heuristic: if we find an upper bound, check it.
+							if bound == lowerUnbounded || bound == upperBounded {
+								// Correct the max value of 'base' based on where the limit was found
+								finalMaxV := maxV
+								if v == nBase && nBase != p {
+									// if i + nOffset < limit, then i < limit - nOffset
+									finalMaxV = maxV - nOffset
+								}
+								if !isSliceIndexInsideBounds(sliceCap+sliceIncr, finalMaxV+offset) {
+									return finalMaxV + offset, nil
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Falls back to existing queue search for complex dependencies
+	queue := []struct {
+		val    ssa.Value
+		offset int
+	}{{base, offset}}
+	visited := make(map[ssa.Value]bool)
+	depth := 0
+
+	for len(queue) > 0 && depth < maxDepth {
+		nextQueue := []struct {
+			val    ssa.Value
+			offset int
+		}{}
+		for _, item := range queue {
+			if visited[item.val] {
+				continue
+			}
+			visited[item.val] = true
+
+			idxRefs := item.val.Referrers()
+			if idxRefs == nil {
+				continue
+			}
+			for _, instr := range *idxRefs {
+				switch instr := instr.(type) {
+				case *ssa.BinOp:
+					switch instr.Op {
+					case token.ADD:
+						if c, ok := instr.Y.(*ssa.Const); ok {
+							val, err := strconv.Atoi(c.Value.String())
+							if err == nil {
+								nextQueue = append(nextQueue, struct {
+									val    ssa.Value
+									offset int
+								}{instr, item.offset - val})
+							}
+						}
+					case token.SUB:
+						if c, ok := instr.Y.(*ssa.Const); ok {
+							val, err := strconv.Atoi(c.Value.String())
+							if err == nil {
+								nextQueue = append(nextQueue, struct {
+									val    ssa.Value
+									offset int
+								}{instr, item.offset + val})
+							}
+						}
+					case token.LSS, token.LEQ, token.GTR, token.GEQ:
+						// Already handled by loop counter logic for Phi,
+						// but handle other variables here
+						if _, ok := item.val.(*ssa.Phi); !ok {
+							_, index, err := extractBinOpBound(instr)
+							if err != nil {
+								continue
+							}
+							incr := 0
+							if instr.Op == token.LSS {
+								incr = -1
+							}
+
+							if !isSliceIndexInsideBounds(sliceCap+sliceIncr, index+incr+item.offset) {
+								return index + item.offset, nil
+							}
+						}
+					}
+				}
+			}
+		}
+		queue = nextQueue
+		depth++
 	}
 
 	return 0, errors.New("no found")

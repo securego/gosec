@@ -555,4 +555,43 @@ func main() {
 	fmt.Println(x)
 }
 `}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]byte, 4)
+	for i := range 3 {
+		x := s[i+2]
+		fmt.Println(x)
+	}
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]byte, 5)
+	for i := range 3 {
+		x := s[i+2]
+		fmt.Println(x)
+	}
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]byte, 2)
+	for i := range 3 {
+		x := s[i+2]
+		fmt.Println(x)
+	}
+}
+`}, 1, gosec.NewConfig()},
 }
