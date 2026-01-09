@@ -128,10 +128,26 @@ func (i *Issue) FileLocation() string {
 // MetaData is embedded in all gosec rules. The Severity, Confidence and What message
 // will be passed through to reported issues.
 type MetaData struct {
-	ID         string
+	RuleID     string
 	Severity   Score
 	Confidence Score
 	What       string
+}
+
+// NewMetaData creates a new MetaData object
+func NewMetaData(id, what string, severity, confidence Score) MetaData {
+	return MetaData{
+		RuleID:     id,
+		What:       what,
+		Severity:   severity,
+		Confidence: confidence,
+	}
+}
+
+// ID returns the rule ID. This satisfies part of the gosec.Rule interface
+// when MetaData is embedded in a rule struct.
+func (m MetaData) ID() string {
+	return m.RuleID
 }
 
 // MarshalJSON is used convert a Score object into a JSON representation

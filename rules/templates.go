@@ -22,18 +22,15 @@ import (
 )
 
 type templateCheck struct {
-	issue.MetaData
-	calls gosec.CallList
+	callListRule
 }
 
-func (t *templateCheck) ID() string {
-	return t.MetaData.ID
-}
-
+// Match checks for calls to html/template methods that do not auto-escape
+// inputs. Basic literals are considered safe.
 func (t *templateCheck) Match(n ast.Node, c *gosec.Context) (*issue.Issue, error) {
-	if node := t.calls.ContainsPkgCallExpr(n, c, false); node != nil {
-		for _, arg := range node.Args {
-			if _, ok := arg.(*ast.BasicLit); !ok { // basic lits are safe
+	if call := t.calls.ContainsPkgCallExpr(n, c, false); call != nil {
+		for _, arg := range call.Args {
+			if _, ok := arg.(*ast.BasicLit); !ok {
 				return c.NewIssue(n, t.ID(), t.What, t.Severity, t.Confidence), nil
 			}
 		}
@@ -44,21 +41,9 @@ func (t *templateCheck) Match(n ast.Node, c *gosec.Context) (*issue.Issue, error
 // NewTemplateCheck constructs the template check rule. This rule is used to
 // find use of templates where HTML/JS escaping is not being used
 func NewTemplateCheck(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
-	calls := gosec.NewCallList()
-	calls.Add("html/template", "CSS")
-	calls.Add("html/template", "HTML")
-	calls.Add("html/template", "HTMLAttr")
-	calls.Add("html/template", "JS")
-	calls.Add("html/template", "JSStr")
-	calls.Add("html/template", "Srcset")
-	calls.Add("html/template", "URL")
-	return &templateCheck{
-		calls: calls,
-		MetaData: issue.MetaData{
-			ID:         id,
-			Severity:   issue.Medium,
-			Confidence: issue.Low,
-			What:       "The used method does not auto-escape HTML. This can potentially lead to 'Cross-site Scripting' vulnerabilities, in case the attacker controls the input.",
-		},
-	}, []ast.Node{(*ast.CallExpr)(nil)}
+	rule := &templateCheck{newCallListRule(id,
+		"The used method does not auto-escape HTML. This can potentially lead to 'Cross-site Scripting' vulnerabilities, in case the attacker controls the input.",
+		issue.Medium, issue.Low)}
+	rule.AddAll("html/template", "CSS", "HTML", "HTMLAttr", "JS", "JSStr", "Srcset", "URL")
+	return rule, []ast.Node{(*ast.CallExpr)(nil)}
 }

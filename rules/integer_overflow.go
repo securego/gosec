@@ -24,12 +24,7 @@ import (
 )
 
 type integerOverflowCheck struct {
-	issue.MetaData
-	calls gosec.CallList
-}
-
-func (i *integerOverflowCheck) ID() string {
-	return i.MetaData.ID
+	callListRule
 }
 
 func (i *integerOverflowCheck) Match(node ast.Node, ctx *gosec.Context) (*issue.Issue, error) {
@@ -83,15 +78,9 @@ func (i *integerOverflowCheck) Match(node ast.Node, ctx *gosec.Context) (*issue.
 
 // NewIntegerOverflowCheck detects potential integer overflow from strconv.Atoi conversion to int16/int32
 func NewIntegerOverflowCheck(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
-	calls := gosec.NewCallList()
-	calls.Add("strconv", "Atoi")
-	return &integerOverflowCheck{
-		MetaData: issue.MetaData{
-			ID:         id,
-			Severity:   issue.High,
-			Confidence: issue.Medium,
-			What:       "Potential Integer overflow made by strconv.Atoi result conversion to int16/32",
-		},
-		calls: calls,
-	}, []ast.Node{(*ast.AssignStmt)(nil), (*ast.CallExpr)(nil)}
+	rule := &integerOverflowCheck{
+		callListRule: newCallListRule(id, "Potential Integer overflow made by strconv.Atoi result conversion to int16/32", issue.High, issue.Medium),
+	}
+	rule.Add("strconv", "Atoi")
+	return rule, []ast.Node{(*ast.AssignStmt)(nil), (*ast.CallExpr)(nil)}
 }

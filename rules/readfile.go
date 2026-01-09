@@ -23,8 +23,7 @@ import (
 )
 
 type readfile struct {
-	issue.MetaData
-	gosec.CallList
+	callListRule
 	pathJoin gosec.CallList
 	clean    gosec.CallList
 
@@ -32,11 +31,6 @@ type readfile struct {
 	cleanedVar map[*types.Var]ast.Node
 	// joinedVar maps the defining *types.Var (result of Join) to the Join call node
 	joinedVar map[*types.Var]ast.Node
-}
-
-// ID returns the identifier for this rule
-func (r *readfile) ID() string {
-	return r.MetaData.ID
 }
 
 // isJoinFunc checks if the call is a filepath.Join with at least one non-constant argument
@@ -154,7 +148,7 @@ func (r *readfile) Match(n ast.Node, c *gosec.Context) (*issue.Issue, error) {
 	}
 
 	// Main check: file reading calls
-	if readCall := r.ContainsPkgCallExpr(n, c, false); readCall != nil {
+	if readCall := r.calls.ContainsPkgCallExpr(n, c, false); readCall != nil {
 		if len(readCall.Args) == 0 {
 			return nil, nil
 		}
@@ -235,17 +229,11 @@ func (r *readfile) Match(n ast.Node, c *gosec.Context) (*issue.Issue, error) {
 // NewReadFile detects potential file inclusion via variable in file read operations
 func NewReadFile(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	rule := &readfile{
-		pathJoin:   gosec.NewCallList(),
-		clean:      gosec.NewCallList(),
-		CallList:   gosec.NewCallList(),
-		cleanedVar: make(map[*types.Var]ast.Node),
-		joinedVar:  make(map[*types.Var]ast.Node),
-		MetaData: issue.MetaData{
-			ID:         id,
-			What:       "Potential file inclusion via variable",
-			Severity:   issue.Medium,
-			Confidence: issue.High,
-		},
+		callListRule: newCallListRule(id, "Potential file inclusion via variable", issue.Medium, issue.High),
+		pathJoin:     gosec.NewCallList(),
+		clean:        gosec.NewCallList(),
+		cleanedVar:   make(map[*types.Var]ast.Node),
+		joinedVar:    make(map[*types.Var]ast.Node),
 	}
 	rule.pathJoin.Add("path/filepath", "Join")
 	rule.pathJoin.Add("path", "Join")
@@ -253,9 +241,6 @@ func NewReadFile(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	rule.clean.Add("path/filepath", "Rel")
 	rule.clean.Add("path/filepath", "EvalSymlinks")
 	rule.Add("io/ioutil", "ReadFile")
-	rule.Add("os", "ReadFile")
-	rule.Add("os", "Open")
-	rule.Add("os", "OpenFile")
-	rule.Add("os", "Create")
+	rule.AddAll("os", "ReadFile", "Open", "OpenFile", "Create")
 	return rule, []ast.Node{(*ast.CallExpr)(nil), (*ast.AssignStmt)(nil)}
 }

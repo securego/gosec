@@ -13,11 +13,6 @@ type pprofCheck struct {
 	importName string
 }
 
-// ID returns the ID of the check
-func (p *pprofCheck) ID() string {
-	return p.MetaData.ID
-}
-
 // Match checks for pprof imports
 func (p *pprofCheck) Match(n ast.Node, c *gosec.Context) (*issue.Issue, error) {
 	if node, ok := n.(*ast.ImportSpec); ok {
@@ -31,12 +26,7 @@ func (p *pprofCheck) Match(n ast.Node, c *gosec.Context) (*issue.Issue, error) {
 // NewPprofCheck detects when the profiling endpoint is automatically exposed
 func NewPprofCheck(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	return &pprofCheck{
-		MetaData: issue.MetaData{
-			ID:         id,
-			Severity:   issue.High,
-			Confidence: issue.High,
-			What:       "Profiling endpoint is automatically exposed on /debug/pprof",
-		},
+		MetaData:   issue.NewMetaData(id, "Profiling endpoint is automatically exposed on /debug/pprof", issue.High, issue.High),
 		importPath: "net/http/pprof",
 		importName: "_",
 	}, []ast.Node{(*ast.ImportSpec)(nil)}

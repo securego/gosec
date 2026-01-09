@@ -33,10 +33,6 @@ func unquote(original string) string {
 	return strings.TrimRight(cleaned, `"`)
 }
 
-func (r *blocklistedImport) ID() string {
-	return r.MetaData.ID
-}
-
 func (r *blocklistedImport) Match(n ast.Node, c *gosec.Context) (*issue.Issue, error) {
 	if node, ok := n.(*ast.ImportSpec); ok {
 		if description, ok := r.Blocklisted[unquote(node.Path.Value)]; ok {
@@ -50,11 +46,7 @@ func (r *blocklistedImport) Match(n ast.Node, c *gosec.Context) (*issue.Issue, e
 // Typically when a deprecated technology is being used.
 func NewBlocklistedImports(id string, _ gosec.Config, blocklist map[string]string) (gosec.Rule, []ast.Node) {
 	return &blocklistedImport{
-		MetaData: issue.MetaData{
-			ID:         id,
-			Severity:   issue.Medium,
-			Confidence: issue.High,
-		},
+		MetaData:    issue.NewMetaData(id, "", issue.Medium, issue.High),
 		Blocklisted: blocklist,
 	}, []ast.Node{(*ast.ImportSpec)(nil)}
 }

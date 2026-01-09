@@ -11,13 +11,8 @@ import (
 )
 
 type archive struct {
-	issue.MetaData
-	calls    gosec.CallList
+	callListRule
 	argTypes []string
-}
-
-func (a *archive) ID() string {
-	return a.MetaData.ID
 }
 
 // getArchiveBaseType returns the underlying type (*archive/zip.File or *archive/tar.Header)
@@ -72,17 +67,10 @@ func (a *archive) Match(n ast.Node, ctx *gosec.Context) (*issue.Issue, error) {
 
 // NewArchive creates a new rule which detects file traversal when extracting zip/tar archives.
 func NewArchive(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
-	calls := gosec.NewCallList()
-	calls.Add("path/filepath", "Join")
-	calls.Add("path", "Join")
-	return &archive{
-		calls:    calls,
-		argTypes: []string{"*archive/zip.File", "*archive/tar.Header"},
-		MetaData: issue.MetaData{
-			ID:         id,
-			Severity:   issue.Medium,
-			Confidence: issue.High,
-			What:       "File traversal when extracting zip/tar archive",
-		},
-	}, []ast.Node{(*ast.CallExpr)(nil)}
+	rule := &archive{
+		callListRule: newCallListRule(id, "File traversal when extracting zip/tar archive", issue.Medium, issue.High),
+		argTypes:     []string{"*archive/zip.File", "*archive/tar.Header"},
+	}
+	rule.Add("path/filepath", "Join").Add("path", "Join")
+	return rule, []ast.Node{(*ast.CallExpr)(nil)}
 }

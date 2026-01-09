@@ -17,10 +17,6 @@ type secretSerialization struct {
 	pattern *regexp.Regexp
 }
 
-func (r *secretSerialization) ID() string {
-	return r.MetaData.ID
-}
-
 func (r *secretSerialization) Match(n ast.Node, ctx *gosec.Context) (*issue.Issue, error) {
 	field, ok := n.(*ast.Field)
 	if !ok || len(field.Names) == 0 {
@@ -112,12 +108,7 @@ func NewSecretSerialization(id string, conf gosec.Config) (gosec.Rule, []ast.Nod
 	}
 
 	return &secretSerialization{
-		pattern: regexp.MustCompile(patternStr),
-		MetaData: issue.MetaData{
-			ID:         id,
-			What:       "Exported struct field appears to be a secret and is not ignored by JSON marshaling",
-			Severity:   issue.Medium,
-			Confidence: issue.Medium,
-		},
+		pattern:  regexp.MustCompile(patternStr),
+		MetaData: issue.NewMetaData(id, "Exported struct field appears to be a secret and is not ignored by JSON marshaling", issue.Medium, issue.Medium),
 	}, []ast.Node{(*ast.Field)(nil)}
 }

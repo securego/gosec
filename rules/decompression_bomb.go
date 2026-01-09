@@ -29,10 +29,6 @@ type decompressionBombCheck struct {
 	copyCalls   gosec.CallList
 }
 
-func (d *decompressionBombCheck) ID() string {
-	return d.MetaData.ID
-}
-
 func containsReaderCall(node ast.Node, ctx *gosec.Context, list gosec.CallList) bool {
 	if list.ContainsPkgCallExpr(node, ctx, false) != nil {
 		return true
@@ -91,28 +87,21 @@ func (d *decompressionBombCheck) Match(node ast.Node, ctx *gosec.Context) (*issu
 
 // NewDecompressionBombCheck detects potential DoS via decompression bomb
 func NewDecompressionBombCheck(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
-	readerCalls := gosec.NewCallList()
-	readerCalls.Add("compress/gzip", "NewReader")
-	readerCalls.AddAll("compress/zlib", "NewReader", "NewReaderDict")
-	readerCalls.Add("compress/bzip2", "NewReader")
-	readerCalls.AddAll("compress/flate", "NewReader", "NewReaderDict")
-	readerCalls.Add("compress/lzw", "NewReader")
-	readerCalls.Add("archive/tar", "NewReader")
-	readerCalls.Add("archive/zip", "NewReader")
-	readerCalls.Add("*archive/zip.File", "Open")
+	rule := &decompressionBombCheck{
+		MetaData:    issue.NewMetaData(id, "Potential DoS vulnerability via decompression bomb", issue.Medium, issue.Medium),
+		readerCalls: gosec.NewCallList(),
+		copyCalls:   gosec.NewCallList(),
+	}
+	rule.readerCalls.Add("compress/gzip", "NewReader")
+	rule.readerCalls.AddAll("compress/zlib", "NewReader", "NewReaderDict")
+	rule.readerCalls.Add("compress/bzip2", "NewReader")
+	rule.readerCalls.AddAll("compress/flate", "NewReader", "NewReaderDict")
+	rule.readerCalls.Add("compress/lzw", "NewReader")
+	rule.readerCalls.Add("archive/tar", "NewReader")
+	rule.readerCalls.Add("archive/zip", "NewReader")
+	rule.readerCalls.Add("*archive/zip.File", "Open")
 
-	copyCalls := gosec.NewCallList()
-	copyCalls.Add("io", "Copy")
-	copyCalls.Add("io", "CopyBuffer")
+	rule.copyCalls.AddAll("io", "Copy", "CopyBuffer")
 
-	return &decompressionBombCheck{
-		MetaData: issue.MetaData{
-			ID:         id,
-			Severity:   issue.Medium,
-			Confidence: issue.Medium,
-			What:       "Potential DoS vulnerability via decompression bomb",
-		},
-		readerCalls: readerCalls,
-		copyCalls:   copyCalls,
-	}, []ast.Node{(*ast.AssignStmt)(nil), (*ast.CallExpr)(nil)}
+	return rule, []ast.Node{(*ast.AssignStmt)(nil), (*ast.CallExpr)(nil)}
 }
