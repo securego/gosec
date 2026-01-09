@@ -27,6 +27,9 @@ import (
 	"github.com/securego/gosec/v2/issue"
 )
 
+// MaxDepth defines the maximum recursion depth for SSA analysis to avoid infinite loops and memory exhaustion.
+const MaxDepth = 20
+
 // SSAAnalyzerResult contains various information returned by the
 // SSA analysis along with some configuration
 type SSAAnalyzerResult struct {

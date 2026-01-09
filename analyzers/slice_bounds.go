@@ -39,8 +39,6 @@ const (
 	bounded
 )
 
-const maxDepth = 20
-
 func newSliceBoundsAnalyzer(id string, description string) *analysis.Analyzer {
 	return &analysis.Analyzer{
 		Name:     id,
@@ -180,7 +178,7 @@ func runSliceBounds(pass *analysis.Pass) (interface{}, error) {
 			}
 			var processBlock func(block *ssa.BasicBlock, depth int)
 			processBlock = func(block *ssa.BasicBlock, depth int) {
-				if depth == maxDepth {
+				if depth == MaxDepth {
 					return
 				}
 				depth++
@@ -424,7 +422,7 @@ func decomposeIndex(v ssa.Value) (ssa.Value, int) {
 
 // trackSliceBounds recursively follows slice referrers to check for index and boundary violations.
 func trackSliceBounds(depth int, sliceCap int, slice ssa.Node, violations *[]ssa.Instruction, ifs map[ssa.If]*ssa.BinOp) {
-	if depth == maxDepth {
+	if depth == MaxDepth {
 		return
 	}
 	depth++
@@ -556,7 +554,7 @@ func extractIntValueIndexAddr(refinstr *ssa.IndexAddr, sliceCap int) (int, error
 	visited := make(map[ssa.Value]bool)
 	depth := 0
 
-	for len(queue) > 0 && depth < maxDepth {
+	for len(queue) > 0 && depth < MaxDepth {
 		nextQueue := []struct {
 			val    ssa.Value
 			offset int
@@ -625,7 +623,7 @@ func extractIntValueIndexAddr(refinstr *ssa.IndexAddr, sliceCap int) (int, error
 
 // checkAllSlicesBounds validates slice operation boundaries against the known capacity or limit.
 func checkAllSlicesBounds(depth int, sliceCap int, slice *ssa.Slice, violations *[]ssa.Instruction, ifs map[ssa.If]*ssa.BinOp) {
-	if depth == maxDepth {
+	if depth == MaxDepth {
 		return
 	}
 	depth++
@@ -675,7 +673,7 @@ func extractSliceIfLenCondition(call *ssa.Call) (*ssa.If, *ssa.BinOp) {
 				refs = append(refs, *call.Referrers()...)
 			}
 			depth := 0
-			for len(refs) > 0 && depth < maxDepth {
+			for len(refs) > 0 && depth < MaxDepth {
 				newrefs := []ssa.Instruction{}
 				for _, ref := range refs {
 					if binop, ok := ref.(*ssa.BinOp); ok {
