@@ -448,4 +448,150 @@ func main() {
 	fmt.Println(sum)
 }
 `}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func pairwise(list []any) {
+	for i := 0; i < len(list)-1; i += 2 {
+		// Safe: i < len-1 implies i+1 < len
+		fmt.Printf("%v %v\n", list[i], list[i+1])
+	}
+}
+
+func main() {
+	// Calls with both even and odd lengths (and empty) to exercise the path
+	pairwise([]any{"a", "b", "c", "d"})
+	pairwise([]any{"x", "y", "z"})
+	pairwise([]any{})
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+type Handler struct{}
+
+func (h *Handler) HandleArgs(list []any) {
+	for i := 0; i < len(list)-1; i += 2 {
+		fmt.Printf("%v %v\n", list[i], list[i+1])
+	}
+}
+
+func main() {
+	// Empty main: no call to HandleArgs, mimicking library code or unreachable for constant prop
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func safeTriples(list []int) {
+	for i := 0; i < len(list)-2; i += 3 {
+		fmt.Println(list[i], list[i+1], list[i+2])
+	}
+}
+
+func main() {
+	safeTriples([]int{1,2,3,4,5,6,7})
+	safeTriples([]int{1,2,3,4,5})
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func pairwise(list []any) {
+	for i := 0; i+1 < len(list); i += 2 {
+		// Safe: i+1 < len implies i < len-1
+		fmt.Printf("%v %v\n", list[i], list[i+1])
+	}
+}
+
+func main() {
+	// Calls with both even and odd lengths (and empty) to exercise the path
+	pairwise([]any{"a", "b", "c", "d"})
+	pairwise([]any{"x", "y", "z"})
+	pairwise([]any{})
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]byte, 0, 4)
+	// Extending length up to capacity is valid
+	x := s[:3]
+	fmt.Println(x)
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]byte, 0, 4)
+	// 3-index slice exceeding capacity
+	x := s[:2:5]
+	fmt.Println(x)
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]byte, 0, 10)
+	// 3-index slice within capacity
+	x := s[2:5:8]
+	fmt.Println(x)
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]byte, 4)
+	for i := range 3 {
+		x := s[i+2]
+		fmt.Println(x)
+	}
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]byte, 5)
+	for i := range 3 {
+		x := s[i+2]
+		fmt.Println(x)
+	}
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]byte, 2)
+	for i := range 3 {
+		x := s[i+2]
+		fmt.Println(x)
+	}
+}
+`}, 1, gosec.NewConfig()},
 }
