@@ -428,6 +428,24 @@ func (gosec *Analyzer) CheckAnalyzers(pkg *packages.Package) {
 		return
 	}
 
+	gosec.CheckAnalyzersWithSSA(pkg, ssaResult)
+}
+
+// CheckAnalyzersWithSSA runs analyzers on a given package using a pre-built SSA result.
+// This is useful when SSA has already been built by an external analysis framework
+// (e.g., nogo) and you want to avoid rebuilding it, which can be expensive for large
+// codebases and breaks caching strategies.
+func (gosec *Analyzer) CheckAnalyzersWithSSA(pkg *packages.Package, ssaResult *buildssa.SSA) {
+	// significant performance improvement if no analyzers are loaded
+	if len(gosec.analyzerSet.Analyzers) == 0 {
+		return
+	}
+
+	if ssaResult == nil {
+		gosec.logger.Print("CheckAnalyzersWithSSA called with nil SSA result")
+		return
+	}
+
 	resultMap := map[*analysis.Analyzer]interface{}{
 		buildssa.Analyzer: &analyzers.SSAAnalyzerResult{
 			Config: gosec.Config(),
