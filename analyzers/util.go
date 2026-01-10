@@ -48,7 +48,7 @@ const MaxDepth = 20
 // SSAAnalyzerResult contains various information returned by the
 // SSA analysis along with some configuration
 type SSAAnalyzerResult struct {
-	Config map[string]interface{}
+	Config map[string]any
 	Logger *log.Logger
 	SSA    *buildssa.SSA
 }
@@ -129,16 +129,17 @@ type IntTypeInfo struct {
 	Max    uint
 }
 
+var intTypeRegexp = regexp.MustCompile(`^(?P<type>u?int)(?P<size>\d{1,2})?$`)
+
 // ParseIntType parses an integer type string into IntTypeInfo
 func ParseIntType(intType string) (IntTypeInfo, error) {
-	re := regexp.MustCompile(`^(?P<type>u?int)(?P<size>\d{1,2})?$`)
-	matches := re.FindStringSubmatch(intType)
+	matches := intTypeRegexp.FindStringSubmatch(intType)
 	if matches == nil {
 		return IntTypeInfo{}, fmt.Errorf("no integer type match found for %s", intType)
 	}
 
-	it := matches[re.SubexpIndex("type")]
-	is := matches[re.SubexpIndex("size")]
+	it := matches[intTypeRegexp.SubexpIndex("type")]
+	is := matches[intTypeRegexp.SubexpIndex("size")]
 
 	signed := it == "int"
 	intSize := strconv.IntSize

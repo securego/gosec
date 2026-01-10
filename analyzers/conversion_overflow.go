@@ -54,12 +54,37 @@ func newConversionOverflowAnalyzer(id string, description string) *analysis.Anal
 	}
 }
 
-func runConversionOverflow(pass *analysis.Pass) (interface{}, error) {
+type overflowState struct {
+	pass        *analysis.Pass
+	rangeCache  map[rangeCacheKey]rangeResult
+	branchCache map[branchCacheKey]branchResults
+}
+
+type rangeCacheKey struct {
+	ifInstr *ssa.If
+	val     ssa.Value
+}
+
+type branchCacheKey struct {
+	block *ssa.BasicBlock
+	val   ssa.Value
+}
+
+func newOverflowState(pass *analysis.Pass) *overflowState {
+	return &overflowState{
+		pass:        pass,
+		rangeCache:  make(map[rangeCacheKey]rangeResult),
+		branchCache: make(map[branchCacheKey]branchResults),
+	}
+}
+
+func runConversionOverflow(pass *analysis.Pass) (any, error) {
 	ssaResult, err := getSSAResult(pass)
 	if err != nil {
 		return nil, fmt.Errorf("building ssa representation: %w", err)
 	}
 
+	state := newOverflowState(pass)
 	issues := []*issue.Issue{}
 	for _, mcall := range ssaResult.SSA.SrcFuncs {
 		for _, block := range mcall.DomPreorder() {
@@ -69,7 +94,7 @@ func runConversionOverflow(pass *analysis.Pass) (interface{}, error) {
 					src := instr.X.Type().Underlying().String()
 					dst := instr.Type().Underlying().String()
 					if isIntOverflow(src, dst) {
-						if isSafeConversion(instr) {
+						if state.isSafeConversion(instr) {
 							continue
 						}
 						issue := newIssue(pass.Analyzer.Name,
@@ -106,7 +131,7 @@ func isIntOverflow(src string, dst string) bool {
 	return srcInt.Min < dstInt.Min || srcInt.Max > dstInt.Max
 }
 
-func isSafeConversion(instr *ssa.Convert) bool {
+func (s *overflowState) isSafeConversion(instr *ssa.Convert) bool {
 	dstType := instr.Type().Underlying().String()
 
 	// Check for constant conversions.
@@ -122,7 +147,7 @@ func isSafeConversion(instr *ssa.Convert) bool {
 	}
 
 	// Check for explicit range checks.
-	if hasExplicitRangeCheck(instr, dstType) {
+	if s.hasExplicitRangeCheck(instr, dstType) {
 		return true
 	}
 
@@ -185,7 +210,7 @@ func isStringToIntConversion(instr *ssa.Convert, dstType string) bool {
 	}
 }
 
-func hasExplicitRangeCheck(instr *ssa.Convert, dstType string) bool {
+func (s *overflowState) hasExplicitRangeCheck(instr *ssa.Convert, dstType string) bool {
 	dstInt, err := ParseIntType(dstType)
 	if err != nil {
 		return false
@@ -210,7 +235,7 @@ func hasExplicitRangeCheck(instr *ssa.Convert, dstType string) bool {
 		for _, blockInstr := range block.Instrs {
 			switch v := blockInstr.(type) {
 			case *ssa.If:
-				result := getResultRange(v, instr, visitedIfs)
+				result := s.getResultRange(v, instr, visitedIfs)
 				if result.isRangeCheck {
 					minValue = max(minValue, result.minValue)
 					maxValue = min(maxValue, result.maxValue)
@@ -241,7 +266,12 @@ func hasExplicitRangeCheck(instr *ssa.Convert, dstType string) bool {
 }
 
 // getResultRange is a recursive function that walks the branches of the if statement to find the range of the variable.
-func getResultRange(ifInstr *ssa.If, instr *ssa.Convert, visitedIfs map[*ssa.If]bool) rangeResult {
+func (s *overflowState) getResultRange(ifInstr *ssa.If, instr *ssa.Convert, visitedIfs map[*ssa.If]bool) rangeResult {
+	key := rangeCacheKey{ifInstr, instr.X}
+	if res, ok := s.rangeCache[key]; ok {
+		return res
+	}
+
 	if visitedIfs[ifInstr] {
 		return rangeResult{minValue: math.MinInt, maxValue: math.MaxUint}
 	}
@@ -259,8 +289,8 @@ func getResultRange(ifInstr *ssa.If, instr *ssa.Convert, visitedIfs map[*ssa.If]
 		isRangeCheck: true,
 	}
 
-	thenBounds := walkBranchForConvert(ifInstr.Block().Succs[0], instr, visitedIfs)
-	elseBounds := walkBranchForConvert(ifInstr.Block().Succs[1], instr, visitedIfs)
+	thenBounds := s.walkBranchForConvert(ifInstr.Block().Succs[0], instr, visitedIfs)
+	elseBounds := s.walkBranchForConvert(ifInstr.Block().Succs[1], instr, visitedIfs)
 
 	updateResultFromBinOp(&result, binOp, instr, thenBounds.convertFound)
 
@@ -279,6 +309,7 @@ func getResultRange(ifInstr *ssa.If, instr *ssa.Convert, visitedIfs map[*ssa.If]
 	result.explicitPositiveVals = append(result.explicitPositiveVals, elseBounds.explicitPositiveVals...)
 	result.explicitNegativeVals = append(result.explicitNegativeVals, elseBounds.explicitNegativeVals...)
 
+	s.rangeCache[key] = result
 	return result
 }
 
@@ -377,13 +408,18 @@ func updateMinMaxForGreaterOrEqual(result *rangeResult, constVal *ssa.Const, op 
 }
 
 // walkBranchForConvert walks the branch of the if statement to find the range of the variable and where the conversion is.
-func walkBranchForConvert(block *ssa.BasicBlock, instr *ssa.Convert, visitedIfs map[*ssa.If]bool) branchResults {
+func (s *overflowState) walkBranchForConvert(block *ssa.BasicBlock, instr *ssa.Convert, visitedIfs map[*ssa.If]bool) branchResults {
+	key := branchCacheKey{block, instr.X}
+	if res, ok := s.branchCache[key]; ok {
+		return res
+	}
+
 	bounds := branchResults{}
 
 	for _, blockInstr := range block.Instrs {
 		switch v := blockInstr.(type) {
 		case *ssa.If:
-			result := getResultRange(v, instr, visitedIfs)
+			result := s.getResultRange(v, instr, visitedIfs)
 			bounds.convertFound = bounds.convertFound || result.convertFound
 
 			if result.isRangeCheck {
@@ -401,11 +437,13 @@ func walkBranchForConvert(block *ssa.BasicBlock, instr *ssa.Convert, visitedIfs 
 		case *ssa.Convert:
 			if v == instr {
 				bounds.convertFound = true
+				s.branchCache[key] = bounds
 				return bounds
 			}
 		}
 	}
 
+	s.branchCache[key] = bounds
 	return bounds
 }
 

@@ -47,12 +47,47 @@ func newSliceBoundsAnalyzer(id string, description string) *analysis.Analyzer {
 	}
 }
 
-func runSliceBounds(pass *analysis.Pass) (interface{}, error) {
+type sliceBoundsState struct {
+	pass       *analysis.Pass
+	trackCache map[trackCacheKey]*trackCacheValue
+	idxCache   map[idxCacheKey]idxCacheValue
+}
+
+type trackCacheKey struct {
+	node     ssa.Node
+	sliceCap int
+}
+
+type trackCacheValue struct {
+	violations []ssa.Instruction
+	ifs        map[ssa.If]*ssa.BinOp
+}
+
+type idxCacheKey struct {
+	instr    *ssa.IndexAddr
+	sliceCap int
+}
+
+type idxCacheValue struct {
+	val int
+	err error
+}
+
+func newSliceBoundsState(pass *analysis.Pass) *sliceBoundsState {
+	return &sliceBoundsState{
+		pass:       pass,
+		trackCache: make(map[trackCacheKey]*trackCacheValue),
+		idxCache:   make(map[idxCacheKey]idxCacheValue),
+	}
+}
+
+func runSliceBounds(pass *analysis.Pass) (any, error) {
 	ssaResult, err := getSSAResult(pass)
 	if err != nil {
 		return nil, err
 	}
 
+	state := newSliceBoundsState(pass)
 	issues := map[ssa.Instruction]*issue.Issue{}
 	ifs := map[ssa.If]*ssa.BinOp{}
 	for _, mcall := range ssaResult.SSA.SrcFuncs {
@@ -84,7 +119,7 @@ func runSliceBounds(pass *analysis.Pass) (interface{}, error) {
 										}
 									}
 									newCap := computeSliceNewCap(l, h, maxIdx, sliceCap)
-									trackSliceBounds(0, newCap, slice, &violations, ifs)
+									state.trackSliceBounds(0, newCap, slice, &violations, ifs)
 									for _, s := range violations {
 										switch s := s.(type) {
 										case *ssa.Slice:
@@ -133,7 +168,7 @@ func runSliceBounds(pass *analysis.Pass) (interface{}, error) {
 								break
 							}
 
-							_, err = extractIntValueIndexAddr(instr, arrayLen)
+							_, err = state.extractIntValueIndexAddr(instr, arrayLen)
 							if err != nil {
 								break
 							}
@@ -416,11 +451,28 @@ func decomposeIndex(v ssa.Value) (ssa.Value, int) {
 }
 
 // trackSliceBounds recursively follows slice referrers to check for index and boundary violations.
-func trackSliceBounds(depth int, sliceCap int, slice ssa.Node, violations *[]ssa.Instruction, ifs map[ssa.If]*ssa.BinOp) {
+func (s *sliceBoundsState) trackSliceBounds(depth int, sliceCap int, slice ssa.Node, violations *[]ssa.Instruction, ifs map[ssa.If]*ssa.BinOp) {
 	if depth == MaxDepth {
 		return
 	}
 	depth++
+
+	key := trackCacheKey{slice, sliceCap}
+	if res, ok := s.trackCache[key]; ok {
+		if res == nil { // visiting
+			return
+		}
+		*violations = append(*violations, res.violations...)
+		for k, v := range res.ifs {
+			ifs[k] = v
+		}
+		return
+	}
+	s.trackCache[key] = nil // mark as visiting
+
+	localViolations := []ssa.Instruction{}
+	localIfs := make(map[ssa.If]*ssa.BinOp)
+
 	if violations == nil {
 		violations = &[]ssa.Instruction{}
 	}
@@ -429,24 +481,24 @@ func trackSliceBounds(depth int, sliceCap int, slice ssa.Node, violations *[]ssa
 		for _, refinstr := range *referrers {
 			switch refinstr := refinstr.(type) {
 			case *ssa.Slice:
-				checkAllSlicesBounds(depth, sliceCap, refinstr, violations, ifs)
+				s.checkAllSlicesBounds(depth, sliceCap, refinstr, &localViolations, localIfs)
 				switch refinstr.X.(type) {
 				case *ssa.Alloc, *ssa.Parameter, *ssa.Slice:
 					l, h, maxIdx := GetSliceBounds(refinstr)
 					newCap := computeSliceNewCap(l, h, maxIdx, sliceCap)
-					trackSliceBounds(depth, newCap, refinstr, violations, ifs)
+					s.trackSliceBounds(depth, newCap, refinstr, &localViolations, localIfs)
 				}
 			case *ssa.IndexAddr:
 				if indexValue, ok := GetConstantInt64(refinstr.Index); ok && !isSliceIndexInsideBounds(sliceCap, int(indexValue)) {
-					*violations = append(*violations, refinstr)
+					localViolations = append(localViolations, refinstr)
 				}
-				indexValue, err := extractIntValueIndexAddr(refinstr, sliceCap)
+				indexValue, err := s.extractIntValueIndexAddr(refinstr, sliceCap)
 				if err == nil && !isSliceIndexInsideBounds(sliceCap, indexValue) {
-					*violations = append(*violations, refinstr)
+					localViolations = append(localViolations, refinstr)
 				}
 			case *ssa.Call:
 				if ifref, cond := extractSliceIfLenCondition(refinstr); ifref != nil && cond != nil {
-					ifs[*ifref] = cond
+					localIfs[*ifref] = cond
 				} else {
 					parPos := -1
 					for pos, arg := range refinstr.Call.Args {
@@ -457,17 +509,34 @@ func trackSliceBounds(depth int, sliceCap int, slice ssa.Node, violations *[]ssa
 					if fn, ok := refinstr.Call.Value.(*ssa.Function); ok {
 						if len(fn.Params) > parPos && parPos > -1 {
 							param := fn.Params[parPos]
-							trackSliceBounds(depth, sliceCap, param, violations, ifs)
+							s.trackSliceBounds(depth, sliceCap, param, &localViolations, localIfs)
 						}
 					}
 				}
 			}
 		}
 	}
+
+	*violations = append(*violations, localViolations...)
+	for k, v := range localIfs {
+		ifs[k] = v
+	}
+	s.trackCache[key] = &trackCacheValue{localViolations, localIfs}
 }
 
 // extractIntValueIndexAddr attempts to derive a constant index value from an IndexAddr by checking its referrers.
-func extractIntValueIndexAddr(refinstr *ssa.IndexAddr, sliceCap int) (int, error) {
+func (s *sliceBoundsState) extractIntValueIndexAddr(refinstr *ssa.IndexAddr, sliceCap int) (int, error) {
+	key := idxCacheKey{refinstr, sliceCap}
+	if res, ok := s.idxCache[key]; ok {
+		return res.val, res.err
+	}
+
+	resVal, resErr := s.extractIntValueIndexAddrRecursive(refinstr, sliceCap)
+	s.idxCache[key] = idxCacheValue{resVal, resErr}
+	return resVal, resErr
+}
+
+func (s *sliceBoundsState) extractIntValueIndexAddrRecursive(refinstr *ssa.IndexAddr, sliceCap int) (int, error) {
 	base, offset := decomposeIndex(refinstr.Index)
 	var sliceIncr int
 
@@ -639,7 +708,7 @@ func extractIntValueIndexAddr(refinstr *ssa.IndexAddr, sliceCap int) (int, error
 }
 
 // checkAllSlicesBounds validates slice operation boundaries against the known capacity or limit.
-func checkAllSlicesBounds(depth int, sliceCap int, slice *ssa.Slice, violations *[]ssa.Instruction, ifs map[ssa.If]*ssa.BinOp) {
+func (s *sliceBoundsState) checkAllSlicesBounds(depth int, sliceCap int, slice *ssa.Slice, violations *[]ssa.Instruction, ifs map[ssa.If]*ssa.BinOp) {
 	if depth == MaxDepth {
 		return
 	}
@@ -661,7 +730,7 @@ func checkAllSlicesBounds(depth int, sliceCap int, slice *ssa.Slice, violations 
 	case *ssa.Alloc, *ssa.Parameter, *ssa.Slice:
 		l, h, maxIdx := GetSliceBounds(slice)
 		newCap := computeSliceNewCap(l, h, maxIdx, sliceCap)
-		trackSliceBounds(depth, newCap, slice, violations, ifs)
+		s.trackSliceBounds(depth, newCap, slice, violations, ifs)
 	}
 
 	references := slice.Referrers()
@@ -669,14 +738,14 @@ func checkAllSlicesBounds(depth int, sliceCap int, slice *ssa.Slice, violations 
 		return
 	}
 	for _, ref := range *references {
-		switch s := ref.(type) {
+		switch r := ref.(type) {
 		case *ssa.Slice:
-			checkAllSlicesBounds(depth, sliceCap, s, violations, ifs)
-			switch s.X.(type) {
+			s.checkAllSlicesBounds(depth, sliceCap, r, violations, ifs)
+			switch r.X.(type) {
 			case *ssa.Alloc, *ssa.Parameter, *ssa.Slice:
-				l, h, maxIdx := GetSliceBounds(s)
+				l, h, maxIdx := GetSliceBounds(r)
 				newCap := computeSliceNewCap(l, h, maxIdx, sliceCap)
-				trackSliceBounds(depth, newCap, s, violations, ifs)
+				s.trackSliceBounds(depth, newCap, r, violations, ifs)
 			}
 		}
 	}
@@ -798,11 +867,15 @@ func isSliceIndexInsideBounds(h int, index int) bool {
 	return (0 <= index && index < h)
 }
 
+var (
+	sliceCapRegexp   = regexp.MustCompile(`new \[(\d+)\].*`)
+	arrayAllocRegexp = regexp.MustCompile(`.*\[(\d+)\].*`)
+)
+
 // extractSliceCapFromAlloc parses the initial capacity of a slice from its allocation instruction string.
 func extractSliceCapFromAlloc(instr string) (int, error) {
-	re := regexp.MustCompile(`new \[(\d+)\].*`)
 	var sliceCap int
-	matches := re.FindAllStringSubmatch(instr, -1)
+	matches := sliceCapRegexp.FindAllStringSubmatch(instr, -1)
 	if matches == nil {
 		return sliceCap, errors.New("no slice cap found")
 	}
@@ -819,9 +892,8 @@ func extractSliceCapFromAlloc(instr string) (int, error) {
 
 // extractArrayAllocValue parses the constant length of an array allocation from its type string.
 func extractArrayAllocValue(value string) (int, error) {
-	re := regexp.MustCompile(`.*\[(\d+)\].*`)
 	var sliceCap int
-	matches := re.FindAllStringSubmatch(value, -1)
+	matches := arrayAllocRegexp.FindAllStringSubmatch(value, -1)
 	if matches == nil {
 		return sliceCap, fmt.Errorf("invalid value: %s", value)
 	}

@@ -49,7 +49,7 @@ func newHardCodedNonce(id string, description string) *analysis.Analyzer {
 	}
 }
 
-func runHardCodedNonce(pass *analysis.Pass) (interface{}, error) {
+func runHardCodedNonce(pass *analysis.Pass) (any, error) {
 	ssaResult, err := getSSAResult(pass)
 	if err != nil {
 		return nil, err
