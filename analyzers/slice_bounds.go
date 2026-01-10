@@ -20,7 +20,6 @@ import (
 	"go/token"
 	"regexp"
 	"strconv"
-	"strings"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/buildssa"
@@ -73,7 +72,7 @@ func runSliceBounds(pass *analysis.Pass) (interface{}, error) {
 						if slice, ok := instr.(*ssa.Slice); ok {
 							if _, ok := slice.X.(*ssa.Alloc); ok {
 								if slice.Parent() != nil {
-									l, h, maxIdx := extractSliceBounds(slice)
+									l, h, maxIdx := GetSliceBounds(slice)
 									violations := []ssa.Instruction{}
 									if maxIdx > 0 {
 										if !isThreeIndexSliceInsideBounds(l, h, maxIdx, sliceCap) {
@@ -192,7 +191,7 @@ func runSliceBounds(pass *analysis.Pass) (interface{}, error) {
 						case upperBounded:
 							switch tinstr := instr.(type) {
 							case *ssa.Slice:
-								_, _, m := extractSliceBounds(tinstr)
+								_, _, m := GetSliceBounds(tinstr)
 								if !isLenBound && isSliceInsideBounds(0, value, m, value) {
 									delete(issues, instr)
 								}
@@ -204,29 +203,25 @@ func runSliceBounds(pass *analysis.Pass) (interface{}, error) {
 										}
 									}
 								} else {
-									indexValue, err := extractIntValue(tinstr.Index.String())
-									if err != nil {
-										break
-									}
-									if isSliceIndexInsideBounds(value, indexValue) {
-										delete(issues, instr)
+									if indexValue, ok := GetConstantInt64(tinstr.Index); ok {
+										if isSliceIndexInsideBounds(value, int(indexValue)) {
+											delete(issues, instr)
+										}
 									}
 								}
 							}
 						case bounded:
 							switch tinstr := instr.(type) {
 							case *ssa.Slice:
-								_, _, m := extractSliceBounds(tinstr)
+								_, _, m := GetSliceBounds(tinstr)
 								if isSliceInsideBounds(value, value, m, value) {
 									delete(issues, instr)
 								}
 							case *ssa.IndexAddr:
-								indexValue, err := extractIntValue(tinstr.Index.String())
-								if err != nil {
-									break
-								}
-								if indexValue == value {
-									delete(issues, instr)
+								if indexValue, ok := GetConstantInt64(tinstr.Index); ok {
+									if int(indexValue) == value {
+										delete(issues, instr)
+									}
 								}
 							}
 						}
@@ -437,16 +432,15 @@ func trackSliceBounds(depth int, sliceCap int, slice ssa.Node, violations *[]ssa
 				checkAllSlicesBounds(depth, sliceCap, refinstr, violations, ifs)
 				switch refinstr.X.(type) {
 				case *ssa.Alloc, *ssa.Parameter, *ssa.Slice:
-					l, h, maxIdx := extractSliceBounds(refinstr)
+					l, h, maxIdx := GetSliceBounds(refinstr)
 					newCap := computeSliceNewCap(l, h, maxIdx, sliceCap)
 					trackSliceBounds(depth, newCap, refinstr, violations, ifs)
 				}
 			case *ssa.IndexAddr:
-				indexValue, err := extractIntValue(refinstr.Index.String())
-				if err == nil && !isSliceIndexInsideBounds(sliceCap, indexValue) {
+				if indexValue, ok := GetConstantInt64(refinstr.Index); ok && !isSliceIndexInsideBounds(sliceCap, int(indexValue)) {
 					*violations = append(*violations, refinstr)
 				}
-				indexValue, err = extractIntValueIndexAddr(refinstr, sliceCap)
+				indexValue, err := extractIntValueIndexAddr(refinstr, sliceCap)
 				if err == nil && !isSliceIndexInsideBounds(sliceCap, indexValue) {
 					*violations = append(*violations, refinstr)
 				}
@@ -477,7 +471,15 @@ func extractIntValueIndexAddr(refinstr *ssa.IndexAddr, sliceCap int) (int, error
 	base, offset := decomposeIndex(refinstr.Index)
 	var sliceIncr int
 
-	// Check Phi node for loop counter patterns
+	// Case 1: Base is a constant (e.g., s[0+3])
+	if val, ok := GetConstantInt64(base); ok {
+		finalIdx := int(val) + offset
+		if !isSliceIndexInsideBounds(sliceCap+sliceIncr, finalIdx) {
+			return finalIdx, nil
+		}
+	}
+
+	// Case 2: Base is a Phi node (loop counter)
 	if p, ok := base.(*ssa.Phi); ok {
 		var start int
 		var hasStart bool
@@ -517,6 +519,7 @@ func extractIntValueIndexAddr(refinstr *ssa.IndexAddr, sliceCap int) (int, error
 				}
 				for _, r := range *refs {
 					if bin, ok := r.(*ssa.BinOp); ok {
+						// Check for constant bound
 						bound, limit, err := extractBinOpBound(bin)
 						if err == nil {
 							incr := 0
@@ -538,6 +541,20 @@ func extractIntValueIndexAddr(refinstr *ssa.IndexAddr, sliceCap int) (int, error
 								if !isSliceIndexInsideBounds(sliceCap+sliceIncr, finalMaxV+offset) {
 									return finalMaxV + offset, nil
 								}
+							}
+						} else if _, off, ok := extractLenBound(bin); ok {
+							// Check for length bound (e.g. i < len(s) + off)
+							// Here the limit is effectively sliceCap
+							limit := sliceCap
+							incr := -1 // extractLenBound only handles LSS for now
+							maxV := limit + off + incr
+
+							finalMaxV := maxV
+							if v == nBase && nBase != p {
+								finalMaxV = maxV - nOffset
+							}
+							if !isSliceIndexInsideBounds(sliceCap+sliceIncr, finalMaxV+offset) {
+								return finalMaxV + offset, nil
 							}
 						}
 					}
@@ -630,7 +647,7 @@ func checkAllSlicesBounds(depth int, sliceCap int, slice *ssa.Slice, violations 
 	if violations == nil {
 		violations = &[]ssa.Instruction{}
 	}
-	sliceLow, sliceHigh, sliceMax := extractSliceBounds(slice)
+	sliceLow, sliceHigh, sliceMax := GetSliceBounds(slice)
 	if sliceMax > 0 {
 		if !isThreeIndexSliceInsideBounds(sliceLow, sliceHigh, sliceMax, sliceCap) {
 			*violations = append(*violations, slice)
@@ -642,7 +659,7 @@ func checkAllSlicesBounds(depth int, sliceCap int, slice *ssa.Slice, violations 
 	}
 	switch slice.X.(type) {
 	case *ssa.Alloc, *ssa.Parameter, *ssa.Slice:
-		l, h, maxIdx := extractSliceBounds(slice)
+		l, h, maxIdx := GetSliceBounds(slice)
 		newCap := computeSliceNewCap(l, h, maxIdx, sliceCap)
 		trackSliceBounds(depth, newCap, slice, violations, ifs)
 	}
@@ -657,7 +674,7 @@ func checkAllSlicesBounds(depth int, sliceCap int, slice *ssa.Slice, violations 
 			checkAllSlicesBounds(depth, sliceCap, s, violations, ifs)
 			switch s.X.(type) {
 			case *ssa.Alloc, *ssa.Parameter, *ssa.Slice:
-				l, h, maxIdx := extractSliceBounds(s)
+				l, h, maxIdx := GetSliceBounds(s)
 				newCap := computeSliceNewCap(l, h, maxIdx, sliceCap)
 				trackSliceBounds(depth, newCap, s, violations, ifs)
 			}
@@ -781,58 +798,6 @@ func isSliceIndexInsideBounds(h int, index int) bool {
 	return (0 <= index && index < h)
 }
 
-// isSliceInsideBounds checks if the requested slice range is within the parent slice's boundaries.
-func isSliceInsideBounds(l, h int, cl, ch int) bool {
-	return (l <= cl && h >= ch) && (l <= ch && h >= cl)
-}
-
-// isThreeIndexSliceInsideBounds validates the boundaries and capacity of a 3-index slice (s[i:j:k]).
-func isThreeIndexSliceInsideBounds(l, h, maxIdx int, oldCap int) bool {
-	return l >= 0 && h >= l && maxIdx >= h && maxIdx <= oldCap
-}
-
-// extractSliceBounds extracts the lower, upper, and (optional) max capacity indices from an ssa.Slice instruction.
-func extractSliceBounds(slice *ssa.Slice) (int, int, int) {
-	var low int
-	if slice.Low != nil {
-		l, err := extractIntValue(slice.Low.String())
-		if err == nil {
-			low = l
-		}
-	}
-	var high int
-	if slice.High != nil {
-		h, err := extractIntValue(slice.High.String())
-		if err == nil {
-			high = h
-		}
-	}
-	var maxIdx int
-	if slice.Max != nil {
-		m, err := extractIntValue(slice.Max.String())
-		if err == nil {
-			maxIdx = m
-		}
-	}
-	return low, high, maxIdx
-}
-
-// extractIntValue attempts to parse a constant integer value from an SSA value string representation.
-func extractIntValue(value string) (int, error) {
-	if i, err := extractIntValuePhi(value); err == nil {
-		return i, nil
-	}
-
-	parts := strings.Split(value, ":")
-	if len(parts) != 2 {
-		return 0, fmt.Errorf("invalid value: %s", value)
-	}
-	if parts[1] != "int" {
-		return 0, fmt.Errorf("invalid value: %s", value)
-	}
-	return strconv.Atoi(parts[0])
-}
-
 // extractSliceCapFromAlloc parses the initial capacity of a slice from its allocation instruction string.
 func extractSliceCapFromAlloc(instr string) (int, error) {
 	re := regexp.MustCompile(`new \[(\d+)\].*`)
@@ -850,25 +815,6 @@ func extractSliceCapFromAlloc(instr string) (int, error) {
 	}
 
 	return 0, errors.New("no slice cap found")
-}
-
-// extractIntValuePhi parses an integer value from an SSA Phi instruction string representation.
-func extractIntValuePhi(value string) (int, error) {
-	re := regexp.MustCompile(`phi \[.+: (\d+):.+, .*\].*`)
-	var sliceCap int
-	matches := re.FindAllStringSubmatch(value, -1)
-	if matches == nil {
-		return sliceCap, fmt.Errorf("invalid value: %s", value)
-	}
-
-	if len(matches) > 0 {
-		m := matches[0]
-		if len(m) > 1 {
-			return strconv.Atoi(m[1])
-		}
-	}
-
-	return 0, fmt.Errorf("invalid value: %s", value)
 }
 
 // extractArrayAllocValue parses the constant length of an array allocation from its type string.

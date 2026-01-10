@@ -12,12 +12,12 @@ var _ = Describe("ParseIntType", func() {
 	Context("with valid input", func() {
 		DescribeTable("should correctly parse and calculate bounds for",
 			func(intType string, expectedSigned bool, expectedSize int, expectedMin int, expectedMax uint) {
-				result, err := parseIntType(intType)
+				result, err := ParseIntType(intType)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(result.signed).To(Equal(expectedSigned))
-				Expect(result.size).To(Equal(expectedSize))
-				Expect(result.min).To(Equal(expectedMin))
-				Expect(result.max).To(Equal(expectedMax))
+				Expect(result.Signed).To(Equal(expectedSigned))
+				Expect(result.Size).To(Equal(expectedSize))
+				Expect(result.Min).To(Equal(expectedMin))
+				Expect(result.Max).To(Equal(expectedMax))
 			},
 			Entry("uint8", "uint8", false, 8, 0, uint(math.MaxUint8)),
 			Entry("int8", "int8", true, 8, math.MinInt8, uint(math.MaxInt8)),
@@ -30,20 +30,20 @@ var _ = Describe("ParseIntType", func() {
 		)
 
 		It("should use system's int size for 'int' and 'uint'", func() {
-			intResult, err := parseIntType("int")
+			intResult, err := ParseIntType("int")
 			Expect(err).NotTo(HaveOccurred())
-			Expect(intResult.size).To(Equal(strconv.IntSize))
+			Expect(intResult.Size).To(Equal(strconv.IntSize))
 
-			uintResult, err := parseIntType("uint")
+			uintResult, err := ParseIntType("uint")
 			Expect(err).NotTo(HaveOccurred())
-			Expect(uintResult.size).To(Equal(strconv.IntSize))
+			Expect(uintResult.Size).To(Equal(strconv.IntSize))
 		})
 	})
 
 	Context("with invalid input", func() {
 		DescribeTable("should return an error for",
 			func(intType string, expectedErrorString string) {
-				_, err := parseIntType(intType)
+				_, err := ParseIntType(intType)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring(expectedErrorString))
 			},

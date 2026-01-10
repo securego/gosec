@@ -15,11 +15,9 @@
 package analyzers
 
 import (
-	"cmp"
 	"fmt"
 	"go/token"
 	"math"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -29,13 +27,6 @@ import (
 
 	"github.com/securego/gosec/v2/issue"
 )
-
-type integer struct {
-	signed bool
-	size   int
-	min    int
-	max    uint
-}
 
 type rangeResult struct {
 	minValue             int
@@ -102,70 +93,17 @@ func runConversionOverflow(pass *analysis.Pass) (interface{}, error) {
 }
 
 func isIntOverflow(src string, dst string) bool {
-	srcInt, err := parseIntType(src)
+	srcInt, err := ParseIntType(src)
 	if err != nil {
 		return false
 	}
 
-	dstInt, err := parseIntType(dst)
+	dstInt, err := ParseIntType(dst)
 	if err != nil {
 		return false
 	}
 
-	return srcInt.min < dstInt.min || srcInt.max > dstInt.max
-}
-
-func parseIntType(intType string) (integer, error) {
-	re := regexp.MustCompile(`^(?P<type>u?int)(?P<size>\d{1,2})?$`)
-	matches := re.FindStringSubmatch(intType)
-	if matches == nil {
-		return integer{}, fmt.Errorf("no integer type match found for %s", intType)
-	}
-
-	it := matches[re.SubexpIndex("type")]
-	is := matches[re.SubexpIndex("size")]
-
-	signed := it == "int"
-
-	// use default system int type in case size is not present in the type.
-	intSize := strconv.IntSize
-	if is != "" {
-		var err error
-		intSize, err = strconv.Atoi(is)
-		if err != nil {
-			return integer{}, fmt.Errorf("failed to parse the integer type size: %w", err)
-		}
-	}
-
-	if intSize != 8 && intSize != 16 && intSize != 32 && intSize != 64 && is != "" {
-		return integer{}, fmt.Errorf("invalid bit size: %d", intSize)
-	}
-
-	var minVal int
-	var maxVal uint
-
-	if signed {
-		shiftAmount := intSize - 1
-
-		// Perform a bounds check.
-		if shiftAmount < 0 {
-			return integer{}, fmt.Errorf("invalid shift amount: %d", shiftAmount)
-		}
-
-		maxVal = (1 << uint(shiftAmount)) - 1
-		minVal = -1 << (intSize - 1)
-
-	} else {
-		maxVal = (1 << uint(intSize)) - 1
-		minVal = 0
-	}
-
-	return integer{
-		signed: signed,
-		size:   intSize,
-		min:    minVal,
-		max:    maxVal,
-	}, nil
+	return srcInt.Min < dstInt.Min || srcInt.Max > dstInt.Max
 }
 
 func isSafeConversion(instr *ssa.Convert) bool {
@@ -197,15 +135,15 @@ func isConstantInRange(constVal *ssa.Const, dstType string) bool {
 		return false
 	}
 
-	dstInt, err := parseIntType(dstType)
+	dstInt, err := ParseIntType(dstType)
 	if err != nil {
 		return false
 	}
 
-	if dstInt.signed {
-		return value >= -(1<<(dstInt.size-1)) && value <= (1<<(dstInt.size-1))-1
+	if dstInt.Signed {
+		return value >= -(1<<(dstInt.Size-1)) && value <= (1<<(dstInt.Size-1))-1
 	}
-	return value >= 0 && value <= (1<<dstInt.size)-1
+	return value >= 0 && value <= (1<<dstInt.Size)-1
 }
 
 func isStringToIntConversion(instr *ssa.Convert, dstType string) bool {
@@ -222,7 +160,7 @@ func isStringToIntConversion(instr *ssa.Convert, dstType string) bool {
 						if err != nil {
 							return false
 						}
-						dstInt, err := parseIntType(dstType)
+						dstInt, err := ParseIntType(dstType)
 						if err != nil {
 							return false
 						}
@@ -230,8 +168,8 @@ func isStringToIntConversion(instr *ssa.Convert, dstType string) bool {
 						// we're good if:
 						// - signs match and bit size is <= than destination
 						// - parsing unsigned and bit size is < than destination
-						isSafe := (bitSizeValue <= dstInt.size && signed == dstInt.signed) ||
-							(bitSizeValue < dstInt.size && !signed)
+						isSafe := (bitSizeValue <= dstInt.Size && signed == dstInt.Signed) ||
+							(bitSizeValue < dstInt.Size && !signed)
 						return isSafe
 					}
 				}
@@ -248,22 +186,22 @@ func isStringToIntConversion(instr *ssa.Convert, dstType string) bool {
 }
 
 func hasExplicitRangeCheck(instr *ssa.Convert, dstType string) bool {
-	dstInt, err := parseIntType(dstType)
+	dstInt, err := ParseIntType(dstType)
 	if err != nil {
 		return false
 	}
 
-	srcInt, err := parseIntType(instr.X.Type().String())
+	srcInt, err := ParseIntType(instr.X.Type().String())
 	if err != nil {
 		return false
 	}
 
-	minValue := srcInt.min
-	maxValue := srcInt.max
+	minValue := srcInt.Min
+	maxValue := srcInt.Max
 	explicitPositiveVals := []uint{}
 	explicitNegativeVals := []int{}
 
-	if minValue > dstInt.min && maxValue < dstInt.max {
+	if minValue > dstInt.Min && maxValue < dstInt.Max {
 		return true
 	}
 
@@ -294,7 +232,7 @@ func hasExplicitRangeCheck(instr *ssa.Convert, dstType string) bool {
 
 			if explicitValsInRange(explicitPositiveVals, explicitNegativeVals, dstInt) {
 				return true
-			} else if minValue >= dstInt.min && maxValue <= dstInt.max {
+			} else if minValue >= dstInt.Min && maxValue <= dstInt.Max {
 				return true
 			}
 		}
@@ -520,40 +458,22 @@ func isSameOrRelated(a, b ssa.Value) bool {
 	return false
 }
 
-func explicitValsInRange(explicitPosVals []uint, explicitNegVals []int, dstInt integer) bool {
+func explicitValsInRange(explicitPosVals []uint, explicitNegVals []int, dstInt IntTypeInfo) bool {
 	if len(explicitPosVals) == 0 && len(explicitNegVals) == 0 {
 		return false
 	}
 
 	for _, val := range explicitPosVals {
-		if val > dstInt.max {
+		if val > dstInt.Max {
 			return false
 		}
 	}
 
 	for _, val := range explicitNegVals {
-		if val < dstInt.min {
+		if val < dstInt.Min {
 			return false
 		}
 	}
 
 	return true
-}
-
-func minWithPtr[T cmp.Ordered](a T, b *T) T {
-	if b == nil {
-		return a
-	}
-	return min(a, *b)
-}
-
-func maxWithPtr[T cmp.Ordered](a T, b *T) T {
-	if b == nil {
-		return a
-	}
-	return max(a, *b)
-}
-
-func toPtr[T any](a T) *T {
-	return &a
 }

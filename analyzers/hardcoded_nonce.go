@@ -16,9 +16,7 @@ package analyzers
 
 import (
 	"fmt"
-	"go/constant"
 	"go/token"
-	"go/types"
 	"strings"
 
 	"golang.org/x/tools/go/analysis"
@@ -29,6 +27,18 @@ import (
 )
 
 const defaultIssueDescription = "Use of hardcoded IV/nonce for encryption"
+
+// tracked holds the function name as key, the number of arguments that the function accepts,
+// and the index of the argument that is the nonce/IV.
+// Example: "crypto/cipher.NewCBCEncrypter": {2, 1} means the function accepts 2 arguments,
+// and the nonce arg is at index 1 (the second argument).
+var tracked = map[string][]int{
+	"(crypto/cipher.AEAD).Seal":     {4, 1},
+	"crypto/cipher.NewCBCEncrypter": {2, 1},
+	"crypto/cipher.NewCFBEncrypter": {2, 1},
+	"crypto/cipher.NewCTR":          {2, 1},
+	"crypto/cipher.NewOFB":          {2, 1},
+}
 
 func newHardCodedNonce(id string, description string) *analysis.Analyzer {
 	return &analysis.Analyzer{
@@ -46,14 +56,6 @@ func runHardCodedNonce(pass *analysis.Pass) (interface{}, error) {
 	}
 
 	state := newAnalysisState(pass, ssaResult.SSA.SrcFuncs)
-
-	tracked := map[string][]int{
-		"(crypto/cipher.AEAD).Seal":     {4, 1},
-		"crypto/cipher.NewCBCEncrypter": {2, 1},
-		"crypto/cipher.NewCFBEncrypter": {2, 1},
-		"crypto/cipher.NewCTR":          {2, 1},
-		"crypto/cipher.NewOFB":          {2, 1},
-	}
 
 	args := state.getInitialArgs(tracked)
 	var issues []*issue.Issue
@@ -95,27 +97,14 @@ func newAnalysisState(pass *analysis.Pass, funcs []*ssa.Function) *analysisState
 		usageCache:     make(map[ssa.Value]*usageResult),
 		funcCache:      make(map[*ssa.Function]bool),
 		visitedFuncs:   make(map[*ssa.Function]bool),
-		callerMap:      make(map[string][]*ssa.Call),
+		callerMap:      BuildCallerMap(funcs),
 		bufferLenCache: make(map[ssa.Value]int64),
-	}
-	for _, f := range funcs {
-		for _, b := range f.Blocks {
-			for _, i := range b.Instrs {
-				if c, ok := i.(*ssa.Call); ok {
-					var name string
-					if c.Call.Method != nil {
-						name = c.Call.Method.FullName()
-					} else {
-						name = c.Call.Value.String()
-					}
-					s.callerMap[name] = append(s.callerMap[name], c)
-				}
-			}
-		}
 	}
 	return s
 }
 
+// getInitialArgs returns a list of arguments and their corresponding instructions
+// for all call sites identified in the tracked map.
 func (s *analysisState) getInitialArgs(tracked map[string][]int) []ssaValueAndInstr {
 	var result []ssaValueAndInstr
 	for name, info := range tracked {
@@ -133,6 +122,8 @@ func (s *analysisState) getInitialArgs(tracked map[string][]int) []ssaValueAndIn
 	return result
 }
 
+// raiseIssue recursively analyzes the usage of a value and returns a list of issues
+// if it's found to be hardcoded or otherwise insecure.
 func (s *analysisState) raiseIssue(val ssa.Value, issueDescription string,
 	visitedParams map[ssa.Value]bool, fromInstr ssa.Instruction,
 ) ([]*issue.Issue, error) {
@@ -281,6 +272,8 @@ func (s *analysisState) isFuncReturnsHardcoded(fn *ssa.Function) bool {
 	return false
 }
 
+// analyzeUsage performs data-flow analysis to determine if a value is derived from
+// a dynamic source (like crypto/rand) or if it's fixed/hardcoded.
 func (s *analysisState) analyzeUsage(val ssa.Value) (bool, bool) {
 	if val == nil || s.depth > MaxDepth {
 		return false, false
@@ -420,24 +413,9 @@ func (s *analysisState) getBufferLen(val ssa.Value) int64 {
 	if res, ok := s.bufferLenCache[val]; ok {
 		return res
 	}
-	current := val
-	for {
-		t := current.Type()
-		if ptr, ok := t.Underlying().(*types.Pointer); ok {
-			t = ptr.Elem().Underlying()
-		}
-		if arr, ok := t.(*types.Array); ok {
-			s.bufferLenCache[val] = arr.Len()
-			return arr.Len()
-		}
-		if sl, ok := current.(*ssa.Slice); ok {
-			current = sl.X
-			continue
-		}
-		break
-	}
-	s.bufferLenCache[val] = -1
-	return -1
+	length := GetBufferLen(val)
+	s.bufferLenCache[val] = length
+	return length
 }
 
 func isSubSlice(sub, super *ssa.Slice) bool {
@@ -459,29 +437,6 @@ func isSubSlice(sub, super *ssa.Slice) bool {
 }
 
 func getSliceRange(s *ssa.Slice) (int64, int64) {
-	low := int64(0)
-	if s.Low != nil {
-		if c, ok := s.Low.(*ssa.Const); ok {
-			if v, ok := constant.Int64Val(c.Value); ok {
-				low = v
-			} else {
-				return -1, -1
-			}
-		} else {
-			return -1, -1
-		}
-	}
-	high := int64(-1)
-	if s.High != nil {
-		if c, ok := s.High.(*ssa.Const); ok {
-			if v, ok := constant.Int64Val(c.Value); ok {
-				high = v
-			} else {
-				return -1, -1
-			}
-		} else {
-			return -1, -1
-		}
-	}
-	return low, high
+	l, h, _ := GetSliceBounds(s)
+	return int64(l), int64(h)
 }
