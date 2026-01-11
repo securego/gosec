@@ -462,7 +462,7 @@ func (s *overflowState) updateResultFromBinOpForValue(result *rangeResult, binOp
 	case ">>":
 		if val, ok := GetConstantInt64(op.extra); ok && val >= 0 {
 			if result.maxValueSet {
-				result.maxValue >>= uint(val)
+				result.maxValue >>= uint(val) // #nosec G115 - WORKAROUND for old golangci-lint, remove when updated
 			}
 		}
 	case "%":
@@ -470,7 +470,7 @@ func (s *overflowState) updateResultFromBinOpForValue(result *rangeResult, binOp
 			if (result.minValueSet && toInt64(result.minValue) >= 0) || isNonNegative(binOp.X) || isNonNegative(compareVal) {
 				result.minValue = 0
 				result.minValueSet = true
-				result.maxValue = uint64(val - 1)
+				result.maxValue = uint64(val - 1) // #nosec G115 - WORKAROUND for old golangci-lint, remove when updated
 				result.maxValueSet = true
 			} else {
 				//-(val-1)
@@ -478,7 +478,7 @@ func (s *overflowState) updateResultFromBinOpForValue(result *rangeResult, binOp
 				negVal := -(val - 1)
 				result.minValue = toUint64(negVal)
 				result.minValueSet = true
-				result.maxValue = uint64(val - 1)
+				result.maxValue = uint64(val - 1) // #nosec G115 - WORKAROUND for old golangci-lint, remove when updated
 				result.maxValueSet = true
 			}
 		}
@@ -557,11 +557,11 @@ func (s *overflowState) computeRange(v ssa.Value, block *ssa.BasicBlock, visited
 					res.minValueSet = true
 				}
 				if subResX.maxValueSet {
-					res.maxValue = subResX.maxValue >> uint(val)
+					res.maxValue = subResX.maxValue >> uint(val) // #nosec G115 - WORKAROUND for old golangci-lint, remove when updated
 					res.maxValueSet = true
 				} else if typeInt, err := ParseIntType(v.X.Type().Underlying().String()); err == nil {
 					// Fallback to type max
-					res.maxValue = uint64(typeInt.Max) >> uint(val)
+					res.maxValue = uint64(typeInt.Max) >> uint(val) // #nosec G115 - WORKAROUND for old golangci-lint, remove when updated
 					res.maxValueSet = true
 				}
 				res.isRangeCheck = subResX.isRangeCheck
@@ -571,12 +571,12 @@ func (s *overflowState) computeRange(v ssa.Value, block *ssa.BasicBlock, visited
 				if (subResX.minValueSet && toInt64(subResX.minValue) >= 0) || isNonNegative(v.X) {
 					res.minValue = 0
 					res.minValueSet = true
-					res.maxValue = uint64(val - 1)
+					res.maxValue = uint64(val - 1) // #nosec G115 - WORKAROUND for old golangci-lint, remove when updated
 					res.maxValueSet = true
 				} else {
 					res.minValue = toUint64(-(val - 1))
 					res.minValueSet = true
-					res.maxValue = uint64(val - 1)
+					res.maxValue = uint64(val - 1) // #nosec G115 - WORKAROUND for old golangci-lint, remove when updated
 					res.maxValueSet = true
 				}
 				res.isRangeCheck = true
