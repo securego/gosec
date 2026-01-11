@@ -493,4 +493,220 @@ func main() {
 
 }
 `}, 1, gosec.NewConfig()},
+
+	{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+)
+
+func Decrypt(data []byte, key []byte) ([]byte, error) {
+	block, _ := aes.NewCipher(key)
+	gcm, _ := cipher.NewGCM(block)
+	nonceSize := gcm.NonceSize()
+	if len(data) < nonceSize {
+		return nil, nil
+	}
+	nonce, ciphertext := data[:nonceSize], data[nonceSize:]
+	return gcm.Open(nil, nonce, ciphertext, nil)
+}
+
+func main() {}
+`}, 0, gosec.NewConfig()},
+
+	{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+)
+
+const iv = "1234567812345678"
+
+func wrapper(s string, b cipher.Block) {
+	cipher.NewCTR(b, []byte(s))
+}
+
+func main() {
+	b, _ := aes.NewCipher([]byte("1234567812345678"))
+	wrapper(iv, b)
+}
+`}, 1, gosec.NewConfig()},
+
+	{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+)
+
+var globalIV = []byte("1234567812345678")
+
+func wrapper(iv []byte, b cipher.Block) {
+	cipher.NewCTR(b, iv)
+}
+
+func main() {
+	b, _ := aes.NewCipher([]byte("1234567812345678"))
+	wrapper(globalIV, b)
+}
+`}, 1, gosec.NewConfig()},
+
+	{[]string{`package main
+
+import (
+	"crypto/cipher"
+)
+
+func recursive(s string, b cipher.Block) {
+	recursive(s, b)
+	cipher.NewCTR(b, []byte(s))
+}
+
+func main() {
+	recursive("1234567812345678", nil)
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+)
+
+func main() {
+	k := make([]byte, 48)
+	key, iv := k[:32], k[32:]
+	block, _ := aes.NewCipher(key)
+	_ = cipher.NewCTR(block, iv)
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+)
+
+func main() {
+	k := make([]byte, 48)
+	k[32] = 1
+	key, iv := k[:32], k[32:]
+	block, _ := aes.NewCipher(key)
+	_ = cipher.NewCTR(block, iv)
+}
+`}, 1, gosec.NewConfig()},
+
+	{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+)
+
+func main() {
+	iv := make([]byte, 16)
+	rand.Read(iv)
+	block, _ := aes.NewCipher([]byte("12345678123456781234567812345678"))
+	_ = cipher.NewCTR(block, iv)
+}
+`}, 0, gosec.NewConfig()},
+
+	{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+	"io"
+)
+
+func main() {
+	iv := make([]byte, 16)
+	io.ReadFull(nil, iv)
+	block, _ := aes.NewCipher([]byte("12345678123456781234567812345678"))
+	_ = cipher.NewCTR(block, iv)
+}
+`}, 0, gosec.NewConfig()},
+
+	{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+)
+
+func fill(b []byte) {
+	b[0] = 1
+}
+
+func main() {
+	iv := make([]byte, 16)
+	fill(iv)
+	block, _ := aes.NewCipher([]byte("12345678123456781234567812345678"))
+	_ = cipher.NewCTR(block, iv)
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+)
+
+func main() {
+	iv := make([]byte, 16)
+	rand.Read(iv)
+	iv[0] = 1 // overwriting
+	block, _ := aes.NewCipher([]byte("12345678123456781234567812345678"))
+	_ = cipher.NewCTR(block, iv)
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+)
+
+func main() {
+	iv := make([]byte, 16)
+	rand.Read(iv[0:8])
+	block, _ := aes.NewCipher([]byte("12345678123456781234567812345678"))
+	_ = cipher.NewCTR(block, iv)
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+)
+
+func main() {
+	iv := make([]byte, 16)
+	rand.Read(iv[0:16])
+	block, _ := aes.NewCipher([]byte("12345678123456781234567812345678"))
+	_ = cipher.NewCTR(block, iv)
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+)
+
+func main() {
+	buf := make([]byte, 128)
+	rand.Read(buf[32:48])
+	block, _ := aes.NewCipher([]byte("12345678123456781234567812345678"))
+	_ = cipher.NewCTR(block, buf[32:48])
+}
+`}, 0, gosec.NewConfig()},
 }
