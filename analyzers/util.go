@@ -15,12 +15,12 @@
 package analyzers
 
 import (
-	"cmp"
 	"fmt"
 	"go/constant"
 	"go/token"
 	"go/types"
 	"log"
+	"math"
 	"os"
 	"regexp"
 	"strconv"
@@ -159,15 +159,38 @@ func ParseIntType(intType string) (IntTypeInfo, error) {
 	var maxVal uint
 
 	if signed {
-		shiftAmount := intSize - 1
-		if shiftAmount < 0 {
-			return IntTypeInfo{}, fmt.Errorf("invalid shift amount: %d", shiftAmount)
+		switch intSize {
+		case 8:
+			minVal = math.MinInt8
+			maxVal = math.MaxInt8
+		case 16:
+			minVal = math.MinInt16
+			maxVal = math.MaxInt16
+		case 32:
+			minVal = math.MinInt32
+			maxVal = math.MaxInt32
+		case 64:
+			minVal = math.MinInt64
+			// We are on 64-bit architecture where uint is 64-bit
+			maxVal = uint(math.MaxInt64)
+		default:
+			return IntTypeInfo{}, fmt.Errorf("unsupported bit size: %d", intSize)
 		}
-		maxVal = (1 << uint(shiftAmount)) - 1
-		minVal = -1 << (intSize - 1)
 	} else {
-		maxVal = (1 << uint(intSize)) - 1
 		minVal = 0
+		switch intSize {
+		case 8:
+			maxVal = math.MaxUint8
+		case 16:
+			maxVal = math.MaxUint16
+		case 32:
+			maxVal = math.MaxUint32
+		case 64:
+			// We are on 64-bit architecture where uint is 64-bit
+			maxVal = uint(math.MaxUint64)
+		default:
+			return IntTypeInfo{}, fmt.Errorf("unsupported bit size: %d", intSize)
+		}
 	}
 
 	return IntTypeInfo{
@@ -185,6 +208,11 @@ func GetConstantInt64(v ssa.Value) (int64, bool) {
 			if val, ok := constant.Int64Val(c.Value); ok {
 				return val, true
 			}
+		}
+	}
+	if unOp, ok := v.(*ssa.UnOp); ok && unOp.Op == token.SUB {
+		if val, ok := GetConstantInt64(unOp.X); ok {
+			return -val, true
 		}
 	}
 	return 0, false
@@ -252,20 +280,12 @@ func BuildCallerMap(funcs []*ssa.Function) map[string][]*ssa.Call {
 	return callerMap
 }
 
-func minWithPtr[T cmp.Ordered](a T, b *T) T {
-	if b == nil {
-		return a
-	}
-	return min(a, *b)
+// toUint64 casts int64 to uint64 preserving the bit pattern (2's complement) and suppresses the linter warning.
+func toUint64(i int64) uint64 {
+	return uint64(i) // #nosec
 }
 
-func maxWithPtr[T cmp.Ordered](a T, b *T) T {
-	if b == nil {
-		return a
-	}
-	return max(a, *b)
-}
-
-func toPtr[T any](a T) *T {
-	return &a
+// toInt64 casts uint64 to int64 preserving the bit pattern and suppresses the linter warning.
+func toInt64(u uint64) int64 {
+	return int64(u) // #nosec
 }
