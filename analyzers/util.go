@@ -218,6 +218,18 @@ func GetConstantInt64(v ssa.Value) (int64, bool) {
 	return 0, false
 }
 
+// GetConstantUint64 extracts a constant uint64 value from an ssa.Value
+func GetConstantUint64(v ssa.Value) (uint64, bool) {
+	if c, ok := v.(*ssa.Const); ok {
+		if c.Value != nil {
+			if val, ok := constant.Uint64Val(c.Value); ok {
+				return val, true
+			}
+		}
+	}
+	return 0, false
+}
+
 // GetSliceBounds extracts low, high, and max indices from a slice instruction
 func GetSliceBounds(s *ssa.Slice) (int, int, int) {
 	var low, high, maxIdx int
