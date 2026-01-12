@@ -1412,4 +1412,240 @@ func shrProp(x uint8) uint8 {
     return x >> 1
 }
 	`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+func shlProp(x uint64) uint16 {
+    if x < 256 {
+        return uint16(x << 8) // max 255 << 8 = 65280. Fits in uint16 (65535)
+    }
+    return 0
+}
+	`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+func shlOverflow(x uint64) uint16 {
+    if x < 256 {
+         return uint16(x << 9) // max 255 << 9 = 130560. Overflows uint16.
+    }
+    return 0
+}
+	`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+func shlSafeCheck(x int) uint16 {
+    if x > 0 && x < 10 {
+        return uint16(x << 4) // max 9 << 4 = 144. Fits.
+    }
+    return 0
+}
+    `}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+func shlUnsafeCheck(x int) uint16 {
+    if x > 0 && x < 10000 {
+        return uint16(x << 4) // max 9999 << 4 = 159984. Overflows uint16.
+    }
+    return 0
+}
+    `}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+func shlCompute(x int) uint8 {
+    // x & 0x0F -> range [0, 15]
+    // 15 << 2 = 60. Fits in uint8.
+    return uint8((x & 0x0F) << 2)
+}
+    `}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+func remUint(x uint) uint8 {
+    // x is uint (non-negative).
+    // x % 10 -> range [0, 9].
+    // Fits in uint8.
+    return uint8(x % 10)
+}
+    `}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+func shlCondition(x int) uint8 {
+    // if x << 2 < 100
+    // x range is inferred. 
+    // x*4 < 100 => x < 25.
+    // uint8(x) is safe.
+    if (x << 2) < 100 && x >= 0 {
+        return uint8(x)
+    }
+    return 0
+}
+    `}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+func shlMinUpdate(x int) uint8 {
+    // x > 10 -> x in [11, Max]
+    // x << 2 -> [44, Max]
+    if x > 10 && x < 20 {
+        return uint8(x << 2) // [44, 76] fits uint8
+    }
+    return 0
+}
+    `}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+type S struct { F int }
+func fieldCompareRHS(s *S) uint8 {
+    // 10 < s.F -> s.F > 10
+    // s.F is struct field, different SSA reads.
+    if 10 < s.F && s.F < 250 {
+        return uint8(s.F)
+    }
+    return 0
+}
+    `}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+func rhsOpFallback(x int) uint8 {
+    // 100 > x << 2 => x << 2 < 100 => x < 25
+    if 100 > x << 2 && x >= 0 {
+        return uint8(x)
+    }
+    return 0
+}
+    `}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+func inverseAddSafe(x int) uint8 {
+    // x + 1000 < 1010 => x < 10
+    // If we miss inverse op, we see x < 1010 (unsafe)
+    if x + 1000 < 1010 && x >= 0 {
+        return uint8(x) // Safe
+    }
+    return 0
+}
+    `}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+func inverseSubUnsafe(x int) uint8 {
+    // x - 1000 < 10 => x < 1010
+    // If we miss inverse op, we see x < 10 (safe)
+    // Actually unsafe.
+    if x - 1000 < 10 && x >= 0 {
+        return uint8(x) // Unsafe
+    }
+    return 0
+}
+    `}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+func inverseShrSafe(x int) uint8 {
+    // x >> 2 < 10 => x < 40 (approx 10 << 2)
+    // Actually [0, 39] >> 2 is [0, 9]. 40 >> 2 is 10.
+    // So distinct x < 40.
+    if x >> 2 < 10 && x >= 0 {
+        return uint8(x) // Safe
+    }
+    return 0
+}
+    `}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+func inverseMulSafe(x int) uint8 {
+    // x * 10 < 100 => x < 10
+    if x * 10 < 100 && x >= 0 {
+        return uint8(x) // Safe
+    }
+    return 0
+}
+    `}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+func mulMinUpdate(x int) uint8 {
+    // x > 10. x * 2 > 20.
+    // if x < 50. x * 2 < 100.
+    // result [22, 100]. Fits uint8.
+    // Hits MUL minValue update (recursive tightens forward).
+    if x > 10 && x < 50 {
+        return uint8(x * 2)
+    }
+    return 0
+}
+    `}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+func quoMinUpdate(x int) uint8 {
+    // x > 20. x / 2 > 10.
+    // x < 100. x / 2 < 50.
+    // result [10, 50]. Fits uint8.
+    // Hits QUO minValue update.
+    if x > 20 && x < 100 {
+        return uint8(x / 2)
+    }
+    return 0
+}
+    `}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+func mulOverflow64(x uint64) uint8 {
+	if x >= 1 && x <= 2 {
+		return uint8(x * 0x8000000000000001)
+	}
+	return 0
+}
+	`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+type T int64
+func testChangeType(x T) int8 {
+	if x > 0 && x < 100 {
+		return int8(x) // Propagate through ChangeType (T is int64-based)
+	}
+	return 0
+}
+	`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+func testCommutativeAdd(x int) uint8 {
+	if 10 + x < 30 && x > 0 {
+		return uint8(x) // Safe [1, 19]
+	}
+	return 0
+}
+	`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+func testXOR(x uint8) int8 {
+	if x < 128 {
+		y := ^x // [0, 127] -> [128, 255]
+		return int8(y) // Unsafe
+	}
+	return 0
+}
+	`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+func testInvFlippedQuo(x int) uint16 {
+	if x > 0 && 10000 / x < 5 {
+		return uint16(x) // Unsafe: x > 2000.
+	}
+	return 0
+}
+	`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+func testInvQuo(x int64) uint8 {
+	if x > 0 && x / 10 < 5 {
+		return uint8(x) // Safe: x < 50
+	}
+	return 0
+}
+	`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+func testDoubleReturn(x int) (uint8, uint16) {
+	if x > 0 && x < 10 {
+		return uint8(x), uint16(x)
+	}
+	return 0, 0
+}
+
+	`}, 0, gosec.NewConfig()},
 }
