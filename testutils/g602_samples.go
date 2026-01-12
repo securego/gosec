@@ -588,10 +588,67 @@ import "fmt"
 
 func main() {
 	s := make([]byte, 2)
-	for i := range 3 {
+	for i := 0; i < 3; i++ {
 		x := s[i+2]
 		fmt.Println(x)
 	}
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+import "fmt"
+func main() {
+	s := make([]byte, 2)
+	i := 0
+	// decomposeIndex should handle i + 1 + 2 = i + 3
+	fmt.Println(s[i+1+2])
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+import "fmt"
+func main() {
+	s := make([]byte, 5)
+	for i := 0; i+1 < len(s); i++ {
+		// i+1 < 5 => i < 4. Max i = 3. i+1 = 4. s[4] is safe.
+		fmt.Println(s[i+1])
+	}
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+import "fmt"
+func main() {
+	var a [10]int
+	idx := 12
+	fmt.Println(a[idx])
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+import "fmt"
+func main() {
+	s := make([]byte, 4)
+	if 5 < len(s) {
+		fmt.Println(s[4])
+	}
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+func main() {
+	var a [10]int
+	k := 11
+	_ = a[:5:k]
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+import "fmt"
+func main() {
+	s := make([]int, 5)
+	idx := -1
+	fmt.Println(s[idx])
 }
 `}, 1, gosec.NewConfig()},
 }

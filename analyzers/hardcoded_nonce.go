@@ -15,7 +15,6 @@
 package analyzers
 
 import (
-	"errors"
 	"fmt"
 	"go/token"
 	"strings"
@@ -29,6 +28,18 @@ import (
 
 const defaultIssueDescription = "Use of hardcoded IV/nonce for encryption"
 
+// tracked holds the function name as key, the number of arguments that the function accepts,
+// and the index of the argument that is the nonce/IV.
+// Example: "crypto/cipher.NewCBCEncrypter": {2, 1} means the function accepts 2 arguments,
+// and the nonce arg is at index 1 (the second argument).
+var tracked = map[string][]int{
+	"(crypto/cipher.AEAD).Seal":     {4, 1},
+	"crypto/cipher.NewCBCEncrypter": {2, 1},
+	"crypto/cipher.NewCFBEncrypter": {2, 1},
+	"crypto/cipher.NewCTR":          {2, 1},
+	"crypto/cipher.NewOFB":          {2, 1},
+}
+
 func newHardCodedNonce(id string, description string) *analysis.Analyzer {
 	return &analysis.Analyzer{
 		Name:     id,
@@ -38,32 +49,18 @@ func newHardCodedNonce(id string, description string) *analysis.Analyzer {
 	}
 }
 
-func runHardCodedNonce(pass *analysis.Pass) (interface{}, error) {
+func runHardCodedNonce(pass *analysis.Pass) (any, error) {
 	ssaResult, err := getSSAResult(pass)
 	if err != nil {
-		return nil, fmt.Errorf("building ssa representation: %w", err)
+		return nil, err
 	}
 
-	// Holds the function name as key, the number of arguments that the function accepts, and at which index of those accepted arguments is the nonce/IV
-	// Example "Test" 3, 1 -- means the function "Test" which accepts 3 arguments, and has the nonce arg as second argument
-	calls := map[string][]int{
-		"(crypto/cipher.AEAD).Seal":     {4, 1},
-		"crypto/cipher.NewCBCEncrypter": {2, 1},
-		"crypto/cipher.NewCFBEncrypter": {2, 1},
-		"crypto/cipher.NewCTR":          {2, 1},
-		"crypto/cipher.NewOFB":          {2, 1},
-	}
-	ssaPkgFunctions := ssaResult.SSA.SrcFuncs
-	args := getArgsFromTrackedFunctions(ssaPkgFunctions, calls)
-	if args == nil {
-		return nil, errors.New("no tracked functions found, resulting in no variables to track")
-	}
+	state := newAnalysisState(pass, ssaResult.SSA.SrcFuncs)
+
+	args := state.getInitialArgs(tracked)
 	var issues []*issue.Issue
-	for _, arg := range args {
-		if arg == nil {
-			continue
-		}
-		i, err := raiseIssue(*arg, calls, ssaPkgFunctions, pass, "")
+	for _, argInfo := range args {
+		i, err := state.raiseIssue(argInfo.val, "", make(map[ssa.Value]bool), argInfo.instr)
 		if err != nil {
 			return issues, fmt.Errorf("raising issue error: %w", err)
 		}
@@ -72,180 +69,374 @@ func runHardCodedNonce(pass *analysis.Pass) (interface{}, error) {
 	return issues, nil
 }
 
-func raiseIssue(val ssa.Value, funcsToTrack map[string][]int, ssaFuncs []*ssa.Function,
-	pass *analysis.Pass, issueDescription string,
+type usageResult struct {
+	dyn  bool
+	hard bool
+}
+
+type analysisState struct {
+	pass           *analysis.Pass
+	ssaFuncs       []*ssa.Function
+	usageCache     map[ssa.Value]*usageResult
+	funcCache      map[*ssa.Function]bool
+	visitedFuncs   map[*ssa.Function]bool
+	callerMap      map[string][]*ssa.Call
+	bufferLenCache map[ssa.Value]int64
+	depth          int
+}
+
+type ssaValueAndInstr struct {
+	val   ssa.Value
+	instr ssa.Instruction
+}
+
+func newAnalysisState(pass *analysis.Pass, funcs []*ssa.Function) *analysisState {
+	s := &analysisState{
+		pass:           pass,
+		ssaFuncs:       funcs,
+		usageCache:     make(map[ssa.Value]*usageResult),
+		funcCache:      make(map[*ssa.Function]bool),
+		visitedFuncs:   make(map[*ssa.Function]bool),
+		callerMap:      BuildCallerMap(funcs),
+		bufferLenCache: make(map[ssa.Value]int64),
+	}
+	return s
+}
+
+// getInitialArgs returns a list of arguments and their corresponding instructions
+// for all call sites identified in the tracked map.
+func (s *analysisState) getInitialArgs(tracked map[string][]int) []ssaValueAndInstr {
+	var result []ssaValueAndInstr
+	for name, info := range tracked {
+		if calls, ok := s.callerMap[name]; ok {
+			for _, c := range calls {
+				if len(c.Call.Args) == info[0] {
+					result = append(result, ssaValueAndInstr{
+						val:   c.Call.Args[info[1]],
+						instr: c,
+					})
+				}
+			}
+		}
+	}
+	return result
+}
+
+// raiseIssue recursively analyzes the usage of a value and returns a list of issues
+// if it's found to be hardcoded or otherwise insecure.
+func (s *analysisState) raiseIssue(val ssa.Value, issueDescription string,
+	visitedParams map[ssa.Value]bool, fromInstr ssa.Instruction,
 ) ([]*issue.Issue, error) {
+	if visitedParams[val] {
+		return nil, nil
+	}
+	visitedParams[val] = true
+
+	foundDyn, foundHard := s.analyzeUsage(val)
+	if foundDyn && !foundHard {
+		return nil, nil
+	}
+
 	if issueDescription == "" {
 		issueDescription = defaultIssueDescription
 	}
-	var err error
+
 	var allIssues []*issue.Issue
-	var issues []*issue.Issue
-	switch valType := (val).(type) {
+	switch v := val.(type) {
 	case *ssa.Slice:
-		issueDescription += " by passing hardcoded slice/array"
-		issues, err = iterateThroughReferrers(val, funcsToTrack, pass.Analyzer.Name, issueDescription, pass.Fset, issue.High)
-		allIssues = append(allIssues, issues...)
-	case *ssa.UnOp:
-		// Check if it's a dereference operation (a.k.a pointer)
-		if valType.Op == token.MUL {
-			issueDescription += " by passing pointer which points to hardcoded variable"
-			issues, err = iterateThroughReferrers(val, funcsToTrack, pass.Analyzer.Name, issueDescription, pass.Fset, issue.Low)
-			allIssues = append(allIssues, issues...)
+		if s.isHardcoded(v.X) {
+			issueDescription += " by passing hardcoded slice/array"
 		}
-	// When the value assigned to a variable is a function call.
-	// It goes and check if this function contains call to crypto/rand.Read
-	// in it's body(Assuming that calling crypto/rand.Read in a function,
-	// is used for the generation of nonce/iv )
-	case *ssa.Call:
-		if callValue := valType.Call.Value; callValue != nil {
-			if calledFunction, ok := callValue.(*ssa.Function); ok {
-				if contains, funcErr := isFuncContainsCryptoRand(calledFunction); !contains && funcErr == nil {
-					issueDescription += " by passing a value from function which doesn't use crypto/rand"
-					issues, err = iterateThroughReferrers(val, funcsToTrack, pass.Analyzer.Name, issueDescription, pass.Fset, issue.Medium)
-					allIssues = append(allIssues, issues...)
-				} else if funcErr != nil {
-					err = funcErr
-				}
+		return s.raiseIssue(v.X, issueDescription, visitedParams, fromInstr)
+	case *ssa.UnOp:
+		if v.Op == token.MUL {
+			if s.isHardcoded(v.X) {
+				issueDescription += " by passing pointer which points to hardcoded variable"
+			}
+			return s.raiseIssue(v.X, issueDescription, visitedParams, fromInstr)
+		}
+	case *ssa.Convert:
+		if v.Type().String() == "[]byte" && v.X.Type().String() == "string" {
+			if s.isHardcoded(v.X) {
+				issueDescription += " by passing converted string"
 			}
 		}
-	// only checks from strings->[]byte
-	// might need to add additional types
-	case *ssa.Convert:
-		if valType.Type().String() == "[]byte" && valType.X.Type().String() == "string" {
-			issueDescription += " by passing converted string"
-			issues, err = iterateThroughReferrers(val, funcsToTrack, pass.Analyzer.Name, issueDescription, pass.Fset, issue.High)
-			allIssues = append(allIssues, issues...)
+		return s.raiseIssue(v.X, issueDescription, visitedParams, fromInstr)
+	case *ssa.Const:
+		issueDescription += " by passing hardcoded constant"
+		allIssues = append(allIssues, newIssue(s.pass.Analyzer.Name, issueDescription, s.pass.Fset, fromInstr.Pos(), issue.High, issue.High))
+	case *ssa.Global:
+		issueDescription += " by passing hardcoded global"
+		allIssues = append(allIssues, newIssue(s.pass.Analyzer.Name, issueDescription, s.pass.Fset, fromInstr.Pos(), issue.High, issue.High))
+	case *ssa.Alloc:
+		switch v.Comment {
+		case "slicelit":
+			issueDescription += " by passing hardcoded slice literal"
+			allIssues = append(allIssues, newIssue(s.pass.Analyzer.Name, issueDescription, s.pass.Fset, fromInstr.Pos(), issue.High, issue.High))
+		case "makeslice":
+			foundDyn, foundHard := s.analyzeUsage(v)
+			if foundHard {
+				issueDescription += " by passing a buffer from make modified with hardcoded values"
+				allIssues = append(allIssues, newIssue(s.pass.Analyzer.Name, issueDescription, s.pass.Fset, fromInstr.Pos(), issue.High, issue.High))
+			} else if !foundDyn {
+				issueDescription += " by passing a zeroed buffer from make"
+				allIssues = append(allIssues, newIssue(s.pass.Analyzer.Name, issueDescription, s.pass.Fset, fromInstr.Pos(), issue.High, issue.High))
+			}
+		}
+	case *ssa.Call:
+		if s.isHardcoded(v) {
+			issueDescription += " by passing a value from function which returns hardcoded value"
+			allIssues = append(allIssues, newIssue(s.pass.Analyzer.Name, issueDescription, s.pass.Fset, fromInstr.Pos(), issue.High, issue.High))
 		}
 	case *ssa.Parameter:
-		// arg given to tracked function is wrapped in another function, example:
-		// func encrypt(..,nonce,...){
-		// 		aesgcm.Seal(nonce)
-		// }
-		// save parameter position, by checking the name of the variable used in
-		// tracked functions and comparing it with the name of the arg
-		if valType.Parent() != nil {
-			trackedFunctions := make(map[string][]int)
-			for index, funcArgs := range valType.Parent().Params {
-				if funcArgs.Name() == valType.Name() && funcArgs.Type() == valType.Type() {
-					trackedFunctions[valType.Parent().String()] = []int{len(valType.Parent().Params), index}
+		if v.Parent() != nil {
+			parentName := v.Parent().String()
+			paramIdx := -1
+			for i, p := range v.Parent().Params {
+				if p == v {
+					paramIdx = i
+					break
 				}
 			}
-			args := getArgsFromTrackedFunctions(ssaFuncs, trackedFunctions)
-
-			issueDescription += " by passing a parameter to a function and"
-			// recursively backtrack to where the origin of a variable passed to multiple functions is
-			for _, arg := range args {
-				if arg == nil {
-					continue
-				}
-				issues, err = raiseIssue(*arg, trackedFunctions, ssaFuncs, pass, issueDescription)
-				allIssues = append(allIssues, issues...)
-			}
-		}
-	}
-	return allIssues, err
-}
-
-// iterateThroughReferrers iterates through all places that use the `variable` argument and check if it's used in one of the tracked functions.
-func iterateThroughReferrers(variable ssa.Value, funcsToTrack map[string][]int,
-	analyzerID string, issueDescription string,
-	fileSet *token.FileSet, issueConfidence issue.Score,
-) ([]*issue.Issue, error) {
-	if funcsToTrack == nil || variable == nil || analyzerID == "" || issueDescription == "" || fileSet == nil {
-		return nil, errors.New("received a nil object")
-	}
-	var gosecIssues []*issue.Issue
-	refs := variable.Referrers()
-	if refs == nil {
-		return gosecIssues, nil
-	}
-	// Go through all functions that use the given arg variable
-	for _, ref := range *refs {
-		// Iterate through the functions we are interested
-		for trackedFunc := range funcsToTrack {
-
-			// Split the functions we are interested in, by the '.' because we will use the function name to do the comparison
-			// MIGHT GIVE SOME FALSE POSITIVES THIS WAY
-			trackedFuncParts := strings.Split(trackedFunc, ".")
-			trackedFuncPartsName := trackedFuncParts[len(trackedFuncParts)-1]
-			if strings.Contains(ref.String(), trackedFuncPartsName) {
-				gosecIssues = append(gosecIssues, newIssue(analyzerID, issueDescription, fileSet, ref.Pos(), issue.High, issueConfidence))
-			}
-		}
-	}
-	return gosecIssues, nil
-}
-
-// isFuncContainsCryptoRand checks whether a function contains a call to crypto/rand.Read in it's function body.
-func isFuncContainsCryptoRand(funcCall *ssa.Function) (bool, error) {
-	if funcCall == nil {
-		return false, errors.New("passed ssa.Function object is nil")
-	}
-	for _, block := range funcCall.Blocks {
-		for _, instr := range block.Instrs {
-			if call, ok := instr.(*ssa.Call); ok {
-				if calledFunction, ok := call.Call.Value.(*ssa.Function); ok {
-					if calledFunction.Pkg != nil && calledFunction.Pkg.Pkg.Path() == "crypto/rand" && calledFunction.Name() == "Read" {
-						return true, nil
-					}
-				}
-			}
-		}
-	}
-	return false, nil
-}
-
-func addToVarsMap(value ssa.Value, mapToAddTo map[string]*ssa.Value) {
-	var parent string
-	if value.Parent() != nil {
-		parent = value.Parent().String()
-	}
-	key := value.Name() + value.Type().String() + value.String() + parent
-	mapToAddTo[key] = &value
-}
-
-func isContainedInMap(value ssa.Value, mapToCheck map[string]*ssa.Value) bool {
-	var parent string
-	if value.Parent() != nil {
-		parent = value.Parent().String()
-	}
-	key := value.Name() + value.Type().String() + value.String() + parent
-	_, contained := mapToCheck[key]
-	return contained
-}
-
-func getArgsFromTrackedFunctions(ssaFuncs []*ssa.Function, trackedFunc map[string][]int) map[string]*ssa.Value {
-	values := make(map[string]*ssa.Value)
-	for _, pkgFunc := range ssaFuncs {
-		for _, funcBlock := range pkgFunc.Blocks {
-			for _, funcBlocInstr := range funcBlock.Instrs {
-				iterateTrackedFunctionsAndAddArgs(funcBlocInstr, trackedFunc, values)
-			}
-		}
-	}
-	return values
-}
-
-func iterateTrackedFunctionsAndAddArgs(funcBlocInstr ssa.Instruction, trackedFunc map[string][]int, values map[string]*ssa.Value) {
-	if funcCall, ok := (funcBlocInstr).(*ssa.Call); ok {
-		for trackedFuncName, trackedFuncArgsInfo := range trackedFunc {
-			// only process functions that have the same number of arguments as the ones we track
-			if len(funcCall.Call.Args) == trackedFuncArgsInfo[0] {
-				tmpArg := funcCall.Call.Args[trackedFuncArgsInfo[1]]
-				// check if the function is called from an object or directly from the package
-				if funcCall.Call.Method != nil {
-					if methodFullname := funcCall.Call.Method.FullName(); methodFullname == trackedFuncName {
-						if !isContainedInMap(tmpArg, values) {
-							addToVarsMap(tmpArg, values)
+			if paramIdx != -1 {
+				numParams := len(v.Parent().Params)
+				issueDescription += " by passing a parameter to a function and"
+				if callers, ok := s.callerMap[parentName]; ok {
+					for _, c := range callers {
+						if len(c.Call.Args) == numParams {
+							issues, _ := s.raiseIssue(c.Call.Args[paramIdx], issueDescription, visitedParams, c)
+							allIssues = append(allIssues, issues...)
 						}
 					}
-				} else if funcCall.Call.Value.String() == trackedFuncName {
-					if !isContainedInMap(tmpArg, values) {
-						addToVarsMap(tmpArg, values)
+				}
+			}
+		}
+	}
+	return allIssues, nil
+}
+
+func (s *analysisState) isHardcoded(val ssa.Value) bool {
+	if s.depth > MaxDepth {
+		return false
+	}
+	s.depth++
+	defer func() { s.depth-- }()
+
+	switch v := val.(type) {
+	case *ssa.Const, *ssa.Global:
+		return true
+	case *ssa.Convert:
+		return s.isHardcoded(v.X)
+	case *ssa.Slice:
+		return s.isHardcoded(v.X)
+	case *ssa.Alloc:
+		if v.Comment == "slicelit" {
+			return true
+		}
+		if v.Comment == "makeslice" {
+			dyn, hard := s.analyzeUsage(v)
+			return hard || !dyn
+		}
+	case *ssa.Call:
+		if fn, ok := v.Call.Value.(*ssa.Function); ok {
+			if res, ok := s.funcCache[fn]; ok {
+				return res
+			}
+			if s.visitedFuncs[fn] {
+				return false
+			}
+			s.visitedFuncs[fn] = true
+			res := s.isFuncReturnsHardcoded(fn)
+			s.funcCache[fn] = res
+			delete(s.visitedFuncs, fn)
+			return res
+		}
+	case *ssa.Parameter:
+		return false
+	}
+	return false
+}
+
+func (s *analysisState) isFuncReturnsHardcoded(fn *ssa.Function) bool {
+	for _, block := range fn.Blocks {
+		for _, instr := range block.Instrs {
+			if ret, ok := instr.(*ssa.Return); ok {
+				for _, res := range ret.Results {
+					if s.isHardcoded(res) {
+						return true
 					}
 				}
 			}
 		}
 	}
+	return false
+}
+
+// analyzeUsage performs data-flow analysis to determine if a value is derived from
+// a dynamic source (like crypto/rand) or if it's fixed/hardcoded.
+func (s *analysisState) analyzeUsage(val ssa.Value) (bool, bool) {
+	if val == nil || s.depth > MaxDepth {
+		return false, false
+	}
+	if res, ok := s.usageCache[val]; ok {
+		if res == nil { // currently visiting
+			return false, false
+		}
+		return res.dyn, res.hard
+	}
+	s.usageCache[val] = nil // mark as visiting
+	s.depth++
+	defer func() { s.depth-- }()
+
+	dyn := false
+	hard := false
+
+	switch v := val.(type) {
+	case *ssa.Const, *ssa.Global:
+		hard = true
+	case *ssa.Alloc:
+		if v.Comment == "slicelit" {
+			hard = true
+		}
+	case *ssa.Convert:
+		d, h := s.analyzeUsage(v.X)
+		dyn, hard = dyn || d, hard || h
+	case *ssa.Slice:
+		d, h := s.analyzeUsage(v.X)
+		if s.isFullSlice(v) {
+			dyn = dyn || d
+		}
+		hard = hard || h
+	case *ssa.UnOp:
+		if v.Op == token.MUL {
+			d, h := s.analyzeUsage(v.X)
+			dyn, hard = dyn || d, hard || h
+		}
+	case *ssa.Call:
+		if s.isHardcoded(v) {
+			hard = true
+		}
+	case *ssa.Parameter:
+		if s.isHardcoded(v) {
+			hard = true
+		}
+	}
+
+	if refs := val.Referrers(); refs != nil {
+		for _, ref := range *refs {
+			switch r := ref.(type) {
+			case *ssa.Call:
+				callStr := r.Call.Value.String()
+				if strings.Contains(callStr, "crypto/rand") || strings.Contains(callStr, "io.ReadFull") {
+					dyn = true
+					continue
+				}
+				if strings.Contains(callStr, "crypto/cipher") || strings.Contains(callStr, "crypto/aes") {
+					continue
+				}
+				if fn, ok := r.Call.Value.(*ssa.Function); ok && fn.Pkg != nil {
+					for i, arg := range r.Call.Args {
+						if arg == val {
+							if i < len(fn.Params) {
+								d, h := s.analyzeUsage(fn.Params[i])
+								dyn, hard = dyn || d, hard || h
+							}
+						}
+					}
+					continue
+				}
+				dyn = true
+			case *ssa.Slice:
+				d, h := s.analyzeUsage(r)
+				if s.isFullSlice(r) {
+					dyn = dyn || d
+				}
+				hard = hard || h
+			case *ssa.IndexAddr, *ssa.Index, *ssa.Lookup:
+				if vVal, ok := r.(ssa.Value); ok {
+					_, h := s.analyzeUsage(vVal)
+					hard = hard || h
+				}
+			case *ssa.UnOp:
+				if r.Op == token.MUL {
+					d, h := s.analyzeUsage(r)
+					dyn, hard = dyn || d, hard || h
+				}
+			case *ssa.Convert:
+				d, h := s.analyzeUsage(r)
+				dyn, hard = dyn || d, hard || h
+			case *ssa.Store:
+				if r.Addr == val {
+					if s.isHardcoded(r.Val) {
+						hard = true
+					} else {
+						dyn = true
+					}
+				}
+			}
+		}
+	}
+
+	if sl, ok := val.(*ssa.Slice); ok && !dyn {
+		if sourceRefs := sl.X.Referrers(); sourceRefs != nil {
+			for _, sr := range *sourceRefs {
+				if other, ok := sr.(*ssa.Slice); ok && other != sl {
+					if isSubSlice(sl, other) {
+						d, _ := s.analyzeUsage(other)
+						if d {
+							dyn = true
+							break
+						}
+					}
+				}
+			}
+		}
+	}
+
+	res := &usageResult{dyn, hard}
+	s.usageCache[val] = res
+	return dyn, hard
+}
+
+func (s *analysisState) isFullSlice(sl *ssa.Slice) bool {
+	l, h := getSliceRange(sl)
+	if l != 0 {
+		return false
+	}
+	if h < 0 {
+		return true
+	}
+	return h == s.getBufferLen(sl.X)
+}
+
+func (s *analysisState) getBufferLen(val ssa.Value) int64 {
+	if res, ok := s.bufferLenCache[val]; ok {
+		return res
+	}
+	length := GetBufferLen(val)
+	s.bufferLenCache[val] = length
+	return length
+}
+
+func isSubSlice(sub, super *ssa.Slice) bool {
+	l1, h1 := getSliceRange(sub)
+	l2, h2 := getSliceRange(super)
+	if l1 < 0 || l2 < 0 {
+		return false
+	}
+	if l2 > l1 {
+		return false
+	}
+	if h2 < 0 {
+		return true
+	}
+	if h1 < 0 {
+		return false
+	}
+	return h1 <= h2
+}
+
+func getSliceRange(s *ssa.Slice) (int64, int64) {
+	l, h, _ := GetSliceBounds(s)
+	return int64(l), int64(h)
 }

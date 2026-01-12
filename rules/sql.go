@@ -62,6 +62,11 @@ var sqlCallIdents = map[string]map[string]int{
 	},
 }
 
+var (
+	sqlRegexp       = regexp.MustCompile("(?i)(SELECT|DELETE|INSERT|UPDATE|INTO|FROM|WHERE)( |\n|\r|\t)")
+	sqlFormatRegexp = regexp.MustCompile("%[^bdoxXfFp]")
+)
+
 // findQueryArg locates the argument taking raw SQL.
 func findQueryArg(call *ast.CallExpr, ctx *gosec.Context) (ast.Expr, error) {
 	typeName, fnName, err := gosec.GetCallInfo(call, ctx)
@@ -294,7 +299,7 @@ func NewSQLStrConcat(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	rule := &sqlStrConcat{
 		sqlStatement: sqlStatement{
 			patterns: []*regexp.Regexp{
-				regexp.MustCompile("(?i)(SELECT|DELETE|INSERT|UPDATE|INTO|FROM|WHERE)( |\n|\r|\t)"),
+				sqlRegexp,
 			},
 			MetaData: issue.NewMetaData(id, "SQL string concatenation", issue.Medium, issue.High),
 			CallList: gosec.NewCallList(),
@@ -454,8 +459,8 @@ func NewSQLStrFormat(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 		noIssueQuoted: gosec.NewCallList(),
 		sqlStatement: sqlStatement{
 			patterns: []*regexp.Regexp{
-				regexp.MustCompile("(?i)(SELECT|DELETE|INSERT|UPDATE|INTO|FROM|WHERE)( |\n|\r|\t)"),
-				regexp.MustCompile("%[^bdoxXfFp]"),
+				sqlRegexp,
+				sqlFormatRegexp,
 			},
 			MetaData: issue.NewMetaData(id, "SQL string formatting", issue.Medium, issue.High),
 		},

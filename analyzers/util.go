@@ -16,21 +16,39 @@ package analyzers
 
 import (
 	"fmt"
+	"go/constant"
 	"go/token"
+	"go/types"
 	"log"
+	"math"
 	"os"
+	"regexp"
 	"strconv"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/buildssa"
+	"golang.org/x/tools/go/ssa"
 
 	"github.com/securego/gosec/v2/issue"
 )
 
+// isSliceInsideBounds checks if the requested slice range is within the parent slice's boundaries.
+func isSliceInsideBounds(l, h int, cl, ch int) bool {
+	return (l <= cl && h >= ch) && (l <= ch && h >= cl)
+}
+
+// isThreeIndexSliceInsideBounds validates the boundaries and capacity of a 3-index slice (s[i:j:k]).
+func isThreeIndexSliceInsideBounds(l, h, maxIdx int, oldCap int) bool {
+	return l >= 0 && h >= l && maxIdx >= h && maxIdx <= oldCap
+}
+
+// MaxDepth defines the maximum recursion depth for SSA analysis to avoid infinite loops and memory exhaustion.
+const MaxDepth = 20
+
 // SSAAnalyzerResult contains various information returned by the
 // SSA analysis along with some configuration
 type SSAAnalyzerResult struct {
-	Config map[string]interface{}
+	Config map[string]any
 	Logger *log.Logger
 	SSA    *buildssa.SSA
 }
@@ -101,4 +119,173 @@ func issueCodeSnippet(fileSet *token.FileSet, pos token.Pos) string {
 		}
 	}
 	return code
+}
+
+// IntTypeInfo represents integer type properties
+type IntTypeInfo struct {
+	Signed bool
+	Size   int
+	Min    int
+	Max    uint
+}
+
+var intTypeRegexp = regexp.MustCompile(`^(?P<type>u?int)(?P<size>\d{1,2})?$`)
+
+// ParseIntType parses an integer type string into IntTypeInfo
+func ParseIntType(intType string) (IntTypeInfo, error) {
+	matches := intTypeRegexp.FindStringSubmatch(intType)
+	if matches == nil {
+		return IntTypeInfo{}, fmt.Errorf("no integer type match found for %s", intType)
+	}
+
+	it := matches[intTypeRegexp.SubexpIndex("type")]
+	is := matches[intTypeRegexp.SubexpIndex("size")]
+
+	signed := it == "int"
+	intSize := strconv.IntSize
+	if is != "" {
+		var err error
+		intSize, err = strconv.Atoi(is)
+		if err != nil {
+			return IntTypeInfo{}, fmt.Errorf("failed to parse the integer type size: %w", err)
+		}
+	}
+
+	if intSize != 8 && intSize != 16 && intSize != 32 && intSize != 64 && is != "" {
+		return IntTypeInfo{}, fmt.Errorf("invalid bit size: %d", intSize)
+	}
+
+	var minVal int
+	var maxVal uint
+
+	if signed {
+		switch intSize {
+		case 8:
+			minVal = math.MinInt8
+			maxVal = math.MaxInt8
+		case 16:
+			minVal = math.MinInt16
+			maxVal = math.MaxInt16
+		case 32:
+			minVal = math.MinInt32
+			maxVal = math.MaxInt32
+		case 64:
+			minVal = math.MinInt64
+			// We are on 64-bit architecture where uint is 64-bit
+			maxVal = uint(math.MaxInt64)
+		default:
+			return IntTypeInfo{}, fmt.Errorf("unsupported bit size: %d", intSize)
+		}
+	} else {
+		minVal = 0
+		switch intSize {
+		case 8:
+			maxVal = math.MaxUint8
+		case 16:
+			maxVal = math.MaxUint16
+		case 32:
+			maxVal = math.MaxUint32
+		case 64:
+			// We are on 64-bit architecture where uint is 64-bit
+			maxVal = uint(math.MaxUint64)
+		default:
+			return IntTypeInfo{}, fmt.Errorf("unsupported bit size: %d", intSize)
+		}
+	}
+
+	return IntTypeInfo{
+		Signed: signed,
+		Size:   intSize,
+		Min:    minVal,
+		Max:    maxVal,
+	}, nil
+}
+
+// GetConstantInt64 extracts a constant int64 value from an ssa.Value
+func GetConstantInt64(v ssa.Value) (int64, bool) {
+	if c, ok := v.(*ssa.Const); ok {
+		if c.Value != nil {
+			if val, ok := constant.Int64Val(c.Value); ok {
+				return val, true
+			}
+		}
+	}
+	if unOp, ok := v.(*ssa.UnOp); ok && unOp.Op == token.SUB {
+		if val, ok := GetConstantInt64(unOp.X); ok {
+			return -val, true
+		}
+	}
+	return 0, false
+}
+
+// GetSliceBounds extracts low, high, and max indices from a slice instruction
+func GetSliceBounds(s *ssa.Slice) (int, int, int) {
+	var low, high, maxIdx int
+	if s.Low != nil {
+		if val, ok := GetConstantInt64(s.Low); ok {
+			low = int(val)
+		}
+	}
+	if s.High != nil {
+		if val, ok := GetConstantInt64(s.High); ok {
+			high = int(val)
+		}
+	}
+	if s.Max != nil {
+		if val, ok := GetConstantInt64(s.Max); ok {
+			maxIdx = int(val)
+		}
+	}
+	return low, high, maxIdx
+}
+
+// GetBufferLen attempts to find the constant length of a buffer/slice/array
+func GetBufferLen(val ssa.Value) int64 {
+	current := val
+	for {
+		t := current.Type()
+		if ptr, ok := t.Underlying().(*types.Pointer); ok {
+			t = ptr.Elem().Underlying()
+		}
+		if arr, ok := t.(*types.Array); ok {
+			return arr.Len()
+		}
+		if sl, ok := current.(*ssa.Slice); ok {
+			current = sl.X
+			continue
+		}
+		break
+	}
+	return -1
+}
+
+// BuildCallerMap builds a map of function names to their call sites
+func BuildCallerMap(funcs []*ssa.Function) map[string][]*ssa.Call {
+	callerMap := make(map[string][]*ssa.Call)
+	for _, f := range funcs {
+		for _, b := range f.Blocks {
+			for _, i := range b.Instrs {
+				if c, ok := i.(*ssa.Call); ok {
+					var name string
+					if c.Call.Method != nil {
+						name = c.Call.Method.FullName()
+					} else {
+						name = c.Call.Value.String()
+					}
+					callerMap[name] = append(callerMap[name], c)
+				}
+			}
+		}
+	}
+	return callerMap
+}
+
+// toUint64 casts int64 to uint64 preserving the bit pattern (2's complement) and suppresses the linter warning.
+func toUint64(i int64) uint64 {
+	return uint64(i) // #nosec
+}
+
+// toInt64 casts uint64 to int64 preserving the bit pattern and suppresses the linter warning.
+func toInt64(u uint64) int64 {
+	return int64(u) // #nosec
 }
