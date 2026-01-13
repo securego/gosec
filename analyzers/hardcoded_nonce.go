@@ -674,7 +674,7 @@ func (s *analysisState) allTaintedEventsCovered(val ssa.Value, usage ssa.Instruc
 
 	// 3. Sequence Phase: Sort actions based on their execution order in the SSA graph.
 	slices.SortFunc(actions, func(a, b RangeAction) int {
-		if Precedes(a.Instr, b.Instr) {
+		if s.analyzer.Precedes(a.Instr, b.Instr) {
 			return -1
 		}
 		if a.Instr == b.Instr {
@@ -685,6 +685,7 @@ func (s *analysisState) allTaintedEventsCovered(val ssa.Value, usage ssa.Instruc
 
 	// 4. Replay Phase: Simulate the buffer state sequentially.
 	var safeRanges []ByteRange
+	var scratchRanges []ByteRange
 	for i := 0; i < len(actions); {
 		if actions[i].IsSafe {
 			// Collect and batch safe actions to minimize mergeRanges overhead
@@ -698,7 +699,8 @@ func (s *analysisState) allTaintedEventsCovered(val ssa.Value, usage ssa.Instruc
 			i = j
 		} else {
 			// Subtract range
-			safeRanges = subtractRange(safeRanges, actions[i].Range)
+			subtractRange(safeRanges, actions[i].Range, &scratchRanges)
+			safeRanges, scratchRanges = scratchRanges, safeRanges
 			i++
 		}
 	}
@@ -728,7 +730,7 @@ func (s *analysisState) collectTaintedEvents(val ssa.Value, usage ssa.Instructio
 	for _, ref := range *refs {
 		isHard := s.analyzeReferrer(ref, val)&statusHard != 0
 		if isHard {
-			if Precedes(ref, usage) {
+			if s.analyzer.Precedes(ref, usage) {
 				// Determine range of the Store
 				if store, ok := ref.(*ssa.Store); ok && store.Addr == val {
 					// Storing hardcoded data into this buffer
@@ -772,7 +774,7 @@ func (s *analysisState) collectCoveredRanges(val ssa.Value, usage ssa.Instructio
 
 	for _, ref := range *refs {
 		if s.isFullDynamicRead(ref, val) {
-			if Precedes(ref, usage) {
+			if s.analyzer.Precedes(ref, usage) {
 				if absRange, ok := s.resolveAbsoluteRange(val); ok {
 					*actions = append(*actions, RangeAction{
 						Instr:  ref,
@@ -825,12 +827,7 @@ func (s *analysisState) isFullDynamicRead(ref ssa.Instruction, val ssa.Value) bo
 
 	if isDynamic {
 		// Verify if val is passed as an argument
-		for _, arg := range call.Call.Args {
-			if arg == val {
-				return true
-			}
-		}
-		return false
+		return slices.Contains(call.Call.Args, val)
 	}
 
 	// 2. Check calls to user-defined functions that eventually call dynamic reads.
@@ -894,24 +891,23 @@ func mergeRanges(ranges []ByteRange) []ByteRange {
 }
 
 // subtractRange removes 'taint' range from the list of 'safe' ranges, potentially
-// splitting existing safe ranges into two separate fragments.
-func subtractRange(safe []ByteRange, taint ByteRange) []ByteRange {
-	var result []ByteRange
+// splitting existing safe ranges into two separate fragments. The results are appended to 'dest'.
+func subtractRange(safe []ByteRange, taint ByteRange, dest *[]ByteRange) {
+	*dest = (*dest)[:0]
 	for _, r := range safe {
 		// No overlap
 		if r.High <= taint.Low || r.Low >= taint.High {
-			result = append(result, r)
+			*dest = append(*dest, r)
 			continue
 		}
 
 		if r.Low < taint.Low {
-			result = append(result, ByteRange{r.Low, taint.Low})
+			*dest = append(*dest, ByteRange{r.Low, taint.Low})
 		}
 		if r.High > taint.High {
-			result = append(result, ByteRange{taint.High, r.High})
+			*dest = append(*dest, ByteRange{taint.High, r.High})
 		}
 	}
-	return result
 }
 
 // resolveAbsoluteRange determines the absolute byte range of 'val' relative to its

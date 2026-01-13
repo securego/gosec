@@ -24,6 +24,7 @@ import (
 	"math/bits"
 	"os"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -420,12 +421,12 @@ func GetDominators(block *ssa.BasicBlock) []*ssa.BasicBlock {
 
 // Precedes returns true if instruction a is executed before instruction b.
 // It assumes both instructions belong to the same function.
-func Precedes(a, b ssa.Instruction) bool {
+func (ra *RangeAnalyzer) Precedes(a, b ssa.Instruction) bool {
 	if a == b {
 		return true
 	}
 	if a.Block() != b.Block() {
-		return IsReachable(a.Block(), b.Block())
+		return ra.IsReachable(a.Block(), b.Block())
 	}
 	// Same block: check order in Instrs
 	for _, instr := range a.Block().Instrs {
@@ -570,7 +571,7 @@ func (ra *RangeAnalyzer) ResolveRange(v ssa.Value, block *ssa.BasicBlock) *range
 			var finalResIf *rangeResult
 			matchCount := 0
 			for i, succ := range dom.Succs {
-				reach := IsReachable(succ, block)
+				reach := ra.IsReachable(succ, block)
 				if reach {
 					matchCount++
 					if resIf := ra.getResultRangeForIfEdge(vIf, i == 0, v); resIf != nil {
@@ -611,26 +612,24 @@ func (ra *RangeAnalyzer) ResolveRange(v ssa.Value, block *ssa.BasicBlock) *range
 }
 
 // IsReachable returns true if there is a path from the start block to the target block in the CFG.
-func IsReachable(start, target *ssa.BasicBlock) bool {
-	visited := make(map[*ssa.BasicBlock]bool)
+// It uses the RangeAnalyzer's BlockMap to cache visited blocks and avoid allocations.
+func (ra *RangeAnalyzer) IsReachable(start, target *ssa.BasicBlock) bool {
+	if start == target {
+		return true
+	}
+	clear(ra.BlockMap)
 	var reach func(*ssa.BasicBlock) bool
 	reach = func(curr *ssa.BasicBlock) bool {
 		if curr == target {
 			return true
 		}
-		if visited[curr] {
+		if ra.BlockMap[curr] {
 			return false
 		}
-		visited[curr] = true
-		for _, succ := range curr.Succs {
-			if reach(succ) {
-				return true
-			}
-		}
-		return false
+		ra.BlockMap[curr] = true
+		return slices.ContainsFunc(curr.Succs, reach)
 	}
-	res := reach(start)
-	return res
+	return reach(start)
 }
 
 func (ra *RangeAnalyzer) getResultRangeForIfEdge(vIf *ssa.If, isTrue bool, v ssa.Value) *rangeResult {
@@ -1098,13 +1097,15 @@ func (ra *RangeAnalyzer) ComputeRange(v ssa.Value, block *ssa.BasicBlock) *range
 			if val, ok := GetConstantInt64(v.Y); ok && val >= 0 {
 				subRes := ra.ResolveRange(v.X, block)
 				if subRes.minValueSet {
-					newMin := subRes.minValue << uint(val)
+					newMin := subRes.minValue << uint(val) // #nosec G115 - WORKAROUND for old golangci-lint, remove when updated
+					// #nosec G115 - WORKAROUND for old golangci-lint, remove when updated
 					if newMin>>uint(val) == subRes.minValue {
 						updateRangeMinMax(res, newMin, true, isSrcUnsigned)
 					}
 				}
 				if subRes.maxValueSet {
-					newMax := subRes.maxValue << uint(val)
+					newMax := subRes.maxValue << uint(val) // #nosec G115 - WORKAROUND for old golangci-lint, remove when updated
+					// #nosec G115 - WORKAROUND for old golangci-lint, remove when updated
 					if newMax>>uint(val) == subRes.maxValue {
 						updateRangeMinMax(res, newMax, false, isSrcUnsigned)
 					}
@@ -1114,14 +1115,14 @@ func (ra *RangeAnalyzer) ComputeRange(v ssa.Value, block *ssa.BasicBlock) *range
 			if val, ok := GetConstantInt64(v.Y); ok && val >= 0 {
 				subRes := ra.ResolveRange(v.X, block)
 				if subRes.minValueSet {
-					updateRangeMinMax(res, subRes.minValue>>uint(val), true, isSrcUnsigned)
+					updateRangeMinMax(res, subRes.minValue>>uint(val), true, isSrcUnsigned) // #nosec G115 - WORKAROUND for old golangci-lint, remove when updated
 				}
 				if subRes.maxValueSet {
-					updateRangeMinMax(res, subRes.maxValue>>uint(val), false, isSrcUnsigned)
+					updateRangeMinMax(res, subRes.maxValue>>uint(val), false, isSrcUnsigned) // #nosec G115 - WORKAROUND for old golangci-lint, remove when updated
 				} else {
 					// Even if we don't have a max value set, we know the upper bound from the type.
 					srcInt, _ := ParseIntType(v.X.Type().Underlying().String())
-					res.maxValue = uint64(srcInt.Max) >> uint(val)
+					res.maxValue = uint64(srcInt.Max) >> uint(val) // #nosec G115 - WORKAROUND for old golangci-lint, remove when updated
 					res.maxValueSet = true
 					res.isRangeCheck = true
 				}
