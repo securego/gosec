@@ -40,6 +40,21 @@ var tracked = map[string][]int{
 	"crypto/cipher.NewOFB":          {2, 1},
 }
 
+var dynamicFuncs = map[string]bool{
+	"crypto/rand.Read": true,
+	"io.ReadFull":      true,
+}
+
+var dynamicPkgs = map[string]bool{
+	"crypto/rand": true,
+	"io":          true,
+}
+
+var cipherPkgPrefixes = []string{
+	"crypto/cipher",
+	"crypto/aes",
+}
+
 func newHardCodedNonce(id string, description string) *analysis.Analyzer {
 	return &analysis.Analyzer{
 		Name:     id,
@@ -69,15 +84,10 @@ func runHardCodedNonce(pass *analysis.Pass) (any, error) {
 	return issues, nil
 }
 
-type usageResult struct {
-	dyn  bool
-	hard bool
-}
-
 type analysisState struct {
 	pass           *analysis.Pass
 	ssaFuncs       []*ssa.Function
-	usageCache     map[ssa.Value]*usageResult
+	usageCache     map[ssa.Value]uint8
 	funcCache      map[*ssa.Function]bool
 	visitedFuncs   map[*ssa.Function]bool
 	callerMap      map[string][]*ssa.Call
@@ -94,7 +104,7 @@ func newAnalysisState(pass *analysis.Pass, funcs []*ssa.Function) *analysisState
 	s := &analysisState{
 		pass:           pass,
 		ssaFuncs:       funcs,
-		usageCache:     make(map[ssa.Value]*usageResult),
+		usageCache:     make(map[ssa.Value]uint8),
 		funcCache:      make(map[*ssa.Function]bool),
 		visitedFuncs:   make(map[*ssa.Function]bool),
 		callerMap:      BuildCallerMap(funcs),
@@ -272,19 +282,25 @@ func (s *analysisState) isFuncReturnsHardcoded(fn *ssa.Function) bool {
 	return false
 }
 
+const (
+	statusVisiting = 1 << 0
+	statusHard     = 1 << 1
+	statusDyn      = 1 << 2
+)
+
 // analyzeUsage performs data-flow analysis to determine if a value is derived from
 // a dynamic source (like crypto/rand) or if it's fixed/hardcoded.
 func (s *analysisState) analyzeUsage(val ssa.Value) (bool, bool) {
 	if val == nil || s.depth > MaxDepth {
 		return false, false
 	}
-	if res, ok := s.usageCache[val]; ok {
-		if res == nil { // currently visiting
+	if state, ok := s.usageCache[val]; ok {
+		if state == statusVisiting { // currently visiting
 			return false, false
 		}
-		return res.dyn, res.hard
+		return state&statusDyn != 0, state&statusHard != 0
 	}
-	s.usageCache[val] = nil // mark as visiting
+	s.usageCache[val] = statusVisiting // mark as visiting
 	s.depth++
 	defer func() { s.depth-- }()
 
@@ -324,56 +340,14 @@ func (s *analysisState) analyzeUsage(val ssa.Value) (bool, bool) {
 
 	if refs := val.Referrers(); refs != nil {
 		for _, ref := range *refs {
-			switch r := ref.(type) {
-			case *ssa.Call:
-				callStr := r.Call.Value.String()
-				if strings.Contains(callStr, "crypto/rand") || strings.Contains(callStr, "io.ReadFull") {
-					dyn = true
-					continue
-				}
-				if strings.Contains(callStr, "crypto/cipher") || strings.Contains(callStr, "crypto/aes") {
-					continue
-				}
-				if fn, ok := r.Call.Value.(*ssa.Function); ok && fn.Pkg != nil {
-					for i, arg := range r.Call.Args {
-						if arg == val {
-							if i < len(fn.Params) {
-								d, h := s.analyzeUsage(fn.Params[i])
-								dyn, hard = dyn || d, hard || h
-							}
-						}
-					}
-					continue
-				}
-				dyn = true
-			case *ssa.Slice:
-				d, h := s.analyzeUsage(r)
-				if s.isFullSlice(r) {
-					dyn = dyn || d
-				}
-				hard = hard || h
-			case *ssa.IndexAddr, *ssa.Index, *ssa.Lookup:
-				if vVal, ok := r.(ssa.Value); ok {
-					_, h := s.analyzeUsage(vVal)
-					hard = hard || h
-				}
-			case *ssa.UnOp:
-				if r.Op == token.MUL {
-					d, h := s.analyzeUsage(r)
-					dyn, hard = dyn || d, hard || h
-				}
-			case *ssa.Convert:
-				d, h := s.analyzeUsage(r)
-				dyn, hard = dyn || d, hard || h
-			case *ssa.Store:
-				if r.Addr == val {
-					if s.isHardcoded(r.Val) {
-						hard = true
-					} else {
-						dyn = true
-					}
-				}
+			if dyn && hard {
+				res := uint8(0)
+				res |= statusDyn | statusHard
+				s.usageCache[val] = res
+				return true, true
 			}
+			d, h := s.analyzeReferrer(ref, val)
+			dyn, hard = dyn || d, hard || h
 		}
 	}
 
@@ -393,8 +367,132 @@ func (s *analysisState) analyzeUsage(val ssa.Value) (bool, bool) {
 		}
 	}
 
-	res := &usageResult{dyn, hard}
+	res := uint8(0)
+	if dyn {
+		res |= statusDyn
+	}
+	if hard {
+		res |= statusHard
+	}
 	s.usageCache[val] = res
+	return dyn, hard
+}
+
+func (s *analysisState) analyzeReferrer(ref ssa.Instruction, val ssa.Value) (bool, bool) {
+	dyn := false
+	hard := false
+	switch r := ref.(type) {
+	case *ssa.Call:
+		isDynamic := false
+		isCipher := false
+		if fn, ok := r.Call.Value.(*ssa.Function); ok && fn.Pkg != nil && fn.Pkg.Pkg != nil {
+			path := fn.Pkg.Pkg.Path()
+			funcName := path + "." + fn.Name()
+			if dynamicFuncs[funcName] {
+				isDynamic = true
+			} else {
+				for _, prefix := range cipherPkgPrefixes {
+					if strings.HasPrefix(path, prefix) {
+						isCipher = true
+						break
+					}
+				}
+			}
+			if !isDynamic && !isCipher {
+				// User function or other library - propagate usage
+				for i, arg := range r.Call.Args {
+					if arg == val {
+						if i < len(fn.Params) {
+							d, h := s.analyzeUsage(fn.Params[i])
+							dyn, hard = dyn || d, hard || h
+						}
+					}
+				}
+				return dyn, hard
+			}
+		} else if r.Call.IsInvoke() && r.Call.Method != nil && r.Call.Method.Pkg() != nil {
+			// Interface method invocation
+			path := r.Call.Method.Pkg().Path()
+			if dynamicPkgs[path] {
+				isDynamic = true
+			} else {
+				for _, prefix := range cipherPkgPrefixes {
+					if strings.HasPrefix(path, prefix) {
+						isCipher = true
+						break
+					}
+				}
+			}
+		} else {
+			// Fallback for non-functions or when package info is missing
+			callStr := r.Call.Value.String()
+			// Check against dynamic functions (naive check)
+			for k := range dynamicFuncs {
+				if strings.Contains(callStr, k) {
+					isDynamic = true
+					break
+				}
+			}
+			if !isDynamic {
+				for _, prefix := range cipherPkgPrefixes {
+					if strings.Contains(callStr, prefix) {
+						isCipher = true
+						break
+					}
+				}
+			}
+			if !isDynamic && !isCipher {
+				if fn, ok := r.Call.Value.(*ssa.Function); ok && fn.Pkg != nil {
+					// Propagate dynamic/hardcoded status through function arguments
+					for i, arg := range r.Call.Args {
+						if arg == val {
+							if i < len(fn.Params) {
+								d, h := s.analyzeUsage(fn.Params[i])
+								dyn, hard = dyn || d, hard || h
+							}
+						}
+					}
+					return dyn, hard
+				}
+			}
+		}
+
+		if isDynamic {
+			dyn = true
+			return dyn, hard
+		}
+		if isCipher {
+			return dyn, hard
+		}
+		dyn = true
+	case *ssa.Slice:
+		d, h := s.analyzeUsage(r)
+		if s.isFullSlice(r) {
+			dyn = dyn || d
+		}
+		hard = hard || h
+	case *ssa.IndexAddr, *ssa.Index, *ssa.Lookup:
+		if vVal, ok := r.(ssa.Value); ok {
+			_, h := s.analyzeUsage(vVal)
+			hard = hard || h
+		}
+	case *ssa.UnOp:
+		if r.Op == token.MUL {
+			d, h := s.analyzeUsage(r)
+			dyn, hard = dyn || d, hard || h
+		}
+	case *ssa.Convert:
+		d, h := s.analyzeUsage(r)
+		dyn, hard = dyn || d, hard || h
+	case *ssa.Store:
+		if r.Addr == val {
+			if s.isHardcoded(r.Val) {
+				hard = true
+			} else {
+				dyn = true
+			}
+		}
+	}
 	return dyn, hard
 }
 

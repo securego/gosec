@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"go/token"
+	"maps"
 	"regexp"
 	"strconv"
 
@@ -48,9 +49,9 @@ func newSliceBoundsAnalyzer(id string, description string) *analysis.Analyzer {
 }
 
 type sliceBoundsState struct {
-	pass       *analysis.Pass
-	trackCache map[trackCacheKey]*trackCacheValue
-	idxCache   map[idxCacheKey]idxCacheValue
+	pass           *analysis.Pass
+	trackCache     map[trackCacheKey]*trackCacheValue
+	trackCachePool []*trackCacheValue
 }
 
 type trackCacheKey struct {
@@ -63,22 +64,44 @@ type trackCacheValue struct {
 	ifs        map[ssa.If]*ssa.BinOp
 }
 
-type idxCacheKey struct {
-	instr    *ssa.IndexAddr
-	sliceCap int
-}
-
-type idxCacheValue struct {
-	val int
-	err error
-}
-
 func newSliceBoundsState(pass *analysis.Pass) *sliceBoundsState {
 	return &sliceBoundsState{
-		pass:       pass,
-		trackCache: make(map[trackCacheKey]*trackCacheValue),
-		idxCache:   make(map[idxCacheKey]idxCacheValue),
+		pass:           pass,
+		trackCache:     make(map[trackCacheKey]*trackCacheValue),
+		trackCachePool: make([]*trackCacheValue, 0, 16),
 	}
+}
+
+func (s *sliceBoundsState) acquireTrackCacheValue() *trackCacheValue {
+	if len(s.trackCachePool) > 0 {
+		idx := len(s.trackCachePool) - 1
+		res := s.trackCachePool[idx]
+		s.trackCachePool = s.trackCachePool[:idx]
+		res.Reset()
+		return res
+	}
+	return &trackCacheValue{
+		violations: make([]ssa.Instruction, 0, 4),
+		ifs:        make(map[ssa.If]*ssa.BinOp),
+	}
+}
+
+func (s *sliceBoundsState) releaseTrackCacheValue(res *trackCacheValue) {
+	s.trackCachePool = append(s.trackCachePool, res)
+}
+
+func (v *trackCacheValue) Reset() {
+	v.violations = v.violations[:0]
+	clear(v.ifs)
+}
+
+func (s *sliceBoundsState) ResetCache() {
+	for _, res := range s.trackCache {
+		if res != nil {
+			s.releaseTrackCacheValue(res)
+		}
+	}
+	clear(s.trackCache)
 }
 
 func runSliceBounds(pass *analysis.Pass) (any, error) {
@@ -90,7 +113,9 @@ func runSliceBounds(pass *analysis.Pass) (any, error) {
 	state := newSliceBoundsState(pass)
 	issues := map[ssa.Instruction]*issue.Issue{}
 	ifs := map[ssa.If]*ssa.BinOp{}
+	var violations []ssa.Instruction
 	for _, mcall := range ssaResult.SSA.SrcFuncs {
+		state.ResetCache()
 		for _, block := range mcall.DomPreorder() {
 			for _, instr := range block.Instrs {
 				switch instr := instr.(type) {
@@ -108,7 +133,7 @@ func runSliceBounds(pass *analysis.Pass) (any, error) {
 							if _, ok := slice.X.(*ssa.Alloc); ok {
 								if slice.Parent() != nil {
 									l, h, maxIdx := GetSliceBounds(slice)
-									violations := []ssa.Instruction{}
+									violations = violations[:0]
 									if maxIdx > 0 {
 										if !isThreeIndexSliceInsideBounds(l, h, maxIdx, sliceCap) {
 											violations = append(violations, slice)
@@ -463,15 +488,14 @@ func (s *sliceBoundsState) trackSliceBounds(depth int, sliceCap int, slice ssa.N
 			return
 		}
 		*violations = append(*violations, res.violations...)
-		for k, v := range res.ifs {
-			ifs[k] = v
-		}
+		maps.Copy(ifs, res.ifs)
 		return
 	}
 	s.trackCache[key] = nil // mark as visiting
 
-	localViolations := []ssa.Instruction{}
-	localIfs := make(map[ssa.If]*ssa.BinOp)
+	res := s.acquireTrackCacheValue()
+	localViolations := &res.violations
+	localIfs := res.ifs
 
 	if violations == nil {
 		violations = &[]ssa.Instruction{}
@@ -481,20 +505,20 @@ func (s *sliceBoundsState) trackSliceBounds(depth int, sliceCap int, slice ssa.N
 		for _, refinstr := range *referrers {
 			switch refinstr := refinstr.(type) {
 			case *ssa.Slice:
-				s.checkAllSlicesBounds(depth, sliceCap, refinstr, &localViolations, localIfs)
+				s.checkAllSlicesBounds(depth, sliceCap, refinstr, localViolations, localIfs)
 				switch refinstr.X.(type) {
 				case *ssa.Alloc, *ssa.Parameter, *ssa.Slice:
 					l, h, maxIdx := GetSliceBounds(refinstr)
 					newCap := computeSliceNewCap(l, h, maxIdx, sliceCap)
-					s.trackSliceBounds(depth, newCap, refinstr, &localViolations, localIfs)
+					s.trackSliceBounds(depth, newCap, refinstr, localViolations, localIfs)
 				}
 			case *ssa.IndexAddr:
 				if indexValue, ok := GetConstantInt64(refinstr.Index); ok && !isSliceIndexInsideBounds(sliceCap, int(indexValue)) {
-					localViolations = append(localViolations, refinstr)
+					*localViolations = append(*localViolations, refinstr)
 				}
 				indexValue, err := s.extractIntValueIndexAddr(refinstr, sliceCap)
 				if err == nil && !isSliceIndexInsideBounds(sliceCap, indexValue) {
-					localViolations = append(localViolations, refinstr)
+					*localViolations = append(*localViolations, refinstr)
 				}
 			case *ssa.Call:
 				if ifref, cond := extractSliceIfLenCondition(refinstr); ifref != nil && cond != nil {
@@ -509,7 +533,7 @@ func (s *sliceBoundsState) trackSliceBounds(depth int, sliceCap int, slice ssa.N
 					if fn, ok := refinstr.Call.Value.(*ssa.Function); ok {
 						if len(fn.Params) > parPos && parPos > -1 {
 							param := fn.Params[parPos]
-							s.trackSliceBounds(depth, sliceCap, param, &localViolations, localIfs)
+							s.trackSliceBounds(depth, sliceCap, param, localViolations, localIfs)
 						}
 					}
 				}
@@ -517,26 +541,12 @@ func (s *sliceBoundsState) trackSliceBounds(depth int, sliceCap int, slice ssa.N
 		}
 	}
 
-	*violations = append(*violations, localViolations...)
-	for k, v := range localIfs {
-		ifs[k] = v
-	}
-	s.trackCache[key] = &trackCacheValue{localViolations, localIfs}
+	*violations = append(*violations, *localViolations...)
+	maps.Copy(ifs, localIfs)
+	s.trackCache[key] = res
 }
 
-// extractIntValueIndexAddr attempts to derive a constant index value from an IndexAddr by checking its referrers.
 func (s *sliceBoundsState) extractIntValueIndexAddr(refinstr *ssa.IndexAddr, sliceCap int) (int, error) {
-	key := idxCacheKey{refinstr, sliceCap}
-	if res, ok := s.idxCache[key]; ok {
-		return res.val, res.err
-	}
-
-	resVal, resErr := s.extractIntValueIndexAddrRecursive(refinstr, sliceCap)
-	s.idxCache[key] = idxCacheValue{resVal, resErr}
-	return resVal, resErr
-}
-
-func (s *sliceBoundsState) extractIntValueIndexAddrRecursive(refinstr *ssa.IndexAddr, sliceCap int) (int, error) {
 	base, offset := decomposeIndex(refinstr.Index)
 	var sliceIncr int
 
