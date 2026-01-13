@@ -39,6 +39,26 @@ type rangeResult struct {
 	isRangeCheck         bool
 }
 
+func (r *rangeResult) Reset() {
+	r.minValue = toUint64(minInt64)
+	r.maxValue = maxUint64
+	r.minValueSet = false
+	r.maxValueSet = false
+	r.isRangeCheck = false
+	r.explicitPositiveVals = r.explicitPositiveVals[:0]
+	r.explicitNegativeVals = r.explicitNegativeVals[:0]
+}
+
+func (r *rangeResult) CopyFrom(other *rangeResult) {
+	r.minValue = other.minValue
+	r.maxValue = other.maxValue
+	r.minValueSet = other.minValueSet
+	r.maxValueSet = other.maxValueSet
+	r.isRangeCheck = other.isRangeCheck
+	r.explicitPositiveVals = append(r.explicitPositiveVals[:0], other.explicitPositiveVals...)
+	r.explicitNegativeVals = append(r.explicitNegativeVals[:0], other.explicitNegativeVals...)
+}
+
 const (
 	minInt64  = int64(math.MinInt64)
 	maxUint64 = uint64(math.MaxUint64)
@@ -57,7 +77,12 @@ func newConversionOverflowAnalyzer(id string, description string) *analysis.Anal
 
 type overflowState struct {
 	pass       *analysis.Pass
-	rangeCache map[rangeCacheKey]rangeResult
+	rangeCache map[rangeCacheKey]*rangeResult
+	resultPool []*rangeResult
+	depth      int
+	blockMap   map[*ssa.BasicBlock]bool
+	valueMap   map[ssa.Value]bool
+	visitedMap map[ssa.Value]bool
 }
 
 type rangeCacheKey struct {
@@ -68,8 +93,41 @@ type rangeCacheKey struct {
 func newOverflowState(pass *analysis.Pass) *overflowState {
 	return &overflowState{
 		pass:       pass,
-		rangeCache: make(map[rangeCacheKey]rangeResult),
+		rangeCache: make(map[rangeCacheKey]*rangeResult),
+		// Pre-allocate pools with reasonable initial size
+		resultPool: make([]*rangeResult, 0, 32),
+		blockMap:   make(map[*ssa.BasicBlock]bool),
+		valueMap:   make(map[ssa.Value]bool),
+		visitedMap: make(map[ssa.Value]bool),
 	}
+}
+
+func (s *overflowState) acquireResult() *rangeResult {
+	if len(s.resultPool) > 0 {
+		idx := len(s.resultPool) - 1
+		res := s.resultPool[idx]
+		s.resultPool = s.resultPool[:idx]
+		res.Reset()
+		return res
+	}
+	// Pre-allocate slices to avoid re-allocations during append
+	res := &rangeResult{
+		explicitPositiveVals: make([]uint, 0, 4),
+		explicitNegativeVals: make([]int, 0, 4),
+	}
+	res.Reset()
+	return res
+}
+
+func (s *overflowState) releaseResult(res *rangeResult) {
+	s.resultPool = append(s.resultPool, res)
+}
+
+func (s *overflowState) ResetCache() {
+	for _, res := range s.rangeCache {
+		s.releaseResult(res)
+	}
+	clear(s.rangeCache)
 }
 
 // runConversionOverflow analyzes the SSA representation of the code to find potential integer overflows in type conversions.
@@ -82,6 +140,7 @@ func runConversionOverflow(pass *analysis.Pass) (any, error) {
 	state := newOverflowState(pass)
 	issues := []*issue.Issue{}
 	for _, mcall := range ssaResult.SSA.SrcFuncs {
+		state.ResetCache()
 		for _, block := range mcall.DomPreorder() {
 			for _, instr := range block.Instrs {
 				switch instr := instr.(type) {
@@ -160,9 +219,12 @@ func (s *overflowState) hasRangeCheck(v ssa.Value, dstType string, block *ssa.Ba
 		return false
 	}
 
-	isSrcUnsigned := strings.HasPrefix(v.Type().Underlying().String(), "uint")
+	isSrcUnsigned := isUint(v)
 
-	res := s.resolveRange(v, block, make(map[ssa.Value]bool))
+	// Clear visited map for new resolution
+	clear(s.visitedMap)
+
+	res := s.resolveRange(v, block)
 	minValue, minValueSet, maxValue, maxValueSet, isRangeCheck := res.minValue, res.minValueSet, res.maxValue, res.maxValueSet, res.isRangeCheck
 	explicitPositiveVals, explicitNegativeVals := res.explicitPositiveVals, res.explicitNegativeVals
 	if explicitValsInRange(explicitPositiveVals, explicitNegativeVals, dstInt) {
@@ -183,6 +245,7 @@ func (s *overflowState) hasRangeCheck(v ssa.Value, dstType string, block *ssa.Ba
 		}
 	}
 
+	// Recheck explicit vals (redundant but kept from original)
 	if explicitValsInRange(res.explicitPositiveVals, res.explicitNegativeVals, dstInt) {
 		return true
 	}
@@ -272,11 +335,13 @@ func maxBounds(a, b uint64, isSrcUnsigned bool) uint64 {
 func (s *overflowState) isSafeFromPredecessor(v ssa.Value, dstType string, pred *ssa.BasicBlock, targetBlock *ssa.BasicBlock) bool {
 	if vIf, ok := pred.Instrs[len(pred.Instrs)-1].(*ssa.If); ok {
 		dstInt, _ := ParseIntType(dstType)
-		isSrcUnsigned := strings.HasPrefix(v.Type().Underlying().String(), "uint")
+		isSrcUnsigned := isUint(v)
 		for i, succ := range pred.Succs {
 			if succ == targetBlock {
 				// We took this specific edge.
 				result := s.getResultRangeForIfEdge(vIf, i == 0, v)
+				defer s.releaseResult(result)
+
 				if result.isRangeCheck {
 					var safe bool
 					if dstInt.Signed {
@@ -303,63 +368,61 @@ func (s *overflowState) isSafeFromPredecessor(v ssa.Value, dstType string, pred 
 }
 
 // getResultRangeForIfEdge returns the range constraints implied by taking a specific branch (then/else) of an If instruction.
-func (s *overflowState) getResultRangeForIfEdge(vIf *ssa.If, isTrue bool, v ssa.Value) rangeResult {
+func (s *overflowState) getResultRangeForIfEdge(vIf *ssa.If, isTrue bool, v ssa.Value) *rangeResult {
 	vCond := vIf.Cond
-	res := rangeResult{
-		minValue: toUint64(minInt64),
-		maxValue: maxUint64,
-	}
+	res := s.acquireResult()
 
 	if binOp, ok := vCond.(*ssa.BinOp); ok {
 		if isRangeCheck(binOp, v) {
 			res.isRangeCheck = true
-			s.updateResultFromBinOpForValue(&res, binOp, v, isTrue)
+			s.updateResultFromBinOpForValue(res, binOp, v, isTrue)
 		}
 	}
 	return res
 }
 
 // getResultRangeForValue calculates the range of a value by analyzing the dominator tree and control flow.
-func (s *overflowState) getResultRangeForValue(ifInstr *ssa.If, v ssa.Value, targetBlock *ssa.BasicBlock) rangeResult {
+func (s *overflowState) getResultRangeForValue(ifInstr *ssa.If, v ssa.Value, targetBlock *ssa.BasicBlock) *rangeResult {
+	result := s.acquireResult()
 	cond := ifInstr.Cond
 	binOp, ok := cond.(*ssa.BinOp)
 	if !ok || !isRangeCheck(binOp, v) {
-		return rangeResult{
-			minValue: toUint64(minInt64),
-			maxValue: maxUint64,
-		}
+		return result
 	}
 
-	result := rangeResult{
-		minValue:     toUint64(minInt64),
-		maxValue:     maxUint64,
-		isRangeCheck: true,
-	}
+	result.isRangeCheck = true
 
 	// Determine if targetBlock is reached through then or else branch
-	thenFound := isReachable(ifInstr.Block().Succs[0], targetBlock, make(map[*ssa.BasicBlock]bool))
-	elseFound := isReachable(ifInstr.Block().Succs[1], targetBlock, make(map[*ssa.BasicBlock]bool))
+	thenFound := s.isReachable(ifInstr.Block().Succs[0], targetBlock)
+	elseFound := s.isReachable(ifInstr.Block().Succs[1], targetBlock)
 
 	if thenFound && elseFound {
 		return result
 	}
 
-	s.updateResultFromBinOpForValue(&result, binOp, v, thenFound)
+	s.updateResultFromBinOpForValue(result, binOp, v, thenFound)
 
 	return result
 }
 
 // isReachable checks if there is a path from the start block to the target block.
-func isReachable(start, target *ssa.BasicBlock, visited map[*ssa.BasicBlock]bool) bool {
+func (s *overflowState) isReachable(start, target *ssa.BasicBlock) bool {
+	// clear map
+	clear(s.blockMap)
+
+	return s.isReachableRecursive(start, target)
+}
+
+func (s *overflowState) isReachableRecursive(start, target *ssa.BasicBlock) bool {
 	if start == target {
 		return true
 	}
-	if visited[start] {
+	if s.blockMap[start] {
 		return false
 	}
-	visited[start] = true
+	s.blockMap[start] = true
 	for _, succ := range start.Succs {
-		if isReachable(succ, target, visited) {
+		if s.isReachableRecursive(succ, target) {
 			return true
 		}
 	}
@@ -484,7 +547,7 @@ func (s *overflowState) updateResultFromBinOpForValue(result *rangeResult, binOp
 				val = val >> uint(vShift)
 			}
 		case "*":
-			isSrcUnsigned := strings.HasPrefix(v.Type().Underlying().String(), "uint")
+			isSrcUnsigned := isUint(v)
 			if isSrcUnsigned {
 				if vMul, ok := GetConstantUint64(op.extra); ok && vMul != 0 {
 					hi, lo := bits.Mul64(toUint64(val), vMul)
@@ -617,7 +680,7 @@ func (s *overflowState) updateResultFromBinOpForValue(result *rangeResult, binOp
 		}
 	case "%":
 		if val, ok := GetConstantInt64(op.extra); ok && val > 0 {
-			if (result.minValueSet && toInt64(result.minValue) >= 0) || isNonNegative(binOp.X) || isNonNegative(compareVal) {
+			if (result.minValueSet && toInt64(result.minValue) >= 0) || s.isNonNegative(binOp.X) || s.isNonNegative(compareVal) {
 				result.minValue = 0
 				result.minValueSet = true
 				result.maxValue = uint64(val - 1) // #nosec G115 - WORKAROUND for old golangci-lint, remove when updated
@@ -636,17 +699,17 @@ func (s *overflowState) updateResultFromBinOpForValue(result *rangeResult, binOp
 }
 
 // computeRange calculates the range of a value based on its definition (arithmetic operations, constants).
-func (s *overflowState) computeRange(v ssa.Value, block *ssa.BasicBlock, visited map[ssa.Value]bool) rangeResult {
-	if visited[v] {
-		return rangeResult{}
+func (s *overflowState) computeRange(v ssa.Value, block *ssa.BasicBlock) *rangeResult {
+	if s.visitedMap[v] {
+		return s.acquireResult() // Return empty result on cycle
 	}
-	visited[v] = true
-	defer delete(visited, v)
+	s.visitedMap[v] = true
+	defer delete(s.visitedMap, v)
 
-	res := rangeResult{}
-	isSrcUnsigned := strings.HasPrefix(v.Type().Underlying().String(), "uint")
+	res := s.acquireResult()
+	isSrcUnsigned := isUint(v)
 
-	if isNonNegative(v) {
+	if s.isNonNegative(v) {
 		res.minValue = 0
 		res.minValueSet = true
 	}
@@ -656,8 +719,8 @@ func (s *overflowState) computeRange(v ssa.Value, block *ssa.BasicBlock, visited
 	case *ssa.BinOp:
 		switch v.Op {
 		case token.ADD:
-			subResX := s.resolveRange(v.X, block, visited)
-			subResY := s.resolveRange(v.Y, block, visited)
+			subResX := s.resolveRange(v.X, block)
+			subResY := s.resolveRange(v.Y, block)
 			if subResX.minValueSet && subResY.minValueSet {
 				res.minValue = toUint64(toInt64(subResX.minValue) + toInt64(subResY.minValue))
 				res.minValueSet = true
@@ -668,7 +731,7 @@ func (s *overflowState) computeRange(v ssa.Value, block *ssa.BasicBlock, visited
 			}
 			res.isRangeCheck = subResX.isRangeCheck || subResY.isRangeCheck
 		case token.SUB:
-			subResX := s.resolveRange(v.X, block, visited)
+			subResX := s.resolveRange(v.X, block)
 			if val, ok := GetConstantInt64(v.Y); ok {
 				// x - val
 				if subResX.minValueSet {
@@ -682,7 +745,7 @@ func (s *overflowState) computeRange(v ssa.Value, block *ssa.BasicBlock, visited
 				res.isRangeCheck = subResX.isRangeCheck
 			} else if val, ok := GetConstantInt64(v.X); ok {
 				// val - x
-				subResY := s.resolveRange(v.Y, block, visited)
+				subResY := s.resolveRange(v.Y, block)
 				if subResY.maxValueSet {
 					res.minValue = toUint64(val - toInt64(subResY.maxValue))
 					res.minValueSet = true
@@ -701,15 +764,15 @@ func (s *overflowState) computeRange(v ssa.Value, block *ssa.BasicBlock, visited
 				res.isRangeCheck = true
 			} else {
 				// If Y is not a constant, we can only say it's non-negative if X is.
-				if isNonNegative(v.X) {
+				if s.isNonNegative(v.X) {
 					res.minValue = 0
 					res.minValueSet = true
 				}
 			}
 		case token.SHR:
 			if val, ok := GetConstantInt64(v.Y); ok && val >= 0 {
-				subResX := s.resolveRange(v.X, block, visited)
-				if isNonNegative(v.X) {
+				subResX := s.resolveRange(v.X, block)
+				if s.isNonNegative(v.X) {
 					res.minValue = 0
 					res.minValueSet = true
 				}
@@ -725,7 +788,7 @@ func (s *overflowState) computeRange(v ssa.Value, block *ssa.BasicBlock, visited
 			}
 		case token.SHL:
 			if val, ok := GetConstantInt64(v.Y); ok && val >= 0 {
-				subResX := s.resolveRange(v.X, block, visited)
+				subResX := s.resolveRange(v.X, block)
 				if subResX.minValueSet {
 					newMin := subResX.minValue << uint(val) // #nosec G115 - WORKAROUND for old golangci-lint, remove when updated
 					// Check for overflow/wrap-around
@@ -748,8 +811,8 @@ func (s *overflowState) computeRange(v ssa.Value, block *ssa.BasicBlock, visited
 			}
 		case token.REM:
 			if val, ok := GetConstantInt64(v.Y); ok && val > 0 {
-				subResX := s.resolveRange(v.X, block, visited)
-				if (subResX.minValueSet && toInt64(subResX.minValue) >= 0) || isNonNegative(v.X) {
+				subResX := s.resolveRange(v.X, block)
+				if (subResX.minValueSet && toInt64(subResX.minValue) >= 0) || s.isNonNegative(v.X) {
 					res.minValue = 0
 					res.minValueSet = true
 					res.maxValue = uint64(val - 1) // #nosec G115 - WORKAROUND for old golangci-lint, remove when updated
@@ -768,36 +831,39 @@ func (s *overflowState) computeRange(v ssa.Value, block *ssa.BasicBlock, visited
 				val, ok = GetConstantUint64(v.X)
 			}
 			if ok && val != 0 {
-				var subRes rangeResult
+				var subRes *rangeResult
 				if isSameOrRelated(v.Y, v.X) {
 					// x*x handled by generic fallback
+					// Need a valid subRes for generic logic or skip?
+					// Original code skipped if same.
 				} else if _, isConst := v.Y.(*ssa.Const); isConst {
-					subRes = s.resolveRange(v.X, block, visited)
+					subRes = s.resolveRange(v.X, block)
 				} else {
-					subRes = s.resolveRange(v.Y, block, visited)
+					subRes = s.resolveRange(v.Y, block)
 				}
 
-				if subRes.maxValueSet {
-					hi, _ := bits.Mul64(subRes.maxValue, val)
-					if hi != 0 {
-						return res
+				if subRes != nil {
+					if subRes.maxValueSet {
+						hi, _ := bits.Mul64(subRes.maxValue, val)
+						if hi != 0 {
+							return res
+						}
 					}
-				}
 
-				if subRes.minValueSet {
-					res.minValue = subRes.minValue * val
-					res.minValueSet = true
+					if subRes.minValueSet {
+						res.minValue = subRes.minValue * val
+						res.minValueSet = true
+					}
+					if subRes.maxValueSet {
+						res.maxValue = subRes.maxValue * val
+						res.maxValueSet = true
+					}
+					res.isRangeCheck = subRes.isRangeCheck
 				}
-				if subRes.maxValueSet {
-					res.maxValue = subRes.maxValue * val
-					res.maxValueSet = true
-				}
-				res.isRangeCheck = subRes.isRangeCheck
 			}
 		case token.QUO:
 			if val, ok := GetConstantUint64(v.Y); ok && val != 0 {
-				subResX := s.resolveRange(v.X, block, visited)
-				isSrcUnsigned := strings.HasPrefix(v.Type().Underlying().String(), "uint")
+				subResX := s.resolveRange(v.X, block)
 				if isSrcUnsigned {
 					if subResX.minValueSet {
 						res.minValue = subResX.minValue / val
@@ -833,7 +899,7 @@ func (s *overflowState) computeRange(v ssa.Value, block *ssa.BasicBlock, visited
 			}
 		}
 	case *ssa.UnOp:
-		subRes := s.resolveRange(v.X, block, visited)
+		subRes := s.resolveRange(v.X, block)
 		switch v.Op {
 		case token.SUB:
 			// Negation: -x.
@@ -871,7 +937,7 @@ func (s *overflowState) computeRange(v ssa.Value, block *ssa.BasicBlock, visited
 						// Try to resolve range of the slice/string length if possible?
 						// For now, just >= 0.
 						// We can also check if the slice came from make()
-						argRes := s.resolveRange(arg, block, visited)
+						argRes := s.resolveRange(arg, block)
 						if argRes.minValueSet {
 							res.minValue = argRes.minValue
 							res.minValueSet = true
@@ -888,7 +954,7 @@ func (s *overflowState) computeRange(v ssa.Value, block *ssa.BasicBlock, visited
 				}
 			case "min":
 				for i, arg := range v.Call.Args {
-					argRes := s.resolveRange(arg, block, visited)
+					argRes := s.resolveRange(arg, block)
 					if i == 0 {
 						res.minValue = argRes.minValue
 						res.maxValue = argRes.maxValue
@@ -916,7 +982,7 @@ func (s *overflowState) computeRange(v ssa.Value, block *ssa.BasicBlock, visited
 				res.isRangeCheck = true
 			case "max":
 				for i, arg := range v.Call.Args {
-					argRes := s.resolveRange(arg, block, visited)
+					argRes := s.resolveRange(arg, block)
 					if i == 0 {
 						res.minValue = argRes.minValue
 						res.maxValue = argRes.maxValue
@@ -981,14 +1047,14 @@ func (s *overflowState) computeRange(v ssa.Value, block *ssa.BasicBlock, visited
 			}
 		}
 	case *ssa.Convert:
-		subRes := s.resolveRange(v.X, block, visited)
+		subRes := s.resolveRange(v.X, block)
 		if subRes.minValueSet || subRes.maxValueSet {
-			res = subRes
+			res.CopyFrom(subRes) // Use CopyFrom for new result
 		}
 	case *ssa.ChangeType:
-		subRes := s.resolveRange(v.X, block, visited)
+		subRes := s.resolveRange(v.X, block)
 		if subRes.minValueSet || subRes.maxValueSet {
-			res = subRes
+			res.CopyFrom(subRes)
 		}
 
 	case *ssa.Const:
@@ -1003,6 +1069,11 @@ func (s *overflowState) computeRange(v ssa.Value, block *ssa.BasicBlock, visited
 	}
 
 	return res
+}
+
+// isUint checks if the value's type is an unsigned integer.
+func isUint(v ssa.Value) bool {
+	return strings.HasPrefix(v.Type().Underlying().String(), "uint")
 }
 
 // isConstantInRange checks if a constant value fits within the range of the destination type.
@@ -1039,18 +1110,20 @@ func getDominators(block *ssa.BasicBlock) []*ssa.BasicBlock {
 }
 
 // isNonNegative checks if a value is statically known to be non-negative.
-func isNonNegative(v ssa.Value) bool {
-	return isNonNegativeRecursive(v, make(map[ssa.Value]bool))
+func (s *overflowState) isNonNegative(v ssa.Value) bool {
+	// clear map for fresh search
+	clear(s.valueMap)
+	return s.isNonNegativeRecursive(v)
 }
 
-func isNonNegativeRecursive(v ssa.Value, visited map[ssa.Value]bool) bool {
-	if visited[v] {
+func (s *overflowState) isNonNegativeRecursive(v ssa.Value) bool {
+	if s.valueMap[v] {
 		return true // Assume non-negative to break cycles in loop indices
 	}
-	visited[v] = true
+	s.valueMap[v] = true
 
 	// Any unsigned type is inherently non-negative.
-	if srcType := v.Type().Underlying().String(); strings.HasPrefix(srcType, "uint") {
+	if isUint(v) {
 		return true
 	}
 
@@ -1070,14 +1143,14 @@ func isNonNegativeRecursive(v ssa.Value, visited map[ssa.Value]bool) bool {
 				return true
 			case "min":
 				for _, arg := range v.Call.Args {
-					if !isNonNegativeRecursive(arg, visited) {
+					if !s.isNonNegativeRecursive(arg) {
 						return false
 					}
 				}
 				return len(v.Call.Args) > 0
 			case "max":
 				for _, arg := range v.Call.Args {
-					if isNonNegativeRecursive(arg, visited) {
+					if s.isNonNegativeRecursive(arg) {
 						return true
 					}
 				}
@@ -1094,10 +1167,10 @@ func isNonNegativeRecursive(v ssa.Value, visited map[ssa.Value]bool) bool {
 		switch v.Op {
 		case token.ADD, token.MUL, token.QUO:
 			// For ADD, MUL, QUO, if both operands are non-negative, result is non-negative.
-			return isNonNegativeRecursive(v.X, visited) && isNonNegativeRecursive(v.Y, visited)
+			return s.isNonNegativeRecursive(v.X) && s.isNonNegativeRecursive(v.Y)
 		case token.REM, token.AND, token.SHR:
 			// For % and &, non-negativity can be derived if X is non-negative.
-			return isNonNegativeRecursive(v.X, visited)
+			return s.isNonNegativeRecursive(v.X)
 		}
 	case *ssa.Const:
 		if val, ok := GetConstantInt64(v); ok && val >= 0 {
@@ -1108,7 +1181,7 @@ func isNonNegativeRecursive(v ssa.Value, visited map[ssa.Value]bool) bool {
 		// Special case for loop indices: if it starts at 0 or -1 (and used as +1).
 		allNonNeg := true
 		for _, edge := range v.Edges {
-			if !isNonNegativeRecursive(edge, visited) {
+			if !s.isNonNegativeRecursive(edge) {
 				// Check for -1 constant which is common in loop indices that are then incremented.
 				if constVal, ok := edge.(*ssa.Const); ok {
 					if val, ok := GetConstantInt64(constVal); ok && val == -1 {
@@ -1121,8 +1194,7 @@ func isNonNegativeRecursive(v ssa.Value, visited map[ssa.Value]bool) bool {
 		}
 		return allNonNeg
 	case *ssa.Convert:
-		srcType := v.X.Type().Underlying().String()
-		if strings.HasPrefix(srcType, "uint") {
+		if isUint(v.X) {
 			return true
 		}
 	}
@@ -1298,29 +1370,36 @@ func explicitValsInRange(explicitPosVals []uint, explicitNegVals []int, dstInt I
 }
 
 // resolveRange combines definition-based range analysis (computeRange) with dominator-based constraints (If blocks) to determine the full range of a value.
-func (s *overflowState) resolveRange(v ssa.Value, block *ssa.BasicBlock, visited map[ssa.Value]bool) rangeResult {
+func (s *overflowState) resolveRange(v ssa.Value, block *ssa.BasicBlock) *rangeResult {
 	key := rangeCacheKey{block: block, val: v}
 	if res, ok := s.rangeCache[key]; ok {
 		return res
 	}
-	isSrcUnsigned := strings.HasPrefix(v.Type().Underlying().String(), "uint")
-	// Track bounds
-	result := rangeResult{
-		minValue: 0,
-		maxValue: maxUint64,
-	}
-	if !isSrcUnsigned {
-		result.minValue = toUint64(minInt64)
+
+	isSrcUnsigned := isUint(v)
+	result := s.acquireResult()
+	// result is initialized to wide range (MinInt64, MaxUint64) by acquireResult/Reset
+	if isSrcUnsigned {
+		result.minValue = 0
+	} else {
 		result.maxValue = maxInt64
 	}
 
-	if isNonNegative(v) {
+	if s.depth > MaxDepth {
+		s.rangeCache[key] = result
+		return result
+	}
+
+	s.depth++
+	defer func() { s.depth-- }()
+
+	if s.isNonNegative(v) {
 		result.minValue = maxBounds(result.minValue, 0, isSrcUnsigned)
 		result.minValueSet = true
 	}
 
 	// Range from definition
-	defRange := s.computeRange(v, block, visited)
+	defRange := s.computeRange(v, block)
 	if defRange.isRangeCheck || defRange.minValueSet || defRange.maxValueSet {
 		result.isRangeCheck = true
 		if defRange.minValueSet {
@@ -1332,6 +1411,8 @@ func (s *overflowState) resolveRange(v ssa.Value, block *ssa.BasicBlock, visited
 			result.maxValueSet = true
 		}
 	}
+	// computeRange returns a temporary result, release it
+	s.releaseResult(defRange)
 
 	// Check all dominating If instructions.
 	idoms := getDominators(block)
@@ -1352,6 +1433,7 @@ func (s *overflowState) resolveRange(v ssa.Value, block *ssa.BasicBlock, visited
 					result.explicitPositiveVals = append(result.explicitPositiveVals, domRes.explicitPositiveVals...)
 					result.explicitNegativeVals = append(result.explicitNegativeVals, domRes.explicitNegativeVals...)
 				}
+				s.releaseResult(domRes)
 			}
 		}
 	}
@@ -1365,36 +1447,36 @@ func (s *overflowState) resolveRange(v ssa.Value, block *ssa.BasicBlock, visited
 		case token.ADD:
 			// Handle x+C or C+x
 			if val, ok := GetConstantInt64(binOp.Y); ok {
-				subRes := s.resolveRange(binOp.X, block, visited)
+				subRes := s.resolveRange(binOp.X, block)
 				if subRes.isRangeCheck {
 					if subRes.minValueSet {
-						updateRangeMinMax(&result, toUint64(toInt64(subRes.minValue)+val), true, isSrcUnsigned)
+						updateRangeMinMax(result, toUint64(toInt64(subRes.minValue)+val), true, isSrcUnsigned)
 					}
 					if subRes.maxValueSet {
-						updateRangeMinMax(&result, toUint64(toInt64(subRes.maxValue)+val), false, isSrcUnsigned)
+						updateRangeMinMax(result, toUint64(toInt64(subRes.maxValue)+val), false, isSrcUnsigned)
 					}
 				}
 			} else if val, ok := GetConstantInt64(binOp.X); ok {
-				subRes := s.resolveRange(binOp.Y, block, visited)
+				subRes := s.resolveRange(binOp.Y, block)
 				if subRes.isRangeCheck {
 					if subRes.minValueSet {
-						updateRangeMinMax(&result, toUint64(val+toInt64(subRes.minValue)), true, isSrcUnsigned)
+						updateRangeMinMax(result, toUint64(val+toInt64(subRes.minValue)), true, isSrcUnsigned)
 					}
 					if subRes.maxValueSet {
-						updateRangeMinMax(&result, toUint64(val+toInt64(subRes.maxValue)), false, isSrcUnsigned)
+						updateRangeMinMax(result, toUint64(val+toInt64(subRes.maxValue)), false, isSrcUnsigned)
 					}
 				}
 			}
 		case token.SUB:
 			// Handle x-C. C-x logic is harder (inverts min/max), skipping for simplicity/safety unless needed.
 			if val, ok := GetConstantInt64(binOp.Y); ok {
-				subRes := s.resolveRange(binOp.X, block, visited)
+				subRes := s.resolveRange(binOp.X, block)
 				if subRes.isRangeCheck {
 					if subRes.minValueSet {
-						updateRangeMinMax(&result, toUint64(toInt64(subRes.minValue)-val), true, isSrcUnsigned)
+						updateRangeMinMax(result, toUint64(toInt64(subRes.minValue)-val), true, isSrcUnsigned)
 					}
 					if subRes.maxValueSet {
-						updateRangeMinMax(&result, toUint64(toInt64(subRes.maxValue)-val), false, isSrcUnsigned)
+						updateRangeMinMax(result, toUint64(toInt64(subRes.maxValue)-val), false, isSrcUnsigned)
 					}
 				}
 			}
@@ -1404,11 +1486,11 @@ func (s *overflowState) resolveRange(v ssa.Value, block *ssa.BasicBlock, visited
 				val, ok = GetConstantUint64(binOp.X)
 			}
 			if ok && val != 0 {
-				var subRes rangeResult
+				var subRes *rangeResult
 				if _, isConst := binOp.Y.(*ssa.Const); isConst {
-					subRes = s.resolveRange(binOp.X, block, visited)
+					subRes = s.resolveRange(binOp.X, block)
 				} else {
-					subRes = s.resolveRange(binOp.Y, block, visited)
+					subRes = s.resolveRange(binOp.Y, block)
 				}
 
 				if subRes.maxValueSet {
@@ -1419,22 +1501,22 @@ func (s *overflowState) resolveRange(v ssa.Value, block *ssa.BasicBlock, visited
 				}
 
 				if subRes.minValueSet && subRes.isRangeCheck {
-					updateRangeMinMax(&result, subRes.minValue*val, true, isSrcUnsigned)
+					updateRangeMinMax(result, subRes.minValue*val, true, isSrcUnsigned)
 				}
 				if subRes.maxValueSet && subRes.isRangeCheck {
-					updateRangeMinMax(&result, subRes.maxValue*val, false, isSrcUnsigned)
+					updateRangeMinMax(result, subRes.maxValue*val, false, isSrcUnsigned)
 				}
 			}
 		case token.SHL:
 			if val, ok := GetConstantInt64(binOp.Y); ok && val >= 0 {
-				subRes := s.resolveRange(binOp.X, block, visited)
+				subRes := s.resolveRange(binOp.X, block)
 				if subRes.isRangeCheck {
 					if subRes.minValueSet {
 						newMin := subRes.minValue << uint(val) // #nosec G115 - WORKAROUND for old golangci-lint, remove when updated
 						// Check for overflow/wrap-around
 						// #nosec G115 - WORKAROUND for old golangci-lint, remove when updated
 						if newMin>>uint(val) == subRes.minValue {
-							updateRangeMinMax(&result, newMin, true, isSrcUnsigned)
+							updateRangeMinMax(result, newMin, true, isSrcUnsigned)
 						}
 					}
 					if subRes.maxValueSet {
@@ -1442,39 +1524,39 @@ func (s *overflowState) resolveRange(v ssa.Value, block *ssa.BasicBlock, visited
 						// Check for overflow/wrap-around
 						// #nosec G115 - WORKAROUND for old golangci-lint, remove when updated
 						if newMax>>uint(val) == subRes.maxValue {
-							updateRangeMinMax(&result, newMax, false, isSrcUnsigned)
+							updateRangeMinMax(result, newMax, false, isSrcUnsigned)
 						}
 					}
 				}
 			}
 		case token.SHR:
 			if val, ok := GetConstantInt64(binOp.Y); ok && val >= 0 {
-				subRes := s.resolveRange(binOp.X, block, visited)
+				subRes := s.resolveRange(binOp.X, block)
 				if subRes.isRangeCheck {
 					if subRes.minValueSet {
-						updateRangeMinMax(&result, subRes.minValue>>uint(val), true, isSrcUnsigned) // #nosec G115 - WORKAROUND for old golangci-lint, remove when updated
+						updateRangeMinMax(result, subRes.minValue>>uint(val), true, isSrcUnsigned) // #nosec G115 - WORKAROUND for old golangci-lint, remove when updated
 					}
 					if subRes.maxValueSet {
-						updateRangeMinMax(&result, subRes.maxValue>>uint(val), false, isSrcUnsigned) // #nosec G115 - WORKAROUND for old golangci-lint, remove when updated
+						updateRangeMinMax(result, subRes.maxValue>>uint(val), false, isSrcUnsigned) // #nosec G115 - WORKAROUND for old golangci-lint, remove when updated
 					}
 				}
 			}
 		case token.QUO:
 			if val, ok := GetConstantInt64(binOp.Y); ok && val != 0 {
-				subRes := s.resolveRange(binOp.X, block, visited)
+				subRes := s.resolveRange(binOp.X, block)
 				if val > 0 {
 					if subRes.minValueSet && subRes.isRangeCheck {
-						updateRangeMinMax(&result, toUint64(toInt64(subRes.minValue)/val), true, isSrcUnsigned)
+						updateRangeMinMax(result, toUint64(toInt64(subRes.minValue)/val), true, isSrcUnsigned)
 					}
 					if subRes.maxValueSet && subRes.isRangeCheck {
-						updateRangeMinMax(&result, toUint64(toInt64(subRes.maxValue)/val), false, isSrcUnsigned)
+						updateRangeMinMax(result, toUint64(toInt64(subRes.maxValue)/val), false, isSrcUnsigned)
 					}
 				} else {
 					if subRes.maxValueSet && subRes.isRangeCheck {
-						updateRangeMinMax(&result, toUint64(toInt64(subRes.maxValue)/val), true, isSrcUnsigned)
+						updateRangeMinMax(result, toUint64(toInt64(subRes.maxValue)/val), true, isSrcUnsigned)
 					}
 					if subRes.minValueSet && subRes.isRangeCheck {
-						updateRangeMinMax(&result, toUint64(toInt64(subRes.minValue)/val), false, isSrcUnsigned)
+						updateRangeMinMax(result, toUint64(toInt64(subRes.minValue)/val), false, isSrcUnsigned)
 					}
 				}
 			}

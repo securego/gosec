@@ -185,3 +185,61 @@ func BenchmarkAnalysisG602_Wide(b *testing.B) {
 func BenchmarkAnalysisG407_Deep(b *testing.B) {
 	benchmarkAnalyzerStress(b, "G407", func() string { return generateG407Stress(1000) })
 }
+
+func generateComplex(functions, complexity int) string {
+	var sb strings.Builder
+	sb.WriteString("package main\n")
+	sb.WriteString("import (\n")
+	sb.WriteString("\t\"math\"\n")
+	sb.WriteString("\t\"crypto/cipher\"\n")
+	sb.WriteString(")\n")
+
+	// Generate helper functions that call each other
+	for i := range functions {
+		fmt.Fprintf(&sb, "func complexFunction%d(x int64, s []byte, gcm cipher.AEAD) {\n", i)
+
+		// G115 logic: conversions in branches
+		for j := range complexity {
+			fmt.Fprintf(&sb, "\tif x > %d && x < math.MaxInt64 {\n", j)
+			fmt.Fprintf(&sb, "\t\t_ = int8(x)\n")
+			fmt.Fprintf(&sb, "\t}\n")
+		}
+
+		// G602 logic: slice operations
+		fmt.Fprintf(&sb, "\t_ = s[%d]\n", i%10)
+		for j := range complexity {
+			fmt.Fprintf(&sb, "\tif len(s) > %d {\n", j)
+			fmt.Fprintf(&sb, "\t\t_ = s[%d]\n", j)
+			fmt.Fprintf(&sb, "\t}\n")
+		}
+
+		// G407 logic: nonce passing (simulated)
+		fmt.Fprintf(&sb, "\tnonce := []byte(\"hardcoded_nonce_%d\")\n", i)
+		fmt.Fprintf(&sb, "\tgcm.Seal(nil, nonce, s, nil)\n")
+
+		// Call next function if not last
+		if i < functions-1 {
+			fmt.Fprintf(&sb, "\tcomplexFunction%d(x, s, gcm)\n", i+1)
+		}
+		sb.WriteString("}\n")
+	}
+
+	sb.WriteString("func run_stress() {\n")
+	sb.WriteString("\ts := make([]byte, 10000)\n")
+	sb.WriteString("\tcomplexFunction0(100, s, nil)\n")
+	sb.WriteString("}\n")
+
+	return sb.String()
+}
+
+func BenchmarkAnalysisG115_Complex(b *testing.B) {
+	benchmarkAnalyzerStress(b, "G115", func() string { return generateComplex(50, 20) })
+}
+
+func BenchmarkAnalysisG602_Complex(b *testing.B) {
+	benchmarkAnalyzerStress(b, "G602", func() string { return generateComplex(50, 20) })
+}
+
+func BenchmarkAnalysisG407_Complex(b *testing.B) {
+	benchmarkAnalyzerStress(b, "G407", func() string { return generateComplex(50, 20) })
+}
