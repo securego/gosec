@@ -143,7 +143,7 @@ func runSliceBounds(pass *analysis.Pass) (any, error) {
 											violations = append(violations, slice)
 										}
 									}
-									newCap := computeSliceNewCap(l, h, maxIdx, sliceCap)
+									newCap := ComputeSliceNewCap(l, h, maxIdx, sliceCap)
 									state.trackSliceBounds(0, newCap, slice, &violations, ifs)
 									for _, s := range violations {
 										switch s := s.(type) {
@@ -509,7 +509,7 @@ func (s *sliceBoundsState) trackSliceBounds(depth int, sliceCap int, slice ssa.N
 				switch refinstr.X.(type) {
 				case *ssa.Alloc, *ssa.Parameter, *ssa.Slice:
 					l, h, maxIdx := GetSliceBounds(refinstr)
-					newCap := computeSliceNewCap(l, h, maxIdx, sliceCap)
+					newCap := ComputeSliceNewCap(l, h, maxIdx, sliceCap)
 					s.trackSliceBounds(depth, newCap, refinstr, localViolations, localIfs)
 				}
 			case *ssa.IndexAddr:
@@ -739,7 +739,7 @@ func (s *sliceBoundsState) checkAllSlicesBounds(depth int, sliceCap int, slice *
 	switch slice.X.(type) {
 	case *ssa.Alloc, *ssa.Parameter, *ssa.Slice:
 		l, h, maxIdx := GetSliceBounds(slice)
-		newCap := computeSliceNewCap(l, h, maxIdx, sliceCap)
+		newCap := ComputeSliceNewCap(l, h, maxIdx, sliceCap)
 		s.trackSliceBounds(depth, newCap, slice, violations, ifs)
 	}
 
@@ -754,7 +754,7 @@ func (s *sliceBoundsState) checkAllSlicesBounds(depth int, sliceCap int, slice *
 			switch r.X.(type) {
 			case *ssa.Alloc, *ssa.Parameter, *ssa.Slice:
 				l, h, maxIdx := GetSliceBounds(r)
-				newCap := computeSliceNewCap(l, h, maxIdx, sliceCap)
+				newCap := ComputeSliceNewCap(l, h, maxIdx, sliceCap)
 				s.trackSliceBounds(depth, newCap, r, violations, ifs)
 			}
 		}
@@ -789,23 +789,6 @@ func extractSliceIfLenCondition(call *ssa.Call) (*ssa.If, *ssa.BinOp) {
 		}
 	}
 	return nil, nil
-}
-
-// computeSliceNewCap determines the resulting capacity or limit of a slice after a re-slicing operation.
-func computeSliceNewCap(l, h, maxIdx, oldCap int) int {
-	if maxIdx > 0 {
-		return maxIdx - l
-	}
-	if l == 0 && h == 0 {
-		return oldCap
-	}
-	if l > 0 && h == 0 {
-		return oldCap - l
-	}
-	if l == 0 && h > 0 {
-		return h
-	}
-	return h - l
 }
 
 func invBound(bound bound) bound {
