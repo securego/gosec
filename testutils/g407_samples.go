@@ -709,4 +709,155 @@ func main() {
 	_ = cipher.NewCTR(block, buf[32:48])
 }
 `}, 0, gosec.NewConfig()},
+	{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+	"os"
+)
+
+func main() {
+	key := []byte("example key 1234")
+	block, _ := aes.NewCipher(key)
+	iv := []byte("1234567890123456")
+
+	var f func(cipher.Block, []byte) cipher.Stream
+	if len(os.Args) > 1 {
+		f = cipher.NewCTR
+	} else {
+		f = cipher.NewOFB
+	}
+	stream := f(block, iv)
+	_ = stream
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"os"
+)
+
+func main() {
+	key := []byte("example key 1234")
+	block, _ := aes.NewCipher(key)
+	iv := []byte("1234567890123456")
+	rand.Read(iv)
+
+	var f func(cipher.Block, []byte) cipher.Stream
+	if len(os.Args) > 1 {
+		f = cipher.NewCTR
+	} else {
+		f = cipher.NewOFB
+	}
+	stream := f(block, iv)
+	_ = stream
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`package main
+
+import (
+
+"crypto/aes"
+"crypto/cipher"
+"crypto/rand"
+
+)
+
+func myReaderDirect(b []byte) (int, error) {
+	return rand.Read(b)
+}
+
+func main() {
+	iv := make([]byte, 16)
+	// Direct call to user function (myReaderDirect) which calls rand.Read
+	myReaderDirect(iv)
+
+	key := []byte("example key 1234")
+	block, _ := aes.NewCipher(key)
+	_ = cipher.NewCTR(block, iv)
+}
+	   `}, 0, gosec.NewConfig()},
+	{[]string{`package main
+
+import (
+
+"crypto/aes"
+"crypto/cipher"
+"crypto/rand"
+
+)
+
+func myReaderDirect(b []byte) (int, error) {
+	n, err := rand.Read(b)
+	if n > 1 {
+		b[0] = 1 // overwriting
+	}
+	return n, err
+}
+
+func main() {
+	iv := make([]byte, 16)
+	// Direct call to user function (myReaderDirect) which calls rand.Read but overwrites the IV
+	myReaderDirect(iv)
+
+	key := []byte("example key 1234")
+	block, _ := aes.NewCipher(key)
+	_ = cipher.NewCTR(block, iv)
+}
+	   `}, 1, gosec.NewConfig()},
+	{[]string{`package main
+
+import (
+"crypto/cipher"
+)
+
+func myBadCipher(n int, block cipher.Block) cipher.Stream {
+    iv := make([]byte, n) 
+    iv[0] = 0x01
+    return cipher.NewCTR(block, iv)
+}
+	   `}, 1, gosec.NewConfig()},
+	{[]string{`package main
+
+import (
+"crypto/cipher"
+)
+
+func myBadCipher(n int, block cipher.Block) cipher.Stream {
+    iv := make([]byte, n) 
+    return cipher.NewCTR(block, iv)
+}
+	   `}, 1, gosec.NewConfig()},
+	{[]string{`package main
+
+import (
+"crypto/cipher"
+"os"
+)
+
+func myGoodCipher(block cipher.Block) (cipher.Stream, error) {
+    iv, err := os.ReadFile("iv.bin")
+    if err != nil {
+        return nil, err
+    }
+    return cipher.NewCTR(block, iv), nil
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`package main
+
+import (
+"crypto/cipher"
+"io"
+)
+
+func myGoodInterfaceCipher(r io.Reader, block cipher.Block) cipher.Stream {
+    iv := make([]byte, 16)
+    r.Read(iv)
+    return cipher.NewCTR(block, iv)
+}
+`}, 0, gosec.NewConfig()},
 }

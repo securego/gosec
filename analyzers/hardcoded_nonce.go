@@ -17,6 +17,7 @@ package analyzers
 import (
 	"fmt"
 	"go/token"
+	"slices"
 	"strings"
 
 	"golang.org/x/tools/go/analysis"
@@ -85,14 +86,15 @@ func runHardCodedNonce(pass *analysis.Pass) (any, error) {
 }
 
 type analysisState struct {
-	pass           *analysis.Pass
-	ssaFuncs       []*ssa.Function
-	usageCache     map[ssa.Value]uint8
-	funcCache      map[*ssa.Function]bool
-	visitedFuncs   map[*ssa.Function]bool
-	callerMap      map[string][]*ssa.Call
-	bufferLenCache map[ssa.Value]int64
-	depth          int
+	pass              *analysis.Pass
+	ssaFuncs          []*ssa.Function
+	usageCache        map[ssa.Value]uint8
+	funcCache         map[*ssa.Function]bool
+	visitedFuncs      map[*ssa.Function]bool
+	callerMap         map[string][]*ssa.Call
+	bufferLenCache    map[ssa.Value]int64
+	funcResolutionMap map[ssa.Value]bool
+	depth             int
 }
 
 type ssaValueAndInstr struct {
@@ -102,13 +104,14 @@ type ssaValueAndInstr struct {
 
 func newAnalysisState(pass *analysis.Pass, funcs []*ssa.Function) *analysisState {
 	s := &analysisState{
-		pass:           pass,
-		ssaFuncs:       funcs,
-		usageCache:     make(map[ssa.Value]uint8),
-		funcCache:      make(map[*ssa.Function]bool),
-		visitedFuncs:   make(map[*ssa.Function]bool),
-		callerMap:      BuildCallerMap(funcs),
-		bufferLenCache: make(map[ssa.Value]int64),
+		pass:              pass,
+		ssaFuncs:          funcs,
+		usageCache:        make(map[ssa.Value]uint8),
+		funcCache:         make(map[*ssa.Function]bool),
+		visitedFuncs:      make(map[*ssa.Function]bool),
+		callerMap:         BuildCallerMap(funcs),
+		bufferLenCache:    make(map[ssa.Value]int64),
+		funcResolutionMap: make(map[ssa.Value]bool),
 	}
 	return s
 }
@@ -117,14 +120,52 @@ func newAnalysisState(pass *analysis.Pass, funcs []*ssa.Function) *analysisState
 // for all call sites identified in the tracked map.
 func (s *analysisState) getInitialArgs(tracked map[string][]int) []ssaValueAndInstr {
 	var result []ssaValueAndInstr
-	for name, info := range tracked {
-		if calls, ok := s.callerMap[name]; ok {
-			for _, c := range calls {
-				if len(c.Call.Args) == info[0] {
-					result = append(result, ssaValueAndInstr{
-						val:   c.Call.Args[info[1]],
-						instr: c,
-					})
+	for _, f := range s.ssaFuncs {
+		for _, b := range f.Blocks {
+			for _, i := range b.Instrs {
+				if c, ok := i.(*ssa.Call); ok {
+					if c.Call.IsInvoke() {
+						// Handle interface method calls (e.g. (crypto/cipher.AEAD).Seal)
+						name := c.Call.Method.FullName()
+						if info, ok := tracked[name]; ok {
+							if len(c.Call.Args) == info[0] {
+								result = append(result, ssaValueAndInstr{
+									val:   c.Call.Args[info[1]],
+									instr: c,
+								})
+							}
+						}
+						continue
+					}
+
+					// Handle function calls (direct or indirect)
+					clear(s.funcResolutionMap)
+					funcs := s.resolveFuncs(c.Call.Value)
+					for _, fn := range funcs {
+						name := fn.String()
+						if info, ok := tracked[name]; ok {
+							if len(c.Call.Args) == info[0] {
+								result = append(result, ssaValueAndInstr{
+									val:   c.Call.Args[info[1]],
+									instr: c,
+								})
+								break
+							}
+							continue
+						}
+						if fn.Pkg != nil && fn.Pkg.Pkg != nil {
+							name = fn.Pkg.Pkg.Path() + "." + fn.Name()
+							if info, ok := tracked[name]; ok {
+								if len(c.Call.Args) == info[0] {
+									result = append(result, ssaValueAndInstr{
+										val:   c.Call.Args[info[1]],
+										instr: c,
+									})
+									break
+								}
+							}
+						}
+					}
 				}
 			}
 		}
@@ -142,9 +183,14 @@ func (s *analysisState) raiseIssue(val ssa.Value, issueDescription string,
 	}
 	visitedParams[val] = true
 
-	foundDyn, foundHard := s.analyzeUsage(val)
-	if foundDyn && !foundHard {
-		return nil, nil
+	res := s.analyzeUsage(val)
+	foundDyn := res&statusDyn != 0
+	foundHardWrite := res&statusHardWrite != 0
+
+	if foundDyn {
+		if !foundHardWrite {
+			return nil, nil
+		}
 	}
 
 	if issueDescription == "" {
@@ -184,7 +230,9 @@ func (s *analysisState) raiseIssue(val ssa.Value, issueDescription string,
 			issueDescription += " by passing hardcoded slice literal"
 			allIssues = append(allIssues, newIssue(s.pass.Analyzer.Name, issueDescription, s.pass.Fset, fromInstr.Pos(), issue.High, issue.High))
 		case "makeslice":
-			foundDyn, foundHard := s.analyzeUsage(v)
+			res := s.analyzeUsage(v)
+			foundDyn := res&statusDyn != 0
+			foundHard := res&statusHard != 0 || res&statusHardWrite != 0
 			if foundHard {
 				issueDescription += " by passing a buffer from make modified with hardcoded values"
 				allIssues = append(allIssues, newIssue(s.pass.Analyzer.Name, issueDescription, s.pass.Fset, fromInstr.Pos(), issue.High, issue.High))
@@ -192,6 +240,17 @@ func (s *analysisState) raiseIssue(val ssa.Value, issueDescription string,
 				issueDescription += " by passing a zeroed buffer from make"
 				allIssues = append(allIssues, newIssue(s.pass.Analyzer.Name, issueDescription, s.pass.Fset, fromInstr.Pos(), issue.High, issue.High))
 			}
+		}
+	case *ssa.MakeSlice:
+		res := s.analyzeUsage(v)
+		foundDyn := res&statusDyn != 0
+		foundHard := res&statusHard != 0 || res&statusHardWrite != 0
+		if foundHard {
+			issueDescription += " by passing a buffer from make modified with hardcoded values"
+			allIssues = append(allIssues, newIssue(s.pass.Analyzer.Name, issueDescription, s.pass.Fset, fromInstr.Pos(), issue.High, issue.High))
+		} else if !foundDyn {
+			issueDescription += " by passing a zeroed buffer from make"
+			allIssues = append(allIssues, newIssue(s.pass.Analyzer.Name, issueDescription, s.pass.Fset, fromInstr.Pos(), issue.High, issue.High))
 		}
 	case *ssa.Call:
 		if s.isHardcoded(v) {
@@ -244,9 +303,16 @@ func (s *analysisState) isHardcoded(val ssa.Value) bool {
 			return true
 		}
 		if v.Comment == "makeslice" {
-			dyn, hard := s.analyzeUsage(v)
-			return hard || !dyn
+			res := s.analyzeUsage(v)
+			foundDyn := res&statusDyn != 0
+			foundHard := res&statusHard != 0 || res&statusHardWrite != 0
+			return foundHard || !foundDyn
 		}
+	case *ssa.MakeSlice:
+		res := s.analyzeUsage(v)
+		foundDyn := res&statusDyn != 0
+		foundHard := res&statusHard != 0 || res&statusHardWrite != 0
+		return foundHard || !foundDyn
 	case *ssa.Call:
 		if fn, ok := v.Call.Value.(*ssa.Function); ok {
 			if res, ok := s.funcCache[fn]; ok {
@@ -271,10 +337,8 @@ func (s *analysisState) isFuncReturnsHardcoded(fn *ssa.Function) bool {
 	for _, block := range fn.Blocks {
 		for _, instr := range block.Instrs {
 			if ret, ok := instr.(*ssa.Return); ok {
-				for _, res := range ret.Results {
-					if s.isHardcoded(res) {
-						return true
-					}
+				if slices.ContainsFunc(ret.Results, s.isHardcoded) {
+					return true
 				}
 			}
 		}
@@ -283,82 +347,75 @@ func (s *analysisState) isFuncReturnsHardcoded(fn *ssa.Function) bool {
 }
 
 const (
-	statusVisiting = 1 << 0
-	statusHard     = 1 << 1
-	statusDyn      = 1 << 2
+	statusVisiting  = 1 << 0
+	statusHard      = 1 << 1
+	statusDyn       = 1 << 2
+	statusHardWrite = 1 << 3
 )
 
 // analyzeUsage performs data-flow analysis to determine if a value is derived from
 // a dynamic source (like crypto/rand) or if it's fixed/hardcoded.
-func (s *analysisState) analyzeUsage(val ssa.Value) (bool, bool) {
+func (s *analysisState) analyzeUsage(val ssa.Value) uint8 {
 	if val == nil || s.depth > MaxDepth {
-		return false, false
+		return 0
 	}
-	if state, ok := s.usageCache[val]; ok {
-		if state == statusVisiting { // currently visiting
-			return false, false
-		}
-		return state&statusDyn != 0, state&statusHard != 0
+	if res, ok := s.usageCache[val]; ok {
+		return res
 	}
-	s.usageCache[val] = statusVisiting // mark as visiting
+	s.usageCache[val] = statusVisiting
+
 	s.depth++
 	defer func() { s.depth-- }()
 
-	dyn := false
-	hard := false
-
+	var res uint8
 	switch v := val.(type) {
 	case *ssa.Const, *ssa.Global:
-		hard = true
+		res |= statusHard
 	case *ssa.Alloc:
 		if v.Comment == "slicelit" {
-			hard = true
+			res |= statusHard
 		}
 	case *ssa.Convert:
-		d, h := s.analyzeUsage(v.X)
-		dyn, hard = dyn || d, hard || h
+		res |= s.analyzeUsage(v.X)
 	case *ssa.Slice:
-		d, h := s.analyzeUsage(v.X)
-		if s.isFullSlice(v) {
-			dyn = dyn || d
+		res |= s.analyzeUsage(v.X)
+		if !s.isFullSlice(v) {
+			// If not full slice, unset Dyn bit from result as it might not be covered
+			res &= ^uint8(statusDyn)
 		}
-		hard = hard || h
 	case *ssa.UnOp:
 		if v.Op == token.MUL {
-			d, h := s.analyzeUsage(v.X)
-			dyn, hard = dyn || d, hard || h
+			res |= s.analyzeUsage(v.X)
 		}
 	case *ssa.Call:
 		if s.isHardcoded(v) {
-			hard = true
+			res |= statusHard
 		}
 	case *ssa.Parameter:
 		if s.isHardcoded(v) {
-			hard = true
+			res |= statusHard
 		}
 	}
 
 	if refs := val.Referrers(); refs != nil {
 		for _, ref := range *refs {
-			if dyn && hard {
-				res := uint8(0)
-				res |= statusDyn | statusHard
-				s.usageCache[val] = res
-				return true, true
+			res |= s.analyzeReferrer(ref, val)
+			if (res&statusDyn != 0) && (res&statusHard != 0) && (res&statusHardWrite != 0) {
+				finalRes := res & (^uint8(statusVisiting))
+				s.usageCache[val] = finalRes
+				return finalRes
 			}
-			d, h := s.analyzeReferrer(ref, val)
-			dyn, hard = dyn || d, hard || h
 		}
 	}
 
-	if sl, ok := val.(*ssa.Slice); ok && !dyn {
+	if sl, ok := val.(*ssa.Slice); ok && (res&statusDyn == 0) {
 		if sourceRefs := sl.X.Referrers(); sourceRefs != nil {
 			for _, sr := range *sourceRefs {
 				if other, ok := sr.(*ssa.Slice); ok && other != sl {
 					if isSubSlice(sl, other) {
-						d, _ := s.analyzeUsage(other)
-						if d {
-							dyn = true
+						otherRes := s.analyzeUsage(other)
+						if (otherRes&(^uint8(statusVisiting)))&statusDyn != 0 {
+							res |= statusDyn
 							break
 						}
 					}
@@ -367,25 +424,22 @@ func (s *analysisState) analyzeUsage(val ssa.Value) (bool, bool) {
 		}
 	}
 
-	res := uint8(0)
-	if dyn {
-		res |= statusDyn
-	}
-	if hard {
-		res |= statusHard
-	}
-	s.usageCache[val] = res
-	return dyn, hard
+	// Store final result (removing visiting bit)
+	finalRes := res & (^uint8(statusVisiting))
+	s.usageCache[val] = finalRes
+	return finalRes
 }
 
-func (s *analysisState) analyzeReferrer(ref ssa.Instruction, val ssa.Value) (bool, bool) {
-	dyn := false
-	hard := false
+func (s *analysisState) analyzeReferrer(ref ssa.Instruction, val ssa.Value) uint8 {
+	var res uint8
 	switch r := ref.(type) {
 	case *ssa.Call:
 		isDynamic := false
 		isCipher := false
-		if fn, ok := r.Call.Value.(*ssa.Function); ok && fn.Pkg != nil && fn.Pkg.Pkg != nil {
+		callValue := r.Call.Value
+
+		// 1. Determine fast path status (Dynamic/Cipher)
+		if fn, ok := callValue.(*ssa.Function); ok && fn.Pkg != nil && fn.Pkg.Pkg != nil {
 			path := fn.Pkg.Pkg.Path()
 			funcName := path + "." + fn.Name()
 			if dynamicFuncs[funcName] {
@@ -397,18 +451,6 @@ func (s *analysisState) analyzeReferrer(ref ssa.Instruction, val ssa.Value) (boo
 						break
 					}
 				}
-			}
-			if !isDynamic && !isCipher {
-				// User function or other library - propagate usage
-				for i, arg := range r.Call.Args {
-					if arg == val {
-						if i < len(fn.Params) {
-							d, h := s.analyzeUsage(fn.Params[i])
-							dyn, hard = dyn || d, hard || h
-						}
-					}
-				}
-				return dyn, hard
 			}
 		} else if r.Call.IsInvoke() && r.Call.Method != nil && r.Call.Method.Pkg() != nil {
 			// Interface method invocation
@@ -424,9 +466,8 @@ func (s *analysisState) analyzeReferrer(ref ssa.Instruction, val ssa.Value) (boo
 				}
 			}
 		} else {
-			// Fallback for non-functions or when package info is missing
-			callStr := r.Call.Value.String()
-			// Check against dynamic functions (naive check)
+			// Fallback string matching
+			callStr := callValue.String()
 			for k := range dynamicFuncs {
 				if strings.Contains(callStr, k) {
 					isDynamic = true
@@ -441,59 +482,90 @@ func (s *analysisState) analyzeReferrer(ref ssa.Instruction, val ssa.Value) (boo
 					}
 				}
 			}
-			if !isDynamic && !isCipher {
-				if fn, ok := r.Call.Value.(*ssa.Function); ok && fn.Pkg != nil {
-					// Propagate dynamic/hardcoded status through function arguments
-					for i, arg := range r.Call.Args {
-						if arg == val {
-							if i < len(fn.Params) {
-								d, h := s.analyzeUsage(fn.Params[i])
-								dyn, hard = dyn || d, hard || h
-							}
-						}
-					}
-					return dyn, hard
-				}
-			}
 		}
 
 		if isDynamic {
-			dyn = true
-			return dyn, hard
+			return res | statusDyn
 		}
 		if isCipher {
-			return dyn, hard
+			return res
 		}
-		dyn = true
+
+		// 2. Generic Function Resolution and Recursive Analysis
+		clear(s.funcResolutionMap)
+		funcs := s.resolveFuncs(callValue)
+		if len(funcs) == 0 {
+			// If we couldn't resolve any functions (unknown library or dynamic call),
+			// assume it might be dynamic/safe to avoid false positives.
+			return statusDyn
+		}
+		for _, fn := range funcs {
+			for i, arg := range r.Call.Args {
+				if arg == val && i < len(fn.Params) {
+					res |= s.analyzeUsage(fn.Params[i])
+				}
+			}
+		}
+		return res
+
 	case *ssa.Slice:
-		d, h := s.analyzeUsage(r)
-		if s.isFullSlice(r) {
-			dyn = dyn || d
+		if refs := r.Referrers(); refs != nil {
+			for _, ref := range *refs {
+				res |= s.analyzeReferrer(ref, r)
+			}
 		}
-		hard = hard || h
+		if !s.isFullSlice(r) {
+			res &= ^uint8(statusDyn)
+		}
 	case *ssa.IndexAddr, *ssa.Index, *ssa.Lookup:
 		if vVal, ok := r.(ssa.Value); ok {
-			_, h := s.analyzeUsage(vVal)
-			hard = hard || h
+			rRes := s.analyzeUsage(vVal)
+			res |= (rRes & (statusHard | statusHardWrite))
 		}
 	case *ssa.UnOp:
 		if r.Op == token.MUL {
-			d, h := s.analyzeUsage(r)
-			dyn, hard = dyn || d, hard || h
+			res |= s.analyzeUsage(r)
 		}
 	case *ssa.Convert:
-		d, h := s.analyzeUsage(r)
-		dyn, hard = dyn || d, hard || h
+		res |= s.analyzeUsage(r)
 	case *ssa.Store:
 		if r.Addr == val {
 			if s.isHardcoded(r.Val) {
-				hard = true
-			} else {
-				dyn = true
+				res |= statusHard | statusHardWrite
+				return res
 			}
 		}
 	}
-	return dyn, hard
+	return res
+}
+
+func (s *analysisState) resolveFuncs(val ssa.Value) []*ssa.Function {
+	if val == nil || s.depth > MaxDepth {
+		return nil
+	}
+	if s.funcResolutionMap[val] {
+		return nil
+	}
+	s.funcResolutionMap[val] = true
+
+	s.depth++
+	defer func() { s.depth-- }()
+
+	switch v := val.(type) {
+	case *ssa.Function:
+		return []*ssa.Function{v}
+	case *ssa.MakeClosure:
+		return []*ssa.Function{v.Fn.(*ssa.Function)}
+	case *ssa.Phi:
+		var funcs []*ssa.Function
+		for _, edge := range v.Edges {
+			if f := s.resolveFuncs(edge); f != nil {
+				funcs = append(funcs, f...)
+			}
+		}
+		return funcs
+	}
+	return nil
 }
 
 func (s *analysisState) isFullSlice(sl *ssa.Slice) bool {
