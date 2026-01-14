@@ -30,6 +30,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 // envGoModVersion overrides the Go version detection.
@@ -164,6 +165,20 @@ func GetCallObject(n ast.Node, ctx *Context) (*ast.CallExpr, types.Object) {
 // GetCallInfo returns the package or type and name  associated with a
 // call expression.
 func GetCallInfo(n ast.Node, ctx *Context) (string, string, error) {
+	if ctx.callCache != nil {
+		if res, ok := ctx.callCache[n]; ok {
+			return res.packageName, res.funcName, res.err
+		}
+	}
+
+	packageName, funcName, err := getCallInfo(n, ctx)
+	if ctx.callCache != nil {
+		ctx.callCache[n] = callInfo{packageName, funcName, err}
+	}
+	return packageName, funcName, err
+}
+
+func getCallInfo(n ast.Node, ctx *Context) (string, string, error) {
 	switch node := n.(type) {
 	case *ast.CallExpr:
 		switch fn := node.Fun.(type) {
@@ -309,16 +324,10 @@ func GetImportedNames(path string, ctx *Context) (names []string, found bool) {
 // GetImportPath resolves the full import path of an identifier based on
 // the imports in the current context(including aliases).
 func GetImportPath(name string, ctx *Context) (string, bool) {
-	for path := range ctx.Imports.Imported {
-		if imported, ok := GetImportedNames(path, ctx); ok {
-			for _, n := range imported {
-				if n == name {
-					return path, true
-				}
-			}
-		}
+	if ctx.Imports != nil && ctx.Imports.AliasMap != nil {
+		path, ok := ctx.Imports.AliasMap[name]
+		return path, ok
 	}
-
 	return "", false
 }
 
@@ -514,18 +523,29 @@ func RootPath(root string) (string, error) {
 	return filepath.Abs(root)
 }
 
-// GoVersion returns parsed version of Go mod version and fallback to runtime version if not found.
+// goVersionCache stores the parsed version of Go.
+var (
+	goVersionOnce  sync.Once
+	goVersionCache [3]int
+)
+
+// GoVersion returns the parsed version of the Go environment.
+// It uses sync.Once to cache the result for future calls.
 func GoVersion() (int, int, int) {
-	if env, ok := os.LookupEnv(envGoModVersion); ok {
-		return parseGoVersion(strings.TrimPrefix(env, "go"))
-	}
+	goVersionOnce.Do(func() {
+		if env, ok := os.LookupEnv(envGoModVersion); ok {
+			goVersionCache[0], goVersionCache[1], goVersionCache[2] = parseGoVersion(strings.TrimPrefix(env, "go"))
+			return
+		}
 
-	goVersion, err := goModVersion()
-	if err != nil {
-		return parseGoVersion(strings.TrimPrefix(runtime.Version(), "go"))
-	}
-
-	return parseGoVersion(goVersion)
+		goVersion, err := goModVersion()
+		if err != nil {
+			goVersionCache[0], goVersionCache[1], goVersionCache[2] = parseGoVersion(strings.TrimPrefix(runtime.Version(), "go"))
+			return
+		}
+		goVersionCache[0], goVersionCache[1], goVersionCache[2] = parseGoVersion(goVersion)
+	})
+	return goVersionCache[0], goVersionCache[1], goVersionCache[2]
 }
 
 type goListOutput struct {

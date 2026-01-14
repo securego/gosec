@@ -27,12 +27,15 @@ var versioningPackagePattern = regexp.MustCompile(`v[0-9]+$`)
 type ImportTracker struct {
 	// Imported is a map of Imported with their associated names/aliases.
 	Imported map[string][]string
+	// AliasMap is a map of aliases/names to their associated import paths.
+	AliasMap map[string]string
 }
 
 // NewImportTracker creates an empty Import tracker instance
 func NewImportTracker() *ImportTracker {
 	return &ImportTracker{
 		Imported: make(map[string][]string),
+		AliasMap: make(map[string]string),
 	}
 }
 
@@ -47,6 +50,7 @@ func (t *ImportTracker) TrackFile(file *ast.File) {
 func (t *ImportTracker) TrackPackages(pkgs ...*types.Package) {
 	for _, pkg := range pkgs {
 		t.Imported[pkg.Path()] = []string{pkg.Name()}
+		t.AliasMap[pkg.Name()] = pkg.Path()
 	}
 }
 
@@ -56,10 +60,14 @@ func (t *ImportTracker) TrackImport(imported *ast.ImportSpec) {
 	if imported.Name != nil {
 		if imported.Name.Name != "_" {
 			// Aliased import
-			t.Imported[importPath] = append(t.Imported[importPath], imported.Name.String())
+			alias := imported.Name.String()
+			t.Imported[importPath] = append(t.Imported[importPath], alias)
+			t.AliasMap[alias] = importPath
 		}
 	} else {
-		t.Imported[importPath] = append(t.Imported[importPath], importName(importPath))
+		name := importName(importPath)
+		t.Imported[importPath] = append(t.Imported[importPath], name)
+		t.AliasMap[name] = importPath
 	}
 }
 

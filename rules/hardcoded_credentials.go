@@ -190,6 +190,7 @@ type credentials struct {
 	perCharThreshold float64
 	truncate         int
 	ignoreEntropy    bool
+	minEntropyLength int
 }
 
 func truncate(s string, n int) string {
@@ -200,20 +201,49 @@ func truncate(s string, n int) string {
 }
 
 func (r *credentials) isHighEntropyString(str string) bool {
+	// Pre-filter: keys/passwords should be of meaningful length.
+	if len(str) < r.minEntropyLength {
+		return false
+	}
+
 	s := truncate(str, r.truncate)
+	key := gosec.GlobalKey{Kind: 1, Str: s}
+	if val, ok := gosec.GlobalCache.Get(key); ok {
+		return val.(bool)
+	}
+
 	info := zxcvbn.PasswordStrength(s, []string{})
 	entropyPerChar := info.Entropy / float64(len(s))
-	return (info.Entropy >= r.entropyThreshold ||
+	res := (info.Entropy >= r.entropyThreshold ||
 		(info.Entropy >= (r.entropyThreshold/2) &&
 			entropyPerChar >= r.perCharThreshold))
+	gosec.GlobalCache.Add(key, res)
+	return res
 }
 
-func (r *credentials) isSecretPattern(str string) (bool, string) {
-	for _, pattern := range secretsPatterns {
-		if pattern.regexp.MatchString(str) {
-			return true, pattern.name
+type secretResult struct {
+	ok          bool
+	patternName string
+}
+
+func (r *credentials) isSecretPattern(val string) (bool, string) {
+	// Pre-filter: keys/passwords should be of meaningful length.
+	if len(val) < r.minEntropyLength {
+		return false, ""
+	}
+
+	key := gosec.GlobalKey{Kind: 2, Str: val}
+	if res, ok := gosec.GlobalCache.Get(key); ok {
+		secretRes := res.(secretResult)
+		return secretRes.ok, secretRes.patternName
+	}
+	for _, p := range secretsPatterns {
+		if gosec.RegexMatch(p.regexp, val) {
+			gosec.GlobalCache.Add(key, secretResult{true, p.name})
+			return true, p.name
 		}
 	}
+	gosec.GlobalCache.Add(key, secretResult{false, ""})
 	return false, ""
 }
 
@@ -235,10 +265,10 @@ func (r *credentials) matchAssign(assign *ast.AssignStmt, ctx *gosec.Context) (*
 	for _, i := range assign.Lhs {
 		if ident, ok := i.(*ast.Ident); ok {
 			// First check LHS to find anything being assigned to variables whose name appears to be a cred
-			if r.pattern.MatchString(ident.Name) {
+			if gosec.RegexMatch(r.pattern, ident.Name) {
 				for _, e := range assign.Rhs {
 					if val, err := gosec.GetString(e); err == nil {
-						if r.ignoreEntropy || (!r.ignoreEntropy && r.isHighEntropyString(val)) {
+						if r.ignoreEntropy || r.isHighEntropyString(val) {
 							return ctx.NewIssue(assign, r.ID(), r.What, r.Severity, r.Confidence), nil
 						}
 					}
@@ -267,13 +297,13 @@ func (r *credentials) matchValueSpec(valueSpec *ast.ValueSpec, ctx *gosec.Contex
 	// Running match against the variable name(s) first. Will catch any creds whose var name matches the pattern,
 	// then will go back over to check the values themselves.
 	for index, ident := range valueSpec.Names {
-		if r.pattern.MatchString(ident.Name) && valueSpec.Values != nil {
+		if gosec.RegexMatch(r.pattern, ident.Name) && valueSpec.Values != nil {
 			// const foo, bar = "same value"
 			if len(valueSpec.Values) <= index {
 				index = len(valueSpec.Values) - 1
 			}
 			if val, err := gosec.GetString(valueSpec.Values[index]); err == nil {
-				if r.ignoreEntropy || (!r.ignoreEntropy && r.isHighEntropyString(val)) {
+				if r.ignoreEntropy || r.isHighEntropyString(val) {
 					return ctx.NewIssue(valueSpec, r.ID(), r.What, r.Severity, r.Confidence), nil
 				}
 			}
@@ -301,13 +331,13 @@ func (r *credentials) matchEqualityCheck(binaryExpr *ast.BinaryExpr, ctx *gosec.
 			ident, _ = binaryExpr.Y.(*ast.Ident)
 		}
 
-		if ident != nil && r.pattern.MatchString(ident.Name) {
+		if ident != nil && gosec.RegexMatch(r.pattern, ident.Name) {
 			valueNode := binaryExpr.Y
 			if !ok {
 				valueNode = binaryExpr.X
 			}
 			if val, err := gosec.GetString(valueNode); err == nil {
-				if r.ignoreEntropy || (!r.ignoreEntropy && r.isHighEntropyString(val)) {
+				if r.ignoreEntropy || r.isHighEntropyString(val) {
 					return ctx.NewIssue(binaryExpr, r.ID(), r.What, r.Severity, r.Confidence), nil
 				}
 			}
@@ -338,12 +368,12 @@ func (r *credentials) matchCompositeLit(lit *ast.CompositeLit, ctx *gosec.Contex
 			// Check if the key matches the credential pattern (struct field name or map string literal key)
 			matchedKey := false
 			if ident, ok := kv.Key.(*ast.Ident); ok {
-				if r.pattern.MatchString(ident.Name) {
+				if gosec.RegexMatch(r.pattern, ident.Name) {
 					matchedKey = true
 				}
 			}
 			if keyStr, err := gosec.GetString(kv.Key); err == nil {
-				if r.pattern.MatchString(keyStr) {
+				if gosec.RegexMatch(r.pattern, keyStr) {
 					matchedKey = true
 				}
 			}
@@ -378,8 +408,9 @@ func NewHardcodedCredentials(id string, conf gosec.Config) (gosec.Rule, []ast.No
 	perCharThreshold := 3.0
 	ignoreEntropy := false
 	truncateString := 16
+	minEntropyLength := 8
 	if val, ok := conf[id]; ok {
-		conf := val.(map[string]interface{})
+		conf := val.(map[string]any)
 		if configPattern, ok := conf["pattern"]; ok {
 			if cfgPattern, ok := configPattern.(string); ok {
 				pattern = cfgPattern
@@ -412,6 +443,13 @@ func NewHardcodedCredentials(id string, conf gosec.Config) (gosec.Rule, []ast.No
 				}
 			}
 		}
+		if configMinEntropyLength, ok := conf["min_entropy_length"]; ok {
+			if cfgMinEntropyLength, ok := configMinEntropyLength.(string); ok {
+				if parsedInt, err := strconv.Atoi(cfgMinEntropyLength); err == nil {
+					minEntropyLength = parsedInt
+				}
+			}
+		}
 	}
 
 	return &credentials{
@@ -420,6 +458,7 @@ func NewHardcodedCredentials(id string, conf gosec.Config) (gosec.Rule, []ast.No
 		perCharThreshold: perCharThreshold,
 		ignoreEntropy:    ignoreEntropy,
 		truncate:         truncateString,
+		minEntropyLength: minEntropyLength,
 		MetaData:         issue.NewMetaData(id, "Potential hardcoded credentials", issue.High, issue.Low),
 	}, []ast.Node{(*ast.AssignStmt)(nil), (*ast.ValueSpec)(nil), (*ast.BinaryExpr)(nil), (*ast.CompositeLit)(nil)}
 }

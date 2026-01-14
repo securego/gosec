@@ -152,6 +152,15 @@ type Context struct {
 	Config       Config
 	Ignores      ignores
 	PassedValues map[string]any
+	// callCache is a per-package cache for GetCallInfo results to avoid redundant type resolution.
+	callCache map[ast.Node]callInfo
+}
+
+// callInfo stores the result of a function call resolution for caching.
+type callInfo struct {
+	packageName string
+	funcName    string
+	err         error
 }
 
 // GetFileAtNodePos returns the file at the node position in the file set available in the context.
@@ -481,6 +490,7 @@ func (gosec *Analyzer) checkRules(pkg *packages.Package) ([]*issue.Issue, *Metri
 			PkgFiles:     pkg.Syntax,
 			Imports:      NewImportTracker(),
 			PassedValues: make(map[string]any),
+			callCache:    make(map[ast.Node]callInfo),
 		}
 
 		visitor.context = ctx
@@ -719,14 +729,21 @@ func (gosec *Analyzer) AppendError(file string, err error) {
 // findNoSecDirective checks if the comment group contains `#nosec` or `//gosec:disable` directive.
 // If found, it returns true and the directive's arguments.
 func findNoSecDirective(group *ast.CommentGroup, noSecDefaultTag, noSecAlternativeTag string) (bool, string) {
-	// Check if the comment grounp has a nosec comment.
+	if group == nil {
+		return false, ""
+	}
+
+	// Join all comments in the group once to support multi-line nosec tags
+	text := group.Text()
+
+	// Check for nosec tags
 	for _, tag := range []string{noSecDefaultTag, noSecAlternativeTag} {
-		if found, args := findNoSecTag(group, tag); found {
+		if found, args := findNoSecTag(text, tag); found {
 			return true, args
 		}
 	}
 
-	// Check if the comment group has a directive comment.
+	// Check for directive comments individually
 	for _, c := range group.List {
 		match := directiveRegexp.FindStringSubmatch(c.Text)
 		if len(match) > 0 {
@@ -737,12 +754,26 @@ func findNoSecDirective(group *ast.CommentGroup, noSecDefaultTag, noSecAlternati
 	return false, ""
 }
 
-func findNoSecTag(group *ast.CommentGroup, tag string) (bool, string) {
-	comment := strings.TrimSpace(group.Text())
+func findNoSecTag(text, tag string) (bool, string) {
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return false, ""
+	}
 
-	if strings.HasPrefix(comment, tag) || regexp.MustCompile("\n *"+tag).MatchString(comment) {
-		// Discard what's in front of the nosec tag.
-		return true, strings.SplitN(comment, tag, 2)[1]
+	if strings.HasPrefix(text, tag) {
+		return true, text[len(tag):]
+	}
+
+	if idx := strings.Index(text, tag); idx > 0 {
+		// Check if it's at the beginning of a line (possibly with space)
+		for i := idx - 1; i >= 0; i-- {
+			if text[i] == '\n' {
+				return true, text[idx+len(tag):]
+			}
+			if text[i] != ' ' && text[i] != '\t' {
+				break
+			}
+		}
 	}
 
 	return false, ""
