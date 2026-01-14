@@ -1667,7 +1667,7 @@ var _ = Describe("Analyzer", func() {
 	Context("when parsing errors from a package", func() {
 		It("should return no error when the error list is empty", func() {
 			pkg := &packages.Package{}
-			err := analyzer.ParseErrors(pkg)
+			_, err := gosec.ParseErrors(pkg)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
@@ -1680,9 +1680,8 @@ var _ = Describe("Analyzer", func() {
 					},
 				},
 			}
-			err := analyzer.ParseErrors(pkg)
+			errors, err := gosec.ParseErrors(pkg)
 			Expect(err).ShouldNot(HaveOccurred())
-			_, _, errors := analyzer.Report()
 			Expect(errors).To(HaveLen(1))
 			for _, ferr := range errors {
 				Expect(ferr).To(HaveLen(1))
@@ -1701,9 +1700,8 @@ var _ = Describe("Analyzer", func() {
 					},
 				},
 			}
-			err := analyzer.ParseErrors(pkg)
+			errors, err := gosec.ParseErrors(pkg)
 			Expect(err).ShouldNot(HaveOccurred())
-			_, _, errors := analyzer.Report()
 			Expect(errors).To(HaveLen(1))
 			for _, ferr := range errors {
 				Expect(ferr).To(HaveLen(1))
@@ -1722,9 +1720,8 @@ var _ = Describe("Analyzer", func() {
 					},
 				},
 			}
-			err := analyzer.ParseErrors(pkg)
+			errors, err := gosec.ParseErrors(pkg)
 			Expect(err).ShouldNot(HaveOccurred())
-			_, _, errors := analyzer.Report()
 			Expect(errors).To(HaveLen(1))
 			for _, ferr := range errors {
 				Expect(ferr).To(HaveLen(1))
@@ -1743,7 +1740,7 @@ var _ = Describe("Analyzer", func() {
 					},
 				},
 			}
-			err := analyzer.ParseErrors(pkg)
+			_, err := gosec.ParseErrors(pkg)
 			Expect(err).Should(HaveOccurred())
 		})
 
@@ -1756,7 +1753,7 @@ var _ = Describe("Analyzer", func() {
 					},
 				},
 			}
-			err := analyzer.ParseErrors(pkg)
+			_, err := gosec.ParseErrors(pkg)
 			Expect(err).Should(HaveOccurred())
 		})
 
@@ -1773,9 +1770,8 @@ var _ = Describe("Analyzer", func() {
 					},
 				},
 			}
-			err := analyzer.ParseErrors(pkg)
+			errors, err := gosec.ParseErrors(pkg)
 			Expect(err).ShouldNot(HaveOccurred())
-			_, _, errors := analyzer.Report()
 			Expect(errors).To(HaveLen(1))
 			for _, ferr := range errors {
 				Expect(ferr).To(HaveLen(2))
@@ -1816,16 +1812,7 @@ var _ = Describe("Analyzer", func() {
 		})
 
 		It("should add a new error", func() {
-			pkg := &packages.Package{
-				Errors: []packages.Error{
-					{
-						Pos: "file:1:2",
-						Msg: "build error",
-					},
-				},
-			}
-			err := analyzer.ParseErrors(pkg)
-			Expect(err).ShouldNot(HaveOccurred())
+			analyzer.AppendError("file", errors.New("build error"))
 			analyzer.AppendError("file", errors.New("file build error"))
 			_, _, errors := analyzer.Report()
 			Expect(errors).To(HaveLen(1))
