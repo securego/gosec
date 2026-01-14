@@ -38,7 +38,7 @@ jobs:
       - name: Run Gosec Security Scanner
         uses: securego/gosec@master
         with:
-          args: ./...
+          args: '-exclude-dir=testdata ./...'
       - name: Run Tests
         run: make test
       - name: Perf Diff

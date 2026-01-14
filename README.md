@@ -144,6 +144,21 @@ jobs:
           sarif_file: results.sarif
 ```
 
+### Go Analysis
+
+The `goanalysis` package provides a [`golang.org/x/tools/go/analysis.Analyzer`](https://pkg.go.dev/golang.org/x/tools/go/analysis) for integration with tools that support the standard Go analysis interface, such as Bazel's [nogo](https://github.com/bazelbuild/rules_go/blob/master/go/nogo.rst) framework:
+
+```starlark
+nogo(
+    name = "nogo",
+    deps = [
+        "@com_github_securego_gosec_v2//goanalysis",
+        # add more analyzers as needed
+    ],
+    visibility = ["//visibility:public"],
+)
+```
+
 ### Local Installation
 
 ```bash
