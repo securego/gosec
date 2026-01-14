@@ -16,6 +16,7 @@ package analyzers
 
 import (
 	"fmt"
+	"go/types"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/buildssa"
@@ -34,17 +35,20 @@ func newConversionOverflowAnalyzer(id string, description string) *analysis.Anal
 	}
 }
 
+type conversionPair struct {
+	src types.BasicKind
+	dst types.BasicKind
+}
+
 type overflowState struct {
-	pass       *analysis.Pass
-	analyzer   *RangeAnalyzer
-	visitedMap map[ssa.Value]bool
+	*BaseAnalyzerState
+	msgCache map[conversionPair]string
 }
 
 func newOverflowState(pass *analysis.Pass) *overflowState {
 	return &overflowState{
-		pass:       pass,
-		analyzer:   NewRangeAnalyzer(),
-		visitedMap: make(map[ssa.Value]bool),
+		BaseAnalyzerState: NewBaseState(pass),
+		msgCache:          make(map[conversionPair]string),
 	}
 }
 
@@ -56,28 +60,52 @@ func runConversionOverflow(pass *analysis.Pass) (any, error) {
 	}
 
 	state := newOverflowState(pass)
+	defer state.Release()
 	issues := []*issue.Issue{}
 	for _, mcall := range ssaResult.SSA.SrcFuncs {
-		state.analyzer.ResetCache()
+		state.Reset()
 		for _, block := range mcall.DomPreorder() {
 			for _, instr := range block.Instrs {
 				switch instr := instr.(type) {
 				case *ssa.Convert:
-					src := instr.X.Type().Underlying().String()
-					dst := instr.Type().Underlying().String()
-					if isIntOverflow(src, dst) {
-						if state.isSafeConversion(instr) {
+					srcInfo, err := GetIntTypeInfo(instr.X.Type())
+					if err != nil {
+						continue
+					}
+					dstInfo, err := GetIntTypeInfo(instr.Type())
+					if err != nil {
+						continue
+					}
+
+					if hasOverflow(srcInfo, dstInfo) {
+						if state.isSafeConversion(instr, dstInfo) {
 							continue
 						}
 
-						issue := newIssue(pass.Analyzer.Name,
-							fmt.Sprintf("integer overflow conversion %s -> %s", src, dst),
+						srcBasic, _ := instr.X.Type().Underlying().(*types.Basic)
+						dstBasic, _ := instr.Type().Underlying().(*types.Basic)
+
+						if srcBasic == nil || dstBasic == nil {
+							continue
+						}
+
+						pair := conversionPair{
+							src: srcBasic.Kind(),
+							dst: dstBasic.Kind(),
+						}
+						msg, ok := state.msgCache[pair]
+						if !ok {
+							msg = fmt.Sprintf("integer overflow conversion %s -> %s", srcBasic.Name(), dstBasic.Name())
+							state.msgCache[pair] = msg
+						}
+
+						issues = append(issues, newIssue(pass.Analyzer.Name,
+							msg,
 							pass.Fset,
 							instr.Pos(),
 							issue.High,
 							issue.Medium,
-						)
-						issues = append(issues, issue)
+						))
 					}
 				}
 			}
@@ -90,51 +118,33 @@ func runConversionOverflow(pass *analysis.Pass) (any, error) {
 	return nil, nil
 }
 
-// isIntOverflow checks if a conversion from src type to dst type can theoretically overflow (e.g., int64 -> int8).
-func isIntOverflow(src string, dst string) bool {
-	srcInt, err := ParseIntType(src)
-	if err != nil {
-		return false
-	}
-
-	dstInt, err := ParseIntType(dst)
-	if err != nil {
-		return false
-	}
-
-	return srcInt.Min < dstInt.Min || srcInt.Max > dstInt.Max
-}
-
 // isSafeConversion checks if a specific conversion instruction is safe from overflow, considering logic and constraints.
-func (s *overflowState) isSafeConversion(instr *ssa.Convert) bool {
-	dstType := instr.Type().Underlying().String()
-
+func (s *overflowState) isSafeConversion(instr *ssa.Convert, dstInt IntTypeInfo) bool {
 	// Check for constant conversions.
 	if constVal, ok := instr.X.(*ssa.Const); ok {
-		if isConstantInRange(constVal, dstType) {
+		if IsConstantInTypeRange(constVal, dstInt) {
 			return true
 		}
 	}
 
 	// Check for explicit range checks.
-	if s.hasRangeCheck(instr.X, instr.Type().Underlying().String(), instr.Block()) {
+	if s.hasRangeCheck(instr.X, dstInt, instr.Block()) {
 		return true
 	}
 	return false
 }
 
+func hasOverflow(srcInfo, dstInfo IntTypeInfo) bool {
+	return srcInfo.Min < dstInfo.Min || srcInfo.Max > dstInfo.Max
+}
+
 // hasRangeCheck determines if there is a valid range check for the given value that ensures safety.
-func (s *overflowState) hasRangeCheck(v ssa.Value, dstType string, block *ssa.BasicBlock) bool {
-	dstInt, err := ParseIntType(dstType)
-	if err != nil {
-		return false
-	}
-
+func (s *overflowState) hasRangeCheck(v ssa.Value, dstInt IntTypeInfo, block *ssa.BasicBlock) bool {
 	// Clear visited map for new resolution
-	clear(s.visitedMap)
+	clear(s.Visited)
 
-	res := s.analyzer.ResolveRange(v, block)
-	defer s.analyzer.releaseResult(res)
+	res := s.Analyzer.ResolveRange(v, block)
+	defer s.Analyzer.releaseResult(res)
 
 	// Check for explicit values
 	if ExplicitValsInRange(res.explicitPositiveVals, res.explicitNegativeVals, dstInt) {
@@ -145,7 +155,7 @@ func (s *overflowState) hasRangeCheck(v ssa.Value, dstType string, block *ssa.Ba
 	if len(block.Preds) > 1 {
 		allPredsSafe := true
 		for _, pred := range block.Preds {
-			if !s.isSafeFromPredecessor(v, dstType, pred, block) {
+			if !s.isSafeFromPredecessor(v, dstInt, pred, block) {
 				allPredsSafe = false
 				break
 			}
@@ -181,62 +191,61 @@ func (s *overflowState) validateRangeLimits(v ssa.Value, res *rangeResult, dstIn
 		return true
 	}
 
-	srcInt, err := ParseIntType(v.Type().Underlying().String())
+	srcInt, err := GetIntTypeInfo(v.Type())
 	if err != nil {
 		return false
 	}
 
 	if dstInt.Signed {
 		if isSrcUnsigned {
-			return maxValueSet && maxValue <= uint64(dstInt.Max)
+			return maxValueSet && maxValue <= dstInt.Max
 		}
 		minSafe := true
 		if srcInt.Min < dstInt.Min {
-			minSafe = minValueSet && toInt64(minValue) >= int64(dstInt.Min)
+			minSafe = minValueSet && toInt64(minValue) >= dstInt.Min
 		}
 		maxSafe := true
 		if srcInt.Max > dstInt.Max {
-			maxSafe = maxValueSet && toInt64(maxValue) <= toInt64(uint64(dstInt.Max))
+			maxSafe = maxValueSet && toInt64(maxValue) <= toInt64(dstInt.Max)
 		}
 		return minSafe && maxSafe
 	}
 	if isSrcUnsigned {
-		return maxValueSet && maxValue <= uint64(dstInt.Max)
+		return maxValueSet && maxValue <= dstInt.Max
 	}
 	minSafe := true
 	if srcInt.Min < 0 {
 		minSafe = minValueSet && toInt64(minValue) >= 0
 	}
 	maxSafe := true
-	if uint64(srcInt.Max) > uint64(dstInt.Max) {
-		maxSafe = maxValueSet && maxValue <= uint64(dstInt.Max)
+	if srcInt.Max > dstInt.Max {
+		maxSafe = maxValueSet && maxValue <= dstInt.Max
 	}
 	return minSafe && maxSafe
 }
 
-func (s *overflowState) isSafeFromPredecessor(v ssa.Value, dstType string, pred *ssa.BasicBlock, targetBlock *ssa.BasicBlock) bool {
+func (s *overflowState) isSafeFromPredecessor(v ssa.Value, dstInt IntTypeInfo, pred *ssa.BasicBlock, targetBlock *ssa.BasicBlock) bool {
 	if vIf, ok := pred.Instrs[len(pred.Instrs)-1].(*ssa.If); ok {
-		dstInt, _ := ParseIntType(dstType)
 		isSrcUnsigned := isUint(v)
 		for i, succ := range pred.Succs {
 			if succ == targetBlock {
 				// We took this specific edge.
-				result := s.analyzer.getResultRangeForIfEdge(vIf, i == 0, v)
-				defer s.analyzer.releaseResult(result)
+				result := s.Analyzer.getResultRangeForIfEdge(vIf, i == 0, v)
+				defer s.Analyzer.releaseResult(result)
 
 				if result.isRangeCheck {
 					var safe bool
 					if dstInt.Signed {
 						if isSrcUnsigned {
-							safe = result.maxValueSet && result.maxValue <= uint64(dstInt.Max)
+							safe = result.maxValueSet && result.maxValue <= dstInt.Max
 						} else {
-							safe = (result.minValueSet && toInt64(result.minValue) >= int64(dstInt.Min)) && (result.maxValueSet && toInt64(result.maxValue) <= toInt64(uint64(dstInt.Max)))
+							safe = (result.minValueSet && toInt64(result.minValue) >= dstInt.Min) && (result.maxValueSet && toInt64(result.maxValue) <= toInt64(dstInt.Max))
 						}
 					} else {
 						if isSrcUnsigned {
-							safe = result.maxValueSet && result.maxValue <= uint64(dstInt.Max)
+							safe = result.maxValueSet && result.maxValue <= dstInt.Max
 						} else {
-							safe = (result.minValueSet && toInt64(result.minValue) >= 0) && (result.maxValueSet && result.maxValue <= uint64(dstInt.Max))
+							safe = (result.minValueSet && toInt64(result.minValue) >= 0) && (result.maxValueSet && result.maxValue <= dstInt.Max)
 						}
 					}
 					if safe {

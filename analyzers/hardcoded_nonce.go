@@ -15,12 +15,12 @@
 package analyzers
 
 import (
-	"cmp"
 	"fmt"
 	"go/constant"
 	"go/token"
 	"slices"
 	"strings"
+	"sync"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/buildssa"
@@ -80,11 +80,13 @@ func runHardCodedNonce(pass *analysis.Pass) (any, error) {
 	}
 
 	state := newAnalysisState(pass, ssaResult.SSA.SrcFuncs)
+	defer state.Release()
 
 	args := state.getInitialArgs(tracked)
 	var issues []*issue.Issue
 	for _, argInfo := range args {
-		i, err := state.raiseIssue(argInfo.val, "", make(map[ssa.Value]bool), argInfo.instr)
+		state.Reset() // Clear visited map for each top-level arg
+		i, err := state.raiseIssue(argInfo.val, "", argInfo.instr)
 		if err != nil {
 			return issues, fmt.Errorf("raising issue error: %w", err)
 		}
@@ -94,18 +96,24 @@ func runHardCodedNonce(pass *analysis.Pass) (any, error) {
 }
 
 type analysisState struct {
-	pass              *analysis.Pass
-	ssaFuncs          []*ssa.Function
-	usageCache        map[ssa.Value]uint8
-	funcCache         map[*ssa.Function]bool
-	visitedFuncs      map[*ssa.Function]bool
-	callerMap         map[string][]*ssa.Call
-	bufferLenCache    map[ssa.Value]int64
-	funcResolutionMap map[ssa.Value]bool
-	rangeCache        map[ssa.Value]ByteRange
-	depth             int
-	analyzer          *RangeAnalyzer
+	*BaseAnalyzerState
+	ssaFuncs   []*ssa.Function
+	usageCache map[ssa.Value]uint8
+	callerMap  map[string][]*ssa.Call
 }
+
+var (
+	usageCachePool = sync.Pool{
+		New: func() any {
+			return make(map[ssa.Value]uint8, 64)
+		},
+	}
+	callerMapPool = sync.Pool{
+		New: func() any {
+			return make(map[string][]*ssa.Call, 32)
+		},
+	}
+)
 
 type ssaValueAndInstr struct {
 	val   ssa.Value
@@ -114,87 +122,91 @@ type ssaValueAndInstr struct {
 
 func newAnalysisState(pass *analysis.Pass, funcs []*ssa.Function) *analysisState {
 	s := &analysisState{
-		pass:              pass,
+		BaseAnalyzerState: NewBaseState(pass),
 		ssaFuncs:          funcs,
-		usageCache:        make(map[ssa.Value]uint8),
-		funcCache:         make(map[*ssa.Function]bool),
-		visitedFuncs:      make(map[*ssa.Function]bool),
-		callerMap:         BuildCallerMap(funcs),
-		bufferLenCache:    make(map[ssa.Value]int64),
-		funcResolutionMap: make(map[ssa.Value]bool),
-		rangeCache:        make(map[ssa.Value]ByteRange),
-		analyzer:          NewRangeAnalyzer(),
+		usageCache:        usageCachePool.Get().(map[ssa.Value]uint8),
+		callerMap:         callerMapPool.Get().(map[string][]*ssa.Call),
 	}
+	BuildCallerMap(funcs, s.callerMap)
 	return s
 }
 
-// getInitialArgs returns a list of arguments and their corresponding instructions
-// for all call sites identified in the tracked map.
+func (s *analysisState) Release() {
+	if s.usageCache != nil {
+		clear(s.usageCache)
+		usageCachePool.Put(s.usageCache)
+		s.usageCache = nil
+	}
+	if s.callerMap != nil {
+		clear(s.callerMap)
+		callerMapPool.Put(s.callerMap)
+		s.callerMap = nil
+	}
+	s.BaseAnalyzerState.Release()
+}
+
+// getInitialArgs is now unified in util.go TraverseSSA or kept here if specific.
+// It seems specific to tracked functions, so we keep it but can use TraverseSSA.
 func (s *analysisState) getInitialArgs(tracked map[string][]int) []ssaValueAndInstr {
 	var result []ssaValueAndInstr
-	for _, f := range s.ssaFuncs {
-		for _, b := range f.Blocks {
-			for _, i := range b.Instrs {
-				if c, ok := i.(*ssa.Call); ok {
-					if c.Call.IsInvoke() {
-						// Handle interface method calls (e.g. (crypto/cipher.AEAD).Seal)
-						name := c.Call.Method.FullName()
-						if info, ok := tracked[name]; ok {
-							if len(c.Call.Args) == info[0] {
-								result = append(result, ssaValueAndInstr{
-									val:   c.Call.Args[info[1]],
-									instr: c,
-								})
-							}
-						}
-						continue
+	TraverseSSA(s.ssaFuncs, func(b *ssa.BasicBlock, i ssa.Instruction) {
+		if c, ok := i.(*ssa.Call); ok {
+			if c.Call.IsInvoke() {
+				// Handle interface method calls (e.g. (crypto/cipher.AEAD).Seal)
+				name := c.Call.Method.FullName()
+				if info, ok := tracked[name]; ok {
+					if len(c.Call.Args) == info[0] {
+						result = append(result, ssaValueAndInstr{
+							val:   c.Call.Args[info[1]],
+							instr: c,
+						})
 					}
-
-					// Handle function calls (direct or indirect)
-					clear(s.funcResolutionMap)
-					var funcs []*ssa.Function
-					s.resolveFuncs(c.Call.Value, &funcs)
-					for _, fn := range funcs {
-						name := fn.String()
-						if info, ok := tracked[name]; ok {
-							if len(c.Call.Args) == info[0] {
-								result = append(result, ssaValueAndInstr{
-									val:   c.Call.Args[info[1]],
-									instr: c,
-								})
-								break
-							}
-							continue
-						}
-						if fn.Pkg != nil && fn.Pkg.Pkg != nil {
-							name = fn.Pkg.Pkg.Path() + "." + fn.Name()
-							if info, ok := tracked[name]; ok {
-								if len(c.Call.Args) == info[0] {
-									result = append(result, ssaValueAndInstr{
-										val:   c.Call.Args[info[1]],
-										instr: c,
-									})
-									break
-								}
-							}
-						}
+				}
+				return
+			}
+			// Handle function calls (direct or indirect)
+			clear(s.ClosureCache)
+			var funcs []*ssa.Function
+			s.ResolveFuncs(c.Call.Value, &funcs)
+			for _, fn := range funcs {
+				name := fn.String()
+				if info, ok := tracked[name]; ok {
+					if len(c.Call.Args) == info[0] {
+						result = append(result, ssaValueAndInstr{
+							val:   c.Call.Args[info[1]],
+							instr: c,
+						})
+						break
+					}
+					continue
+				}
+				// Fallback to manual prefixing if needed (some SSA versions return different String())
+				name = fn.Name()
+				if fn.Pkg != nil && fn.Pkg.Pkg != nil {
+					name = fn.Pkg.Pkg.Path() + "." + name
+				}
+				if info, ok := tracked[name]; ok {
+					if len(c.Call.Args) == info[0] {
+						result = append(result, ssaValueAndInstr{
+							val:   c.Call.Args[info[1]],
+							instr: c,
+						})
+						break
 					}
 				}
 			}
 		}
-	}
+	})
 	return result
 }
 
 // raiseIssue recursively analyzes the usage of a value and returns a list of issues
 // if it's found to be hardcoded or otherwise insecure.
-func (s *analysisState) raiseIssue(val ssa.Value, issueDescription string,
-	visitedParams map[ssa.Value]bool, fromInstr ssa.Instruction,
-) ([]*issue.Issue, error) {
-	if visitedParams[val] {
+func (s *analysisState) raiseIssue(val ssa.Value, issueDescription string, fromInstr ssa.Instruction) ([]*issue.Issue, error) {
+	if s.Visited[val] {
 		return nil, nil
 	}
-	visitedParams[val] = true
+	s.Visited[val] = true
 
 	res := s.analyzeUsage(val)
 	foundDyn := res&statusDyn != 0
@@ -215,13 +227,13 @@ func (s *analysisState) raiseIssue(val ssa.Value, issueDescription string,
 		if s.isHardcoded(v.X) {
 			issueDescription += " by passing hardcoded slice/array"
 		}
-		return s.raiseIssue(v.X, issueDescription, visitedParams, fromInstr)
+		return s.raiseIssue(v.X, issueDescription, fromInstr)
 	case *ssa.UnOp:
 		if v.Op == token.MUL {
 			if s.isHardcoded(v.X) {
 				issueDescription += " by passing pointer which points to hardcoded variable"
 			}
-			return s.raiseIssue(v.X, issueDescription, visitedParams, fromInstr)
+			return s.raiseIssue(v.X, issueDescription, fromInstr)
 		}
 	case *ssa.Convert:
 		if v.Type().String() == "[]byte" && v.X.Type().String() == "string" {
@@ -229,18 +241,18 @@ func (s *analysisState) raiseIssue(val ssa.Value, issueDescription string,
 				issueDescription += " by passing converted string"
 			}
 		}
-		return s.raiseIssue(v.X, issueDescription, visitedParams, fromInstr)
+		return s.raiseIssue(v.X, issueDescription, fromInstr)
 	case *ssa.Const:
 		issueDescription += " by passing hardcoded constant"
-		allIssues = append(allIssues, newIssue(s.pass.Analyzer.Name, issueDescription, s.pass.Fset, fromInstr.Pos(), issue.High, issue.High))
+		allIssues = append(allIssues, newIssue(s.Pass.Analyzer.Name, issueDescription, s.Pass.Fset, fromInstr.Pos(), issue.High, issue.High))
 	case *ssa.Global:
 		issueDescription += " by passing hardcoded global"
-		allIssues = append(allIssues, newIssue(s.pass.Analyzer.Name, issueDescription, s.pass.Fset, fromInstr.Pos(), issue.High, issue.High))
+		allIssues = append(allIssues, newIssue(s.Pass.Analyzer.Name, issueDescription, s.Pass.Fset, fromInstr.Pos(), issue.High, issue.High))
 	case *ssa.Alloc:
 		switch v.Comment {
 		case "slicelit":
 			issueDescription += " by passing hardcoded slice literal"
-			allIssues = append(allIssues, newIssue(s.pass.Analyzer.Name, issueDescription, s.pass.Fset, fromInstr.Pos(), issue.High, issue.High))
+			allIssues = append(allIssues, newIssue(s.Pass.Analyzer.Name, issueDescription, s.Pass.Fset, fromInstr.Pos(), issue.High, issue.High))
 		case "makeslice":
 			res := s.analyzeUsage(v)
 			foundHard := res&statusHard != 0
@@ -249,26 +261,24 @@ func (s *analysisState) raiseIssue(val ssa.Value, issueDescription string,
 					return nil, nil
 				}
 				issueDescription += " by passing a buffer from make modified with hardcoded values"
-				allIssues = append(allIssues, newIssue(s.pass.Analyzer.Name, issueDescription, s.pass.Fset, fromInstr.Pos(), issue.High, issue.High))
+				allIssues = append(allIssues, newIssue(s.Pass.Analyzer.Name, issueDescription, s.Pass.Fset, fromInstr.Pos(), issue.High, issue.High))
 			} else {
 				if s.allTaintedEventsCovered(v, fromInstr) {
 					return nil, nil
 				}
 				issueDescription += " by passing a zeroed buffer from make"
-				allIssues = append(allIssues, newIssue(s.pass.Analyzer.Name, issueDescription, s.pass.Fset, fromInstr.Pos(), issue.High, issue.High))
+				allIssues = append(allIssues, newIssue(s.Pass.Analyzer.Name, issueDescription, s.Pass.Fset, fromInstr.Pos(), issue.High, issue.High))
 			}
 		default:
 			// Ensure we trace the specific Store that tainted this Alloc
 			if refs := v.Referrers(); refs != nil {
 				for _, ref := range *refs {
 					if store, ok := ref.(*ssa.Store); ok && store.Addr == v {
-						if s.isHardcoded(store.Val) {
-							issues, err := s.raiseIssue(store.Val, issueDescription, visitedParams, fromInstr)
-							if err != nil {
-								return nil, err
-							}
-							allIssues = append(allIssues, issues...)
+						issues, err := s.raiseIssue(store.Val, issueDescription, fromInstr)
+						if err != nil {
+							return nil, err
 						}
+						allIssues = append(allIssues, issues...)
 					}
 				}
 			}
@@ -279,15 +289,15 @@ func (s *analysisState) raiseIssue(val ssa.Value, issueDescription string,
 		foundHard := res&statusHard != 0
 		if foundHard {
 			issueDescription += " by passing a buffer from make modified with hardcoded values"
-			allIssues = append(allIssues, newIssue(s.pass.Analyzer.Name, issueDescription, s.pass.Fset, fromInstr.Pos(), issue.High, issue.High))
+			allIssues = append(allIssues, newIssue(s.Pass.Analyzer.Name, issueDescription, s.Pass.Fset, fromInstr.Pos(), issue.High, issue.High))
 		} else if !foundDyn {
 			issueDescription += " by passing a zeroed buffer from make"
-			allIssues = append(allIssues, newIssue(s.pass.Analyzer.Name, issueDescription, s.pass.Fset, fromInstr.Pos(), issue.High, issue.High))
+			allIssues = append(allIssues, newIssue(s.Pass.Analyzer.Name, issueDescription, s.Pass.Fset, fromInstr.Pos(), issue.High, issue.High))
 		}
 	case *ssa.Call:
 		if s.isHardcoded(v) {
 			issueDescription += " by passing a value from function which returns hardcoded value"
-			allIssues = append(allIssues, newIssue(s.pass.Analyzer.Name, issueDescription, s.pass.Fset, fromInstr.Pos(), issue.High, issue.High))
+			allIssues = append(allIssues, newIssue(s.Pass.Analyzer.Name, issueDescription, s.Pass.Fset, fromInstr.Pos(), issue.High, issue.High))
 		}
 	case *ssa.Parameter:
 		if v.Parent() != nil {
@@ -305,7 +315,7 @@ func (s *analysisState) raiseIssue(val ssa.Value, issueDescription string,
 				if callers, ok := s.callerMap[parentName]; ok {
 					for _, c := range callers {
 						if len(c.Call.Args) == numParams {
-							issues, _ := s.raiseIssue(c.Call.Args[paramIdx], issueDescription, visitedParams, c)
+							issues, _ := s.raiseIssue(c.Call.Args[paramIdx], issueDescription, c)
 							allIssues = append(allIssues, issues...)
 						}
 					}
@@ -319,11 +329,11 @@ func (s *analysisState) raiseIssue(val ssa.Value, issueDescription string,
 // isHardcoded determines if a value is derived from a hardcoded constant
 // or specific patterns (e.g. "slicelit" comment on Alloc).
 func (s *analysisState) isHardcoded(val ssa.Value) bool {
-	if s.depth > MaxDepth {
+	if s.Depth > MaxDepth {
 		return false
 	}
-	s.depth++
-	defer func() { s.depth-- }()
+	s.Depth++
+	defer func() { s.Depth-- }()
 
 	switch v := val.(type) {
 	case *ssa.Const, *ssa.Global:
@@ -332,16 +342,12 @@ func (s *analysisState) isHardcoded(val ssa.Value) bool {
 		return s.isHardcoded(v.X)
 	case *ssa.Slice:
 		return s.isHardcoded(v.X)
+	case *ssa.UnOp:
+		if v.Op == token.MUL {
+			return s.isHardcoded(v.X)
+		}
 	case *ssa.Alloc:
-		if v.Comment == "slicelit" {
-			return true
-		}
-		if v.Comment == "makeslice" {
-			res := s.analyzeUsage(v)
-			foundDyn := res&statusDyn != 0
-			foundHard := res&statusHard != 0
-			return foundHard || !foundDyn
-		}
+		return v.Comment == "slicelit"
 	case *ssa.MakeSlice:
 		res := s.analyzeUsage(v)
 		foundDyn := res&statusDyn != 0
@@ -349,20 +355,41 @@ func (s *analysisState) isHardcoded(val ssa.Value) bool {
 		return foundHard || !foundDyn
 	case *ssa.Call:
 		if fn, ok := v.Call.Value.(*ssa.Function); ok {
-			if res, ok := s.funcCache[fn]; ok {
-				return res
-			}
-			if s.visitedFuncs[fn] {
+			// Reuse FuncMap for recursion protection.
+			// For result caching, we can use use usageCache if we cast.
+			if s.FuncMap[fn] {
 				return false
 			}
-			s.visitedFuncs[fn] = true
-			res := s.isFuncReturnsHardcoded(fn)
-			s.funcCache[fn] = res
-			delete(s.visitedFuncs, fn)
-			return res
+			s.FuncMap[fn] = true
+			defer delete(s.FuncMap, fn)
+			return s.isFuncReturnsHardcoded(fn)
 		}
 	case *ssa.Parameter:
-		return false
+		if v.Parent() != nil {
+			// Avoid infinite recursion for recursive functions
+			if s.FuncMap[v.Parent()] {
+				return false
+			}
+			s.FuncMap[v.Parent()] = true
+			defer delete(s.FuncMap, v.Parent())
+
+			// Trace parameters by looking at all call sites of the parent function.
+			name := v.Parent().Name()
+			if v.Parent().Pkg != nil && v.Parent().Pkg.Pkg != nil {
+				name = v.Parent().Pkg.Pkg.Path() + "." + name
+			}
+			if calls, ok := s.callerMap[name]; ok {
+				for _, call := range calls {
+					for i, param := range v.Parent().Params {
+						if param == v && i < len(call.Call.Args) {
+							if s.isHardcoded(call.Call.Args[i]) {
+								return true
+							}
+						}
+					}
+				}
+			}
+		}
 	}
 	return false
 }
@@ -386,7 +413,7 @@ func (s *analysisState) analyzeUsage(val ssa.Value) uint8 {
 	if val == nil {
 		return 0
 	}
-	if s.depth > MaxDepth {
+	if s.Depth > MaxDepth {
 		return statusDyn // assume dynamic avoid infinite recursion
 	}
 	if res, ok := s.usageCache[val]; ok {
@@ -394,8 +421,8 @@ func (s *analysisState) analyzeUsage(val ssa.Value) uint8 {
 	}
 	s.usageCache[val] = statusVisiting
 
-	s.depth++
-	defer func() { s.depth-- }()
+	s.Depth++
+	defer func() { s.Depth-- }()
 
 	var res uint8
 	switch v := val.(type) {
@@ -518,9 +545,9 @@ func (s *analysisState) analyzeReferrer(ref ssa.Instruction, val ssa.Value) uint
 		}
 
 		// 2. Generic Function Resolution and Recursive Analysis
-		clear(s.funcResolutionMap)
+		clear(s.ClosureCache)
 		var funcs []*ssa.Function
-		s.resolveFuncs(callValue, &funcs)
+		s.ResolveFuncs(callValue, &funcs)
 		if len(funcs) == 0 {
 			// If we couldn't resolve any functions (unknown library or dynamic call),
 			// assume it might be dynamic/safe to avoid false positives.
@@ -541,7 +568,7 @@ func (s *analysisState) analyzeReferrer(ref ssa.Instruction, val ssa.Value) uint
 				res |= s.analyzeReferrer(ref, r)
 			}
 		}
-		if !IsFullSlice(r, s.getBufferLen(r.X)) {
+		if !IsFullSlice(r, s.Analyzer.BufferedLen(r.X)) {
 			res &= ^uint8(statusDyn)
 		}
 	case *ssa.IndexAddr, *ssa.Index, *ssa.Lookup:
@@ -563,39 +590,6 @@ func (s *analysisState) analyzeReferrer(ref ssa.Instruction, val ssa.Value) uint
 		}
 	}
 	return res
-}
-
-func (s *analysisState) resolveFuncs(val ssa.Value, funcs *[]*ssa.Function) {
-	if val == nil || s.depth > MaxDepth {
-		return
-	}
-	if s.funcResolutionMap[val] {
-		return
-	}
-	s.funcResolutionMap[val] = true
-
-	s.depth++
-	defer func() { s.depth-- }()
-
-	switch v := val.(type) {
-	case *ssa.Function:
-		*funcs = append(*funcs, v)
-	case *ssa.MakeClosure:
-		*funcs = append(*funcs, v.Fn.(*ssa.Function))
-	case *ssa.Phi:
-		for _, edge := range v.Edges {
-			s.resolveFuncs(edge, funcs)
-		}
-	}
-}
-
-func (s *analysisState) getBufferLen(val ssa.Value) int64 {
-	if res, ok := s.bufferLenCache[val]; ok {
-		return res
-	}
-	length := GetBufferLen(val)
-	s.bufferLenCache[val] = length
-	return length
 }
 
 // allTaintedEventsCovered checks if all "tainting events" (Alloc, Store of hardcoded data)
@@ -641,7 +635,7 @@ func (s *analysisState) allTaintedEventsCovered(val ssa.Value, usage ssa.Instruc
 	// 2. Identify and track the root allocation as the initial Unsafe Action.
 	var bufLen int64
 	if alloc, ok := v.(*ssa.Alloc); ok {
-		bufLen = s.getBufferLen(alloc)
+		bufLen = s.Analyzer.BufferedLen(alloc)
 		if alloc.Comment == "slicelit" || alloc.Comment == "makeslice" {
 			actions = append(actions, RangeAction{
 				Instr:  alloc,
@@ -674,7 +668,7 @@ func (s *analysisState) allTaintedEventsCovered(val ssa.Value, usage ssa.Instruc
 
 	// 3. Sequence Phase: Sort actions based on their execution order in the SSA graph.
 	slices.SortFunc(actions, func(a, b RangeAction) int {
-		if s.analyzer.Precedes(a.Instr, b.Instr) {
+		if s.Analyzer.Precedes(a.Instr, b.Instr) {
 			return -1
 		}
 		if a.Instr == b.Instr {
@@ -730,7 +724,7 @@ func (s *analysisState) collectTaintedEvents(val ssa.Value, usage ssa.Instructio
 	for _, ref := range *refs {
 		isHard := s.analyzeReferrer(ref, val)&statusHard != 0
 		if isHard {
-			if s.analyzer.Precedes(ref, usage) {
+			if s.Analyzer.Precedes(ref, usage) {
 				// Determine range of the Store
 				if store, ok := ref.(*ssa.Store); ok && store.Addr == val {
 					// Storing hardcoded data into this buffer
@@ -774,7 +768,7 @@ func (s *analysisState) collectCoveredRanges(val ssa.Value, usage ssa.Instructio
 
 	for _, ref := range *refs {
 		if s.isFullDynamicRead(ref, val) {
-			if s.analyzer.Precedes(ref, usage) {
+			if s.Analyzer.Precedes(ref, usage) {
 				if absRange, ok := s.resolveAbsoluteRange(val); ok {
 					*actions = append(*actions, RangeAction{
 						Instr:  ref,
@@ -834,9 +828,9 @@ func (s *analysisState) isFullDynamicRead(ref ssa.Instruction, val ssa.Value) bo
 	// We use analyzeUsage on the function parameters to determine this.
 	// We only trust it as a safeguard if it is purely dynamic (not hardcoded).
 	// If we cannot resolve the function, assume it is safe to avoid False Positives.
-	clear(s.funcResolutionMap)
+	clear(s.ClosureCache)
 	var funcs []*ssa.Function
-	s.resolveFuncs(callValue, &funcs)
+	s.ResolveFuncs(callValue, &funcs)
 	if len(funcs) == 0 {
 		return true
 	}
@@ -854,183 +848,11 @@ func (s *analysisState) isFullDynamicRead(ref ssa.Instruction, val ssa.Value) bo
 	return false
 }
 
-// ByteRange represents a range [Low, High)
-type ByteRange struct {
-	Low  int64
-	High int64
-}
+// resolveAbsoluteRange is now unified in RangeAnalyzer.ResolveByteRange.
+// We keep a thin wrapper for backward compatibility if needed, but better to call directly.
 
-type RangeAction struct {
-	Instr  ssa.Instruction
-	Range  ByteRange
-	IsSafe bool // true = Read (Dynamic), false = Write/Alloc (Hardcoded)
-}
-
-// mergeRanges takes a list of ByteRanges and merges overlapping or contiguous ranges.
-// It modifies the input slice in-place to reduce allocations and returns a slice of disjoint ranges.
-func mergeRanges(ranges []ByteRange) []ByteRange {
-	if len(ranges) <= 1 {
-		return ranges
-	}
-	slices.SortFunc(ranges, func(a, b ByteRange) int {
-		return cmp.Compare(a.Low, b.Low)
-	})
-
-	// In-place merge
-	// 'idx' points to the position of the 'current' merged range being built.
-	idx := 0
-	for _, r := range ranges[1:] {
-		if r.Low <= ranges[idx].High {
-			ranges[idx].High = max(ranges[idx].High, r.High)
-		} else {
-			idx++
-			ranges[idx] = r
-		}
-	}
-	return ranges[:idx+1]
-}
-
-// subtractRange removes 'taint' range from the list of 'safe' ranges, potentially
-// splitting existing safe ranges into two separate fragments. The results are appended to 'dest'.
-func subtractRange(safe []ByteRange, taint ByteRange, dest *[]ByteRange) {
-	*dest = (*dest)[:0]
-	for _, r := range safe {
-		// No overlap
-		if r.High <= taint.Low || r.Low >= taint.High {
-			*dest = append(*dest, r)
-			continue
-		}
-
-		if r.Low < taint.Low {
-			*dest = append(*dest, ByteRange{r.Low, taint.Low})
-		}
-		if r.High > taint.High {
-			*dest = append(*dest, ByteRange{taint.High, r.High})
-		}
-	}
-}
-
-// resolveAbsoluteRange determines the absolute byte range of 'val' relative to its
-// underlying root allocation by recursively resolving slice offsets and indices.
 func (s *analysisState) resolveAbsoluteRange(val ssa.Value) (ByteRange, bool) {
-	if r, ok := s.rangeCache[val]; ok {
-		return r, true
-	}
-
-	if s.depth > MaxDepth {
-		return ByteRange{}, false
-	}
-	s.depth++
-	defer func() { s.depth-- }()
-
-	res, ok := s.recursiveRange(val)
-	if ok {
-		s.rangeCache[val] = res
-	}
-	return res, ok
+	return s.Analyzer.ResolveByteRange(val)
 }
 
-// recursiveRange is a helper for resolveAbsoluteRange that traverses up the SSA value chain
-// (handling Slice, IndexAddr, Convert, etc.) to compute the range.
-func (s *analysisState) recursiveRange(val ssa.Value) (ByteRange, bool) {
-	switch v := val.(type) {
-	case *ssa.Alloc:
-		l := s.getBufferLen(v)
-		if l <= 0 {
-			// If it is a local variable slot, try to find what was stored in it
-			if refs := v.Referrers(); refs != nil {
-				for _, ref := range *refs {
-					if st, ok := ref.(*ssa.Store); ok && st.Addr == v {
-						return s.recursiveRange(st.Val)
-					}
-				}
-			}
-			return ByteRange{}, false
-		}
-		return ByteRange{0, l}, true
-	case *ssa.MakeSlice:
-		if l, ok := GetConstantInt64(v.Len); ok && l > 0 {
-			return ByteRange{0, l}, true
-		}
-		return ByteRange{}, false
-	case *ssa.Convert:
-		if c, ok := v.X.(*ssa.Const); ok && c.Value.Kind() == constant.String {
-			l := int64(len(constant.StringVal(c.Value)))
-			if l > 0 {
-				return ByteRange{0, l}, true
-			}
-		}
-		return ByteRange{}, false
-	case *ssa.Slice:
-		parentRange, ok := s.recursiveRange(v.X)
-		if !ok {
-			return ByteRange{}, false
-		}
-
-		var low int64
-		if v.Low != nil {
-			l, ok := GetConstantInt64(v.Low)
-			if !ok {
-				res := s.analyzer.ResolveRange(v.Low, v.Block())
-				if res.isRangeCheck && res.maxValueSet {
-					l = toInt64(res.maxValue)
-				} else {
-					return ByteRange{}, false
-				}
-				s.analyzer.releaseResult(res)
-			}
-			low = l
-		}
-
-		var high int64
-		if v.High == nil {
-			high = parentRange.High
-		} else {
-			h, ok := GetConstantInt64(v.High)
-			if !ok {
-				res := s.analyzer.ResolveRange(v.High, v.Block())
-				if res.isRangeCheck && res.maxValueSet {
-					h = toInt64(res.maxValue)
-				} else {
-					return ByteRange{}, false
-				}
-			}
-			high = parentRange.Low + h
-		}
-
-		newLow := parentRange.Low + low
-		newHigh := min(high, parentRange.High)
-		if newLow >= newHigh {
-			return ByteRange{newLow, newLow}, true // Handle empty slices consistently
-		}
-		return ByteRange{newLow, newHigh}, true
-	case *ssa.IndexAddr:
-		parentRange, ok := s.recursiveRange(v.X)
-		if !ok {
-			return ByteRange{}, false
-		}
-		if c, ok := GetConstantInt64(v.Index); ok {
-			start := parentRange.Low + c
-			return ByteRange{start, start + 1}, true
-		}
-		// Check for explicit range checks.
-		res := s.analyzer.ResolveRange(v.Index, v.Block())
-		if res.isRangeCheck && res.minValueSet && res.maxValueSet {
-			minVal := toInt64(res.minValue)
-			maxVal := toInt64(res.maxValue)
-			if minVal > maxVal {
-				// Contradictory range (unreachable code). Conservatively report as full taint to satisfy tests expecting issues in dead code.
-				return ByteRange{parentRange.Low, parentRange.High}, true
-			}
-			start := parentRange.Low + minVal
-			end := parentRange.Low + maxVal + 1
-			return ByteRange{start, end}, true
-		}
-		return ByteRange{}, false
-	case *ssa.UnOp:
-		if v.Op == token.MUL {
-			return s.recursiveRange(v.X)
-		}
-	}
-	return ByteRange{}, false
-}
+// ByteRange represents a range [Low, High)

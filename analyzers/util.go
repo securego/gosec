@@ -15,6 +15,7 @@
 package analyzers
 
 import (
+	"cmp"
 	"fmt"
 	"go/constant"
 	"go/token"
@@ -23,10 +24,10 @@ import (
 	"math"
 	"math/bits"
 	"os"
-	"regexp"
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/buildssa"
@@ -52,12 +53,157 @@ type SSAAnalyzerResult struct {
 	SSA    *buildssa.SSA
 }
 
+// BaseAnalyzerState provides a shared state for Gosec analyzers,
+// encapsulating common fields and reusable objects to reduce allocations.
+type BaseAnalyzerState struct {
+	Pass         *analysis.Pass
+	Analyzer     *RangeAnalyzer
+	Visited      map[ssa.Value]bool
+	FuncMap      map[*ssa.Function]bool // General purpose function set
+	BlockMap     map[*ssa.BasicBlock]bool
+	ClosureCache map[ssa.Value]bool
+	Depth        int
+}
+
+var (
+	visitedPool = sync.Pool{
+		New: func() any {
+			return make(map[ssa.Value]bool, 64)
+		},
+	}
+	funcMapPool = sync.Pool{
+		New: func() any {
+			return make(map[*ssa.Function]bool, 32)
+		},
+	}
+	closureCachePool = sync.Pool{
+		New: func() any {
+			return make(map[ssa.Value]bool, 32)
+		},
+	}
+	blockMapPool = sync.Pool{
+		New: func() any {
+			return make(map[*ssa.BasicBlock]bool, 32)
+		},
+	}
+	rangeAnalyzerPool = sync.Pool{
+		New: func() any {
+			return &RangeAnalyzer{
+				RangeCache:     make(map[rangeCacheKey]*rangeResult),
+				ResultPool:     make([]*rangeResult, 0, 32),
+				BlockMap:       make(map[*ssa.BasicBlock]bool),
+				ValueMap:       make(map[ssa.Value]bool),
+				ByteRangeCache: make(map[ssa.Value]ByteRange),
+				BufferLenCache: make(map[ssa.Value]int64),
+				reachStack:     make([]*ssa.BasicBlock, 0, 32),
+			}
+		},
+	}
+)
+
+// NewBaseState creates a new BaseAnalyzerState with pooled maps.
+func NewBaseState(pass *analysis.Pass) *BaseAnalyzerState {
+	return &BaseAnalyzerState{
+		Pass:         pass,
+		Analyzer:     NewRangeAnalyzer(),
+		Visited:      visitedPool.Get().(map[ssa.Value]bool),
+		FuncMap:      funcMapPool.Get().(map[*ssa.Function]bool),
+		BlockMap:     blockMapPool.Get().(map[*ssa.BasicBlock]bool),
+		ClosureCache: closureCachePool.Get().(map[ssa.Value]bool),
+	}
+}
+
+// Reset clears the caches and maps for reuse within an analyzer run.
+func (s *BaseAnalyzerState) Reset() {
+	if s.Analyzer != nil {
+		s.Analyzer.ResetCache()
+	}
+	clear(s.Visited)
+	clear(s.FuncMap)
+	clear(s.BlockMap)
+	clear(s.ClosureCache)
+	s.Depth = 0
+}
+
+// Release returns the pooled maps and analyzer to their pools.
+func (s *BaseAnalyzerState) Release() {
+	if s.Analyzer != nil {
+		s.Analyzer.Release()
+		s.Analyzer = nil
+	}
+	if s.Visited != nil {
+		clear(s.Visited)
+		visitedPool.Put(s.Visited)
+		s.Visited = nil
+	}
+	if s.FuncMap != nil {
+		clear(s.FuncMap)
+		funcMapPool.Put(s.FuncMap)
+		s.FuncMap = nil
+	}
+	if s.ClosureCache != nil {
+		clear(s.ClosureCache)
+		closureCachePool.Put(s.ClosureCache)
+		s.ClosureCache = nil
+	}
+	if s.BlockMap != nil {
+		clear(s.BlockMap)
+		blockMapPool.Put(s.BlockMap)
+		s.BlockMap = nil
+	}
+}
+
+// ResolveFuncs resolves a value to a list of possible functions (e.g., closures, phi nodes).
+// It reuses the state's ClosureCache to avoid cycles and redundant work.
+func (s *BaseAnalyzerState) ResolveFuncs(val ssa.Value, funcs *[]*ssa.Function) {
+	if val == nil || s.Depth > MaxDepth {
+		return
+	}
+	if s.ClosureCache[val] {
+		return
+	}
+	s.ClosureCache[val] = true
+
+	s.Depth++
+	defer func() { s.Depth-- }()
+
+	switch v := val.(type) {
+	case *ssa.Function:
+		*funcs = append(*funcs, v)
+	case *ssa.MakeClosure:
+		*funcs = append(*funcs, v.Fn.(*ssa.Function))
+	case *ssa.Phi:
+		for _, edge := range v.Edges {
+			s.ResolveFuncs(edge, funcs)
+		}
+	case *ssa.ChangeType:
+		s.ResolveFuncs(v.X, funcs)
+	case *ssa.UnOp:
+		if v.Op == token.MUL {
+			s.ResolveFuncs(v.X, funcs)
+		}
+	}
+}
+
+// ByteRange represents a range [Low, High)
+type ByteRange struct {
+	Low  int64
+	High int64
+}
+
+// RangeAction represents a read/write action on a byte range.
+type RangeAction struct {
+	Instr  ssa.Instruction
+	Range  ByteRange
+	IsSafe bool // true = Read (Dynamic), false = Write/Alloc (Hardcoded)
+}
+
 // IntTypeInfo represents integer type properties
 type IntTypeInfo struct {
 	Signed bool
 	Size   int
-	Min    int
-	Max    uint
+	Min    int64
+	Max    uint64
 }
 
 type rangeResult struct {
@@ -68,6 +214,7 @@ type rangeResult struct {
 	explicitPositiveVals []uint
 	explicitNegativeVals []int
 	isRangeCheck         bool
+	shared               bool // If true, do not release to pool
 }
 
 type rangeCacheKey struct {
@@ -76,11 +223,14 @@ type rangeCacheKey struct {
 }
 
 type RangeAnalyzer struct {
-	RangeCache map[rangeCacheKey]*rangeResult
-	ResultPool []*rangeResult
-	Depth      int
-	BlockMap   map[*ssa.BasicBlock]bool
-	ValueMap   map[ssa.Value]bool
+	RangeCache     map[rangeCacheKey]*rangeResult
+	ResultPool     []*rangeResult
+	Depth          int
+	BlockMap       map[*ssa.BasicBlock]bool
+	ValueMap       map[ssa.Value]bool
+	ByteRangeCache map[ssa.Value]ByteRange
+	BufferLenCache map[ssa.Value]int64
+	reachStack     []*ssa.BasicBlock
 }
 
 type operationInfo struct {
@@ -88,8 +238,6 @@ type operationInfo struct {
 	extra   ssa.Value
 	flipped bool
 }
-
-var intTypeRegexp = regexp.MustCompile(`^(?P<type>u?int)(?P<size>\d{1,2})?$`)
 
 // isSliceInsideBounds checks if the requested slice range is within the parent slice's boundaries.
 func isSliceInsideBounds(l, h int, cl, ch int) bool {
@@ -169,74 +317,44 @@ func issueCodeSnippet(fileSet *token.FileSet, pos token.Pos) string {
 	return code
 }
 
-// ParseIntType parses an integer type string into IntTypeInfo
-func ParseIntType(intType string) (IntTypeInfo, error) {
-	matches := intTypeRegexp.FindStringSubmatch(intType)
-	if matches == nil {
-		return IntTypeInfo{}, fmt.Errorf("no integer type match found for %s", intType)
+// GetIntTypeInfo extracts properties of an integer type.
+func GetIntTypeInfo(t types.Type) (IntTypeInfo, error) {
+	u := t.Underlying()
+	if ptr, ok := u.(*types.Pointer); ok {
+		u = ptr.Elem().Underlying()
+	}
+	basic, ok := u.(*types.Basic)
+	if !ok {
+		return IntTypeInfo{}, fmt.Errorf("not a basic type: %T", u)
 	}
 
-	it := matches[intTypeRegexp.SubexpIndex("type")]
-	is := matches[intTypeRegexp.SubexpIndex("size")]
-
-	signed := it == "int"
-	intSize := strconv.IntSize
-	if is != "" {
-		var err error
-		intSize, err = strconv.Atoi(is)
-		if err != nil {
-			return IntTypeInfo{}, fmt.Errorf("failed to parse the integer type size: %w", err)
-		}
+	var info IntTypeInfo
+	switch basic.Kind() {
+	case types.Int:
+		info = IntTypeInfo{Signed: true, Size: 64, Min: math.MinInt64, Max: math.MaxInt64}
+	case types.Int8:
+		info = IntTypeInfo{Signed: true, Size: 8, Min: math.MinInt8, Max: math.MaxInt8}
+	case types.Int16:
+		info = IntTypeInfo{Signed: true, Size: 16, Min: math.MinInt16, Max: math.MaxInt16}
+	case types.Int32:
+		info = IntTypeInfo{Signed: true, Size: 32, Min: math.MinInt32, Max: math.MaxInt32}
+	case types.Int64:
+		info = IntTypeInfo{Signed: true, Size: 64, Min: math.MinInt64, Max: math.MaxInt64}
+	case types.Uint:
+		info = IntTypeInfo{Signed: false, Size: 64, Min: 0, Max: math.MaxUint64}
+	case types.Uint8:
+		// Byte is often an alias for Uint8
+		info = IntTypeInfo{Signed: false, Size: 8, Min: 0, Max: math.MaxUint8}
+	case types.Uint16:
+		info = IntTypeInfo{Signed: false, Size: 16, Min: 0, Max: math.MaxUint16}
+	case types.Uint32:
+		info = IntTypeInfo{Signed: false, Size: 32, Min: 0, Max: math.MaxUint32}
+	case types.Uint64, types.Uintptr:
+		info = IntTypeInfo{Signed: false, Size: 64, Min: 0, Max: math.MaxUint64}
+	default:
+		return IntTypeInfo{}, fmt.Errorf("unsupported basic type: %v", basic.Kind())
 	}
-
-	if intSize != 8 && intSize != 16 && intSize != 32 && intSize != 64 && is != "" {
-		return IntTypeInfo{}, fmt.Errorf("invalid bit size: %d", intSize)
-	}
-
-	var minVal int
-	var maxVal uint
-
-	if signed {
-		switch intSize {
-		case 8:
-			minVal = math.MinInt8
-			maxVal = math.MaxInt8
-		case 16:
-			minVal = math.MinInt16
-			maxVal = math.MaxInt16
-		case 32:
-			minVal = math.MinInt32
-			maxVal = math.MaxInt32
-		case 64:
-			minVal = math.MinInt64
-			// We are on 64-bit architecture where uint is 64-bit
-			maxVal = uint(math.MaxInt64)
-		default:
-			return IntTypeInfo{}, fmt.Errorf("unsupported bit size: %d", intSize)
-		}
-	} else {
-		minVal = 0
-		switch intSize {
-		case 8:
-			maxVal = math.MaxUint8
-		case 16:
-			maxVal = math.MaxUint16
-		case 32:
-			maxVal = math.MaxUint32
-		case 64:
-			// We are on 64-bit architecture where uint is 64-bit
-			maxVal = uint(math.MaxUint64)
-		default:
-			return IntTypeInfo{}, fmt.Errorf("unsupported bit size: %d", intSize)
-		}
-	}
-
-	return IntTypeInfo{
-		Signed: signed,
-		Size:   intSize,
-		Min:    minVal,
-		Max:    maxVal,
-	}, nil
+	return info, nil
 }
 
 // GetConstantInt64 extracts a constant int64 value from an ssa.Value
@@ -374,24 +492,19 @@ func GetBufferLen(val ssa.Value) int64 {
 }
 
 // BuildCallerMap builds a map of function names to their call sites
-func BuildCallerMap(funcs []*ssa.Function) map[string][]*ssa.Call {
-	callerMap := make(map[string][]*ssa.Call)
-	for _, f := range funcs {
-		for _, b := range f.Blocks {
-			for _, i := range b.Instrs {
-				if c, ok := i.(*ssa.Call); ok {
-					var name string
-					if c.Call.Method != nil {
-						name = c.Call.Method.FullName()
-					} else {
-						name = c.Call.Value.String()
-					}
-					callerMap[name] = append(callerMap[name], c)
-				}
+// BuildCallerMap fills the provided map with all calls found in the given functions.
+func BuildCallerMap(funcs []*ssa.Function, callerMap map[string][]*ssa.Call) {
+	TraverseSSA(funcs, func(b *ssa.BasicBlock, i ssa.Instruction) {
+		if c, ok := i.(*ssa.Call); ok {
+			var name string
+			if c.Call.Method != nil {
+				name = c.Call.Method.FullName()
+			} else {
+				name = c.Call.Value.String()
 			}
+			callerMap[name] = append(callerMap[name], c)
 		}
-	}
-	return callerMap
+	})
 }
 
 // toUint64 casts int64 to uint64 preserving the bit pattern (2's complement) and suppresses the linter warning.
@@ -448,6 +561,7 @@ func (res *rangeResult) Reset() {
 	res.explicitPositiveVals = res.explicitPositiveVals[:0]
 	res.explicitNegativeVals = res.explicitNegativeVals[:0]
 	res.isRangeCheck = false
+	res.shared = false
 }
 
 func (res *rangeResult) CopyFrom(other *rangeResult) {
@@ -460,20 +574,29 @@ func (res *rangeResult) CopyFrom(other *rangeResult) {
 	res.isRangeCheck = other.isRangeCheck
 }
 
+// NewRangeAnalyzer acquires a RangeAnalyzer from the pool.
 func NewRangeAnalyzer() *RangeAnalyzer {
-	return &RangeAnalyzer{
-		RangeCache: make(map[rangeCacheKey]*rangeResult),
-		ResultPool: make([]*rangeResult, 0, 32),
-		BlockMap:   make(map[*ssa.BasicBlock]bool),
-		ValueMap:   make(map[ssa.Value]bool),
-	}
+	return rangeAnalyzerPool.Get().(*RangeAnalyzer)
+}
+
+// Release returns the RangeAnalyzer to the pool after clearing its caches.
+func (ra *RangeAnalyzer) Release() {
+	ra.ResetCache()
+	rangeAnalyzerPool.Put(ra)
 }
 
 func (ra *RangeAnalyzer) ResetCache() {
 	for _, res := range ra.RangeCache {
+		res.shared = false
 		ra.releaseResult(res)
 	}
 	clear(ra.RangeCache)
+	clear(ra.BlockMap)
+	clear(ra.ValueMap)
+	clear(ra.ByteRangeCache)
+	clear(ra.BufferLenCache)
+	ra.reachStack = ra.reachStack[:0]
+	ra.Depth = 0
 }
 
 func (ra *RangeAnalyzer) acquireResult() *rangeResult {
@@ -490,7 +613,7 @@ func (ra *RangeAnalyzer) acquireResult() *rangeResult {
 }
 
 func (ra *RangeAnalyzer) releaseResult(res *rangeResult) {
-	if res != nil {
+	if res != nil && !res.shared {
 		ra.ResultPool = append(ra.ResultPool, res)
 	}
 }
@@ -499,9 +622,7 @@ func (ra *RangeAnalyzer) releaseResult(res *rangeResult) {
 func (ra *RangeAnalyzer) ResolveRange(v ssa.Value, block *ssa.BasicBlock) *rangeResult {
 	key := rangeCacheKey{block: block, val: v}
 	if res, ok := ra.RangeCache[key]; ok {
-		ret := ra.acquireResult()
-		ret.CopyFrom(res)
-		return ret
+		return res
 	}
 
 	isSrcUnsigned := isUint(v)
@@ -565,12 +686,12 @@ func (ra *RangeAnalyzer) ResolveRange(v ssa.Value, block *ssa.BasicBlock) *range
 	ra.releaseResult(defRange)
 
 	// Range from control flow constraints
-	doms := GetDominators(block)
-	for _, dom := range doms {
-		if vIf, ok := dom.Instrs[len(dom.Instrs)-1].(*ssa.If); ok {
+	currDom := block.Idom()
+	for currDom != nil {
+		if vIf, ok := currDom.Instrs[len(currDom.Instrs)-1].(*ssa.If); ok {
 			var finalResIf *rangeResult
 			matchCount := 0
-			for i, succ := range dom.Succs {
+			for i, succ := range currDom.Succs {
 				reach := ra.IsReachable(succ, block)
 				if reach {
 					matchCount++
@@ -602,34 +723,44 @@ func (ra *RangeAnalyzer) ResolveRange(v ssa.Value, block *ssa.BasicBlock) *range
 				ra.releaseResult(finalResIf)
 			}
 		}
+		currDom = currDom.Idom()
 	}
 
 	// Persist in cache
-	cached := ra.acquireResult()
-	cached.CopyFrom(result)
-	ra.RangeCache[key] = cached
+	result.shared = true
+	ra.RangeCache[key] = result
 	return result
 }
 
 // IsReachable returns true if there is a path from the start block to the target block in the CFG.
-// It uses the RangeAnalyzer's BlockMap to cache visited blocks and avoid allocations.
+// It uses iterative stack-based traversal and the RangeAnalyzer's BlockMap to avoid allocations.
 func (ra *RangeAnalyzer) IsReachable(start, target *ssa.BasicBlock) bool {
 	if start == target {
 		return true
 	}
 	clear(ra.BlockMap)
-	var reach func(*ssa.BasicBlock) bool
-	reach = func(curr *ssa.BasicBlock) bool {
+	ra.reachStack = ra.reachStack[:0]
+	ra.reachStack = append(ra.reachStack, start)
+
+	for len(ra.reachStack) > 0 {
+		curr := ra.reachStack[len(ra.reachStack)-1]
+		ra.reachStack = ra.reachStack[:len(ra.reachStack)-1]
+
 		if curr == target {
 			return true
 		}
 		if ra.BlockMap[curr] {
-			return false
+			continue
 		}
 		ra.BlockMap[curr] = true
-		return slices.ContainsFunc(curr.Succs, reach)
+
+		for _, succ := range curr.Succs {
+			if !ra.BlockMap[succ] {
+				ra.reachStack = append(ra.reachStack, succ)
+			}
+		}
 	}
-	return reach(start)
+	return false
 }
 
 func (ra *RangeAnalyzer) getResultRangeForIfEdge(vIf *ssa.If, isTrue bool, v ssa.Value) *rangeResult {
@@ -767,7 +898,7 @@ func (ra *RangeAnalyzer) updateResultFromBinOpForValue(result *rangeResult, binO
 				if vMul, ok := GetConstantInt64(op.extra); ok && vMul != 0 {
 					if vMul > 0 {
 						if val >= 0 {
-							hi, lo := bits.Mul64(toUint64(val), uint64(vMul))
+							hi, lo := bits.Mul64(toUint64(val), toUint64(vMul))
 							if hi != 0 {
 								return
 							}
@@ -1121,8 +1252,8 @@ func (ra *RangeAnalyzer) ComputeRange(v ssa.Value, block *ssa.BasicBlock) *range
 					updateRangeMinMax(res, subRes.maxValue>>uint(val), false, isSrcUnsigned) // #nosec G115 - WORKAROUND for old golangci-lint, remove when updated
 				} else {
 					// Even if we don't have a max value set, we know the upper bound from the type.
-					srcInt, _ := ParseIntType(v.X.Type().Underlying().String())
-					res.maxValue = uint64(srcInt.Max) >> uint(val) // #nosec G115 - WORKAROUND for old golangci-lint, remove when updated
+					srcInt, _ := GetIntTypeInfo(v.X.Type())
+					res.maxValue = srcInt.Max >> uint(val) // #nosec G115 - WORKAROUND for old golangci-lint, remove when updated
 					res.maxValueSet = true
 					res.isRangeCheck = true
 				}
@@ -1338,25 +1469,29 @@ func updateRangeMinMax(result *rangeResult, newVal uint64, isMin bool, isSrcUnsi
 
 // isUint checks if the value's type is an unsigned integer.
 func isUint(v ssa.Value) bool {
-	return strings.HasPrefix(v.Type().Underlying().String(), "uint")
+	if basic, ok := v.Type().Underlying().(*types.Basic); ok {
+		return basic.Info()&types.IsUnsigned != 0
+	}
+	return false
 }
 
 // isConstantInRange checks if a constant value fits within the range of the destination type.
-func isConstantInRange(constVal *ssa.Const, dstType string) bool {
-	value, err := strconv.ParseInt(constVal.Value.String(), 10, 64)
-	if err != nil {
+func IsConstantInTypeRange(constVal *ssa.Const, dstInt IntTypeInfo) bool {
+	if constVal.Value == nil {
 		return false
 	}
-
-	dstInt, err := ParseIntType(dstType)
-	if err != nil {
-		return false
-	}
-
 	if dstInt.Signed {
-		return value >= -(1<<(dstInt.Size-1)) && value <= (1<<(dstInt.Size-1))-1
+		val, ok := constant.Int64Val(constVal.Value)
+		if !ok {
+			return false
+		}
+		return val >= dstInt.Min && toUint64(val) <= dstInt.Max
 	}
-	return value >= 0 && value <= (1<<dstInt.Size)-1
+	val, ok := constant.Uint64Val(constVal.Value)
+	if !ok {
+		return false
+	}
+	return val <= dstInt.Max
 }
 
 // getRealValueFromOperation decomposes an SSA value into its base value and any simple arithmetic operation applied to it.
@@ -1458,14 +1593,207 @@ func isSameOrRelated(a, b ssa.Value) bool {
 // ExplicitValsInRange checks if any of the explicit positive or negative values are within the range of the destination type.
 func ExplicitValsInRange(pos []uint, neg []int, dstInt IntTypeInfo) bool {
 	for _, v := range pos {
-		if uint64(v) <= uint64(dstInt.Max) {
+		if uint64(v) <= dstInt.Max {
 			return true
 		}
 	}
 	for _, v := range neg {
-		if int64(v) >= int64(dstInt.Min) {
+		if int64(v) >= dstInt.Min {
 			return true
 		}
 	}
 	return false
+}
+
+// TraverseSSA visits every instruction in the provided functions using the visitor callback.
+func TraverseSSA(funcs []*ssa.Function, visitor func(block *ssa.BasicBlock, instr ssa.Instruction)) {
+	for _, f := range funcs {
+		for _, b := range f.Blocks {
+			for _, i := range b.Instrs {
+				visitor(b, i)
+			}
+		}
+	}
+}
+
+// mergeRanges takes a list of ByteRanges and merges overlapping or contiguous ranges.
+// It modifies the input slice in-place to reduce allocations and returns a slice of disjoint ranges.
+func mergeRanges(ranges []ByteRange) []ByteRange {
+	if len(ranges) <= 1 {
+		return ranges
+	}
+	slices.SortFunc(ranges, func(a, b ByteRange) int {
+		return cmp.Compare(a.Low, b.Low)
+	})
+
+	// In-place merge
+	// 'idx' points to the position of the 'current' merged range being built.
+	idx := 0
+	for _, r := range ranges[1:] {
+		if r.Low <= ranges[idx].High {
+			ranges[idx].High = max(ranges[idx].High, r.High)
+		} else {
+			idx++
+			ranges[idx] = r
+		}
+	}
+	return ranges[:idx+1]
+}
+
+// subtractRange removes 'taint' range from the list of 'safe' ranges, potentially
+// splitting existing safe ranges into two separate fragments. The results are appended to 'dest'.
+func subtractRange(safe []ByteRange, taint ByteRange, dest *[]ByteRange) {
+	*dest = (*dest)[:0]
+	for _, r := range safe {
+		// No overlap
+		if r.High <= taint.Low || r.Low >= taint.High {
+			*dest = append(*dest, r)
+			continue
+		}
+
+		if r.Low < taint.Low {
+			*dest = append(*dest, ByteRange{r.Low, taint.Low})
+		}
+		if r.High > taint.High {
+			*dest = append(*dest, ByteRange{taint.High, r.High})
+		}
+	}
+}
+
+// ResolveByteRange determines the absolute byte range of 'val' relative to its
+// underlying root allocation by recursively resolving slice offsets and indices.
+func (ra *RangeAnalyzer) ResolveByteRange(val ssa.Value) (ByteRange, bool) {
+	if r, ok := ra.ByteRangeCache[val]; ok {
+		return r, true
+	}
+
+	if ra.Depth > MaxDepth {
+		return ByteRange{}, false
+	}
+	ra.Depth++
+	defer func() { ra.Depth-- }()
+
+	res, ok := ra.recursiveByteRange(val)
+	if ok {
+		ra.ByteRangeCache[val] = res
+	}
+	return res, ok
+}
+
+// recursiveByteRange is a helper for ResolveByteRange that traverses up the SSA value chain
+// (handling Slice, IndexAddr, Convert, etc.) to compute the range.
+func (ra *RangeAnalyzer) recursiveByteRange(val ssa.Value) (ByteRange, bool) {
+	switch v := val.(type) {
+	case *ssa.Alloc:
+		l := ra.BufferedLen(v)
+		if l <= 0 {
+			// If it is a local variable slot, try to find what was stored in it
+			if refs := v.Referrers(); refs != nil {
+				for _, ref := range *refs {
+					if st, ok := ref.(*ssa.Store); ok && st.Addr == v {
+						return ra.recursiveByteRange(st.Val)
+					}
+				}
+			}
+			return ByteRange{}, false
+		}
+		return ByteRange{0, l}, true
+	case *ssa.MakeSlice:
+		if l, ok := GetConstantInt64(v.Len); ok && l > 0 {
+			return ByteRange{0, l}, true
+		}
+		return ByteRange{}, false
+	case *ssa.Convert:
+		if c, ok := v.X.(*ssa.Const); ok && c.Value.Kind() == constant.String {
+			l := int64(len(constant.StringVal(c.Value)))
+			if l > 0 {
+				return ByteRange{0, l}, true
+			}
+		}
+		return ByteRange{}, false
+	case *ssa.Slice:
+		parentRange, ok := ra.recursiveByteRange(v.X)
+		if !ok {
+			return ByteRange{}, false
+		}
+
+		var low int64
+		if v.Low != nil {
+			l, ok := GetConstantInt64(v.Low)
+			if !ok {
+				res := ra.ResolveRange(v.Low, v.Block())
+				if res.isRangeCheck && res.maxValueSet {
+					l = toInt64(res.maxValue)
+				} else {
+					return ByteRange{}, false
+				}
+				ra.releaseResult(res)
+			}
+			low = l
+		}
+
+		var high int64
+		if v.High == nil {
+			high = parentRange.High
+		} else {
+			h, ok := GetConstantInt64(v.High)
+			if !ok {
+				res := ra.ResolveRange(v.High, v.Block())
+				if res.isRangeCheck && res.maxValueSet {
+					h = toInt64(res.maxValue)
+				} else {
+					return ByteRange{}, false
+				}
+				ra.releaseResult(res)
+			}
+			high = parentRange.Low + h
+		}
+
+		newLow := parentRange.Low + low
+		newHigh := min(high, parentRange.High)
+		if newLow >= newHigh {
+			return ByteRange{newLow, newLow}, true // Handle empty slices consistently
+		}
+		return ByteRange{newLow, newHigh}, true
+	case *ssa.IndexAddr:
+		parentRange, ok := ra.recursiveByteRange(v.X)
+		if !ok {
+			return ByteRange{}, false
+		}
+		if c, ok := GetConstantInt64(v.Index); ok {
+			start := parentRange.Low + c
+			return ByteRange{start, start + 1}, true
+		}
+		// Check for explicit range checks.
+		res := ra.ResolveRange(v.Index, v.Block())
+		if res.isRangeCheck && res.minValueSet && res.maxValueSet {
+			minVal := toInt64(res.minValue)
+			maxVal := toInt64(res.maxValue)
+			if minVal > maxVal {
+				// Contradictory range (unreachable code). Conservatively report as full taint to satisfy tests expecting issues in dead code.
+				return ByteRange{parentRange.Low, parentRange.High}, true
+			}
+			start := parentRange.Low + minVal
+			end := parentRange.Low + maxVal + 1
+			ra.releaseResult(res)
+			return ByteRange{start, end}, true
+		}
+		ra.releaseResult(res)
+		return ByteRange{}, false
+	case *ssa.UnOp:
+		if v.Op == token.MUL {
+			return ra.recursiveByteRange(v.X)
+		}
+	}
+	return ByteRange{}, false
+}
+
+// BufferedLen attempts to find the constant length of a buffer/slice/array, using cache if available.
+func (ra *RangeAnalyzer) BufferedLen(val ssa.Value) int64 {
+	if res, ok := ra.BufferLenCache[val]; ok {
+		return res
+	}
+	length := GetBufferLen(val)
+	ra.BufferLenCache[val] = length
+	return length
 }

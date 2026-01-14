@@ -16,11 +16,11 @@ package analyzers
 
 import (
 	"errors"
-	"fmt"
+	"go/constant"
 	"go/token"
+	"go/types"
 	"maps"
-	"regexp"
-	"strconv"
+	"sync"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/buildssa"
@@ -28,6 +28,8 @@ import (
 
 	"github.com/securego/gosec/v2/issue"
 )
+
+var errNoFound = errors.New("no found")
 
 type bound int
 
@@ -48,11 +50,32 @@ func newSliceBoundsAnalyzer(id string, description string) *analysis.Analyzer {
 	}
 }
 
-type sliceBoundsState struct {
-	pass           *analysis.Pass
-	trackCache     map[trackCacheKey]*trackCacheValue
-	trackCachePool []*trackCacheValue
+type valOffset struct {
+	val    ssa.Value
+	offset int
 }
+
+type sliceBoundsState struct {
+	*BaseAnalyzerState
+	trackCache map[trackCacheKey]*trackCacheValue
+	valQueue   []valOffset
+}
+
+var (
+	trackValuePool = sync.Pool{
+		New: func() any {
+			return &trackCacheValue{
+				violations: make([]ssa.Instruction, 0, 4),
+				ifs:        make(map[ssa.If]*ssa.BinOp),
+			}
+		},
+	}
+	trackMapPool = sync.Pool{
+		New: func() any {
+			return make(map[trackCacheKey]*trackCacheValue, 32)
+		},
+	}
+)
 
 type trackCacheKey struct {
 	node     ssa.Node
@@ -66,28 +89,38 @@ type trackCacheValue struct {
 
 func newSliceBoundsState(pass *analysis.Pass) *sliceBoundsState {
 	return &sliceBoundsState{
-		pass:           pass,
-		trackCache:     make(map[trackCacheKey]*trackCacheValue),
-		trackCachePool: make([]*trackCacheValue, 0, 16),
+		BaseAnalyzerState: NewBaseState(pass),
+		trackCache:        trackMapPool.Get().(map[trackCacheKey]*trackCacheValue),
+		valQueue:          make([]valOffset, 0, 32),
 	}
+}
+
+func (s *sliceBoundsState) Release() {
+	if s.trackCache != nil {
+		for _, res := range s.trackCache {
+			if res != nil {
+				res.Reset()
+				trackValuePool.Put(res)
+			}
+		}
+		clear(s.trackCache)
+		trackMapPool.Put(s.trackCache)
+		s.trackCache = nil
+	}
+	s.BaseAnalyzerState.Release()
 }
 
 func (s *sliceBoundsState) acquireTrackCacheValue() *trackCacheValue {
-	if len(s.trackCachePool) > 0 {
-		idx := len(s.trackCachePool) - 1
-		res := s.trackCachePool[idx]
-		s.trackCachePool = s.trackCachePool[:idx]
-		res.Reset()
-		return res
-	}
-	return &trackCacheValue{
-		violations: make([]ssa.Instruction, 0, 4),
-		ifs:        make(map[ssa.If]*ssa.BinOp),
-	}
+	res := trackValuePool.Get().(*trackCacheValue)
+	res.Reset()
+	return res
 }
 
 func (s *sliceBoundsState) releaseTrackCacheValue(res *trackCacheValue) {
-	s.trackCachePool = append(s.trackCachePool, res)
+	if res != nil {
+		res.Reset()
+		trackValuePool.Put(res)
+	}
 }
 
 func (v *trackCacheValue) Reset() {
@@ -95,7 +128,8 @@ func (v *trackCacheValue) Reset() {
 	clear(v.ifs)
 }
 
-func (s *sliceBoundsState) ResetCache() {
+func (s *sliceBoundsState) Reset() {
+	s.BaseAnalyzerState.Reset()
 	for _, res := range s.trackCache {
 		if res != nil {
 			s.releaseTrackCacheValue(res)
@@ -111,26 +145,23 @@ func runSliceBounds(pass *analysis.Pass) (any, error) {
 	}
 
 	state := newSliceBoundsState(pass)
+	defer state.Release()
 	issues := map[ssa.Instruction]*issue.Issue{}
 	ifs := map[ssa.If]*ssa.BinOp{}
 	var violations []ssa.Instruction
 	for _, mcall := range ssaResult.SSA.SrcFuncs {
-		state.ResetCache()
+		state.Reset()
 		for _, block := range mcall.DomPreorder() {
 			for _, instr := range block.Instrs {
 				switch instr := instr.(type) {
 				case *ssa.Alloc:
-					sliceCap, err := extractSliceCapFromAlloc(instr.String())
-					if err != nil {
-						break
-					}
-					allocRefs := instr.Referrers()
-					if allocRefs == nil {
-						break
-					}
-					for _, instr := range *allocRefs {
-						if slice, ok := instr.(*ssa.Slice); ok {
-							if _, ok := slice.X.(*ssa.Alloc); ok {
+					if sliceCap, ok := extractArrayLen(instr.Type()); ok {
+						allocRefs := instr.Referrers()
+						if allocRefs == nil {
+							break
+						}
+						for _, refInstr := range *allocRefs {
+							if slice, ok := refInstr.(*ssa.Slice); ok {
 								if slice.Parent() != nil {
 									l, h, maxIdx := GetSliceBounds(slice)
 									violations = violations[:0]
@@ -172,7 +203,7 @@ func runSliceBounds(pass *analysis.Pass) (any, error) {
 				case *ssa.IndexAddr:
 					switch indexInstr := instr.X.(type) {
 					case *ssa.Const:
-						if indexInstr.Type().String()[:2] == "[]" {
+						if _, ok := indexInstr.Type().Underlying().(*types.Slice); ok {
 							if indexInstr.Value == nil {
 								issues[instr] = newIssue(
 									pass.Analyzer.Name,
@@ -187,23 +218,18 @@ func runSliceBounds(pass *analysis.Pass) (any, error) {
 						}
 					case *ssa.Alloc:
 						if instr.Pos() > 0 {
-							typeStr := indexInstr.Type().String()
-							arrayLen, err := extractArrayAllocValue(typeStr) // preallocated array
-							if err != nil {
-								break
+							if arrayLen, ok := extractArrayLen(indexInstr.Type()); ok {
+								indexValue, err := state.extractIntValueIndexAddr(instr, arrayLen)
+								if err == nil && !isSliceIndexInsideBounds(arrayLen, indexValue) {
+									issues[instr] = newIssue(
+										pass.Analyzer.Name,
+										"slice index out of range",
+										pass.Fset,
+										instr.Pos(),
+										issue.Low,
+										issue.High)
+								}
 							}
-
-							_, err = state.extractIntValueIndexAddr(instr, arrayLen)
-							if err != nil {
-								break
-							}
-							issues[instr] = newIssue(
-								pass.Analyzer.Name,
-								"slice index out of range",
-								pass.Fset,
-								instr.Pos(),
-								issue.Low,
-								issue.High)
 						}
 					}
 				}
@@ -332,16 +358,12 @@ func extractLenBound(binop *ssa.BinOp) (ssa.Value, int, bool) {
 		var foundConst bool
 
 		// Check both sides for the constant (symmetric for ADD, careful for SUB)
-		if c, ok := rhsBinOp.Y.(*ssa.Const); ok {
-			if v, err := strconv.Atoi(c.Value.String()); err == nil {
-				constVal = v
-				foundConst = true
-			}
-		} else if c, ok := rhsBinOp.X.(*ssa.Const); ok {
-			if v, err := strconv.Atoi(c.Value.String()); err == nil {
-				constVal = v
-				foundConst = true
-			}
+		if val, ok := GetConstantInt64(rhsBinOp.Y); ok {
+			constVal = int(val)
+			foundConst = true
+		} else if val, ok := GetConstantInt64(rhsBinOp.X); ok {
+			constVal = int(val)
+			foundConst = true
 		}
 
 		if foundConst {
@@ -371,18 +393,14 @@ func extractLenBound(binop *ssa.BinOp) (ssa.Value, int, bool) {
 		var varVal ssa.Value
 		var found bool
 
-		if c, ok := lhsBinOp.Y.(*ssa.Const); ok {
-			if v, err := strconv.Atoi(c.Value.String()); err == nil {
-				constVal = v
-				varVal = lhsBinOp.X
-				found = true
-			}
-		} else if c, ok := lhsBinOp.X.(*ssa.Const); ok {
-			if v, err := strconv.Atoi(c.Value.String()); err == nil {
-				constVal = v
-				varVal = lhsBinOp.Y
-				found = true
-			}
+		if val, ok := GetConstantInt64(lhsBinOp.Y); ok {
+			constVal = int(val)
+			varVal = lhsBinOp.X
+			found = true
+		} else if val, ok := GetConstantInt64(lhsBinOp.X); ok {
+			constVal = int(val)
+			varVal = lhsBinOp.Y
+			found = true
 		}
 
 		if found {
@@ -414,28 +432,19 @@ func extractIndexOffset(indexVal ssa.Value, loopVar ssa.Value) (int, bool) {
 		switch binOp.Op {
 		case token.ADD:
 			if binOp.X == loopVar {
-				if c, ok := binOp.Y.(*ssa.Const); ok {
-					val, err := strconv.Atoi(c.Value.String())
-					if err == nil {
-						return val, true
-					}
+				if val, ok := GetConstantInt64(binOp.Y); ok {
+					return int(val), true
 				}
 			}
 			if binOp.Y == loopVar {
-				if c, ok := binOp.X.(*ssa.Const); ok {
-					val, err := strconv.Atoi(c.Value.String())
-					if err == nil {
-						return val, true
-					}
+				if val, ok := GetConstantInt64(binOp.X); ok {
+					return int(val), true
 				}
 			}
 		case token.SUB:
 			if binOp.X == loopVar {
-				if c, ok := binOp.Y.(*ssa.Const); ok {
-					val, err := strconv.Atoi(c.Value.String())
-					if err == nil {
-						return -val, true
-					}
+				if val, ok := GetConstantInt64(binOp.Y); ok {
+					return int(-val), true
 				}
 			}
 		}
@@ -448,27 +457,18 @@ func decomposeIndex(v ssa.Value) (ssa.Value, int) {
 	if binOp, ok := v.(*ssa.BinOp); ok {
 		switch binOp.Op {
 		case token.ADD:
-			if c, ok := binOp.Y.(*ssa.Const); ok {
-				val, err := strconv.Atoi(c.Value.String())
-				if err == nil {
-					base, offset := decomposeIndex(binOp.X)
-					return base, offset + val
-				}
+			if val, ok := GetConstantInt64(binOp.Y); ok {
+				base, offset := decomposeIndex(binOp.X)
+				return base, offset + int(val)
 			}
-			if c, ok := binOp.X.(*ssa.Const); ok {
-				val, err := strconv.Atoi(c.Value.String())
-				if err == nil {
-					base, offset := decomposeIndex(binOp.Y)
-					return base, offset + val
-				}
+			if val, ok := GetConstantInt64(binOp.X); ok {
+				base, offset := decomposeIndex(binOp.Y)
+				return base, offset + int(val)
 			}
 		case token.SUB:
-			if c, ok := binOp.Y.(*ssa.Const); ok {
-				val, err := strconv.Atoi(c.Value.String())
-				if err == nil {
-					base, offset := decomposeIndex(binOp.X)
-					return base, offset - val
-				}
+			if val, ok := GetConstantInt64(binOp.Y); ok {
+				base, offset := decomposeIndex(binOp.X)
+				return base, offset - int(val)
 			}
 		}
 	}
@@ -565,15 +565,12 @@ func (s *sliceBoundsState) extractIntValueIndexAddr(refinstr *ssa.IndexAddr, sli
 		var next ssa.Value
 		for _, edge := range p.Edges {
 			eBase, eOffset := decomposeIndex(edge)
-			if c, ok := eBase.(*ssa.Const); ok {
-				val, err := strconv.Atoi(c.Value.String())
-				if err == nil {
-					start = val + eOffset
-					hasStart = true
-					// Direct check for initial value violation
-					if !isSliceIndexInsideBounds(sliceCap+sliceIncr, start+offset) {
-						return start + offset, nil
-					}
+			if val, ok := GetConstantInt64(eBase); ok {
+				start = int(val) + eOffset
+				hasStart = true
+				// Direct check for initial value violation
+				if !isSliceIndexInsideBounds(sliceCap+sliceIncr, start+offset) {
+					return start + offset, nil
 				}
 			} else {
 				next = edge
@@ -583,12 +580,16 @@ func (s *sliceBoundsState) extractIntValueIndexAddr(refinstr *ssa.IndexAddr, sli
 		if hasStart && next != nil {
 			// Look for loop limit: next < limit or p < limit
 			nBase, nOffset := decomposeIndex(next)
-			searchVals := []ssa.Value{p, nBase}
+			var searchVals [3]ssa.Value
+			searchVals[0] = p
+			searchVals[1] = nBase
+			numVals := 2
 			if nBase != next {
-				searchVals = append(searchVals, next)
+				searchVals[2] = next
+				numVals = 3
 			}
 
-			for _, v := range searchVals {
+			for _, v := range searchVals[:numVals] {
 				if v == nil {
 					continue
 				}
@@ -643,23 +644,21 @@ func (s *sliceBoundsState) extractIntValueIndexAddr(refinstr *ssa.IndexAddr, sli
 	}
 
 	// Falls back to existing queue search for complex dependencies
-	queue := []struct {
-		val    ssa.Value
-		offset int
-	}{{base, offset}}
-	visited := make(map[ssa.Value]bool)
+	s.valQueue = s.valQueue[:0]
+	s.valQueue = append(s.valQueue, valOffset{base, offset})
+	clear(s.Visited)
 	depth := 0
 
-	for len(queue) > 0 && depth < MaxDepth {
-		nextQueue := []struct {
-			val    ssa.Value
-			offset int
-		}{}
-		for _, item := range queue {
-			if visited[item.val] {
+	head := 0
+	for head < len(s.valQueue) && depth < MaxDepth {
+		levelSize := len(s.valQueue) - head
+		for i := 0; i < levelSize; i++ {
+			item := s.valQueue[head]
+			head++
+			if s.Visited[item.val] {
 				continue
 			}
-			visited[item.val] = true
+			s.Visited[item.val] = true
 
 			idxRefs := item.val.Referrers()
 			if idxRefs == nil {
@@ -670,24 +669,12 @@ func (s *sliceBoundsState) extractIntValueIndexAddr(refinstr *ssa.IndexAddr, sli
 				case *ssa.BinOp:
 					switch instr.Op {
 					case token.ADD:
-						if c, ok := instr.Y.(*ssa.Const); ok {
-							val, err := strconv.Atoi(c.Value.String())
-							if err == nil {
-								nextQueue = append(nextQueue, struct {
-									val    ssa.Value
-									offset int
-								}{instr, item.offset - val})
-							}
+						if val, ok := GetConstantInt64(instr.Y); ok {
+							s.valQueue = append(s.valQueue, valOffset{instr, item.offset - int(val)})
 						}
 					case token.SUB:
-						if c, ok := instr.Y.(*ssa.Const); ok {
-							val, err := strconv.Atoi(c.Value.String())
-							if err == nil {
-								nextQueue = append(nextQueue, struct {
-									val    ssa.Value
-									offset int
-								}{instr, item.offset + val})
-							}
+						if val, ok := GetConstantInt64(instr.Y); ok {
+							s.valQueue = append(s.valQueue, valOffset{instr, item.offset + int(val)})
 						}
 					case token.LSS, token.LEQ, token.GTR, token.GEQ:
 						// Already handled by loop counter logic for Phi,
@@ -710,11 +697,10 @@ func (s *sliceBoundsState) extractIntValueIndexAddr(refinstr *ssa.IndexAddr, sli
 				}
 			}
 		}
-		queue = nextQueue
 		depth++
 	}
 
-	return 0, errors.New("no found")
+	return 0, errNoFound
 }
 
 // checkAllSlicesBounds validates slice operation boundaries against the known capacity or limit.
@@ -808,7 +794,7 @@ func invBound(bound bound) bound {
 	}
 }
 
-var errExtractBinOp = fmt.Errorf("unable to extract constant from binop")
+var errExtractBinOp = errors.New("unable to extract constant from binop")
 
 func extractBinOpBound(binop *ssa.BinOp) (bound, int, error) {
 	if binop.X != nil {
@@ -816,10 +802,11 @@ func extractBinOpBound(binop *ssa.BinOp) (bound, int, error) {
 			if x.Value == nil {
 				return lowerUnbounded, 0, errExtractBinOp
 			}
-			value, err := strconv.Atoi(x.Value.String())
-			if err != nil {
-				return lowerUnbounded, value, err
+			val, ok := constant.Int64Val(x.Value)
+			if !ok {
+				return lowerUnbounded, 0, errExtractBinOp
 			}
+			value := int(val)
 			switch binop.Op {
 			case token.LSS, token.LEQ:
 				return upperUnbounded, value, nil
@@ -837,10 +824,11 @@ func extractBinOpBound(binop *ssa.BinOp) (bound, int, error) {
 			if y.Value == nil {
 				return lowerUnbounded, 0, errExtractBinOp
 			}
-			value, err := strconv.Atoi(y.Value.String())
-			if err != nil {
-				return lowerUnbounded, value, err
+			val, ok := constant.Int64Val(y.Value)
+			if !ok {
+				return lowerUnbounded, 0, errExtractBinOp
 			}
+			value := int(val)
 			switch binop.Op {
 			case token.LSS, token.LEQ:
 				return lowerUnbounded, value, nil
@@ -860,43 +848,13 @@ func isSliceIndexInsideBounds(h int, index int) bool {
 	return (0 <= index && index < h)
 }
 
-var (
-	sliceCapRegexp   = regexp.MustCompile(`new \[(\d+)\].*`)
-	arrayAllocRegexp = regexp.MustCompile(`.*\[(\d+)\].*`)
-)
-
-// extractSliceCapFromAlloc parses the initial capacity of a slice from its allocation instruction string.
-func extractSliceCapFromAlloc(instr string) (int, error) {
-	var sliceCap int
-	matches := sliceCapRegexp.FindAllStringSubmatch(instr, -1)
-	if matches == nil {
-		return sliceCap, errors.New("no slice cap found")
+// extractArrayLen attempts to determine the length of an array type, stripping pointers if necessary.
+func extractArrayLen(t types.Type) (int, bool) {
+	if ptr, ok := t.Underlying().(*types.Pointer); ok {
+		t = ptr.Elem()
 	}
-
-	if len(matches) > 0 {
-		m := matches[0]
-		if len(m) > 1 {
-			return strconv.Atoi(m[1])
-		}
+	if arr, ok := t.Underlying().(*types.Array); ok {
+		return int(arr.Len()), true
 	}
-
-	return 0, errors.New("no slice cap found")
-}
-
-// extractArrayAllocValue parses the constant length of an array allocation from its type string.
-func extractArrayAllocValue(value string) (int, error) {
-	var sliceCap int
-	matches := arrayAllocRegexp.FindAllStringSubmatch(value, -1)
-	if matches == nil {
-		return sliceCap, fmt.Errorf("invalid value: %s", value)
-	}
-
-	if len(matches) > 0 {
-		m := matches[0]
-		if len(m) > 1 {
-			return strconv.Atoi(m[1])
-		}
-	}
-
-	return 0, fmt.Errorf("invalid value: %s", value)
+	return 0, false
 }
