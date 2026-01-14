@@ -854,10 +854,407 @@ import (
 "io"
 )
 
-func myGoodInterfaceCipher(r io.Reader, block cipher.Block) cipher.Stream {
+func myGoodInterfaceCipher(r io.Reader, block cipher.Block) {
     iv := make([]byte, 16)
     r.Read(iv)
-    return cipher.NewCTR(block, iv)
+    stream := cipher.NewCTR(block, iv)
+    _ = stream
 }
 `}, 0, gosec.NewConfig()},
+	{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+)
+
+func main() {
+	key := []byte("example key 1234")
+	block, _ := aes.NewCipher(key)
+	iv := []byte("1234567890123456")
+	iv[8] = 0
+	rand.Read(iv)
+	stream := cipher.NewCTR(block, iv)
+	_ = stream
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+)
+
+func test(init func([]byte)) {
+	key := []byte("example key 1234")
+	block, _ := aes.NewCipher(key)
+	iv := make([]byte, 16)
+	init(iv) // We can't resolve 'init', should default to Dynamic to avoid FP
+	stream := cipher.NewCTR(block, iv)
+	_ = stream
+}
+`}, 0, gosec.NewConfig()},
+
+	{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+	"io"
+)
+
+type CustomReader interface {
+	io.Reader
+}
+
+func testCustomReader(cr CustomReader) {
+	key := []byte("example key 1234")
+	block, _ := aes.NewCipher(key)
+	iv := make([]byte, 16)
+	cr.Read(iv)
+	stream := cipher.NewCTR(block, iv)
+	_ = stream
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`package main
+
+import (
+	"crypto/cipher"
+	"io"
+)
+
+func interfaceSafeOverwrite(r io.Reader, block cipher.Block) {
+	iv := make([]byte, 16)
+	iv[0] = 0 // Tainted
+	r.Read(iv) // Dynamic Interface Read (covers taint)
+	stream := cipher.NewCTR(block, iv)
+	_ = stream
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+	"io"
+)
+
+type CustomReader interface {
+	io.Reader
+}
+
+func testCustomReaderOverwrite(cr CustomReader) {
+	key := []byte("example key 1234")
+	block, _ := aes.NewCipher(key)
+	iv := make([]byte, 16)
+	iv[15] = 1 // Taint
+	cr.Read(iv) // Cover via embedded interface
+	stream := cipher.NewCTR(block, iv)
+	_ = stream
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`package main
+
+import (
+	"crypto/cipher"
+	"io"
+)
+
+func interfaceSafeOverwriteSlice(r io.Reader, block cipher.Block) {
+	iv := make([]byte, 16)
+	iv[0] = 0
+	r.Read(iv[:])
+	stream := cipher.NewCTR(block, iv)
+	_ = stream
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`package main
+
+import (
+	"crypto/cipher"
+)
+
+func pointerUnOpIV(block cipher.Block) {
+	iv := make([]byte, 16) // Hardcoded
+	ptr := &iv
+	stream := cipher.NewCTR(block, *ptr)
+	_ = stream
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`package main
+
+import (
+	"crypto/rand"
+	"crypto/cipher"
+)
+
+func pointerUnOpSafeIV(block cipher.Block) {
+	iv := make([]byte, 16)
+	rand.Read(iv) // Dynamic
+	ptr := &iv
+	stream := cipher.NewCTR(block, *ptr) // dynamic dereference
+	_ = stream
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+)
+
+func main() {
+	iv := make([]byte, 16)
+	rand.Read(iv[6:12])
+	rand.Read(iv[0:6])
+	rand.Read(iv[12:16])
+	block, _ := aes.NewCipher([]byte("12345678123456781234567812345678"))
+	_ = cipher.NewCTR(block, iv)
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+)
+
+func main() {
+	iv := make([]byte, 16)
+	rand.Read(iv[6:12])
+	iv[6] = 0
+	rand.Read(iv[0:7])
+	iv[10] = 0
+	rand.Read(iv[10:16])
+	block, _ := aes.NewCipher([]byte("12345678123456781234567812345678"))
+	_ = cipher.NewCTR(block, iv)
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`package main
+import (
+    "crypto/aes"
+    "crypto/cipher"
+    "os"
+)
+func main() {
+    iv := make([]byte, len(os.Args))
+    block, _ := aes.NewCipher([]byte("12345678123456781234567812345678"))
+    _ = cipher.NewCTR(block, iv)
+}
+`}, 1, gosec.NewConfig()},
+	// Slice with Variable Bound (Unresolvable Range)
+	{[]string{`package main
+import (
+    "crypto/aes"
+    "crypto/cipher"
+    "crypto/rand"
+    "os"
+)
+func main() {
+    iv := make([]byte, 16)
+    low := len(os.Args)
+    sub := iv[low:]
+    rand.Read(sub)
+    block, _ := aes.NewCipher([]byte("12345678123456781234567812345678"))
+    _ = cipher.NewCTR(block, iv)
+}
+`}, 1, gosec.NewConfig()},
+	// IndexAddr with Variable Index (Unresolvable Range)
+	{[]string{`package main
+import (
+    "crypto/aes"
+    "crypto/cipher"
+    "os"
+)
+func main() {
+    iv := make([]byte, 16)
+    i := len(os.Args)
+    iv[i] = 0
+    block, _ := aes.NewCipher([]byte("12345678123456781234567812345678"))
+    _ = cipher.NewCTR(block, iv)
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`package main
+import (
+    "crypto/aes"
+    "crypto/cipher"
+)
+func test(iv []byte) {
+    iv[0] = 0
+    block, _ := aes.NewCipher([]byte("12345678123456781234567812345678"))
+    _ = cipher.NewCTR(block, iv)
+}
+func main() {
+    test(make([]byte, 16))
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+)
+
+func main() {
+	iv := make([]byte, 16)
+	rand.Read(iv[6:12])
+	iv[6] = 0
+	rand.Read(iv[0:7])
+	iv[10] = 0
+	rand.Read(iv[10:16])
+	block, _ := aes.NewCipher([]byte("12345678123456781234567812345678"))
+	_ = cipher.NewCTR(block, iv)
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`package main
+import (
+    "crypto/aes"
+    "crypto/cipher"
+    "os"
+)
+func main() {
+    iv := make([]byte, len(os.Args))
+    block, _ := aes.NewCipher([]byte("12345678123456781234567812345678"))
+    _ = cipher.NewCTR(block, iv)
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`package main
+import (
+    "crypto/aes"
+    "crypto/cipher"
+    "crypto/rand"
+    "os"
+)
+func main() {
+    iv := make([]byte, 16)
+    low := len(os.Args)
+    sub := iv[low:]
+    rand.Read(sub)
+    block, _ := aes.NewCipher([]byte("12345678123456781234567812345678"))
+    _ = cipher.NewCTR(block, iv)
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`package main
+import (
+    "crypto/aes"
+    "crypto/cipher"
+    "os"
+)
+func main() {
+    iv := make([]byte, 16)
+    i := len(os.Args)
+    iv[i] = 0
+    block, _ := aes.NewCipher([]byte("12345678123456781234567812345678"))
+    _ = cipher.NewCTR(block, iv)
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`package main
+import (
+    "crypto/aes"
+    "crypto/cipher"
+)
+func test(iv []byte) {
+    iv[0] = 0
+    block, _ := aes.NewCipher([]byte("12345678123456781234567812345678"))
+    _ = cipher.NewCTR(block, iv)
+}
+func main() {
+    test(make([]byte, 16))
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+)
+
+func unsafeOverwrite(i int) {
+	iv := make([]byte, 16)
+	rand.Read(iv)
+	if i >= 10 && i < 16 {
+		iv[i] = 0
+	}
+	block, _ := aes.NewCipher([]byte("12345678123456781234567812345678"))
+	_ = cipher.NewCTR(block, iv[:16])
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+)
+
+func safeOverwrite(i int) {
+	iv := make([]byte, 128)
+	rand.Read(iv)
+	if i >= 16 && i < 128{
+		iv[i] = 0
+	}
+	block, _ := aes.NewCipher([]byte("12345678123456781234567812345678"))
+	_ = cipher.NewCTR(block, iv[:16])
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+)
+
+func unsafeOverwrite(i int) {
+	iv := make([]byte, 16)
+	rand.Read(iv)
+	if i > 0 {
+		iv[i % 16] = 0
+	}
+	block, _ := aes.NewCipher([]byte("12345678123456781234567812345678"))
+	_ = cipher.NewCTR(block, iv)
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+)
+
+func unsafeOverwrite(i int) {
+	iv := make([]byte, 16)
+	rand.Read(iv)
+	if i - 16 > 0 && i + 16 < 32 {
+		iv[i - 16] = 0
+	}
+	block, _ := aes.NewCipher([]byte("12345678123456781234567812345678"))
+	_ = cipher.NewCTR(block, iv)
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`package main
+import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+)
+
+func main() {
+	iv := make([]byte, 16)
+	rand.Read(iv)
+	
+	// Alias assignment
+	alias := iv
+	alias[0] = 0 // Hardcoded write via alias (unsafe)
+
+	block, _ := aes.NewCipher([]byte("12345678123456781234567812345678"))
+	_ = cipher.NewCTR(block, iv)
+}
+`}, 1, gosec.NewConfig()},
 }

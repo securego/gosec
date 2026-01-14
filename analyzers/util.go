@@ -22,8 +22,8 @@ import (
 	"log"
 	"math"
 	"os"
-	"regexp"
 	"strconv"
+	"sync"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/buildssa"
@@ -31,6 +31,150 @@ import (
 
 	"github.com/securego/gosec/v2/issue"
 )
+
+// MaxDepth defines the maximum recursion depth for SSA analysis to avoid infinite loops and memory exhaustion.
+const MaxDepth = 20
+
+const (
+	minInt64  = int64(math.MinInt64)
+	maxUint64 = uint64(math.MaxUint64)
+	maxInt64  = uint64(math.MaxInt64)
+)
+
+// SSAAnalyzerResult contains various information returned by the
+// SSA analysis along with some configuration
+type SSAAnalyzerResult struct {
+	Config map[string]any
+	Logger *log.Logger
+	SSA    *buildssa.SSA
+}
+
+// BaseAnalyzerState provides a shared state for Gosec analyzers,
+// encapsulating common fields and reusable objects to reduce allocations.
+type BaseAnalyzerState struct {
+	Pass         *analysis.Pass
+	Analyzer     *RangeAnalyzer
+	Visited      map[ssa.Value]bool
+	FuncMap      map[*ssa.Function]bool // General purpose function set
+	BlockMap     map[*ssa.BasicBlock]bool
+	ClosureCache map[ssa.Value]bool
+	Depth        int
+}
+
+var (
+	visitedPool = sync.Pool{
+		New: func() any {
+			return make(map[ssa.Value]bool, 64)
+		},
+	}
+	funcMapPool = sync.Pool{
+		New: func() any {
+			return make(map[*ssa.Function]bool, 32)
+		},
+	}
+	closureCachePool = sync.Pool{
+		New: func() any {
+			return make(map[ssa.Value]bool, 32)
+		},
+	}
+	blockMapPool = sync.Pool{
+		New: func() any {
+			return make(map[*ssa.BasicBlock]bool, 32)
+		},
+	}
+)
+
+// NewBaseState creates a new BaseAnalyzerState with pooled maps.
+func NewBaseState(pass *analysis.Pass) *BaseAnalyzerState {
+	return &BaseAnalyzerState{
+		Pass:         pass,
+		Analyzer:     NewRangeAnalyzer(),
+		Visited:      visitedPool.Get().(map[ssa.Value]bool),
+		FuncMap:      funcMapPool.Get().(map[*ssa.Function]bool),
+		BlockMap:     blockMapPool.Get().(map[*ssa.BasicBlock]bool),
+		ClosureCache: closureCachePool.Get().(map[ssa.Value]bool),
+	}
+}
+
+// Reset clears the caches and maps for reuse within an analyzer run.
+func (s *BaseAnalyzerState) Reset() {
+	if s.Analyzer != nil {
+		s.Analyzer.ResetCache()
+	}
+	clear(s.Visited)
+	clear(s.FuncMap)
+	clear(s.BlockMap)
+	clear(s.ClosureCache)
+	s.Depth = 0
+}
+
+// Release returns the pooled maps and analyzer to their pools.
+func (s *BaseAnalyzerState) Release() {
+	if s.Analyzer != nil {
+		s.Analyzer.Release()
+		s.Analyzer = nil
+	}
+	if s.Visited != nil {
+		clear(s.Visited)
+		visitedPool.Put(s.Visited)
+		s.Visited = nil
+	}
+	if s.FuncMap != nil {
+		clear(s.FuncMap)
+		funcMapPool.Put(s.FuncMap)
+		s.FuncMap = nil
+	}
+	if s.ClosureCache != nil {
+		clear(s.ClosureCache)
+		closureCachePool.Put(s.ClosureCache)
+		s.ClosureCache = nil
+	}
+	if s.BlockMap != nil {
+		clear(s.BlockMap)
+		blockMapPool.Put(s.BlockMap)
+		s.BlockMap = nil
+	}
+}
+
+// ResolveFuncs resolves a value to a list of possible functions (e.g., closures, phi nodes).
+// It reuses the state's ClosureCache to avoid cycles and redundant work.
+func (s *BaseAnalyzerState) ResolveFuncs(val ssa.Value, funcs *[]*ssa.Function) {
+	if val == nil || s.Depth > MaxDepth {
+		return
+	}
+	if s.ClosureCache[val] {
+		return
+	}
+	s.ClosureCache[val] = true
+
+	s.Depth++
+	defer func() { s.Depth-- }()
+
+	switch v := val.(type) {
+	case *ssa.Function:
+		*funcs = append(*funcs, v)
+	case *ssa.MakeClosure:
+		*funcs = append(*funcs, v.Fn.(*ssa.Function))
+	case *ssa.Phi:
+		for _, edge := range v.Edges {
+			s.ResolveFuncs(edge, funcs)
+		}
+	case *ssa.ChangeType:
+		s.ResolveFuncs(v.X, funcs)
+	case *ssa.UnOp:
+		if v.Op == token.MUL {
+			s.ResolveFuncs(v.X, funcs)
+		}
+	}
+}
+
+// IntTypeInfo represents integer type properties
+type IntTypeInfo struct {
+	Signed bool
+	Size   int
+	Min    int64
+	Max    uint64
+}
 
 // isSliceInsideBounds checks if the requested slice range is within the parent slice's boundaries.
 func isSliceInsideBounds(l, h int, cl, ch int) bool {
@@ -40,17 +184,6 @@ func isSliceInsideBounds(l, h int, cl, ch int) bool {
 // isThreeIndexSliceInsideBounds validates the boundaries and capacity of a 3-index slice (s[i:j:k]).
 func isThreeIndexSliceInsideBounds(l, h, maxIdx int, oldCap int) bool {
 	return l >= 0 && h >= l && maxIdx >= h && maxIdx <= oldCap
-}
-
-// MaxDepth defines the maximum recursion depth for SSA analysis to avoid infinite loops and memory exhaustion.
-const MaxDepth = 20
-
-// SSAAnalyzerResult contains various information returned by the
-// SSA analysis along with some configuration
-type SSAAnalyzerResult struct {
-	Config map[string]any
-	Logger *log.Logger
-	SSA    *buildssa.SSA
 }
 
 // BuildDefaultAnalyzers returns the default list of analyzers
@@ -121,84 +254,44 @@ func issueCodeSnippet(fileSet *token.FileSet, pos token.Pos) string {
 	return code
 }
 
-// IntTypeInfo represents integer type properties
-type IntTypeInfo struct {
-	Signed bool
-	Size   int
-	Min    int
-	Max    uint
-}
-
-var intTypeRegexp = regexp.MustCompile(`^(?P<type>u?int)(?P<size>\d{1,2})?$`)
-
-// ParseIntType parses an integer type string into IntTypeInfo
-func ParseIntType(intType string) (IntTypeInfo, error) {
-	matches := intTypeRegexp.FindStringSubmatch(intType)
-	if matches == nil {
-		return IntTypeInfo{}, fmt.Errorf("no integer type match found for %s", intType)
+// GetIntTypeInfo extracts properties of an integer type.
+func GetIntTypeInfo(t types.Type) (IntTypeInfo, error) {
+	u := t.Underlying()
+	if ptr, ok := u.(*types.Pointer); ok {
+		u = ptr.Elem().Underlying()
+	}
+	basic, ok := u.(*types.Basic)
+	if !ok {
+		return IntTypeInfo{}, fmt.Errorf("not a basic type: %T", u)
 	}
 
-	it := matches[intTypeRegexp.SubexpIndex("type")]
-	is := matches[intTypeRegexp.SubexpIndex("size")]
-
-	signed := it == "int"
-	intSize := strconv.IntSize
-	if is != "" {
-		var err error
-		intSize, err = strconv.Atoi(is)
-		if err != nil {
-			return IntTypeInfo{}, fmt.Errorf("failed to parse the integer type size: %w", err)
-		}
+	var info IntTypeInfo
+	switch basic.Kind() {
+	case types.Int:
+		info = IntTypeInfo{Signed: true, Size: 64, Min: math.MinInt64, Max: math.MaxInt64}
+	case types.Int8:
+		info = IntTypeInfo{Signed: true, Size: 8, Min: math.MinInt8, Max: math.MaxInt8}
+	case types.Int16:
+		info = IntTypeInfo{Signed: true, Size: 16, Min: math.MinInt16, Max: math.MaxInt16}
+	case types.Int32:
+		info = IntTypeInfo{Signed: true, Size: 32, Min: math.MinInt32, Max: math.MaxInt32}
+	case types.Int64:
+		info = IntTypeInfo{Signed: true, Size: 64, Min: math.MinInt64, Max: math.MaxInt64}
+	case types.Uint:
+		info = IntTypeInfo{Signed: false, Size: 64, Min: 0, Max: math.MaxUint64}
+	case types.Uint8:
+		// Byte is often an alias for Uint8
+		info = IntTypeInfo{Signed: false, Size: 8, Min: 0, Max: math.MaxUint8}
+	case types.Uint16:
+		info = IntTypeInfo{Signed: false, Size: 16, Min: 0, Max: math.MaxUint16}
+	case types.Uint32:
+		info = IntTypeInfo{Signed: false, Size: 32, Min: 0, Max: math.MaxUint32}
+	case types.Uint64, types.Uintptr:
+		info = IntTypeInfo{Signed: false, Size: 64, Min: 0, Max: math.MaxUint64}
+	default:
+		return IntTypeInfo{}, fmt.Errorf("unsupported basic type: %v", basic.Kind())
 	}
-
-	if intSize != 8 && intSize != 16 && intSize != 32 && intSize != 64 && is != "" {
-		return IntTypeInfo{}, fmt.Errorf("invalid bit size: %d", intSize)
-	}
-
-	var minVal int
-	var maxVal uint
-
-	if signed {
-		switch intSize {
-		case 8:
-			minVal = math.MinInt8
-			maxVal = math.MaxInt8
-		case 16:
-			minVal = math.MinInt16
-			maxVal = math.MaxInt16
-		case 32:
-			minVal = math.MinInt32
-			maxVal = math.MaxInt32
-		case 64:
-			minVal = math.MinInt64
-			// We are on 64-bit architecture where uint is 64-bit
-			maxVal = uint(math.MaxInt64)
-		default:
-			return IntTypeInfo{}, fmt.Errorf("unsupported bit size: %d", intSize)
-		}
-	} else {
-		minVal = 0
-		switch intSize {
-		case 8:
-			maxVal = math.MaxUint8
-		case 16:
-			maxVal = math.MaxUint16
-		case 32:
-			maxVal = math.MaxUint32
-		case 64:
-			// We are on 64-bit architecture where uint is 64-bit
-			maxVal = uint(math.MaxUint64)
-		default:
-			return IntTypeInfo{}, fmt.Errorf("unsupported bit size: %d", intSize)
-		}
-	}
-
-	return IntTypeInfo{
-		Signed: signed,
-		Size:   intSize,
-		Min:    minVal,
-		Max:    maxVal,
-	}, nil
+	return info, nil
 }
 
 // GetConstantInt64 extracts a constant int64 value from an ssa.Value
@@ -251,6 +344,70 @@ func GetSliceBounds(s *ssa.Slice) (int, int, int) {
 	return low, high, maxIdx
 }
 
+// GetSliceRange extracts low and high indices as int64.
+// High is returned as -1 if it's missing (extends to the end).
+func GetSliceRange(s *ssa.Slice) (int64, int64) {
+	var low, high int64 = 0, -1
+	if s.Low != nil {
+		if val, ok := GetConstantInt64(s.Low); ok {
+			low = val
+		}
+	}
+	if s.High != nil {
+		if val, ok := GetConstantInt64(s.High); ok {
+			high = val
+		}
+	}
+	return low, high
+}
+
+// ComputeSliceNewCap determines the new capacity of a slice based on the slicing operation.
+// l, h, maxIdx are the extracted low, high, and max indices. oldCap is the capacity of the original slice.
+// It handles both 2-index ([:]) and 3-index ([: :]) slice expressions.
+func ComputeSliceNewCap(l, h, maxIdx, oldCap int) int {
+	if maxIdx > 0 {
+		return maxIdx - l
+	}
+	if l == 0 && h == 0 {
+		return oldCap
+	}
+	if l > 0 && h == 0 {
+		return oldCap - l
+	}
+	if l == 0 && h > 0 {
+		return h
+	}
+	return h - l
+}
+
+// IsFullSlice checks if the slice operation covers the entire buffer.
+func IsFullSlice(sl *ssa.Slice, bufferLen int64) bool {
+	l, h := GetSliceRange(sl)
+	if l != 0 {
+		return false
+	}
+	if h < 0 {
+		return true
+	}
+	return bufferLen >= 0 && h == bufferLen
+}
+
+// IsSubSlice checks if the 'sub' slice is contained within the 'super' slice.
+func IsSubSlice(sub, super *ssa.Slice) bool {
+	l1, h1 := GetSliceRange(sub)   // child
+	l2, h2 := GetSliceRange(super) // parent
+	if l2 > l1 {
+		return false
+	}
+	if h2 < 0 {
+		return true // parent covers all, so child is sub
+	}
+	if h1 < 0 {
+		return false // parent has bound but child doesn't
+	}
+	return h1 <= h2
+}
+
 // GetBufferLen attempts to find the constant length of a buffer/slice/array
 func GetBufferLen(val ssa.Value) int64 {
 	current := val
@@ -272,24 +429,19 @@ func GetBufferLen(val ssa.Value) int64 {
 }
 
 // BuildCallerMap builds a map of function names to their call sites
-func BuildCallerMap(funcs []*ssa.Function) map[string][]*ssa.Call {
-	callerMap := make(map[string][]*ssa.Call)
-	for _, f := range funcs {
-		for _, b := range f.Blocks {
-			for _, i := range b.Instrs {
-				if c, ok := i.(*ssa.Call); ok {
-					var name string
-					if c.Call.Method != nil {
-						name = c.Call.Method.FullName()
-					} else {
-						name = c.Call.Value.String()
-					}
-					callerMap[name] = append(callerMap[name], c)
-				}
+// BuildCallerMap fills the provided map with all calls found in the given functions.
+func BuildCallerMap(funcs []*ssa.Function, callerMap map[string][]*ssa.Call) {
+	TraverseSSA(funcs, func(b *ssa.BasicBlock, i ssa.Instruction) {
+		if c, ok := i.(*ssa.Call); ok {
+			var name string
+			if c.Call.Method != nil {
+				name = c.Call.Method.FullName()
+			} else {
+				name = c.Call.Value.String()
 			}
+			callerMap[name] = append(callerMap[name], c)
 		}
-	}
-	return callerMap
+	})
 }
 
 // toUint64 casts int64 to uint64 preserving the bit pattern (2's complement) and suppresses the linter warning.
@@ -300,4 +452,208 @@ func toUint64(i int64) uint64 {
 // toInt64 casts uint64 to int64 preserving the bit pattern and suppresses the linter warning.
 func toInt64(u uint64) int64 {
 	return int64(u) // #nosec
+}
+
+// GetDominators returns a list of dominator blocks for the given block, in order from root to the block.
+func GetDominators(block *ssa.BasicBlock) []*ssa.BasicBlock {
+	var doms []*ssa.BasicBlock
+	curr := block
+	for curr != nil {
+		doms = append(doms, curr)
+		curr = curr.Idom()
+	}
+	// Reverse to get root-to-block order
+	for i, j := 0, len(doms)-1; i < j; i, j = i+1, j-1 {
+		doms[i], doms[j] = doms[j], doms[i]
+	}
+	return doms
+}
+
+// isConstantInRange checks if a constant value fits within the range of the destination type.
+func IsConstantInTypeRange(constVal *ssa.Const, dstInt IntTypeInfo) bool {
+	if constVal.Value == nil {
+		return false
+	}
+	if dstInt.Signed {
+		val, ok := constant.Int64Val(constVal.Value)
+		if !ok {
+			return false
+		}
+		return val >= dstInt.Min && toUint64(val) <= dstInt.Max
+	}
+	val, ok := constant.Uint64Val(constVal.Value)
+	if !ok {
+		return false
+	}
+	return val <= dstInt.Max
+}
+
+// ExplicitValsInRange checks if any of the explicit positive or negative values are within the range of the destination type.
+func ExplicitValsInRange(pos []uint, neg []int, dstInt IntTypeInfo) bool {
+	for _, v := range pos {
+		if uint64(v) <= dstInt.Max {
+			return true
+		}
+	}
+	for _, v := range neg {
+		if int64(v) >= dstInt.Min {
+			return true
+		}
+	}
+	return false
+}
+
+// TraverseSSA visits every instruction in the provided functions using the visitor callback.
+func TraverseSSA(funcs []*ssa.Function, visitor func(block *ssa.BasicBlock, instr ssa.Instruction)) {
+	for _, f := range funcs {
+		for _, b := range f.Blocks {
+			for _, i := range b.Instrs {
+				visitor(b, i)
+			}
+		}
+	}
+}
+
+type operationInfo struct {
+	op      string
+	extra   ssa.Value
+	flipped bool
+}
+
+// minBounds computes the minimum of two uint64 values, treating them as signed if !isSrcUnsigned.
+func minBounds(a, b uint64, isSrcUnsigned bool) uint64 {
+	if !isSrcUnsigned {
+		if toInt64(a) < toInt64(b) {
+			return a
+		}
+		return b
+	}
+	if a < b {
+		return a
+	}
+	return b
+}
+
+// maxBounds computes the maximum of two uint64 values, treating them as signed if !isSrcUnsigned.
+func maxBounds(a, b uint64, isSrcUnsigned bool) uint64 {
+	if a == toUint64(minInt64) { // Using MinInt64 as "not set" for signed-capable minValue
+		return b
+	}
+	if b == toUint64(minInt64) {
+		return a
+	}
+	if !isSrcUnsigned {
+		if toInt64(a) > toInt64(b) {
+			return a
+		}
+		return b
+	}
+	if a > b {
+		return a
+	}
+	return b
+}
+
+// isUint checks if the value's type is an unsigned integer.
+func isUint(v ssa.Value) bool {
+	if basic, ok := v.Type().Underlying().(*types.Basic); ok {
+		return basic.Info()&types.IsUnsigned != 0
+	}
+	return false
+}
+
+// getRealValueFromOperation decomposes an SSA value into its base value and any simple arithmetic operation applied to it.
+func getRealValueFromOperation(v ssa.Value) (ssa.Value, operationInfo) {
+	switch v := v.(type) {
+	case *ssa.BinOp:
+		switch v.Op {
+		case token.SHL, token.ADD, token.SUB, token.SHR, token.MUL, token.QUO:
+			if _, ok := GetConstantInt64(v.Y); ok {
+				return v.X, operationInfo{op: v.Op.String(), extra: v.Y}
+			}
+			if _, ok := GetConstantInt64(v.X); ok {
+				return v.Y, operationInfo{op: v.Op.String(), extra: v.X, flipped: true}
+			}
+		}
+	case *ssa.UnOp:
+		switch v.Op {
+		case token.SUB:
+			return v.X, operationInfo{op: "neg"}
+		case token.MUL:
+			// Follow pointer dereference.
+			if unOp, ok := v.X.(*ssa.UnOp); ok && unOp.Op == token.MUL {
+				return getRealValueFromOperation(unOp)
+			}
+			// If it's a field address, keep going.
+			if fieldAddr, ok := v.X.(*ssa.FieldAddr); ok {
+				return fieldAddr, operationInfo{op: "field"}
+			}
+		}
+	case *ssa.FieldAddr:
+		return v, operationInfo{op: "field"}
+	case *ssa.Alloc:
+		return v, operationInfo{op: "alloc"}
+	}
+	return v, operationInfo{}
+}
+
+// isEquivalent checks if two SSA values are structurally equivalent.
+func isEquivalent(a, b ssa.Value) bool {
+	if a == b {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	// Handle distinct constant pointers
+	if aConst, ok := a.(*ssa.Const); ok {
+		if bConst, ok := b.(*ssa.Const); ok {
+			return aConst.Value == bConst.Value && aConst.Type() == bConst.Type()
+		}
+	}
+
+	switch va := a.(type) {
+	case *ssa.BinOp:
+		if vb, ok := b.(*ssa.BinOp); ok {
+			return va.Op == vb.Op && isEquivalent(va.X, vb.X) && isEquivalent(va.Y, vb.Y)
+		}
+	case *ssa.UnOp:
+		if vb, ok := b.(*ssa.UnOp); ok {
+			return va.Op == vb.Op && isEquivalent(va.X, vb.X)
+		}
+	}
+	return false
+}
+
+// isSameOrRelated checks if two SSA values represent the same underlying variable or related struct fields.
+func isSameOrRelated(a, b ssa.Value) bool {
+	if a == b {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	if aExt, ok := a.(*ssa.Extract); ok {
+		if bExt, ok := b.(*ssa.Extract); ok {
+			return aExt.Index == bExt.Index && isSameOrRelated(aExt.Tuple, bExt.Tuple)
+		}
+	}
+	aVal, aInfo := getRealValueFromOperation(a)
+	bVal, bInfo := getRealValueFromOperation(b)
+	if aVal == bVal && aInfo.op == bInfo.op {
+		return true
+	}
+	if aField, ok := aVal.(*ssa.FieldAddr); ok {
+		if bField, ok := bVal.(*ssa.FieldAddr); ok {
+			return aField.Field == bField.Field && isSameOrRelated(aField.X, bField.X)
+		}
+	}
+	if aUnOp, ok := aVal.(*ssa.UnOp); ok {
+		if aUnOp.Op == token.MUL {
+			if bUnOp, ok := bVal.(*ssa.UnOp); ok && bUnOp.Op == token.MUL {
+				return isSameOrRelated(aUnOp.X, bUnOp.X)
+			}
+		}
+	}
+	return false
 }
