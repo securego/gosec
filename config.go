@@ -11,6 +11,8 @@ const (
 	// Globals are applicable to all rules and used for general
 	// configuration settings for gosec.
 	Globals = "global"
+	// ExcludeRulesKey is the config key for path-based rule exclusions
+	ExcludeRulesKey = "exclude-rules"
 )
 
 // GlobalOption defines the name of the global options
@@ -134,4 +136,39 @@ func (c Config) IsGlobalEnabled(option GlobalOption) (bool, error) {
 		return false, err
 	}
 	return (value == "true" || value == "enabled"), nil
+}
+
+// GetExcludeRules retrieves the path-based exclusion rules from the configuration.
+// Returns nil if no exclusion rules are configured.
+func (c Config) GetExcludeRules() ([]PathExcludeRule, error) {
+	if c == nil {
+		return nil, nil
+	}
+
+	rawRules, exists := c[ExcludeRulesKey]
+	if !exists {
+		return nil, nil
+	}
+
+	// The config is unmarshaled as map[string]interface{}, so we need to
+	// re-marshal and unmarshal to get the proper typed struct
+	rulesJSON, err := json.Marshal(rawRules)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal exclude-rules: %w", err)
+	}
+
+	var rules []PathExcludeRule
+	if err := json.Unmarshal(rulesJSON, &rules); err != nil {
+		return nil, fmt.Errorf("failed to parse exclude-rules: %w", err)
+	}
+
+	return rules, nil
+}
+
+// SetExcludeRules sets the path-based exclusion rules in the configuration.
+func (c Config) SetExcludeRules(rules []PathExcludeRule) {
+	if c == nil {
+		return
+	}
+	c[ExcludeRulesKey] = rules
 }

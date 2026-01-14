@@ -59,6 +59,11 @@ USAGE:
 	# Run all rules except the provided
 	$ gosec -exclude=G101 $GOPATH/src/github.com/example/project/...
 
+	# Exclude specific rules from specific paths
+	$ gosec --exclude-rules="cmd/.*:G204,G304" ./...
+
+	# Exclude all rules from scripts directory
+	$ gosec --exclude-rules="scripts/.*:*" ./...
 `
 	// Environment variable for AI API key.
 	aiAPIKeyEnv = "GOSEC_AI_API_KEY" // #nosec G101
@@ -78,6 +83,12 @@ func (a *arrayFlags) Set(value string) error {
 var (
 	// #nosec flag
 	flagIgnoreNoSec = flag.Bool("nosec", false, "Ignores #nosec comments when set")
+
+	// Path-based exclusions
+	flagExcludeRules = flag.String("exclude-rules", "",
+		`Path-based rule exclusions. Format: "path:rule1,rule2;path2:rule3"
+Example: "cmd/.*:G204,G304;test/.*:G101"
+Use "*" to exclude all rules for a path: "scripts/.*:*"`)
 
 	// show ignored
 	flagShowIgnored = flag.Bool("show-ignored", false, "If enabled, ignored issues are printed")
@@ -353,6 +364,27 @@ func exit(issues []*issue.Issue, errors map[string][]gosec.Error, noFail bool) {
 	os.Exit(0)
 }
 
+// buildPathExclusionFilter creates a PathExclusionFilter from config and CLI flags
+func buildPathExclusionFilter(config gosec.Config, cliFlag string) (*gosec.PathExclusionFilter, error) {
+	// Parse CLI exclude-rules
+	cliRules, err := gosec.ParseCLIExcludeRules(cliFlag)
+	if err != nil {
+		return nil, fmt.Errorf("invalid --exclude-rules flag: %w", err)
+	}
+
+	// Get config file exclude-rules
+	configRules, err := config.GetExcludeRules()
+	if err != nil {
+		return nil, fmt.Errorf("invalid exclude-rules in config: %w", err)
+	}
+
+	// Merge rules (CLI takes precedence)
+	allRules := gosec.MergeExcludeRules(configRules, cliRules)
+
+	// Create and return filter
+	return gosec.NewPathExclusionFilter(allRules)
+}
+
 func main() {
 	// Makes sure some version information is set
 	prepareVersionInfo()
@@ -440,6 +472,12 @@ func main() {
 		logger.Fatal("No rules/analyzers are configured")
 	}
 
+	// Build path exclusion filter
+	pathFilter, err := buildPathExclusionFilter(config, *flagExcludeRules)
+	if err != nil {
+		logger.Fatalf("Path exclusion filter error: %v", err)
+	}
+
 	// Create the analyzer
 	analyzer := gosec.NewAnalyzer(config, *flagScanTests, *flagExcludeGenerated, *flagTrackSuppressions, *flagConcurrency, logger)
 	analyzer.LoadRules(ruleList.RulesInfo())
@@ -475,6 +513,13 @@ func main() {
 
 	// Collect the results
 	issues, metrics, errors := analyzer.Report()
+
+	// Apply path-based exclusions first
+	var pathExcludedCount int
+	issues, pathExcludedCount = pathFilter.FilterIssues(issues)
+	if pathExcludedCount > 0 {
+		logger.Printf("Excluded %d issues by path-based rules", pathExcludedCount)
+	}
 
 	// Sort the issue by severity
 	if *flagSortIssues {
