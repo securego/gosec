@@ -764,16 +764,36 @@ func findNoSecTag(text, tag string) (bool, string) {
 		return true, text[len(tag):]
 	}
 
-	if idx := strings.Index(text, tag); idx > 0 {
-		// Check if it's at the beginning of a line (possibly with space)
-		for i := idx - 1; i >= 0; i-- {
-			if text[i] == '\n' {
+	offset := 0
+	for {
+		idx := strings.Index(text[offset:], tag)
+		if idx < 0 {
+			break
+		}
+
+		// Map index back to original text
+		idx += offset
+
+		if idx > 0 {
+			// Check if it's at the beginning of a line (possibly with space)
+			// We look backwards from the tag start
+			match := false
+			for i := idx - 1; i >= 0; i-- {
+				if text[i] == '\n' {
+					match = true
+					break
+				}
+				if text[i] != ' ' && text[i] != '\t' {
+					break
+				}
+			}
+			if match {
 				return true, text[idx+len(tag):]
 			}
-			if text[i] != ' ' && text[i] != '\t' {
-				break
-			}
 		}
+
+		// Move past this occurrence
+		offset = idx + len(tag)
 	}
 
 	return false, ""
@@ -817,14 +837,34 @@ func (v *astVisitor) updateIgnores() {
 
 // updateIgnoredRulesForNode parses comments for a specific node and updates ignored rules.
 func (v *astVisitor) updateIgnoredRulesForNode(n ast.Node) {
-	ignoredRules := v.ignore(n)
+	ignoredRules, group := v.ignore(n)
 	if len(ignoredRules) > 0 {
 		if v.context.Ignores == nil {
 			v.context.Ignores = newIgnores()
 		}
-		line := issue.GetLine(v.context.FileSet.File(n.Pos()), n)
+
+		// Calculate the range to include both the node and the comment group
+		// This handles cases where the comment is associated with a subsequent node
+		// but we still want to ignore the line where the comment is located.
+		startPos := n.Pos()
+		endPos := n.End()
+		if group != nil {
+			if group.Pos() < startPos {
+				startPos = group.Pos()
+			}
+			if group.End() > endPos {
+				endPos = group.End()
+			}
+		}
+
+		startLine := v.context.FileSet.File(startPos).Line(startPos)
+		endLine := v.context.FileSet.File(endPos).Line(endPos)
+		line := strconv.Itoa(startLine)
+		if startLine != endLine {
+			line = fmt.Sprintf("%d-%d", startLine, endLine)
+		}
 		v.context.Ignores.add(
-			v.context.FileSet.File(n.Pos()).Name(),
+			v.context.FileSet.File(startPos).Name(),
 			line,
 			ignoredRules,
 		)
@@ -832,13 +872,13 @@ func (v *astVisitor) updateIgnoredRulesForNode(n ast.Node) {
 }
 
 // ignore checks if a node is tagged with a nosec comment and returns the suppressed rules.
-func (v *astVisitor) ignore(n ast.Node) map[string]issue.SuppressionInfo {
+func (v *astVisitor) ignore(n ast.Node) (map[string]issue.SuppressionInfo, *ast.CommentGroup) {
 	if v.ignoreNosec {
-		return nil
+		return nil, nil
 	}
 	groups, ok := v.context.Comments[n]
 	if !ok {
-		return nil
+		return nil, nil
 	}
 
 	noSecDefaultTag, err := v.gosec.config.GetGlobal(Nosec)
@@ -862,10 +902,20 @@ func (v *astVisitor) ignore(n ast.Node) map[string]issue.SuppressionInfo {
 		v.stats.NumNosec++
 
 		justification := ""
-		commentParts := regexp.MustCompile(`-{2,}`).Split(args, 2)
-		directive := commentParts[0]
-		if len(commentParts) > 1 {
-			justification = strings.TrimSpace(strings.TrimRight(commentParts[1], "\n"))
+		if idx := strings.Index(args, "-"); idx > -1 {
+			justification = strings.TrimSpace(args[idx+1:])
+			args = args[:idx]
+		}
+
+		directive := strings.TrimSpace(args)
+		// If the directive is empty or contains "block" (legacy), ignore all rules
+		if len(directive) == 0 || directive == "block" {
+			return map[string]issue.SuppressionInfo{
+				aliasOfAllRules: {
+					Kind:          "inSource",
+					Justification: justification,
+				},
+			}, group
 		}
 
 		re := regexp.MustCompile(`(G\d{3})`)
@@ -884,9 +934,9 @@ func (v *astVisitor) ignore(n ast.Node) map[string]issue.SuppressionInfo {
 		if len(matches) == 0 {
 			ignores[aliasOfAllRules] = suppression
 		}
-		return ignores
+		return ignores, group
 	}
-	return nil
+	return nil, nil
 }
 
 // updateIssues updates the issues list with the given issue, handling suppressions.
