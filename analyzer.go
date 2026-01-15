@@ -902,8 +902,8 @@ func (v *astVisitor) ignore(n ast.Node) (map[string]issue.SuppressionInfo, *ast.
 		v.stats.NumNosec++
 
 		justification := ""
-		if idx := strings.Index(args, "-"); idx > -1 {
-			justification = strings.TrimSpace(args[idx+1:])
+		if idx := strings.Index(args, "--"); idx > -1 {
+			justification = strings.TrimSpace(strings.TrimLeft(args[idx+2:], "-"))
 			args = args[:idx]
 		}
 
