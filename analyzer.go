@@ -62,7 +62,10 @@ const externalSuppressionJustification = "Globally suppressed."
 
 const aliasOfAllRules = "*"
 
-var directiveRegexp = regexp.MustCompile("^//gosec:disable(?: (.+))?$")
+var (
+	directiveRegexp = regexp.MustCompile(`^//gosec:disable(?: (.+))?$`)
+	nosecRuleRegexp = regexp.MustCompile(`(G\d{3})`)
+)
 
 type ignore struct {
 	start        int
@@ -462,6 +465,17 @@ func (gosec *Analyzer) checkRules(pkg *packages.Package) ([]*issue.Issue, *Metri
 		trackSuppressions: gosec.trackSuppressions,
 	}
 
+	if tag, err := gosec.config.GetGlobal(Nosec); err == nil {
+		visitor.noSecDefaultTag = NoSecTag(tag)
+	} else {
+		visitor.noSecDefaultTag = NoSecTag(string(Nosec))
+	}
+	if tag, err := gosec.config.GetGlobal(NoSecAlternative); err == nil {
+		visitor.noSecAlternativeTag = NoSecTag(tag)
+	} else {
+		visitor.noSecAlternativeTag = visitor.noSecDefaultTag
+	}
+
 	for _, file := range pkg.Syntax {
 		fp := pkg.Fset.File(file.Pos())
 		if fp == nil {
@@ -801,13 +815,15 @@ func findNoSecTag(text, tag string) (bool, string) {
 
 // astVisitor implements ast.Visitor for per-file rule checking and issue collection.
 type astVisitor struct {
-	gosec             *Analyzer
-	context           *Context
-	issues            []*issue.Issue
-	stats             *Metrics
-	ignoreNosec       bool
-	showIgnored       bool
-	trackSuppressions bool
+	gosec               *Analyzer
+	context             *Context
+	issues              []*issue.Issue
+	stats               *Metrics
+	ignoreNosec         bool
+	showIgnored         bool
+	trackSuppressions   bool
+	noSecDefaultTag     string
+	noSecAlternativeTag string
 }
 
 func (v *astVisitor) Visit(n ast.Node) ast.Visitor {
@@ -881,21 +897,8 @@ func (v *astVisitor) ignore(n ast.Node) (map[string]issue.SuppressionInfo, *ast.
 		return nil, nil
 	}
 
-	noSecDefaultTag, err := v.gosec.config.GetGlobal(Nosec)
-	if err != nil {
-		noSecDefaultTag = NoSecTag(string(Nosec))
-	} else {
-		noSecDefaultTag = NoSecTag(noSecDefaultTag)
-	}
-	noSecAlternativeTag, err := v.gosec.config.GetGlobal(NoSecAlternative)
-	if err != nil {
-		noSecAlternativeTag = noSecDefaultTag
-	} else {
-		noSecAlternativeTag = NoSecTag(noSecAlternativeTag)
-	}
-
 	for _, group := range groups {
-		found, args := findNoSecDirective(group, noSecDefaultTag, noSecAlternativeTag)
+		found, args := findNoSecDirective(group, v.noSecDefaultTag, v.noSecAlternativeTag)
 		if !found {
 			continue
 		}
@@ -918,8 +921,7 @@ func (v *astVisitor) ignore(n ast.Node) (map[string]issue.SuppressionInfo, *ast.
 			}, group
 		}
 
-		re := regexp.MustCompile(`(G\d{3})`)
-		matches := re.FindAllStringSubmatch(directive, -1)
+		matches := nosecRuleRegexp.FindAllStringSubmatch(directive, -1)
 
 		suppression := issue.SuppressionInfo{
 			Kind:          "inSource",
