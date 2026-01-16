@@ -18,6 +18,7 @@ import (
 	"cmp"
 	"go/constant"
 	"go/token"
+	"go/types"
 	"math/bits"
 	"slices"
 	"strings"
@@ -176,6 +177,7 @@ func (ra *RangeAnalyzer) ResolveRange(v ssa.Value, block *ssa.BasicBlock) *range
 	}
 
 	if ra.Depth > MaxDepth {
+		result.shared = true
 		ra.RangeCache[key] = result
 		return result
 	}
@@ -183,17 +185,12 @@ func (ra *RangeAnalyzer) ResolveRange(v ssa.Value, block *ssa.BasicBlock) *range
 	ra.Depth++
 	defer func() { ra.Depth-- }()
 
-	// First, check basic properties
-	isSrcUnsigned = isUint(v)
+	// Basic properties
 	isNonNeg := ra.IsNonNegative(v)
 	if isNonNeg {
 		result.minValue = 0
 		result.minValueSet = true
 		result.isRangeCheck = true
-	} else if isSrcUnsigned {
-		result.minValue = 0
-	} else {
-		result.maxValue = maxInt64
 	}
 
 	// Range from definition
@@ -201,11 +198,19 @@ func (ra *RangeAnalyzer) ResolveRange(v ssa.Value, block *ssa.BasicBlock) *range
 	if defRange.isRangeCheck || defRange.minValueSet || defRange.maxValueSet {
 		result.isRangeCheck = true
 		if defRange.minValueSet {
-			result.minValue = maxBounds(result.minValue, defRange.minValue, isSrcUnsigned)
+			if !result.minValueSet {
+				result.minValue = defRange.minValue
+			} else {
+				result.minValue = maxBounds(result.minValue, defRange.minValue, isSrcUnsigned)
+			}
 			result.minValueSet = true
 		}
 		if defRange.maxValueSet {
-			result.maxValue = minBounds(result.maxValue, defRange.maxValue, isSrcUnsigned)
+			if !result.maxValueSet {
+				result.maxValue = defRange.maxValue
+			} else {
+				result.maxValue = minBounds(result.maxValue, defRange.maxValue, isSrcUnsigned)
+			}
 			result.maxValueSet = true
 		}
 	}
@@ -491,7 +496,7 @@ func (ra *RangeAnalyzer) isNonNegativeRecursive(v ssa.Value) bool {
 	}
 
 	v, info := getRealValueFromOperation(v)
-	if info.op == "neg" {
+	if info.op == "neg" || info.op == "-" {
 		return false
 	}
 	switch v := v.(type) {
@@ -571,10 +576,15 @@ func (ra *RangeAnalyzer) ComputeRange(v ssa.Value, block *ssa.BasicBlock) *range
 				subRes := ra.ResolveRange(v.X, block)
 				if subRes.isRangeCheck {
 					if subRes.minValueSet {
-						updateRangeMinMax(res, toUint64(toInt64(subRes.minValue)+val), true, isSrcUnsigned)
+						res.minValue = toUint64(toInt64(subRes.minValue) + val)
+						res.minValueSet = true
 					}
 					if subRes.maxValueSet {
-						updateRangeMinMax(res, toUint64(toInt64(subRes.maxValue)+val), false, isSrcUnsigned)
+						res.maxValue = toUint64(toInt64(subRes.maxValue) + val)
+						res.maxValueSet = true
+					}
+					if res.minValueSet || res.maxValueSet {
+						res.isRangeCheck = true
 					}
 				}
 				ra.releaseResult(subRes)
@@ -582,10 +592,15 @@ func (ra *RangeAnalyzer) ComputeRange(v ssa.Value, block *ssa.BasicBlock) *range
 				subRes := ra.ResolveRange(v.Y, block)
 				if subRes.isRangeCheck {
 					if subRes.minValueSet {
-						updateRangeMinMax(res, toUint64(val+toInt64(subRes.minValue)), true, isSrcUnsigned)
+						res.minValue = toUint64(val + toInt64(subRes.minValue))
+						res.minValueSet = true
 					}
 					if subRes.maxValueSet {
-						updateRangeMinMax(res, toUint64(val+toInt64(subRes.maxValue)), false, isSrcUnsigned)
+						res.maxValue = toUint64(val + toInt64(subRes.maxValue))
+						res.maxValueSet = true
+					}
+					if res.minValueSet || res.maxValueSet {
+						res.isRangeCheck = true
 					}
 				}
 				ra.releaseResult(subRes)
@@ -594,14 +609,21 @@ func (ra *RangeAnalyzer) ComputeRange(v ssa.Value, block *ssa.BasicBlock) *range
 				subResY := ra.ResolveRange(v.Y, block)
 				if subResX.isRangeCheck || subResY.isRangeCheck {
 					if subResX.minValueSet && subResY.minValueSet {
-						updateRangeMinMax(res, toUint64(toInt64(subResX.minValue)+toInt64(subResY.minValue)), true, isSrcUnsigned)
+						constrainRange(res, toUint64(toInt64(subResX.minValue)+toInt64(subResY.minValue)), true, isSrcUnsigned)
 					}
 					if subResX.maxValueSet && subResY.maxValueSet {
-						updateRangeMinMax(res, toUint64(toInt64(subResX.maxValue)+toInt64(subResY.maxValue)), false, isSrcUnsigned)
+						constrainRange(res, toUint64(toInt64(subResX.maxValue)+toInt64(subResY.maxValue)), false, isSrcUnsigned)
 					}
+					// Ensure we set isRangeCheck if we computed valid bounds, even if inputs were not "range checks"
+					// per se but just constant propagations.
 					if res.minValueSet || res.maxValueSet {
 						res.isRangeCheck = true
 					}
+				} else if subResX.minValueSet && subResX.maxValueSet && subResY.minValueSet && subResY.maxValueSet {
+					// Constant folding case: inputs might be plain constants.
+					constrainRange(res, toUint64(toInt64(subResX.minValue)+toInt64(subResY.minValue)), true, isSrcUnsigned)
+					constrainRange(res, toUint64(toInt64(subResX.maxValue)+toInt64(subResY.maxValue)), false, isSrcUnsigned)
+					res.isRangeCheck = true
 				}
 				ra.releaseResult(subResX)
 				ra.releaseResult(subResY)
@@ -611,10 +633,10 @@ func (ra *RangeAnalyzer) ComputeRange(v ssa.Value, block *ssa.BasicBlock) *range
 				subRes := ra.ResolveRange(v.X, block)
 				if subRes.isRangeCheck {
 					if subRes.minValueSet {
-						updateRangeMinMax(res, toUint64(toInt64(subRes.minValue)-val), true, isSrcUnsigned)
+						constrainRange(res, toUint64(toInt64(subRes.minValue)-val), true, isSrcUnsigned)
 					}
 					if subRes.maxValueSet {
-						updateRangeMinMax(res, toUint64(toInt64(subRes.maxValue)-val), false, isSrcUnsigned)
+						constrainRange(res, toUint64(toInt64(subRes.maxValue)-val), false, isSrcUnsigned)
 					}
 				}
 				ra.releaseResult(subRes)
@@ -623,11 +645,11 @@ func (ra *RangeAnalyzer) ComputeRange(v ssa.Value, block *ssa.BasicBlock) *range
 				if subRes.isRangeCheck {
 					if subRes.maxValueSet {
 						// res = val - subRes.maxValue (this is the new min if subtract max)
-						updateRangeMinMax(res, toUint64(val-toInt64(subRes.maxValue)), true, isSrcUnsigned)
+						constrainRange(res, toUint64(val-toInt64(subRes.maxValue)), true, isSrcUnsigned)
 					}
 					if subRes.minValueSet {
 						// res = val - subRes.minValue (this is the new max if subtract min)
-						updateRangeMinMax(res, toUint64(val-toInt64(subRes.minValue)), false, isSrcUnsigned)
+						constrainRange(res, toUint64(val-toInt64(subRes.minValue)), false, isSrcUnsigned)
 					}
 				}
 				ra.releaseResult(subRes)
@@ -637,15 +659,20 @@ func (ra *RangeAnalyzer) ComputeRange(v ssa.Value, block *ssa.BasicBlock) *range
 				if subResX.isRangeCheck || subResY.isRangeCheck {
 					if subResX.minValueSet && subResY.maxValueSet {
 						// Min = MinX - MaxY
-						updateRangeMinMax(res, toUint64(toInt64(subResX.minValue)-toInt64(subResY.maxValue)), true, isSrcUnsigned)
+						constrainRange(res, toUint64(toInt64(subResX.minValue)-toInt64(subResY.maxValue)), true, isSrcUnsigned)
 					}
 					if subResX.maxValueSet && subResY.minValueSet {
 						// Max = MaxX - MinY
-						updateRangeMinMax(res, toUint64(toInt64(subResX.maxValue)-toInt64(subResY.minValue)), false, isSrcUnsigned)
+						constrainRange(res, toUint64(toInt64(subResX.maxValue)-toInt64(subResY.minValue)), false, isSrcUnsigned)
 					}
 					if res.minValueSet || res.maxValueSet {
 						res.isRangeCheck = true
 					}
+				} else if subResX.minValueSet && subResX.maxValueSet && subResY.minValueSet && subResY.maxValueSet {
+					// Constant folding case for SUB
+					constrainRange(res, toUint64(toInt64(subResX.minValue)-toInt64(subResY.maxValue)), true, isSrcUnsigned)
+					constrainRange(res, toUint64(toInt64(subResX.maxValue)-toInt64(subResY.minValue)), false, isSrcUnsigned)
+					res.isRangeCheck = true
 				}
 				ra.releaseResult(subResX)
 				ra.releaseResult(subResY)
@@ -667,10 +694,10 @@ func (ra *RangeAnalyzer) ComputeRange(v ssa.Value, block *ssa.BasicBlock) *range
 					hi, _ := bits.Mul64(subRes.maxValue, val)
 					if hi == 0 {
 						if subRes.minValueSet && subRes.isRangeCheck {
-							updateRangeMinMax(res, subRes.minValue*val, true, isSrcUnsigned)
+							constrainRange(res, subRes.minValue*val, true, isSrcUnsigned)
 						}
 						if subRes.maxValueSet && subRes.isRangeCheck {
-							updateRangeMinMax(res, subRes.maxValue*val, false, isSrcUnsigned)
+							constrainRange(res, subRes.maxValue*val, false, isSrcUnsigned)
 						}
 					}
 				}
@@ -682,14 +709,14 @@ func (ra *RangeAnalyzer) ComputeRange(v ssa.Value, block *ssa.BasicBlock) *range
 					newMin := subRes.minValue << uint(val) // #nosec G115 - WORKAROUND for old golangci-lint, remove when updated
 					// #nosec G115 - WORKAROUND for old golangci-lint, remove when updated
 					if newMin>>uint(val) == subRes.minValue {
-						updateRangeMinMax(res, newMin, true, isSrcUnsigned)
+						constrainRange(res, newMin, true, isSrcUnsigned)
 					}
 				}
 				if subRes.maxValueSet {
 					newMax := subRes.maxValue << uint(val) // #nosec G115 - WORKAROUND for old golangci-lint, remove when updated
 					// #nosec G115 - WORKAROUND for old golangci-lint, remove when updated
 					if newMax>>uint(val) == subRes.maxValue {
-						updateRangeMinMax(res, newMax, false, isSrcUnsigned)
+						constrainRange(res, newMax, false, isSrcUnsigned)
 					}
 				}
 			}
@@ -697,10 +724,10 @@ func (ra *RangeAnalyzer) ComputeRange(v ssa.Value, block *ssa.BasicBlock) *range
 			if val, ok := GetConstantInt64(v.Y); ok && val >= 0 {
 				subRes := ra.ResolveRange(v.X, block)
 				if subRes.minValueSet {
-					updateRangeMinMax(res, subRes.minValue>>uint(val), true, isSrcUnsigned) // #nosec G115 - WORKAROUND for old golangci-lint, remove when updated
+					constrainRange(res, subRes.minValue>>uint(val), true, isSrcUnsigned) // #nosec G115 - WORKAROUND for old golangci-lint, remove when updated
 				}
 				if subRes.maxValueSet {
-					updateRangeMinMax(res, subRes.maxValue>>uint(val), false, isSrcUnsigned) // #nosec G115 - WORKAROUND for old golangci-lint, remove when updated
+					constrainRange(res, subRes.maxValue>>uint(val), false, isSrcUnsigned) // #nosec G115 - WORKAROUND for old golangci-lint, remove when updated
 				} else {
 					// Even if we don't have a max value set, we know the upper bound from the type.
 					srcInt, _ := GetIntTypeInfo(v.X.Type())
@@ -714,17 +741,17 @@ func (ra *RangeAnalyzer) ComputeRange(v ssa.Value, block *ssa.BasicBlock) *range
 				subRes := ra.ResolveRange(v.X, block)
 				if val > 0 {
 					if subRes.minValueSet && subRes.isRangeCheck {
-						updateRangeMinMax(res, toUint64(toInt64(subRes.minValue)/val), true, isSrcUnsigned)
+						constrainRange(res, toUint64(toInt64(subRes.minValue)/val), true, isSrcUnsigned)
 					}
 					if subRes.maxValueSet && subRes.isRangeCheck {
-						updateRangeMinMax(res, toUint64(toInt64(subRes.maxValue)/val), false, isSrcUnsigned)
+						constrainRange(res, toUint64(toInt64(subRes.maxValue)/val), false, isSrcUnsigned)
 					}
 				} else {
 					if subRes.maxValueSet && subRes.isRangeCheck {
-						updateRangeMinMax(res, toUint64(toInt64(subRes.maxValue)/val), true, isSrcUnsigned)
+						constrainRange(res, toUint64(toInt64(subRes.maxValue)/val), true, isSrcUnsigned)
 					}
 					if subRes.minValueSet && subRes.isRangeCheck {
-						updateRangeMinMax(res, toUint64(toInt64(subRes.minValue)/val), false, isSrcUnsigned)
+						constrainRange(res, toUint64(toInt64(subRes.minValue)/val), false, isSrcUnsigned)
 					}
 				}
 			}
@@ -757,6 +784,143 @@ func (ra *RangeAnalyzer) ComputeRange(v ssa.Value, block *ssa.BasicBlock) *range
 				res.isRangeCheck = true
 			}
 		}
+	case *ssa.UnOp:
+		switch v.Op {
+		case token.MUL:
+			// Dereference (Load)
+			if alloc, ok := v.X.(*ssa.Alloc); ok {
+				return ra.resolveAllocRange(alloc, block, v)
+			}
+			// Just recurse
+			subRes := ra.ResolveRange(v.X, block)
+			res.CopyFrom(subRes)
+			ra.releaseResult(subRes)
+		case token.SUB:
+			// Negation (-X)
+			subRes := ra.ResolveRange(v.X, block)
+
+			// If X in [min, max], then -X in [-max, -min]
+			// We need to work with int64 views for negation
+			srcBuff, _ := GetIntTypeInfo(v.X.Type())
+			if srcBuff.Signed {
+				// Negation only meaningful for signed integers.
+				if subRes.minValueSet && subRes.maxValueSet {
+					// If X in [min, max], then -X in [-max, -min].
+					// Internal uint64 representation handles -MinInt overflow correctly.
+
+					oldMin := toInt64(subRes.minValue)
+					oldMax := toInt64(subRes.maxValue)
+
+					res.minValue = toUint64(-oldMax)
+					res.maxValue = toUint64(-oldMin)
+					res.minValueSet = true
+					res.maxValueSet = true
+					res.isRangeCheck = subRes.isRangeCheck
+				}
+			}
+			ra.releaseResult(subRes)
+		}
+	case *ssa.Convert:
+		subRes := ra.ResolveRange(v.X, block)
+		if subRes.minValueSet && subRes.maxValueSet {
+			srcInt, err := GetIntTypeInfo(v.X.Type())
+			if err != nil {
+				return res
+			}
+			dstInt, err := GetIntTypeInfo(v.Type())
+			if err != nil {
+				return res
+			}
+
+			// Helper to convert/truncate a value to destination size
+			convertBound := func(val uint64) uint64 {
+				// Truncate/Mask to destination size
+				var newVal uint64
+				switch dstInt.Size {
+				case 8:
+					newVal = val & 0xFF
+					if dstInt.Signed {
+						// Sign extend 8->64
+						if newVal&0x80 != 0 {
+							newVal |= 0xFFFFFFFFFFFFFF00
+						}
+					}
+				case 16:
+					newVal = val & 0xFFFF
+					if dstInt.Signed {
+						// Sign extend 16->64
+						if newVal&0x8000 != 0 {
+							newVal |= 0xFFFFFFFFFFFF0000
+						}
+					}
+				case 32:
+					newVal = val & 0xFFFFFFFF
+					if dstInt.Signed {
+						// Sign extend 32->64
+						if newVal&0x80000000 != 0 {
+							newVal |= 0xFFFFFFFF00000000
+						}
+					}
+				default: // 64 or ptr
+					newVal = val
+				}
+				return newVal
+			}
+
+			newMin := convertBound(subRes.minValue)
+			newMax := convertBound(subRes.maxValue)
+
+			valid := false
+			if dstInt.Signed {
+				if toInt64(newMin) <= toInt64(newMax) {
+					// Check if old min/max are "safe" for the new type
+					// This heuristic ensures we don't accidentally wrap disjoint ranges into a safe interval.
+					// We only propagate if the source values fit into destination type OR
+					// if they were safe before and remain safe (e.g. extension).
+
+					// Checking if source values fit in destination domain is key for safety.
+					// If they fit, then min <= max holds and range is contiguous.
+
+					fits := func(v uint64) bool {
+						var v64 int64
+						if srcInt.Signed {
+							v64 = toInt64(v)
+							return v64 >= dstInt.Min && (dstInt.Size == 64 || v64 <= toInt64(dstInt.Max))
+						}
+						// Unsigned src
+						return v <= dstInt.Max
+					}
+
+					if fits(subRes.minValue) && fits(subRes.maxValue) {
+						valid = true
+					}
+				}
+			} else {
+				// Destination Unsigned
+				if newMin <= newMax {
+					fits := func(v uint64) bool {
+						var v64 int64
+						if srcInt.Signed {
+							v64 = toInt64(v)
+							return v64 >= 0 && uint64(v64) <= dstInt.Max
+						}
+						return v <= dstInt.Max
+					}
+					if fits(subRes.minValue) && fits(subRes.maxValue) {
+						valid = true
+					}
+				}
+			}
+
+			if valid {
+				res.minValue = newMin
+				res.maxValue = newMax
+				res.minValueSet = true
+				res.maxValueSet = true
+				res.isRangeCheck = true
+			}
+		}
+		ra.releaseResult(subRes)
 	case *ssa.Call:
 		if fn, ok := v.Call.Value.(*ssa.Builtin); ok {
 			switch fn.Name() {
@@ -809,14 +973,16 @@ func (ra *RangeAnalyzer) ComputeRange(v ssa.Value, block *ssa.BasicBlock) *range
 			}
 		}
 	case *ssa.Phi:
+		isSrcUnsigned := isUint(v)
 		for _, edge := range v.Edges {
 			subRes := ra.ResolveRange(edge, block)
 			if subRes.minValueSet {
-				updateRangeMinMax(res, subRes.minValue, true, isSrcUnsigned)
+				expandRange(res, subRes.minValue, true, isSrcUnsigned)
 			}
 			if subRes.maxValueSet {
-				updateRangeMinMax(res, subRes.maxValue, false, isSrcUnsigned)
+				expandRange(res, subRes.maxValue, false, isSrcUnsigned)
 			}
+			ra.releaseResult(subRes)
 		}
 	case *ssa.Extract:
 		if v.Index == 0 {
@@ -977,7 +1143,7 @@ func (ra *RangeAnalyzer) recursiveByteRange(val ssa.Value) (ByteRange, bool) {
 			minVal := toInt64(res.minValue)
 			maxVal := toInt64(res.maxValue)
 			if minVal > maxVal {
-				// Contradictory range (unreachable code). Conservatively report as full taint to satisfy tests expecting issues in dead code.
+				// Contradictory range.
 				return ByteRange{parentRange.Low, parentRange.High}, true
 			}
 			start := parentRange.Low + minVal
@@ -1102,8 +1268,8 @@ func updateMinMaxForGreaterOrEqual(result *rangeResult, val int64, op token.Toke
 	}
 }
 
-// updateRangeMinMax updates the min or max value of the result range if the new value is tighter.
-func updateRangeMinMax(result *rangeResult, newVal uint64, isMin bool, isSrcUnsigned bool) {
+// constrainRange updates the min or max value of the result range if the new value is tighter (intersection).
+func constrainRange(result *rangeResult, newVal uint64, isMin bool, isSrcUnsigned bool) {
 	if isMin {
 		if !result.minValueSet || (isSrcUnsigned && newVal > result.minValue) || (!isSrcUnsigned && toInt64(newVal) > toInt64(result.minValue)) {
 			result.minValue = newVal
@@ -1161,4 +1327,137 @@ func subtractRange(safe []ByteRange, taint ByteRange, dest *[]ByteRange) {
 			*dest = append(*dest, ByteRange{taint.High, r.High})
 		}
 	}
+}
+
+// expandRange updates the min or max value of the result range if the new value expands the range (union).
+func expandRange(result *rangeResult, newVal uint64, isMin bool, isSrcUnsigned bool) {
+	if isMin {
+		if !result.minValueSet {
+			result.minValue = newVal
+			result.minValueSet = true
+		} else {
+			if isSrcUnsigned {
+				if newVal < result.minValue {
+					result.minValue = newVal
+				}
+			} else {
+				if toInt64(newVal) < toInt64(result.minValue) {
+					result.minValue = newVal
+				}
+			}
+		}
+	} else {
+		if !result.maxValueSet {
+			result.maxValue = newVal
+			result.maxValueSet = true
+		} else {
+			if isSrcUnsigned {
+				if newVal > result.maxValue {
+					result.maxValue = newVal
+				}
+			} else {
+				if toInt64(newVal) > toInt64(result.maxValue) {
+					result.maxValue = newVal
+				}
+			}
+		}
+	}
+}
+
+func (ra *RangeAnalyzer) resolveAllocRange(alloc *ssa.Alloc, block *ssa.BasicBlock, loadInstr ssa.Instruction) *rangeResult {
+	res := ra.acquireResult()
+
+	// 1. Same-block reaching definition check.
+	if loadInstr != nil && loadInstr.Block() == block {
+		// Traverse backwards from loadInstr
+		found := false
+		var nearestStore *ssa.Store
+
+		// Scan backwards
+		instrs := block.Instrs
+		startIndex := -1
+
+		// Find the index of the load instruction to start scanning backwards from it.
+		for i := len(instrs) - 1; i >= 0; i-- {
+			if instrs[i] == loadInstr {
+				startIndex = i
+				break
+			}
+		}
+
+		if startIndex != -1 {
+			for i := startIndex - 1; i >= 0; i-- {
+				if store, ok := instrs[i].(*ssa.Store); ok && store.Addr == alloc {
+					nearestStore = store
+					found = true
+					break
+				}
+			}
+		}
+
+		if found {
+			storeRes := ra.ResolveRange(nearestStore.Val, block)
+			res.CopyFrom(storeRes)
+			res.isRangeCheck = storeRes.isRangeCheck // Inherit properties
+			ra.releaseResult(storeRes)
+			return res
+		}
+	}
+
+	// 2. Fallback: Union of all stores.
+	first := true
+
+	refs := alloc.Referrers()
+	if refs == nil {
+		return res // No refs, unknown
+	}
+
+	for _, ref := range *refs {
+		if store, ok := ref.(*ssa.Store); ok && store.Addr == alloc {
+			storeRes := ra.ResolveRange(store.Val, block)
+
+			if first {
+				res.CopyFrom(storeRes)
+				if storeRes.minValueSet || storeRes.maxValueSet {
+					first = false
+				}
+			} else {
+				// Merge: broaden the range
+				// Union:
+				// Min = Min(currentMin, newMin)
+				// Max = Max(currentMax, newMax)
+
+				// Handling signed/unsigned mix is tricky. Assuming types match generally for the alloc.
+				elemType := alloc.Type().(*types.Pointer).Elem()
+				basic, ok := elemType.Underlying().(*types.Basic)
+				isUnsignedElem := ok && (basic.Info()&types.IsUnsigned != 0)
+
+				if storeRes.minValueSet {
+					expandRange(res, storeRes.minValue, true, isUnsignedElem)
+				} else {
+					res.minValueSet = false // If one path has unknown min, union is unknown
+				}
+
+				if storeRes.maxValueSet {
+					expandRange(res, storeRes.maxValue, false, isUnsignedElem)
+				} else {
+					res.maxValueSet = false
+				}
+
+				// Propagate isRangeCheck if any of the sources have it.
+				res.isRangeCheck = res.isRangeCheck || storeRes.isRangeCheck
+			}
+			ra.releaseResult(storeRes)
+		}
+	}
+
+	// If no stores were found, assume default/zero value.
+	if first {
+		// Default 0.
+		res.minValue = 0
+		res.maxValue = 0
+		res.maxValueSet = true
+	}
+
+	return res
 }

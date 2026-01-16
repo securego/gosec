@@ -575,6 +575,8 @@ func getRealValueFromOperation(v ssa.Value) (ssa.Value, operationInfo) {
 				return v.Y, operationInfo{op: v.Op.String(), extra: v.X, flipped: true}
 			}
 		}
+	case *ssa.Convert:
+		return getRealValueFromOperation(v.X)
 	case *ssa.UnOp:
 		switch v.Op {
 		case token.SUB:
