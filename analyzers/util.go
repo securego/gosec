@@ -520,38 +520,44 @@ type operationInfo struct {
 	flipped bool
 }
 
-// minBounds computes the minimum of two uint64 values, treating them as signed if !isSrcUnsigned.
-func minBounds(a, b uint64, isSrcUnsigned bool) uint64 {
+// minBounds computes the minimum of two uint64 values, considering whether they are set and treating them as signed if !isSrcUnsigned.
+func minBounds(aVal uint64, aSet bool, bVal uint64, bSet bool, isSrcUnsigned bool) uint64 {
+	if !aSet {
+		return bVal
+	}
+	if !bSet {
+		return aVal
+	}
 	if !isSrcUnsigned {
-		if toInt64(a) < toInt64(b) {
-			return a
+		if toInt64(aVal) < toInt64(bVal) {
+			return aVal
 		}
-		return b
+		return bVal
 	}
-	if a < b {
-		return a
+	if aVal < bVal {
+		return aVal
 	}
-	return b
+	return bVal
 }
 
-// maxBounds computes the maximum of two uint64 values, treating them as signed if !isSrcUnsigned.
-func maxBounds(a, b uint64, isSrcUnsigned bool) uint64 {
-	if a == toUint64(minInt64) { // Using MinInt64 as "not set" for signed-capable minValue
-		return b
+// maxBounds computes the maximum of two uint64 values, considering whether they are set and treating them as signed if !isSrcUnsigned.
+func maxBounds(aVal uint64, aSet bool, bVal uint64, bSet bool, isSrcUnsigned bool) uint64 {
+	if !aSet {
+		return bVal
 	}
-	if b == toUint64(minInt64) {
-		return a
+	if !bSet {
+		return aVal
 	}
 	if !isSrcUnsigned {
-		if toInt64(a) > toInt64(b) {
-			return a
+		if toInt64(aVal) > toInt64(bVal) {
+			return aVal
 		}
-		return b
+		return bVal
 	}
-	if a > b {
-		return a
+	if aVal > bVal {
+		return aVal
 	}
-	return b
+	return bVal
 }
 
 // isUint checks if the value's type is an unsigned integer.

@@ -1729,6 +1729,49 @@ import (
 )
 func main() {
 	val := rand.Int()
+	val8 := -val
+	if val8 >= -129 && val8 < -1 { // -129 is not representable in int8
+		v := int8(val8)
+		fmt.Println(uint(-v))
+	}
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+import (
+	"fmt"
+	"math/rand"
+)
+func main() {
+	val8 := rand.Int()
+	if val8 < 128 && val8 >= 0 {
+		v := int8(val8)
+		fmt.Println(uint(v))
+	}
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+import (
+	"fmt"
+	"math/rand"
+)
+func main() {
+	val8 := rand.Int()
+	if val8 < 129 && val8 >= 0 { // 128 is not representable in int8
+		v := int8(val8)
+		fmt.Println(uint(v))
+	}
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+import (
+	"fmt"
+	"math/rand"
+)
+func main() {
+	val := rand.Int()
 	val16 := -val
 	if val16 > -10 && val16 < -1 {
 		v := int16(val16)

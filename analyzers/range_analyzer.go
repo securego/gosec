@@ -167,8 +167,8 @@ func (ra *RangeAnalyzer) ResolveRange(v ssa.Value, block *ssa.BasicBlock) *range
 		res := ra.ResolveRange(vIndex.Index, vIndex.Block())
 		if res.isRangeCheck && res.minValueSet && res.maxValueSet {
 			// If the index itself has a known range, apply it.
-			result.minValue = maxBounds(result.minValue, res.minValue, isSrcUnsigned)
-			result.maxValue = minBounds(result.maxValue, res.maxValue, isSrcUnsigned)
+			result.minValue = maxBounds(result.minValue, result.minValueSet, res.minValue, res.minValueSet, isSrcUnsigned)
+			result.maxValue = minBounds(result.maxValue, result.maxValueSet, res.maxValue, res.maxValueSet, isSrcUnsigned)
 			result.minValueSet = true
 			result.maxValueSet = true
 			result.isRangeCheck = true
@@ -198,19 +198,11 @@ func (ra *RangeAnalyzer) ResolveRange(v ssa.Value, block *ssa.BasicBlock) *range
 	if defRange.isRangeCheck || defRange.minValueSet || defRange.maxValueSet {
 		result.isRangeCheck = true
 		if defRange.minValueSet {
-			if !result.minValueSet {
-				result.minValue = defRange.minValue
-			} else {
-				result.minValue = maxBounds(result.minValue, defRange.minValue, isSrcUnsigned)
-			}
+			result.minValue = maxBounds(result.minValue, result.minValueSet, defRange.minValue, defRange.minValueSet, isSrcUnsigned)
 			result.minValueSet = true
 		}
 		if defRange.maxValueSet {
-			if !result.maxValueSet {
-				result.maxValue = defRange.maxValue
-			} else {
-				result.maxValue = minBounds(result.maxValue, defRange.maxValue, isSrcUnsigned)
-			}
+			result.maxValue = minBounds(result.maxValue, result.maxValueSet, defRange.maxValue, defRange.maxValueSet, isSrcUnsigned)
 			result.maxValueSet = true
 		}
 	}
@@ -242,11 +234,11 @@ func (ra *RangeAnalyzer) ResolveRange(v ssa.Value, block *ssa.BasicBlock) *range
 			}
 			if matchCount == 1 && finalResIf != nil {
 				if finalResIf.minValueSet {
-					result.minValue = maxBounds(result.minValue, finalResIf.minValue, isSrcUnsigned)
+					result.minValue = maxBounds(result.minValue, result.minValueSet, finalResIf.minValue, finalResIf.minValueSet, isSrcUnsigned)
 					result.minValueSet = true
 				}
 				if finalResIf.maxValueSet {
-					result.maxValue = minBounds(result.maxValue, finalResIf.maxValue, isSrcUnsigned)
+					result.maxValue = minBounds(result.maxValue, result.maxValueSet, finalResIf.maxValue, finalResIf.maxValueSet, isSrcUnsigned)
 					result.maxValueSet = true
 				}
 				if finalResIf.isRangeCheck {
@@ -370,6 +362,9 @@ func (ra *RangeAnalyzer) updateResultFromBinOpForValue(result *rangeResult, binO
 					val += vSub
 				}
 			}
+		case "neg":
+			val = -val
+			operandsFlipped = !operandsFlipped
 		case ">>":
 			if vShift, ok := GetConstantInt64(inverseOp.extra); ok && vShift >= 0 {
 				val = val << uint(vShift)
@@ -678,9 +673,9 @@ func (ra *RangeAnalyzer) ComputeRange(v ssa.Value, block *ssa.BasicBlock) *range
 				ra.releaseResult(subResY)
 			}
 		case token.MUL:
-			val, ok := GetConstantUint64(v.Y)
+			val, ok := GetConstantInt64(v.Y)
 			if !ok {
-				val, ok = GetConstantUint64(v.X)
+				val, ok = GetConstantInt64(v.X)
 			}
 			if ok && val != 0 {
 				var subRes *rangeResult
@@ -690,14 +685,36 @@ func (ra *RangeAnalyzer) ComputeRange(v ssa.Value, block *ssa.BasicBlock) *range
 					subRes = ra.ResolveRange(v.Y, block)
 				}
 
-				if subRes.maxValueSet {
-					hi, _ := bits.Mul64(subRes.maxValue, val)
-					if hi == 0 {
-						if subRes.minValueSet && subRes.isRangeCheck {
-							constrainRange(res, subRes.minValue*val, true, isSrcUnsigned)
+				if subRes.isRangeCheck || subRes.minValueSet || subRes.maxValueSet {
+					srcInt, _ := GetIntTypeInfo(v.X.Type())
+					if srcInt.Signed {
+						// Signed multiplication
+						if subRes.minValueSet && subRes.maxValueSet {
+							v1 := toInt64(subRes.minValue) * val
+							v2 := toInt64(subRes.maxValue) * val
+							vMin, vMax := v1, v2
+							if vMin > vMax {
+								vMin, vMax = vMax, vMin
+							}
+							if (val > 0 && v1/val == toInt64(subRes.minValue)) || (val < 0 && v1/val == toInt64(subRes.minValue)) {
+								constrainRange(res, toUint64(vMin), true, false)
+								constrainRange(res, toUint64(vMax), false, false)
+								res.isRangeCheck = subRes.isRangeCheck
+							}
 						}
-						if subRes.maxValueSet && subRes.isRangeCheck {
-							constrainRange(res, subRes.maxValue*val, false, isSrcUnsigned)
+					} else {
+						// Unsigned multiplication
+						uVal := toUint64(val)
+						if subRes.maxValueSet {
+							hi, _ := bits.Mul64(subRes.maxValue, uVal)
+							if hi == 0 {
+								if subRes.minValueSet && subRes.isRangeCheck {
+									constrainRange(res, subRes.minValue*uVal, true, true)
+								}
+								if subRes.maxValueSet && subRes.isRangeCheck {
+									constrainRange(res, subRes.maxValue*uVal, false, true)
+								}
+							}
 						}
 					}
 				}
@@ -816,6 +833,9 @@ func (ra *RangeAnalyzer) ComputeRange(v ssa.Value, block *ssa.BasicBlock) *range
 					res.minValueSet = true
 					res.maxValueSet = true
 					res.isRangeCheck = subRes.isRangeCheck
+
+					res.maxValueSet = true
+					res.isRangeCheck = subRes.isRangeCheck
 				}
 			}
 			ra.releaseResult(subRes)
@@ -931,17 +951,10 @@ func (ra *RangeAnalyzer) ComputeRange(v ssa.Value, block *ssa.BasicBlock) *range
 						if i == 0 {
 							res.CopyFrom(argRes)
 						} else {
-							if res.minValueSet && argRes.minValueSet {
-								res.minValue = minBounds(res.minValue, argRes.minValue, isSrcUnsigned)
-							} else {
-								res.minValueSet = false
-							}
-							if res.maxValueSet && argRes.maxValueSet {
-								res.maxValue = minBounds(res.maxValue, argRes.maxValue, isSrcUnsigned)
-							} else if argRes.maxValueSet {
-								res.maxValue = argRes.maxValue
-								res.maxValueSet = true
-							}
+							res.minValue = minBounds(res.minValue, res.minValueSet, argRes.minValue, argRes.minValueSet, isSrcUnsigned)
+							res.minValueSet = res.minValueSet && argRes.minValueSet
+							res.maxValue = minBounds(res.maxValue, res.maxValueSet, argRes.maxValue, argRes.maxValueSet, isSrcUnsigned)
+							res.maxValueSet = res.maxValueSet && argRes.maxValueSet
 						}
 						ra.releaseResult(argRes)
 					}
@@ -954,17 +967,10 @@ func (ra *RangeAnalyzer) ComputeRange(v ssa.Value, block *ssa.BasicBlock) *range
 						if i == 0 {
 							res.CopyFrom(argRes)
 						} else {
-							if res.minValueSet && argRes.minValueSet {
-								res.minValue = maxBounds(res.minValue, argRes.minValue, isSrcUnsigned)
-							} else if argRes.minValueSet {
-								res.minValue = argRes.minValue
-								res.minValueSet = true
-							}
-							if res.maxValueSet && argRes.maxValueSet {
-								res.maxValue = maxBounds(res.maxValue, argRes.maxValue, isSrcUnsigned)
-							} else {
-								res.maxValueSet = false
-							}
+							res.minValue = maxBounds(res.minValue, res.minValueSet, argRes.minValue, argRes.minValueSet, isSrcUnsigned)
+							res.minValueSet = res.minValueSet && argRes.minValueSet
+							res.maxValue = maxBounds(res.maxValue, res.maxValueSet, argRes.maxValue, argRes.maxValueSet, isSrcUnsigned)
+							res.maxValueSet = res.maxValueSet && argRes.maxValueSet
 						}
 						ra.releaseResult(argRes)
 					}
@@ -1233,7 +1239,7 @@ func updateExplicitValues(result *rangeResult, val int64) {
 func updateMinMaxForLessOrEqual(result *rangeResult, val int64, op token.Token, operandsFlipped bool, successPathConvert bool) {
 	if successPathConvert != operandsFlipped {
 		result.maxValue = toUint64(val)
-		if op == token.LSS {
+		if (op == token.LSS && successPathConvert) || (op == token.LEQ && !successPathConvert) {
 			result.maxValue--
 		}
 		result.maxValueSet = true
@@ -1241,7 +1247,7 @@ func updateMinMaxForLessOrEqual(result *rangeResult, val int64, op token.Token, 
 	} else {
 		// Path where x >= val
 		result.minValue = toUint64(val)
-		if op == token.LEQ {
+		if (op == token.LEQ && !successPathConvert) || (op == token.LSS && successPathConvert) {
 			result.minValue++ // !(x <= val) -> x > val
 		}
 		result.minValueSet = true
@@ -1252,7 +1258,7 @@ func updateMinMaxForLessOrEqual(result *rangeResult, val int64, op token.Token, 
 func updateMinMaxForGreaterOrEqual(result *rangeResult, val int64, op token.Token, operandsFlipped bool, successPathConvert bool) {
 	if successPathConvert != operandsFlipped {
 		result.minValue = toUint64(val)
-		if op == token.GTR {
+		if (op == token.GTR && successPathConvert) || (op == token.GEQ && !successPathConvert) {
 			result.minValue++
 		}
 		result.minValueSet = true
@@ -1260,7 +1266,7 @@ func updateMinMaxForGreaterOrEqual(result *rangeResult, val int64, op token.Toke
 	} else {
 		// Path where x < val
 		result.maxValue = toUint64(val)
-		if op == token.GEQ {
+		if (op == token.GEQ && !successPathConvert) || (op == token.GTR && successPathConvert) {
 			result.maxValue-- // !(x >= val) -> x < val
 		}
 		result.maxValueSet = true
