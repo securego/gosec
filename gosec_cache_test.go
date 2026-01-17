@@ -100,7 +100,7 @@ func TestGlobalCache_Stress(t *testing.T) {
 	for i := range routines {
 		go func(id int) {
 			defer wg.Done()
-			key := GlobalKey{Kind: 0, Str: fmt.Sprintf("str-%d", id)}
+			key := GlobalKey{Kind: CacheKindRegex, Str: fmt.Sprintf("str-%d", id)}
 			for j := range iterations {
 				GlobalCache.Add(key, j)
 				if _, ok := GlobalCache.Get(key); !ok {

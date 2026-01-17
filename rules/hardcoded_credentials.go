@@ -207,7 +207,7 @@ func (r *credentials) isHighEntropyString(str string) bool {
 	}
 
 	s := truncate(str, r.truncate)
-	key := gosec.GlobalKey{Kind: 1, Str: s}
+	key := gosec.GlobalKey{Kind: gosec.CacheKindEntropy, Str: s}
 	if val, ok := gosec.GlobalCache.Get(key); ok {
 		return val.(bool)
 	}
@@ -232,7 +232,7 @@ func (r *credentials) isSecretPattern(val string) (bool, string) {
 		return false, ""
 	}
 
-	key := gosec.GlobalKey{Kind: 2, Str: val}
+	key := gosec.GlobalKey{Kind: gosec.CacheKindSecretPattern, Str: val}
 	if res, ok := gosec.GlobalCache.Get(key); ok {
 		secretRes := res.(secretResult)
 		return secretRes.ok, secretRes.patternName

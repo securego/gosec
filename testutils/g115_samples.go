@@ -1649,18 +1649,16 @@ func testDoubleReturn(x int) (uint8, uint16) {
 
 	`}, 0, gosec.NewConfig()},
 	{[]string{`
-// https://github.com/securego/gosec/issues/1240
+// Regression test for bug https://github.com/securego/gosec/issues/1240
+// detecting #nosec doesn't work in particular cases if it's preceded by an open bracket {
 package main
 import "fmt"
 
 func main() {
-	ten := 10
-	configVal := uint(ten)
-	inputSlice := []int{1, 2, 3, 4, 5}
-
-	if len(inputSlice) <= int(configVal) { // #nosec G115 -- this fails
+	x := 1000
+	if 0 <= int8(x) { // #nosec G115 -- this fails
 		fmt.Println("hello world!")
-	}        
+	}
 }
 	`}, 0, gosec.NewConfig()},
 }

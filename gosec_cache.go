@@ -9,9 +9,16 @@ import (
 // GlobalCache is a shared LRU cache for expensive operations (Regex matching, Entropy analysis).
 var GlobalCache = NewLRUCache[GlobalKey, any](1 << 16)
 
+// Cache kind constants for GlobalKey.Kind.
+const (
+	CacheKindRegex         = iota // Regex match result
+	CacheKindEntropy              // Entropy analysis result
+	CacheKindSecretPattern        // Secret pattern match result
+)
+
 // GlobalKey is a zero-allocation key for the GlobalCache.
 type GlobalKey struct {
-	Kind  int            // 0=Regex, 1=Entropy, 2=SecretPattern
+	Kind  int            // Use CacheKind* constants
 	Regex *regexp.Regexp // Populated for Regex and (optionally) SecretPattern
 	Str   string         // Populated for all
 }
@@ -79,7 +86,7 @@ func (c *LRUCache[K, V]) removeOldest() {
 
 // RegexMatch returns the result of re.MatchString(s), using GlobalCache to store previous results.
 func RegexMatch(re *regexp.Regexp, s string) bool {
-	key := GlobalKey{Kind: 0, Regex: re, Str: s}
+	key := GlobalKey{Kind: CacheKindRegex, Regex: re, Str: s}
 	if val, ok := GlobalCache.Get(key); ok {
 		return val.(bool)
 	}
