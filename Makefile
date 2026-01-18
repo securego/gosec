@@ -65,6 +65,12 @@ build:
 build-race:
 	go build -race $(LDFLAGS) -o $(BIN) ./cmd/gosec/
 
+build-debug:
+	go build -tags debug $(LDFLAGS) -o $(BIN)-debug ./cmd/gosec/
+
+build-debug-race:
+	go build -race -tags debug $(LDFLAGS) -o $(BIN)-debug ./cmd/gosec/
+
 clean:
 	rm -rf build vendor dist coverage.out
 	rm -f release image $(BIN)
