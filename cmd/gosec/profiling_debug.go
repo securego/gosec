@@ -4,6 +4,8 @@ package main
 
 import (
 	"flag"
+	"fmt"
+	"io"
 	"log"
 	"os"
 	"runtime"
@@ -14,62 +16,102 @@ import (
 var (
 	flagCPUProfile = flag.String("cpuprofile", "", "write cpu profile to file")
 	flagMemProfile = flag.String("memprofile", "", "write memory profile to file")
-
-	profilingCleanupOnce sync.Once
-	cpuProfileFile       *os.File
-	profilingLogger      *log.Logger
 )
 
-// initProfiling starts CPU profiling if enabled. Must be called after flag.Parse().
-// The provided logger is used for profiling messages.
-func initProfiling(l *log.Logger) {
-	profilingLogger = l
-
-	if *flagCPUProfile == "" {
-		return
-	}
-
-	f, err := os.Create(*flagCPUProfile)
-	if err != nil {
-		profilingLogger.Printf("could not create CPU profile: %v", err)
-		return
-	}
-	cpuProfileFile = f
-
-	if err := pprof.StartCPUProfile(f); err != nil {
-		f.Close()
-		profilingLogger.Printf("could not start CPU profile: %v", err)
-		return
-	}
-
-	profilingLogger.Printf("CPU profiling enabled, writing to: %s", *flagCPUProfile)
+// Profiler manages CPU and memory profiling for debug builds.
+// This encapsulation avoids package-level mutable state and enables proper testing.
+type Profiler struct {
+	cpuProfileFile *os.File
+	logger         *log.Logger
+	cleanupOnce    sync.Once
+	cpuProfile     string
+	memProfile     string
 }
 
-// finishProfiling writes memory profile and stops CPU profiling.
+// NewProfiler creates a new profiler instance.
+// If logger is nil, a no-op logger is used.
+func NewProfiler(cpuProfile, memProfile string, logger *log.Logger) *Profiler {
+	if logger == nil {
+		logger = log.New(io.Discard, "", 0)
+	}
+	return &Profiler{
+		cpuProfile: cpuProfile,
+		memProfile: memProfile,
+		logger:     logger,
+	}
+}
+
+// Start begins CPU profiling if enabled.
+// Returns an error if profiling cannot be started.
+func (p *Profiler) Start() error {
+	if p.cpuProfile == "" {
+		return nil
+	}
+
+	f, err := os.Create(p.cpuProfile)
+	if err != nil {
+		return fmt.Errorf("could not create CPU profile: %w", err)
+	}
+	p.cpuProfileFile = f
+
+	if err := pprof.StartCPUProfile(p.cpuProfileFile); err != nil {
+		p.cpuProfileFile.Close()
+		p.cpuProfileFile = nil
+		return fmt.Errorf("could not start CPU profile: %w", err)
+	}
+
+	p.logger.Printf("CPU profiling enabled, writing to: %s", p.cpuProfile)
+	return nil
+}
+
+// Stop writes memory profile and stops CPU profiling.
 // Safe to call multiple times - only runs once.
-func finishProfiling() {
-	profilingCleanupOnce.Do(func() {
+// Logs errors but does not return them since this is cleanup code.
+func (p *Profiler) Stop() {
+	p.cleanupOnce.Do(func() {
 		// Write memory profile
-		if *flagMemProfile != "" {
-			f, err := os.Create(*flagMemProfile)
-			if err != nil {
-				profilingLogger.Printf("could not create memory profile: %v", err)
+		if p.memProfile != "" {
+			if err := p.writeMemoryProfile(); err != nil {
+				p.logger.Printf("could not write memory profile: %v", err)
 			} else {
-				runtime.GC() // get up-to-date statistics
-				if err := pprof.WriteHeapProfile(f); err != nil {
-					profilingLogger.Printf("could not write memory profile: %v", err)
-				} else {
-					profilingLogger.Printf("Memory profile written to: %s", *flagMemProfile)
-				}
-				f.Close()
+				p.logger.Printf("memory profile written to: %s", p.memProfile)
 			}
 		}
 
 		// Stop CPU profiling
-		if cpuProfileFile != nil {
+		if p.cpuProfileFile != nil {
 			pprof.StopCPUProfile()
-			cpuProfileFile.Close()
-			profilingLogger.Printf("CPU profile written to: %s", *flagCPUProfile)
+			p.cpuProfileFile.Close()
+			p.logger.Printf("CPU profile written to: %s", p.cpuProfile)
 		}
 	})
+}
+
+// writeMemoryProfile writes the memory profile to the configured file.
+func (p *Profiler) writeMemoryProfile() error {
+	f, err := os.Create(p.memProfile)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	runtime.GC() // get up-to-date statistics
+	return pprof.WriteHeapProfile(f)
+}
+
+// initProfiling creates and starts profiling based on command-line flags.
+// Returns the profiler instance and any error encountered during startup.
+func initProfiling(logger *log.Logger) (*Profiler, error) {
+	profiler := NewProfiler(*flagCPUProfile, *flagMemProfile, logger)
+	if err := profiler.Start(); err != nil {
+		return nil, err
+	}
+	return profiler, nil
+}
+
+// finishProfiling stops the profiler if it's not nil.
+func finishProfiling(profiler *Profiler) {
+	if profiler != nil {
+		profiler.Stop()
+	}
 }

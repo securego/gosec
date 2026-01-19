@@ -73,7 +73,7 @@ build-debug-race:
 
 clean:
 	rm -rf build vendor dist coverage.out
-	rm -f release image $(BIN)
+	rm -f release image $(BIN) $(BIN)-debug
 
 release:
 	@echo "Releasing the gosec binary..."

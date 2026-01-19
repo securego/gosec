@@ -67,6 +67,10 @@ USAGE:
 `
 	// Environment variable for AI API key.
 	aiAPIKeyEnv = "GOSEC_AI_API_KEY" // #nosec G101
+
+	// Exit codes
+	exitSuccess = 0
+	exitFailure = 1
 )
 
 type arrayFlags []string
@@ -360,9 +364,9 @@ func computeExitCode(issues []*issue.Issue, errors map[string][]gosec.Error, noF
 		}
 	}
 	if (nsi > 0 || len(errors) > 0) && !noFail {
-		return 1
+		return exitFailure
 	}
-	return 0
+	return exitSuccess
 }
 
 // buildPathExclusionFilter creates a PathExclusionFilter from config and CLI flags
@@ -414,14 +418,14 @@ func run() int {
 
 	if *flagVersion {
 		fmt.Printf("Version: %s\nGit tag: %s\nBuild date: %s\n", Version, GitTag, BuildDate)
-		return 0
+		return exitSuccess
 	}
 
 	// Ensure at least one file was specified or that the recursive -r flag was set.
 	if flag.NArg() == 0 && !*flagRecursive {
 		fmt.Fprintf(os.Stderr, "\nError: FILE [FILE...] or './...' or -r expected\n") // #nosec
 		flag.Usage()
-		return 1
+		return exitFailure
 	}
 
 	// Setup logging
@@ -431,8 +435,8 @@ func run() int {
 		logWriter, err = os.Create(*flagLogfile)
 		if err != nil {
 			flag.Usage()
-			log.Printf("Failed to create log file: %v", err)
-			return 1
+			log.Printf("failed to create log file: %v", err)
+			return exitFailure
 		}
 		defer logWriter.Close() // #nosec
 	}
@@ -445,8 +449,12 @@ func run() int {
 
 	// Initialize profiling after logger setup so it uses the same logger
 	// (defers execute in LIFO order, so finishProfiling runs before logWriter.Close)
-	initProfiling(logger)
-	defer finishProfiling()
+	profiler, err := initProfiling(logger)
+	if err != nil {
+		logger.Printf("failed to initialize profiling: %v", err)
+		return exitFailure
+	}
+	defer finishProfiling(profiler)
 
 	failSeverity, err := convertToScore(*flagSeverity)
 	if err != nil {
