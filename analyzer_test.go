@@ -2303,4 +2303,134 @@ func main() {
 			Expect(issues[0].Suppressions[0].Justification).To(Equal("false positive, this is not a private data"))
 		})
 	})
+
+	Context("when fixing issue #1240 - nosec with open bracket", func() {
+		It("should suppress G115 when #nosec is at the end of an if line with bracket", func() {
+			source := `
+package main
+
+import "fmt"
+
+func main() {
+	ten := 10
+	uintTen := uint(10)
+	configVal := uint(ten) // #nosec G115 -- this works
+	inputSlice := []int{1, 2, 3, 4, 5}
+
+	if len(inputSlice) <= int(uintTen) { // #nosec G115 -- this works
+		fmt.Println("hello world!")
+	}
+
+	if len(inputSlice) <= int(configVal) { // #nosec G115 -- this should work now (fix for #1240)
+		fmt.Println("hello world!")
+	}
+}
+`
+			analyzer.LoadAnalyzers(analyzers.Generate(false, analyzers.NewAnalyzerFilter(false, "G115")).AnalyzersInfo())
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("main.go", source)
+			err := pkg.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, pkg.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			issues, metrics, _ := analyzer.Report()
+			// No G115 issues should be reported as all conversions are suppressed
+			for _, issue := range issues {
+				if issue.RuleID == "G115" {
+					Fail(fmt.Sprintf("G115 should be suppressed but was reported at line %s", issue.Line))
+				}
+			}
+			Expect(metrics.NumNosec).Should(BeNumerically(">=", 3)) // At least 3 nosec comments
+		})
+
+		It("should suppress G115 when #nosec is used with block comment before bracket", func() {
+			source := `
+package main
+
+import "fmt"
+
+func main() {
+	configVal := uint(10)
+	inputSlice := []int{1, 2, 3, 4, 5}
+
+	if len(inputSlice) <= int(configVal) /* #nosec G115 */ {
+		fmt.Println("hello world!")
+	}
+}
+`
+			analyzer.LoadAnalyzers(analyzers.Generate(false, analyzers.NewAnalyzerFilter(false, "G115")).AnalyzersInfo())
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("main.go", source)
+			err := pkg.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, pkg.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			issues, _, _ := analyzer.Report()
+			// No G115 issues should be reported
+			for _, issue := range issues {
+				if issue.RuleID == "G115" {
+					Fail(fmt.Sprintf("G115 should be suppressed but was reported at line %s", issue.Line))
+				}
+			}
+		})
+
+		It("should suppress G115 in for loop with bracket and trailing comment", func() {
+			source := `
+package main
+
+func main() {
+	x := uint(10)
+	for i := 0; i < int(x); i++ { // #nosec G115
+		println(i)
+	}
+}
+`
+			analyzer.LoadAnalyzers(analyzers.Generate(false, analyzers.NewAnalyzerFilter(false, "G115")).AnalyzersInfo())
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("main.go", source)
+			err := pkg.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, pkg.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			issues, _, _ := analyzer.Report()
+			// No G115 issues should be reported
+			for _, issue := range issues {
+				if issue.RuleID == "G115" {
+					Fail(fmt.Sprintf("G115 should be suppressed but was reported at line %s", issue.Line))
+				}
+			}
+		})
+
+		It("should suppress G115 in switch statement with bracket and trailing comment", func() {
+			source := `
+package main
+
+func main() {
+	x := uint(10)
+	switch int(x) { // #nosec G115
+	case 10:
+		println("ten")
+	}
+}
+`
+			analyzer.LoadAnalyzers(analyzers.Generate(false, analyzers.NewAnalyzerFilter(false, "G115")).AnalyzersInfo())
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("main.go", source)
+			err := pkg.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = analyzer.Process(buildTags, pkg.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			issues, _, _ := analyzer.Report()
+			// No G115 issues should be reported
+			for _, issue := range issues {
+				if issue.RuleID == "G115" {
+					Fail(fmt.Sprintf("G115 should be suppressed but was reported at line %s", issue.Line))
+				}
+			}
+		})
+	})
 })
