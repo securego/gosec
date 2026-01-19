@@ -459,32 +459,32 @@ func run() int {
 	failSeverity, err := convertToScore(*flagSeverity)
 	if err != nil {
 		logger.Printf("Invalid severity value: %v", err)
-		return 1
+		return exitFailure
 	}
 
 	failConfidence, err := convertToScore(*flagConfidence)
 	if err != nil {
 		logger.Printf("Invalid confidence value: %v", err)
-		return 1
+		return exitFailure
 	}
 
 	// Load the analyzer configuration
 	config, err := loadConfig(*flagConfig)
 	if err != nil {
 		logger.Printf("Failed to load config: %v", err)
-		return 1
+		return exitFailure
 	}
 
 	// Load enabled rule definitions
 	excludeRules, err := config.GetGlobal(gosec.ExcludeRules)
 	if err != nil {
 		logger.Printf("Failed to get exclude rules: %v", err)
-		return 1
+		return exitFailure
 	}
 	includeRules, err := config.GetGlobal(gosec.IncludeRules)
 	if err != nil {
 		logger.Printf("Failed to get include rules: %v", err)
-		return 1
+		return exitFailure
 	}
 
 	ruleList := loadRules(includeRules, excludeRules)
@@ -493,14 +493,14 @@ func run() int {
 
 	if len(ruleList.Rules) == 0 && len(analyzerList.Analyzers) == 0 {
 		logger.Print("No rules/analyzers are configured")
-		return 1
+		return exitFailure
 	}
 
 	// Build path exclusion filter
 	pathFilter, err := buildPathExclusionFilter(config, *flagExcludeRules)
 	if err != nil {
 		logger.Printf("Path exclusion filter error: %v", err)
-		return 1
+		return exitFailure
 	}
 
 	// Create the analyzer
@@ -519,14 +519,14 @@ func run() int {
 		pcks, err := gosec.PackagePaths(path, excludedDirs)
 		if err != nil {
 			logger.Printf("Failed to get package paths: %v", err)
-			return 1
+			return exitFailure
 		}
 		packages = append(packages, pcks...)
 	}
 
 	if len(packages) == 0 {
 		logger.Print("No packages found")
-		return 1
+		return exitFailure
 	}
 
 	var buildTags []string
@@ -536,7 +536,7 @@ func run() int {
 
 	if err := analyzer.Process(buildTags, packages...); err != nil {
 		logger.Printf("Analyzer error: %v", err)
-		return 1
+		return exitFailure
 	}
 
 	// Collect the results
@@ -563,14 +563,14 @@ func run() int {
 
 	// Exit quietly if nothing was found
 	if len(issues) == 0 && *flagQuiet {
-		return 0
+		return exitSuccess
 	}
 
 	// Create output report
 	rootPaths, err := getRootPaths(flag.Args())
 	if err != nil {
 		logger.Printf("Failed to get root paths: %v", err)
-		return 1
+		return exitFailure
 	}
 
 	reportInfo := gosec.NewReportInfo(issues, metrics, errors).WithVersion(Version)
@@ -594,13 +594,13 @@ func run() int {
 		fileFormat := getPrintedFormat(*flagFormat, *flagVerbose)
 		if err := printReport(fileFormat, *flagColor, rootPaths, reportInfo); err != nil {
 			logger.Printf("Failed to print report: %v", err)
-			return 1
+			return exitFailure
 		}
 	}
 	if *flagOutput != "" {
 		if err := saveReport(*flagOutput, *flagFormat, rootPaths, reportInfo); err != nil {
 			logger.Printf("Failed to save report: %v", err)
-			return 1
+			return exitFailure
 		}
 	}
 
