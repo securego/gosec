@@ -86,7 +86,7 @@ func findQueryArg(call *ast.CallExpr, ctx *gosec.Context) (ast.Expr, error) {
 // MatchPatterns checks if the string matches all required SQL patterns.
 func (s *sqlStatement) MatchPatterns(str string) bool {
 	for _, pattern := range s.patterns {
-		if !pattern.MatchString(str) {
+		if !gosec.RegexMatch(pattern, str) {
 			return false
 		}
 	}

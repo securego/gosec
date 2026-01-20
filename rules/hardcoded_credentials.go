@@ -205,22 +205,41 @@ func (r *credentials) isHighEntropyString(str string) bool {
 		return false
 	}
 	s := truncate(str, r.truncate)
+	key := gosec.GlobalKey{Kind: gosec.CacheKindEntropy, Str: s}
+	if val, ok := gosec.GlobalCache.Get(key); ok {
+		return val.(bool)
+	}
+
 	info := zxcvbn.PasswordStrength(s, []string{})
 	entropyPerChar := info.Entropy / float64(len(s))
-	return (info.Entropy >= r.entropyThreshold ||
+	res := (info.Entropy >= r.entropyThreshold ||
 		(info.Entropy >= (r.entropyThreshold/2) &&
 			entropyPerChar >= r.perCharThreshold))
+	gosec.GlobalCache.Add(key, res)
+	return res
+}
+
+type secretResult struct {
+	ok          bool
+	patternName string
 }
 
 func (r *credentials) isSecretPattern(str string) (bool, string) {
 	if len(str) < r.minEntropyLength {
 		return false, ""
 	}
+	key := gosec.GlobalKey{Kind: gosec.CacheKindSecretPattern, Str: str}
+	if res, ok := gosec.GlobalCache.Get(key); ok {
+		secretRes := res.(secretResult)
+		return secretRes.ok, secretRes.patternName
+	}
 	for _, pattern := range secretsPatterns {
-		if pattern.regexp.MatchString(str) {
+		if gosec.RegexMatch(pattern.regexp, str) {
+			gosec.GlobalCache.Add(key, secretResult{true, pattern.name})
 			return true, pattern.name
 		}
 	}
+	gosec.GlobalCache.Add(key, secretResult{false, ""})
 	return false, ""
 }
 
@@ -242,7 +261,7 @@ func (r *credentials) matchAssign(assign *ast.AssignStmt, ctx *gosec.Context) (*
 	for _, i := range assign.Lhs {
 		if ident, ok := i.(*ast.Ident); ok {
 			// First check LHS to find anything being assigned to variables whose name appears to be a cred
-			if r.pattern.MatchString(ident.Name) {
+			if gosec.RegexMatch(r.pattern, ident.Name) {
 				for _, e := range assign.Rhs {
 					if val, err := gosec.GetString(e); err == nil {
 						if r.ignoreEntropy || (!r.ignoreEntropy && r.isHighEntropyString(val)) {
@@ -274,7 +293,7 @@ func (r *credentials) matchValueSpec(valueSpec *ast.ValueSpec, ctx *gosec.Contex
 	// Running match against the variable name(s) first. Will catch any creds whose var name matches the pattern,
 	// then will go back over to check the values themselves.
 	for index, ident := range valueSpec.Names {
-		if r.pattern.MatchString(ident.Name) && valueSpec.Values != nil {
+		if gosec.RegexMatch(r.pattern, ident.Name) && valueSpec.Values != nil {
 			// const foo, bar = "same value"
 			if len(valueSpec.Values) <= index {
 				index = len(valueSpec.Values) - 1
@@ -308,7 +327,7 @@ func (r *credentials) matchEqualityCheck(binaryExpr *ast.BinaryExpr, ctx *gosec.
 			ident, _ = binaryExpr.Y.(*ast.Ident)
 		}
 
-		if ident != nil && r.pattern.MatchString(ident.Name) {
+		if ident != nil && gosec.RegexMatch(r.pattern, ident.Name) {
 			valueNode := binaryExpr.Y
 			if !ok {
 				valueNode = binaryExpr.X
@@ -345,12 +364,12 @@ func (r *credentials) matchCompositeLit(lit *ast.CompositeLit, ctx *gosec.Contex
 			// Check if the key matches the credential pattern (struct field name or map string literal key)
 			matchedKey := false
 			if ident, ok := kv.Key.(*ast.Ident); ok {
-				if r.pattern.MatchString(ident.Name) {
+				if gosec.RegexMatch(r.pattern, ident.Name) {
 					matchedKey = true
 				}
 			}
 			if keyStr, err := gosec.GetString(kv.Key); err == nil {
-				if r.pattern.MatchString(keyStr) {
+				if gosec.RegexMatch(r.pattern, keyStr) {
 					matchedKey = true
 				}
 			}
