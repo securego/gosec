@@ -30,6 +30,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 // envGoModVersion overrides the Go version detection.
@@ -514,18 +515,30 @@ func RootPath(root string) (string, error) {
 	return filepath.Abs(root)
 }
 
+var (
+	goVersionCache struct {
+		major, minor, build int
+	}
+	goVersionOnce sync.Once
+)
+
 // GoVersion returns parsed version of Go mod version and fallback to runtime version if not found.
 func GoVersion() (int, int, int) {
-	if env, ok := os.LookupEnv(envGoModVersion); ok {
-		return parseGoVersion(strings.TrimPrefix(env, "go"))
-	}
+	goVersionOnce.Do(func() {
+		if env, ok := os.LookupEnv(envGoModVersion); ok {
+			goVersionCache.major, goVersionCache.minor, goVersionCache.build = parseGoVersion(strings.TrimPrefix(env, "go"))
+			return
+		}
 
-	goVersion, err := goModVersion()
-	if err != nil {
-		return parseGoVersion(strings.TrimPrefix(runtime.Version(), "go"))
-	}
+		goVersion, err := goModVersion()
+		if err != nil {
+			goVersionCache.major, goVersionCache.minor, goVersionCache.build = parseGoVersion(strings.TrimPrefix(runtime.Version(), "go"))
+			return
+		}
 
-	return parseGoVersion(goVersion)
+		goVersionCache.major, goVersionCache.minor, goVersionCache.build = parseGoVersion(goVersion)
+	})
+	return goVersionCache.major, goVersionCache.minor, goVersionCache.build
 }
 
 type goListOutput struct {
