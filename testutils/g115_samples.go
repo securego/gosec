@@ -1648,4 +1648,178 @@ func testDoubleReturn(x int) (uint8, uint16) {
 }
 
 	`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+import "fmt"
+func main() {
+	a := 10
+	a -= 20
+	a += 30
+	configVal := uint(a)
+	inputSlice := []int{1, 2, 3, 4, 5}
+	if len(inputSlice) <= int(configVal) {
+		fmt.Println("hello world!")
+	}
+}
+	`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+import "fmt"
+func main() {
+	ten := 10
+	ptr := &ten // Start escaping to force Alloc
+	*ptr = 20
+	*ptr = 10 // Reset to 10
+	
+	val := *ptr // Load from Alloc
+	configVal := uint(val)
+	inputSlice := []int{1, 2, 3, 4, 5}
+	if len(inputSlice) <= int(configVal) {
+		fmt.Println("hello world!")
+	}
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+import (
+	"fmt"
+	"math/rand"
+)
+func main() {
+	ten := 10
+	ptr := &ten
+	
+	if rand.Intn(2) == 0 {
+		*ptr = 20
+	} else {
+		*ptr = 30
+	}
+	// ptr now points to 20 or 30. Union is [20, 30].
+	
+	val := *ptr
+	configVal := uint(val)
+	// Both 20 and 30 are safe for int conversion on 64-bit systems.
+	
+	inputSlice := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+	if len(inputSlice) <= int(configVal) {
+		fmt.Println("hello world!")
+	}
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+import (
+	"fmt"
+	"math/rand"
+)
+func main() {
+	val := rand.Int()
+	val8 := -val
+	if val8 > -10 && val8 < -1 {
+		v := int8(val8)
+		fmt.Println(uint(-v))
+	}
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+import (
+	"fmt"
+	"math/rand"
+)
+func main() {
+	val := rand.Int()
+	val8 := -val
+	if val8 >= -129 && val8 < -1 { // -129 is not representable in int8
+		v := int8(val8)
+		fmt.Println(uint(-v))
+	}
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+import (
+	"fmt"
+	"math/rand"
+)
+func main() {
+	val8 := rand.Int()
+	if val8 < 128 && val8 >= 0 {
+		v := int8(val8)
+		fmt.Println(uint(v))
+	}
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+import (
+	"fmt"
+	"math/rand"
+)
+func main() {
+	val8 := rand.Int()
+	if val8 < 129 && val8 >= 0 { // 128 is not representable in int8
+		v := int8(val8)
+		fmt.Println(uint(v))
+	}
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+import (
+	"fmt"
+	"math/rand"
+)
+func main() {
+	val := rand.Int()
+	val16 := -val
+	if val16 > -10 && val16 < -1 {
+		v := int16(val16)
+		fmt.Println(uint(-v))
+	}
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+import (
+	"fmt"
+	"math/rand"
+)
+func main() {
+	val := rand.Int()
+	val32 := -val
+	if val32 > -10 && val32 < -1 {
+		v := int32(val32)
+		fmt.Println(uint(-v))
+	}
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+import (
+	"fmt"
+	"math/rand"
+)
+func main() {
+	// Subtraction with Range Checks
+	
+	x := rand.Int()
+	y := rand.Int()
+	
+	// Constrain x to [110, 120] -> MinX=110, MaxX=120
+	// Constrain y to [10, 20]   -> MinY=10, MaxY=20
+	if x >= 110 && x <= 120 && y >= 10 && y <= 20 {
+		// z = x - y
+		// MinZ = MinX - MaxY = 110 - 20 = 90
+		// MaxZ = MaxX - MinY = 120 - 10 = 110
+		z := x - y
+		
+		// int8 range: [-128, 127]
+		// MaxZ (110) <= 127. Safe.
+		// Expected error: 0
+		v := int8(z) 
+		fmt.Println(v)
+	}
+}
+`}, 0, gosec.NewConfig()},
 }
