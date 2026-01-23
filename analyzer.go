@@ -144,6 +144,7 @@ func (i ignores) get(file string, line string) map[string][]issue.SuppressionInf
 type Context struct {
 	FileSet      *token.FileSet
 	Comments     ast.CommentMap
+	AllComments  []*ast.CommentGroup // All comments in the file for line-based nosec lookup (fix for #1240)
 	Info         *types.Info
 	Pkg          *types.Package
 	PkgFiles     []*ast.File
@@ -475,6 +476,7 @@ func (gosec *Analyzer) checkRules(pkg *packages.Package) ([]*issue.Issue, *Metri
 			FileSet:      pkg.Fset,
 			Config:       gosec.config,
 			Comments:     ast.NewCommentMap(pkg.Fset, file, file.Comments),
+			AllComments:  file.Comments, // Store all comments for line-based lookup (fix for #1240)
 			Root:         file,
 			Info:         pkg.TypesInfo,
 			Pkg:          pkg.Types,
@@ -800,13 +802,37 @@ func (v *astVisitor) updateIgnoredRulesForNode(n ast.Node) {
 	}
 }
 
+// parseNoSecDirective extracts rules and justification from nosec directive arguments
+func parseNoSecDirective(args string) map[string]issue.SuppressionInfo {
+	justification := ""
+	commentParts := regexp.MustCompile(`-{2,}`).Split(args, 2)
+	directive := commentParts[0]
+	if len(commentParts) > 1 {
+		justification = strings.TrimSpace(strings.TrimRight(commentParts[1], "\n"))
+	}
+
+	re := regexp.MustCompile(`(G\d{3})`)
+	matches := re.FindAllStringSubmatch(directive, -1)
+
+	suppression := issue.SuppressionInfo{
+		Kind:          "inSource",
+		Justification: justification,
+	}
+
+	ignores := make(map[string]issue.SuppressionInfo)
+	if len(matches) == 0 {
+		ignores[aliasOfAllRules] = suppression
+	} else {
+		for _, v := range matches {
+			ignores[v[1]] = suppression
+		}
+	}
+	return ignores
+}
+
 // ignore checks if a node is tagged with a nosec comment and returns the suppressed rules.
 func (v *astVisitor) ignore(n ast.Node) map[string]issue.SuppressionInfo {
 	if v.ignoreNosec {
-		return nil
-	}
-	groups, ok := v.context.Comments[n]
-	if !ok {
 		return nil
 	}
 
@@ -823,38 +849,56 @@ func (v *astVisitor) ignore(n ast.Node) map[string]issue.SuppressionInfo {
 		noSecAlternativeTag = NoSecTag(noSecAlternativeTag)
 	}
 
-	for _, group := range groups {
-		found, args := findNoSecDirective(group, noSecDefaultTag, noSecAlternativeTag)
-		if !found {
-			continue
+	// First, try the existing AST CommentMap lookup
+	groups, ok := v.context.Comments[n]
+	if ok {
+		for _, group := range groups {
+			found, args := findNoSecDirective(group, noSecDefaultTag, noSecAlternativeTag)
+			if !found {
+				continue
+			}
+			v.stats.NumNosec++
+			return parseNoSecDirective(args)
 		}
-		v.stats.NumNosec++
-
-		justification := ""
-		commentParts := regexp.MustCompile(`-{2,}`).Split(args, 2)
-		directive := commentParts[0]
-		if len(commentParts) > 1 {
-			justification = strings.TrimSpace(strings.TrimRight(commentParts[1], "\n"))
-		}
-
-		re := regexp.MustCompile(`(G\d{3})`)
-		matches := re.FindAllStringSubmatch(directive, -1)
-
-		suppression := issue.SuppressionInfo{
-			Kind:          "inSource",
-			Justification: justification,
-		}
-
-		ignores := make(map[string]issue.SuppressionInfo)
-		for _, v := range matches {
-			ignores[v[1]] = suppression
-		}
-
-		if len(matches) == 0 {
-			ignores[aliasOfAllRules] = suppression
-		}
-		return ignores
 	}
+
+	// FIX FOR ISSUE #1240:
+	// If not found in CommentMap, check all comments on the same line.
+	// This handles the case where the comment is associated with a parent node
+	// (like IfStmt or BlockStmt) instead of the specific expression that
+	// triggers the rule (like a type conversion CallExpr).
+	//
+	// Go's ast.CommentMap associates comments with the "largest" node on the
+	// same line. For example:
+	//     if len(x) <= int(y) { // #nosec G115
+	// The comment gets associated with the IfStmt, not the int(y) CallExpr.
+	// This fallback ensures the nosec still applies to the conversion.
+	if v.context.FileSet != nil && n != nil && v.context.AllComments != nil {
+		nodePos := v.context.FileSet.Position(n.Pos())
+		nodeEndPos := v.context.FileSet.Position(n.End())
+
+		for _, group := range v.context.AllComments {
+			if group == nil {
+				continue
+			}
+
+			for _, comment := range group.List {
+				commentPos := v.context.FileSet.Position(comment.Pos())
+
+				// Check if the comment is on the same line as the node
+				// (either where it starts or ends, to handle multi-line nodes)
+				if commentPos.Line == nodePos.Line || commentPos.Line == nodeEndPos.Line {
+					found, args := findNoSecDirective(group, noSecDefaultTag, noSecAlternativeTag)
+					if !found {
+						continue
+					}
+					v.stats.NumNosec++
+					return parseNoSecDirective(args)
+				}
+			}
+		}
+	}
+
 	return nil
 }
 
