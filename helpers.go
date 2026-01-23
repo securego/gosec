@@ -33,6 +33,12 @@ import (
 	"sync"
 )
 
+var (
+	ErrUnexpectedASTNode     = errors.New("unexpected AST node type")
+	ErrNoProjectRelativePath = errors.New("no project relative path found")
+	ErrNoProjectAbsolutePath = errors.New("no project absolute path found")
+)
+
 // envGoModVersion overrides the Go version detection.
 const envGoModVersion = "GOSECGOVERSION"
 
@@ -84,7 +90,7 @@ func GetInt(n ast.Node) (int64, error) {
 	if node, ok := n.(*ast.BasicLit); ok && node.Kind == token.INT {
 		return strconv.ParseInt(node.Value, 0, 64)
 	}
-	return 0, fmt.Errorf("unexpected AST node type: %T", n)
+	return 0, fmt.Errorf("%w: %T", ErrUnexpectedASTNode, n)
 }
 
 // GetFloat will read and return a float value from an ast.BasicLit
@@ -92,7 +98,7 @@ func GetFloat(n ast.Node) (float64, error) {
 	if node, ok := n.(*ast.BasicLit); ok && node.Kind == token.FLOAT {
 		return strconv.ParseFloat(node.Value, 64)
 	}
-	return 0.0, fmt.Errorf("unexpected AST node type: %T", n)
+	return 0.0, fmt.Errorf("%w: %T", ErrUnexpectedASTNode, n)
 }
 
 // GetChar will read and return a char value from an ast.BasicLit
@@ -100,7 +106,7 @@ func GetChar(n ast.Node) (byte, error) {
 	if node, ok := n.(*ast.BasicLit); ok && node.Kind == token.CHAR {
 		return node.Value[0], nil
 	}
-	return 0, fmt.Errorf("unexpected AST node type: %T", n)
+	return 0, fmt.Errorf("%w: %T", ErrUnexpectedASTNode, n)
 }
 
 // GetStringRecursive will recursively walk down a tree of *ast.BinaryExpr. It will then concat the results, and return.
@@ -143,7 +149,7 @@ func GetString(n ast.Node) (string, error) {
 		return strconv.Unquote(node.Value)
 	}
 
-	return "", fmt.Errorf("unexpected AST node type: %T", n)
+	return "", fmt.Errorf("%w: %T", ErrUnexpectedASTNode, n)
 }
 
 // GetCallObject returns the object and call expression and associated
@@ -162,9 +168,35 @@ func GetCallObject(n ast.Node, ctx *Context) (*ast.CallExpr, types.Object) {
 	return nil, nil
 }
 
+type callInfo struct {
+	packageName string
+	funcName    string
+	err         error
+}
+
+var callCachePool = sync.Pool{
+	New: func() any {
+		return make(map[ast.Node]callInfo)
+	},
+}
+
 // GetCallInfo returns the package or type and name  associated with a
 // call expression.
 func GetCallInfo(n ast.Node, ctx *Context) (string, string, error) {
+	if ctx.callCache != nil {
+		if res, ok := ctx.callCache[n]; ok {
+			return res.packageName, res.funcName, res.err
+		}
+	}
+
+	packageName, funcName, err := getCallInfo(n, ctx)
+	if ctx.callCache != nil {
+		ctx.callCache[n] = callInfo{packageName, funcName, err}
+	}
+	return packageName, funcName, err
+}
+
+func getCallInfo(n ast.Node, ctx *Context) (string, string, error) {
 	switch node := n.(type) {
 	case *ast.CallExpr:
 		switch fn := node.Fun.(type) {
@@ -370,7 +402,7 @@ func GetPkgRelativePath(path string) (string, error) {
 			return strings.TrimPrefix(abspath, projectRoot), nil
 		}
 	}
-	return "", errors.New("no project relative path found")
+	return "", ErrNoProjectRelativePath
 }
 
 // GetPkgAbsPath returns the Go package absolute path derived from
@@ -381,7 +413,7 @@ func GetPkgAbsPath(pkgPath string) (string, error) {
 		return "", err
 	}
 	if _, err := os.Stat(absPath); os.IsNotExist(err) {
-		return "", errors.New("no project absolute path found")
+		return "", ErrNoProjectAbsolutePath
 	}
 	return absPath, nil
 }
