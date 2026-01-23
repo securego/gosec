@@ -190,6 +190,7 @@ type credentials struct {
 	perCharThreshold float64
 	truncate         int
 	ignoreEntropy    bool
+	minEntropyLength int
 }
 
 func truncate(s string, n int) string {
@@ -200,6 +201,9 @@ func truncate(s string, n int) string {
 }
 
 func (r *credentials) isHighEntropyString(str string) bool {
+	if len(str) < r.minEntropyLength {
+		return false
+	}
 	s := truncate(str, r.truncate)
 	info := zxcvbn.PasswordStrength(s, []string{})
 	entropyPerChar := info.Entropy / float64(len(s))
@@ -209,6 +213,9 @@ func (r *credentials) isHighEntropyString(str string) bool {
 }
 
 func (r *credentials) isSecretPattern(str string) (bool, string) {
+	if len(str) < r.minEntropyLength {
+		return false, ""
+	}
 	for _, pattern := range secretsPatterns {
 		if pattern.regexp.MatchString(str) {
 			return true, pattern.name
@@ -378,6 +385,7 @@ func NewHardcodedCredentials(id string, conf gosec.Config) (gosec.Rule, []ast.No
 	perCharThreshold := 3.0
 	ignoreEntropy := false
 	truncateString := 16
+	minEntropyLength := 8
 	if val, ok := conf[id]; ok {
 		conf := val.(map[string]interface{})
 		if configPattern, ok := conf["pattern"]; ok {
@@ -412,6 +420,13 @@ func NewHardcodedCredentials(id string, conf gosec.Config) (gosec.Rule, []ast.No
 				}
 			}
 		}
+		if configMinEntropyLength, ok := conf["min_entropy_length"]; ok {
+			if cfgMinEntropyLength, ok := configMinEntropyLength.(string); ok {
+				if parsedInt, err := strconv.Atoi(cfgMinEntropyLength); err == nil {
+					minEntropyLength = parsedInt
+				}
+			}
+		}
 	}
 
 	return &credentials{
@@ -420,6 +435,7 @@ func NewHardcodedCredentials(id string, conf gosec.Config) (gosec.Rule, []ast.No
 		perCharThreshold: perCharThreshold,
 		ignoreEntropy:    ignoreEntropy,
 		truncate:         truncateString,
+		minEntropyLength: minEntropyLength,
 		MetaData:         issue.NewMetaData(id, "Potential hardcoded credentials", issue.High, issue.Low),
 	}, []ast.Node{(*ast.AssignStmt)(nil), (*ast.ValueSpec)(nil), (*ast.BinaryExpr)(nil), (*ast.CompositeLit)(nil)}
 }
