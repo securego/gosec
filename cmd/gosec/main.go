@@ -67,6 +67,10 @@ USAGE:
 `
 	// Environment variable for AI API key.
 	aiAPIKeyEnv = "GOSEC_AI_API_KEY" // #nosec G101
+
+	// Exit codes
+	exitSuccess = 0
+	exitFailure = 1
 )
 
 type arrayFlags []string
@@ -289,16 +293,16 @@ func loadAnalyzers(include, exclude string) *analyzers.AnalyzerList {
 	return analyzers.Generate(*flagTrackSuppressions, filters...)
 }
 
-func getRootPaths(paths []string) []string {
+func getRootPaths(paths []string) ([]string, error) {
 	rootPaths := make([]string, 0)
 	for _, path := range paths {
 		rootPath, err := gosec.RootPath(path)
 		if err != nil {
-			logger.Fatal(fmt.Errorf("failed to get the root path of the projects: %w", err))
+			return nil, fmt.Errorf("failed to get the root path of the projects: %w", err)
 		}
 		rootPaths = append(rootPaths, rootPath)
 	}
-	return rootPaths
+	return rootPaths, nil
 }
 
 // If verbose is defined it overwrites the defined format
@@ -351,7 +355,8 @@ func filterIssues(issues []*issue.Issue, severity issue.Score, confidence issue.
 	return result, trueIssues
 }
 
-func exit(issues []*issue.Issue, errors map[string][]gosec.Error, noFail bool) {
+// computeExitCode determines the exit code based on issues found and noFail flag.
+func computeExitCode(issues []*issue.Issue, errors map[string][]gosec.Error, noFail bool) int {
 	nsi := 0
 	for _, issue := range issues {
 		if len(issue.Suppressions) == 0 {
@@ -359,9 +364,9 @@ func exit(issues []*issue.Issue, errors map[string][]gosec.Error, noFail bool) {
 		}
 	}
 	if (nsi > 0 || len(errors) > 0) && !noFail {
-		os.Exit(1)
+		return exitFailure
 	}
-	os.Exit(0)
+	return exitSuccess
 }
 
 // buildPathExclusionFilter creates a PathExclusionFilter from config and CLI flags
@@ -386,6 +391,10 @@ func buildPathExclusionFilter(config gosec.Config, cliFlag string) (*gosec.PathE
 }
 
 func main() {
+	os.Exit(run())
+}
+
+func run() int {
 	// Makes sure some version information is set
 	prepareVersionInfo()
 
@@ -394,12 +403,10 @@ func main() {
 
 	// Setup the excluded folders from scan
 	flag.Var(&flagDirsExclude, "exclude-dir", "Exclude folder from scan (can be specified multiple times)")
-	err := flag.Set("exclude-dir", "vendor")
-	if err != nil {
+	if err := flag.Set("exclude-dir", "vendor"); err != nil {
 		fmt.Fprintf(os.Stderr, "\nError: failed to exclude the %q directory from scan", "vendor")
 	}
-	err = flag.Set("exclude-dir", "\\.git/")
-	if err != nil {
+	if err := flag.Set("exclude-dir", "\\.git/"); err != nil {
 		fmt.Fprintf(os.Stderr, "\nError: failed to exclude the %q directory from scan", "\\.git/")
 	}
 
@@ -411,25 +418,27 @@ func main() {
 
 	if *flagVersion {
 		fmt.Printf("Version: %s\nGit tag: %s\nBuild date: %s\n", Version, GitTag, BuildDate)
-		os.Exit(0)
+		return exitSuccess
 	}
 
 	// Ensure at least one file was specified or that the recursive -r flag was set.
 	if flag.NArg() == 0 && !*flagRecursive {
 		fmt.Fprintf(os.Stderr, "\nError: FILE [FILE...] or './...' or -r expected\n") // #nosec
 		flag.Usage()
-		os.Exit(1)
+		return exitFailure
 	}
 
 	// Setup logging
 	logWriter := os.Stderr
 	if *flagLogfile != "" {
-		var e error
-		logWriter, e = os.Create(*flagLogfile)
-		if e != nil {
+		var err error
+		logWriter, err = os.Create(*flagLogfile)
+		if err != nil {
 			flag.Usage()
-			log.Fatal(e)
+			log.Printf("failed to create log file: %v", err)
+			return exitFailure
 		}
+		defer logWriter.Close() // #nosec
 	}
 
 	if *flagQuiet || *flagTerse {
@@ -438,30 +447,44 @@ func main() {
 		logger = log.New(logWriter, "[gosec] ", log.LstdFlags)
 	}
 
+	// Initialize profiling after logger setup so it uses the same logger
+	// (defers execute in LIFO order, so finishProfiling runs before logWriter.Close)
+	profiler, err := initProfiling(logger)
+	if err != nil {
+		logger.Printf("failed to initialize profiling: %v", err)
+		return exitFailure
+	}
+	defer finishProfiling(profiler)
+
 	failSeverity, err := convertToScore(*flagSeverity)
 	if err != nil {
-		logger.Fatalf("Invalid severity value: %v", err)
+		logger.Printf("Invalid severity value: %v", err)
+		return exitFailure
 	}
 
 	failConfidence, err := convertToScore(*flagConfidence)
 	if err != nil {
-		logger.Fatalf("Invalid confidence value: %v", err)
+		logger.Printf("Invalid confidence value: %v", err)
+		return exitFailure
 	}
 
 	// Load the analyzer configuration
 	config, err := loadConfig(*flagConfig)
 	if err != nil {
-		logger.Fatal(err)
+		logger.Printf("Failed to load config: %v", err)
+		return exitFailure
 	}
 
 	// Load enabled rule definitions
 	excludeRules, err := config.GetGlobal(gosec.ExcludeRules)
 	if err != nil {
-		logger.Fatal(err)
+		logger.Printf("Failed to get exclude rules: %v", err)
+		return exitFailure
 	}
 	includeRules, err := config.GetGlobal(gosec.IncludeRules)
 	if err != nil {
-		logger.Fatal(err)
+		logger.Printf("Failed to get include rules: %v", err)
+		return exitFailure
 	}
 
 	ruleList := loadRules(includeRules, excludeRules)
@@ -469,13 +492,15 @@ func main() {
 	analyzerList := loadAnalyzers(includeRules, excludeRules)
 
 	if len(ruleList.Rules) == 0 && len(analyzerList.Analyzers) == 0 {
-		logger.Fatal("No rules/analyzers are configured")
+		logger.Print("No rules/analyzers are configured")
+		return exitFailure
 	}
 
 	// Build path exclusion filter
 	pathFilter, err := buildPathExclusionFilter(config, *flagExcludeRules)
 	if err != nil {
-		logger.Fatalf("Path exclusion filter error: %v", err)
+		logger.Printf("Path exclusion filter error: %v", err)
+		return exitFailure
 	}
 
 	// Create the analyzer
@@ -493,13 +518,15 @@ func main() {
 	for _, path := range paths {
 		pcks, err := gosec.PackagePaths(path, excludedDirs)
 		if err != nil {
-			logger.Fatal(err)
+			logger.Printf("Failed to get package paths: %v", err)
+			return exitFailure
 		}
 		packages = append(packages, pcks...)
 	}
 
 	if len(packages) == 0 {
-		logger.Fatal("No packages found")
+		logger.Print("No packages found")
+		return exitFailure
 	}
 
 	var buildTags []string
@@ -508,7 +535,8 @@ func main() {
 	}
 
 	if err := analyzer.Process(buildTags, packages...); err != nil {
-		logger.Fatal(err)
+		logger.Printf("Analyzer error: %v", err)
+		return exitFailure
 	}
 
 	// Collect the results
@@ -535,11 +563,15 @@ func main() {
 
 	// Exit quietly if nothing was found
 	if len(issues) == 0 && *flagQuiet {
-		os.Exit(0)
+		return exitSuccess
 	}
 
 	// Create output report
-	rootPaths := getRootPaths(flag.Args())
+	rootPaths, err := getRootPaths(flag.Args())
+	if err != nil {
+		logger.Printf("Failed to get root paths: %v", err)
+		return exitFailure
+	}
 
 	reportInfo := gosec.NewReportInfo(issues, metrics, errors).WithVersion(Version)
 
@@ -561,17 +593,16 @@ func main() {
 	if *flagOutput == "" || *flagStdOut {
 		fileFormat := getPrintedFormat(*flagFormat, *flagVerbose)
 		if err := printReport(fileFormat, *flagColor, rootPaths, reportInfo); err != nil {
-			logger.Fatal(err)
+			logger.Printf("Failed to print report: %v", err)
+			return exitFailure
 		}
 	}
 	if *flagOutput != "" {
 		if err := saveReport(*flagOutput, *flagFormat, rootPaths, reportInfo); err != nil {
-			logger.Fatal(err)
+			logger.Printf("Failed to save report: %v", err)
+			return exitFailure
 		}
 	}
 
-	// Finalize logging
-	logWriter.Close() // #nosec
-
-	exit(issues, errors, *flagNoFail)
+	return computeExitCode(issues, errors, *flagNoFail)
 }
