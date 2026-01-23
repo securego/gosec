@@ -162,9 +162,35 @@ func GetCallObject(n ast.Node, ctx *Context) (*ast.CallExpr, types.Object) {
 	return nil, nil
 }
 
+type callInfo struct {
+	packageName string
+	funcName    string
+	err         error
+}
+
+var callCachePool = sync.Pool{
+	New: func() any {
+		return make(map[ast.Node]callInfo)
+	},
+}
+
 // GetCallInfo returns the package or type and name  associated with a
 // call expression.
 func GetCallInfo(n ast.Node, ctx *Context) (string, string, error) {
+	if ctx.callCache != nil {
+		if res, ok := ctx.callCache[n]; ok {
+			return res.packageName, res.funcName, res.err
+		}
+	}
+
+	packageName, funcName, err := getCallInfo(n, ctx)
+	if ctx.callCache != nil {
+		ctx.callCache[n] = callInfo{packageName, funcName, err}
+	}
+	return packageName, funcName, err
+}
+
+func getCallInfo(n ast.Node, ctx *Context) (string, string, error) {
 	switch node := n.(type) {
 	case *ast.CallExpr:
 		switch fn := node.Fun.(type) {

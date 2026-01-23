@@ -153,6 +153,7 @@ type Context struct {
 	Config       Config
 	Ignores      ignores
 	PassedValues map[string]any
+	callCache    map[ast.Node]callInfo
 }
 
 // GetFileAtNodePos returns the file at the node position in the file set available in the context.
@@ -445,6 +446,12 @@ func (gosec *Analyzer) checkRules(pkg *packages.Package) ([]*issue.Issue, *Metri
 	stats := &Metrics{}
 	allIgnores := newIgnores()
 
+	callCache := callCachePool.Get().(map[ast.Node]callInfo)
+	defer func() {
+		clear(callCache)
+		callCachePool.Put(callCache)
+	}()
+
 	visitor := &astVisitor{
 		gosec:             gosec,
 		issues:            make([]*issue.Issue, 0, 16),
@@ -483,6 +490,7 @@ func (gosec *Analyzer) checkRules(pkg *packages.Package) ([]*issue.Issue, *Metri
 			PkgFiles:     pkg.Syntax,
 			Imports:      NewImportTracker(),
 			PassedValues: make(map[string]any),
+			callCache:    callCache,
 		}
 
 		visitor.context = ctx
