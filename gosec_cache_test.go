@@ -1,8 +1,6 @@
 package gosec
 
 import (
-	"fmt"
-	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -84,30 +82,4 @@ func TestLRUCache_UpdateExisting(t *testing.T) {
 
 	_, ok = cache.Get("one")
 	assert.True(t, ok)
-}
-
-func TestGlobalCache_Stress(t *testing.T) {
-	// Simple stress test to ensure thread safety (running with -race is ideal)
-	// We can't easily assert on race conditions without the race detector,
-	// but this ensures no obvious panics or deadlocks.
-
-	const routines = 10
-	const iterations = 100
-
-	var wg sync.WaitGroup
-	wg.Add(routines)
-
-	for i := range routines {
-		go func(id int) {
-			defer wg.Done()
-			key := GlobalKey{Kind: CacheKindRegex, Str: fmt.Sprintf("str-%d", id)}
-			for j := range iterations {
-				GlobalCache.Add(key, j)
-				if _, ok := GlobalCache.Get(key); !ok {
-					t.Errorf("failed to get key %v", key)
-				}
-			}
-		}(i)
-	}
-	wg.Wait()
 }

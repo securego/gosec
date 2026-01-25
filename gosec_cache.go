@@ -2,26 +2,17 @@ package gosec
 
 import (
 	"container/list"
-	"regexp"
 	"sync"
 )
 
-// GlobalCache is a shared LRU cache for expensive operations (Regex matching, Entropy analysis).
-var GlobalCache = NewLRUCache[GlobalKey, any](1 << 16)
-
-// Cache kind constants for GlobalKey.Kind.
-const (
-	CacheKindRegex         = iota // Regex match result
-	CacheKindEntropy              // Entropy analysis result
-	CacheKindSecretPattern        // Secret pattern match result
-)
-
-// GlobalKey is a zero-allocation key for the GlobalCache.
-type GlobalKey struct {
-	Kind  int            // Use CacheKind* constants
-	Regex *regexp.Regexp // Populated for Regex and (optionally) SecretPattern
-	Str   string         // Populated for all
-}
+// GlobalCache is a shared LRU cache for expensive operations.
+// Each use case should define its own named key type to avoid collisions.
+//
+// Key type requirements:
+//   - The key type must be comparable (no slices, maps, or funcs)
+//   - Use type definitions (type MyKey struct{...}), not type aliases (type MyKey = ...)
+//   - Avoid anonymous structs - they collide if the structure matches
+var GlobalCache = NewLRUCache[any, any](1 << 16)
 
 // LRUCache is a simple thread-safe generic LRU cache.
 type LRUCache[K comparable, V any] struct {
@@ -45,6 +36,8 @@ func NewLRUCache[K comparable, V any](capacity int) *LRUCache[K, V] {
 	}
 }
 
+// Get retrieves a value from the cache. Returns the value and true if found,
+// or the zero value and false if not found. Moves the entry to the front of the LRU list.
 func (c *LRUCache[K, V]) Get(key K) (V, bool) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
@@ -57,6 +50,9 @@ func (c *LRUCache[K, V]) Get(key K) (V, bool) {
 	return zero, false
 }
 
+// Add inserts or updates a key-value pair in the cache.
+// If the key exists, its value is updated and moved to the front.
+// If the cache is full, the least recently used entry is evicted.
 func (c *LRUCache[K, V]) Add(key K, value V) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
@@ -82,15 +78,4 @@ func (c *LRUCache[K, V]) removeOldest() {
 		c.evictList.Remove(ent)
 		delete(c.items, ent.Value.(*entry[K, V]).key)
 	}
-}
-
-// RegexMatch returns the result of re.MatchString(s), using GlobalCache to store previous results.
-func RegexMatch(re *regexp.Regexp, s string) bool {
-	key := GlobalKey{Kind: CacheKindRegex, Regex: re, Str: s}
-	if val, ok := GlobalCache.Get(key); ok {
-		return val.(bool)
-	}
-	res := re.MatchString(s)
-	GlobalCache.Add(key, res)
-	return res
 }

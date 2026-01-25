@@ -87,7 +87,7 @@ func (r *secretSerialization) Match(n ast.Node, ctx *gosec.Context) (*issue.Issu
 			effectiveKey = fieldName
 		}
 
-		if gosec.RegexMatch(r.pattern, fieldName) || gosec.RegexMatch(r.pattern, effectiveKey) {
+		if gosec.RegexMatchWithCache(r.pattern, fieldName) || gosec.RegexMatchWithCache(r.pattern, effectiveKey) {
 			msg := fmt.Sprintf("Exported struct field %q (JSON key %q) matches secret pattern", fieldName, effectiveKey)
 			return ctx.NewIssue(field, r.ID(), msg, r.Severity, r.Confidence), nil
 		}

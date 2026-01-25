@@ -27,7 +27,7 @@ func (r *traversal) matchCallExpr(assign *ast.CallExpr, ctx *gosec.Context) (*is
 			if fun, ok2 := assign.Fun.(*ast.SelectorExpr); ok2 {
 				if x, ok3 := fun.X.(*ast.Ident); ok3 {
 					str := x.Name + "." + fun.Sel.Name + "(" + basiclit.Value + ")"
-					if gosec.RegexMatch(r.pattern, str) {
+					if gosec.RegexMatchWithCache(r.pattern, str) {
 						return ctx.NewIssue(assign, r.ID(), r.What, r.Severity, r.Confidence), nil
 					}
 				}
