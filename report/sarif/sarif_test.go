@@ -62,6 +62,78 @@ var _ = Describe("Sarif Formatter", func() {
 			Expect(validateSarifSchema(sarifReport)).To(Succeed())
 		})
 
+		It("sarif formatted report should not include fixes when autofix is empty (issue #1482)", func() {
+			ruleID := "G304"
+			cwe := issue.GetCweByRule(ruleID)
+			issueWithoutAutofix := []*issue.Issue{
+				{
+					File:       "/home/src/project/test.go",
+					Line:       "10",
+					Col:        "5",
+					RuleID:     ruleID,
+					What:       "Potential file inclusion via variable",
+					Confidence: issue.High,
+					Severity:   issue.High,
+					Code:       "10: os.ReadFile(path)",
+					Cwe:        cwe,
+					Autofix:    "", // No autofix
+				},
+			}
+			reportInfo := gosec.NewReportInfo(issueWithoutAutofix, &gosec.Metrics{}, map[string][]gosec.Error{}).WithVersion("v2.22.0")
+			sarifReport, err := sarif.GenerateReport([]string{}, reportInfo)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(validateSarifSchema(sarifReport)).To(Succeed())
+
+			// Verify no fixes array when no autofix
+			Expect(sarifReport.Runs[0].Results[0].Fixes).To(BeNil())
+
+			// Verify JSON output doesn't contain null artifactChanges
+			buf := new(bytes.Buffer)
+			err = sarif.WriteReport(buf, reportInfo, []string{})
+			Expect(err).ShouldNot(HaveOccurred())
+			output := buf.String()
+			Expect(output).NotTo(ContainSubstring(`"artifactChanges":null`))
+		})
+
+		It("sarif formatted report should have valid artifactChanges array when autofix exists (issue #1482)", func() {
+			ruleID := "G304"
+			cwe := issue.GetCweByRule(ruleID)
+			issueWithAutofix := []*issue.Issue{
+				{
+					File:       "/home/src/project/test.go",
+					Line:       "10",
+					Col:        "5",
+					RuleID:     ruleID,
+					What:       "Potential file inclusion via variable",
+					Confidence: issue.High,
+					Severity:   issue.High,
+					Code:       "10: os.ReadFile(path)",
+					Cwe:        cwe,
+					Autofix:    "Consider using os.Root to scope file access",
+				},
+			}
+			reportInfo := gosec.NewReportInfo(issueWithAutofix, &gosec.Metrics{}, map[string][]gosec.Error{}).WithVersion("v2.22.0")
+			sarifReport, err := sarif.GenerateReport([]string{}, reportInfo)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(validateSarifSchema(sarifReport)).To(Succeed())
+
+			// Verify fixes array exists with valid ArtifactChanges
+			Expect(sarifReport.Runs[0].Results[0].Fixes).NotTo(BeNil())
+			Expect(sarifReport.Runs[0].Results[0].Fixes).To(HaveLen(1))
+			Expect(sarifReport.Runs[0].Results[0].Fixes[0].ArtifactChanges).NotTo(BeNil())
+			Expect(sarifReport.Runs[0].Results[0].Fixes[0].ArtifactChanges).To(HaveLen(1))
+
+			// Verify JSON output has artifactChanges as array, not null
+			buf := new(bytes.Buffer)
+			err = sarif.WriteReport(buf, reportInfo, []string{})
+			Expect(err).ShouldNot(HaveOccurred())
+			output := buf.String()
+			Expect(output).NotTo(ContainSubstring(`"artifactChanges":null`))
+			Expect(output).NotTo(ContainSubstring(`"artifactChanges": null`))
+			// Should have fixes with non-null artifactChanges
+			Expect(output).To(ContainSubstring(`"fixes"`))
+		})
+
 		It("sarif formatted report should contain the suppressed results", func() {
 			ruleID := "G101"
 			cwe := issue.GetCweByRule(ruleID)

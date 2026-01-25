@@ -87,22 +87,25 @@ func NewResult(ruleID string, ruleIndex int, level Level, message string, suppre
 		Message:      NewMessage(message),
 		Suppressions: suppressions,
 	}
-	if len(autofix) > 0 {
+
+	// Only create Fix when autofix content exists
+	// Fixes with nil/null ArtifactChanges violate SARIF 2.1.0 schema
+	if autofix != "" {
 		result.Fixes = []*Fix{
 			{
 				Description: &Message{
-					// Note: Text SHALL be supplied when Markdown is used: https://docs.oasis-open.org/sarif/sarif/v2.1.0/errata01/os/sarif-v2.1.0-errata01-os-complete.html#_Toc141790720
-					Text:     autofix, // TODO: ensure this is plain text
+					Text:     autofix,
 					Markdown: autofix,
 				},
-				ArtifactChanges: []*ArtifactChange{ // TODO: this is a placeholder to pass validation. The values are not of use right now
+				// ArtifactChanges MUST be a non-empty array per SARIF 2.1.0 schema
+				ArtifactChanges: []*ArtifactChange{
 					{
 						ArtifactLocation: &ArtifactLocation{
-							Description: NewMessage("unknown"),
+							Description: NewMessage("File requiring changes"),
 						},
 						Replacements: []*Replacement{
 							{
-								DeletedRegion: NewRegion(1, 1, 1, 1, "unknown"),
+								DeletedRegion: NewRegion(1, 1, 1, 1, ""),
 							},
 						},
 					},
