@@ -15,6 +15,7 @@
 package analyzers
 
 import (
+	"errors"
 	"fmt"
 	"go/constant"
 	"go/token"
@@ -60,6 +61,11 @@ type BaseAnalyzerState struct {
 	ClosureCache map[ssa.Value]bool
 	Depth        int
 }
+
+var (
+	ErrNoSSAResult    = errors.New("no SSA result found in the analysis pass")
+	ErrInvalidSSAType = errors.New("the analysis pass result is not of type SSA")
+)
 
 var (
 	visitedPool = sync.Pool{
@@ -199,11 +205,11 @@ func BuildDefaultAnalyzers() []*analysis.Analyzer {
 func getSSAResult(pass *analysis.Pass) (*SSAAnalyzerResult, error) {
 	result, ok := pass.ResultOf[buildssa.Analyzer]
 	if !ok {
-		return nil, fmt.Errorf("no SSA result found in the analysis pass")
+		return nil, ErrNoSSAResult
 	}
 	ssaResult, ok := result.(*SSAAnalyzerResult)
 	if !ok {
-		return nil, fmt.Errorf("the analysis pass result is not of type SSA")
+		return nil, ErrInvalidSSAType
 	}
 	return ssaResult, nil
 }
