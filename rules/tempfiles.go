@@ -31,7 +31,7 @@ type badTempFile struct {
 
 func (t *badTempFile) findTempDirArgs(n ast.Node, c *gosec.Context, suspect ast.Node) *issue.Issue {
 	if s, e := gosec.GetString(suspect); e == nil {
-		if t.args.MatchString(s) {
+		if gosec.RegexMatchWithCache(t.args, s) {
 			return c.NewIssue(n, t.ID(), t.What, t.Severity, t.Confidence)
 		}
 		return nil
