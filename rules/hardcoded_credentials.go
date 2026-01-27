@@ -84,49 +84,25 @@ var secretsPatterns = [...]secretPattern{
 		regexp: regexp.MustCompile(`ghs_[a-zA-Z0-9]{36}`),
 	},
 	{
-		name:   "Google API Key",
+		name:   "Google API Key", // Also Google Cloud Platform, Gmail, Drive, YouTube, etc.
 		regexp: regexp.MustCompile(`AIza[0-9A-Za-z\-_]{35}`),
 	},
+
 	{
-		name:   "Google Cloud Platform API Key",
-		regexp: regexp.MustCompile(`AIza[0-9A-Za-z\-_]{35}`),
-	},
-	{
-		name:   "Google Cloud Platform OAuth",
+		name:   "Google Cloud Platform OAuth", // Also Gmail, Drive, YouTube, etc.
 		regexp: regexp.MustCompile(`[0-9]+-[0-9A-Za-z_]{32}\.apps\.googleusercontent\.com`),
 	},
-	{
-		name:   "Google Drive API Key",
-		regexp: regexp.MustCompile(`AIza[0-9A-Za-z\-_]{35}`),
-	},
-	{
-		name:   "Google Drive OAuth",
-		regexp: regexp.MustCompile(`[0-9]+-[0-9A-Za-z_]{32}\.apps\.googleusercontent\.com`),
-	},
+
 	{
 		name:   "Google (GCP) Service-account",
 		regexp: regexp.MustCompile(`"type": "service_account"`),
 	},
-	{
-		name:   "Google Gmail API Key",
-		regexp: regexp.MustCompile(`AIza[0-9A-Za-z\-_]{35}`),
-	},
-	{
-		name:   "Google Gmail OAuth",
-		regexp: regexp.MustCompile(`[0-9]+-[0-9A-Za-z_]{32}\.apps\.googleusercontent\.com`),
-	},
+
 	{
 		name:   "Google OAuth Access Token",
 		regexp: regexp.MustCompile(`ya29\.[0-9A-Za-z\-_]+`),
 	},
-	{
-		name:   "Google YouTube API Key",
-		regexp: regexp.MustCompile(`AIza[0-9A-Za-z\-_]{35}`),
-	},
-	{
-		name:   "Google YouTube OAuth",
-		regexp: regexp.MustCompile(`[0-9]+-[0-9A-Za-z_]{32}\.apps\.googleusercontent\.com`),
-	},
+
 	{
 		name:   "Generic API Key",
 		regexp: regexp.MustCompile(`[aA][pP][iI]_?[kK][eE][yY].*[''|"][0-9a-zA-Z]{32,45}[''|"]`),
@@ -149,7 +125,7 @@ var secretsPatterns = [...]secretPattern{
 	},
 	{
 		name:   "Password in URL",
-		regexp: regexp.MustCompile(`[a-zA-Z]{3,10}://[^/\\s:@]{3,20}:[^/\\s:@]{3,20}@.{1,100}["'\\s]`),
+		regexp: regexp.MustCompile(`[a-zA-Z]{3,10}://[a-zA-Z0-9\.\-\_\+]{1,64}:[a-zA-Z0-9\.\-\_\!\$\%\&\*\+\=\^\(\)]{1,128}@[a-zA-Z0-9\.\-\_]+(:[0-9]+)?(/[^"'\s]*)?(["'\s]|$)`),
 	},
 	{
 		name:   "Slack Webhook",
