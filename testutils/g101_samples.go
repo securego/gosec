@@ -512,8 +512,8 @@ package main
 import "fmt"
 
 func main() {
-	urlSecret := "https://username:abcdef0123456789abcdef0123456789abcdef01@contoso.com/"
-	fmt.Println(urlSecret)
+	url := "https://username:abcdef0123456789abcdef0123456789abcdef01@contoso.com/"
+	fmt.Println(url)
 }
 `}, 1, gosec.NewConfig()},
 		{[]string{`
