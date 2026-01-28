@@ -5,6 +5,12 @@ Inspects source code for security problems by scanning the Go AST and SSA code r
 
 <img src="https://securego.io/img/gosec.png" width="320">
 
+## Features
+
+- **Pattern-based rules** for detecting common security issues in Go code
+- **SSA-based analyzers** for type conversions, slice bounds, and crypto issues
+- **Taint analysis** for tracking data flow from user input to dangerous functions (SQL injection, command injection, path traversal, SSRF, XSS, log injection)
+
 ## License
 
 Licensed under the Apache License, Version 2.0 (the "License").
@@ -216,6 +222,12 @@ directory you can supply `./...` as the input argument.
 - G507: Import blocklist: golang.org/x/crypto/ripemd160
 - G601: Implicit memory aliasing of items from a range statement (only for Go 1.21 or lower)
 - G602: Slice access out of bounds
+- G701: SQL injection via taint analysis
+- G702: Command injection via taint analysis
+- G703: Path traversal via taint analysis
+- G704: SSRF via taint analysis
+- G705: XSS via taint analysis
+- G706: Log injection via taint analysis
 
 ### Retired rules
 
