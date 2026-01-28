@@ -16,6 +16,8 @@ package analyzers
 
 import (
 	"golang.org/x/tools/go/analysis"
+
+	"github.com/securego/gosec/v2/analyzers/taint"
 )
 
 // AnalyzerDefinition contains the description of an analyzer and a mechanism to
@@ -69,6 +71,12 @@ var defaultAnalyzers = []AnalyzerDefinition{
 	{"G115", "Type conversion which leads to integer overflow", newConversionOverflowAnalyzer},
 	{"G602", "Possible slice bounds out of range", newSliceBoundsAnalyzer},
 	{"G407", "Use of hardcoded IV/nonce for encryption", newHardCodedNonce},
+	{"G701", "SQL injection via taint analysis", newSQLInjectionAnalyzer},
+	{"G702", "Command injection via taint analysis", newCommandInjectionAnalyzer},
+	{"G703", "Path traversal via taint analysis", newPathTraversalAnalyzer},
+	{"G704", "SSRF via taint analysis", newSSRFAnalyzer},
+	{"G705", "XSS via taint analysis", newXSSAnalyzer},
+	{"G706", "Log injection via taint analysis", newLogInjectionAnalyzer},
 }
 
 // Generate the list of analyzers to use
@@ -92,4 +100,29 @@ func Generate(trackSuppressions bool, filters ...AnalyzerFilter) *AnalyzerList {
 		}
 	}
 	return &AnalyzerList{Analyzers: analyzerMap, AnalyzerSuppressed: analyzerSuppressedMap}
+}
+
+// Taint analyzer constructors
+func newSQLInjectionAnalyzer(id string, description string) *analysis.Analyzer {
+	return taint.NewGosecAnalyzer(taint.SQLInjectionRule, taint.SQLInjection())
+}
+
+func newCommandInjectionAnalyzer(id string, description string) *analysis.Analyzer {
+	return taint.NewGosecAnalyzer(taint.CommandInjectionRule, taint.CommandInjection())
+}
+
+func newPathTraversalAnalyzer(id string, description string) *analysis.Analyzer {
+	return taint.NewGosecAnalyzer(taint.PathTraversalRule, taint.PathTraversal())
+}
+
+func newSSRFAnalyzer(id string, description string) *analysis.Analyzer {
+	return taint.NewGosecAnalyzer(taint.SSRFRule, taint.SSRF())
+}
+
+func newXSSAnalyzer(id string, description string) *analysis.Analyzer {
+	return taint.NewGosecAnalyzer(taint.XSSRule, taint.XSS())
+}
+
+func newLogInjectionAnalyzer(id string, description string) *analysis.Analyzer {
+	return taint.NewGosecAnalyzer(taint.LogInjectionRule, taint.LogInjection())
 }
