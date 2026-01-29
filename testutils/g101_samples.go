@@ -482,6 +482,73 @@ func main() {
 	_ = []string{"f62e5bcda4fae4f82370da0c6f20697b8f8447ef"} // unkeyed – no trigger
 }
 `}, 0, gosec.NewConfig()},
+		{[]string{`
+package main
+
+func main() {
+	secret := "dXNlcjpwYXNzd29yZDEh" // base64 encoded user:password1!
+	_ = secret
+}
+`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+func main() {
+	secret := "Päs5wörd!" // non-ascii
+	_ = secret
+}
+`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+func main() {
+	setSqlPasswordStmt := "ALTER USER 'root' IDENTIFIED BY 'f62e5bcda4fae4f82370da0c6f20697b8f8447ef'"
+	_ = setSqlPasswordStmt
+}
+`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+func main() {
+	urlWithCredentials := "http://example.com/path/to/resource?secret=c9d386ea-fa95-4a7d-9c9a-ce9ff35396b3"
+	_ = urlWithCredentials
+}
+`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+func main() {
+	urlWithoutCredentials := "http://example.com/path/to/resource"
+	_ = urlWithoutCredentials
+}
+`}, 0, gosec.NewConfig()},
+		{[]string{`
+package main
+
+func main() {
+	envPostgreSQLPassword := "POSTGRESQL_PASSWORD"
+	envPostgreSQLPasswordDesc := "The password for the postgresql user"
+	_ = envPostgreSQLPassword
+	_ = envPostgreSQLPasswordDesc
+}
+`}, 0, gosec.NewConfig()},
+
+		{[]string{`
+package main
+
+func main() {
+	setSqlPasswordStmt := "ALTER USER 'root' IDENTIFIED BY ?"
+	_ = setSqlPasswordStmt
+}
+`}, 0, gosec.NewConfig()},
+		{[]string{`
+package main
+
+func main() {
+	setSqlPasswordStmt := "SET PASSWORD FOR 'root'@'localhost' = ?"
+	_ = setSqlPasswordStmt
+}
+`}, 0, gosec.NewConfig()},
 	}
 
 	// SampleCodeG101Values code snippets for hardcoded credentials
