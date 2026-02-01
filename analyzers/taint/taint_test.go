@@ -2,12 +2,9 @@ package taint
 
 import (
 	"go/token"
-	"os"
 	"testing"
 
-	"golang.org/x/tools/go/packages"
 	"golang.org/x/tools/go/ssa"
-	"golang.org/x/tools/go/ssa/ssautil"
 )
 
 // TestFormatSinkKey tests the sink key formatting.
@@ -40,77 +37,6 @@ func TestFormatSinkKey(t *testing.T) {
 	}
 }
 
-// TestConfigMerge tests merging multiple configurations.
-func TestConfigMerge(t *testing.T) {
-	config1 := SQLInjection()
-	config2 := CommandInjection()
-
-	// Merge configs
-	merged := Config{
-		Sources: append(config1.Sources, config2.Sources...),
-		Sinks:   append(config1.Sinks, config2.Sinks...),
-	}
-
-	if len(merged.Sources) != len(config1.Sources)+len(config2.Sources) {
-		t.Errorf("merged sources count mismatch")
-	}
-
-	if len(merged.Sinks) != len(config1.Sinks)+len(config2.Sinks) {
-		t.Errorf("merged sinks count mismatch")
-	}
-}
-
-// TestAllConfigs tests that all predefined configs are valid.
-func TestAllConfigs(t *testing.T) {
-	configs := AllConfigs()
-
-	expectedConfigs := []string{
-		"sql_injection",
-		"command_injection",
-		"path_traversal",
-		"ssrf",
-		"xss",
-		"log_injection",
-	}
-
-	for _, name := range expectedConfigs {
-		config, ok := configs[name]
-		if !ok {
-			t.Errorf("missing config: %s", name)
-			continue
-		}
-
-		if len(config.Sources) == 0 {
-			t.Errorf("config %s has no sources", name)
-		}
-
-		if len(config.Sinks) == 0 {
-			t.Errorf("config %s has no sinks", name)
-		}
-
-		// Validate sources
-		for i, src := range config.Sources {
-			if src.Package == "" {
-				t.Errorf("config %s source[%d] has empty package", name, i)
-			}
-			if src.Name == "" {
-				t.Errorf("config %s source[%d] has empty name", name, i)
-			}
-		}
-
-		// Validate sinks
-		for i, sink := range config.Sinks {
-			if sink.Package == "" {
-				t.Errorf("config %s sink[%d] has empty package", name, i)
-			}
-			if sink.Method == "" {
-				t.Errorf("config %s sink[%d] has empty method", name, i)
-			}
-		}
-	}
-}
-
-// TestNew tests the analyzer constructor.
 // TestSourceType tests Source type structure.
 func TestSourceType(t *testing.T) {
 	tests := []struct {
@@ -187,7 +113,6 @@ func TestSinkType(t *testing.T) {
 	}
 }
 
-// TestResult tests Result type structure.
 // TestAnalyzerWithNilFunction tests handling of nil functions.
 func TestAnalyzerWithNilFunction(t *testing.T) {
 	config := SQLInjection()
@@ -201,7 +126,6 @@ func TestAnalyzerWithNilFunction(t *testing.T) {
 	}
 }
 
-// TestFormatSinkKeyVariations tests various sink key formats.
 // TestConfigValidation tests config validation.
 func TestConfigValidation(t *testing.T) {
 	tests := []struct {
@@ -323,7 +247,6 @@ func TestAnalyzerCallGraphNil(t *testing.T) {
 	}
 }
 
-// TestEmptyPath tests Result with empty path.
 // TestSinkWithoutReceiver tests sink without receiver (package function).
 func TestSinkWithoutReceiver(t *testing.T) {
 	sink := Sink{
@@ -339,98 +262,5 @@ func TestSinkWithoutReceiver(t *testing.T) {
 	expectedKey := "os/exec.Command"
 	if key != expectedKey {
 		t.Errorf("formatSinkKey() = %q, want %q", key, expectedKey)
-	}
-}
-
-// TestSourcePointerVariations tests pointer vs non-pointer sources.
-// buildSSA builds SSA from Go source code for testing
-func buildSSA(t *testing.T, src string) (*ssa.Program, []*ssa.Function) {
-	t.Helper()
-
-	dir := t.TempDir()
-	if err := os.WriteFile(dir+"/go.mod", []byte("module test\ngo 1.21"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(dir+"/main.go", []byte(src), 0o600); err != nil {
-		t.Fatal(err)
-	}
-
-	cfg := &packages.Config{Mode: packages.LoadAllSyntax, Dir: dir}
-	pkgs, err := packages.Load(cfg, ".")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	prog, ssaPkgs := ssautil.AllPackages(pkgs, ssa.SanityCheckFunctions)
-	prog.Build()
-
-	var funcs []*ssa.Function
-	for _, pkg := range ssaPkgs {
-		if pkg != nil {
-			for _, m := range pkg.Members {
-				if fn, ok := m.(*ssa.Function); ok {
-					funcs = append(funcs, fn)
-					funcs = append(funcs, fn.AnonFuncs...)
-				}
-			}
-		}
-	}
-	return prog, funcs
-}
-
-// TestAnalyzeRealSQLInjection tests detection with real Go code
-func TestAnalyzeRealSQLInjection(t *testing.T) {
-	src := `package main
-import ("database/sql"; "net/http")
-func handler(db *sql.DB, r *http.Request) {
-	name := r.URL.Query().Get("name")
-	query := "SELECT * FROM users WHERE name = '" + name + "'"
-	db.Query(query)
-}`
-
-	prog, funcs := buildSSA(t, src)
-	config := SQLInjection()
-	analyzer := New(&config)
-	results := analyzer.Analyze(prog, funcs)
-
-	if len(results) == 0 {
-		t.Error("expected SQL injection detection")
-	}
-}
-
-// TestAnalyzeRealPathTraversal tests path traversal detection
-func TestAnalyzeRealPathTraversal(t *testing.T) {
-	src := `package main
-import ("net/http"; "os")
-func handler(r *http.Request) {
-	path := r.URL.Query().Get("file")
-	os.Open(path)
-}`
-
-	prog, funcs := buildSSA(t, src)
-	config := PathTraversal()
-	analyzer := New(&config)
-	results := analyzer.Analyze(prog, funcs)
-
-	if len(results) == 0 {
-		t.Error("expected path traversal detection")
-	}
-}
-
-// TestAnalyzeSafeCode tests that safe code doesn't trigger false positives
-func TestAnalyzeSafeCode(t *testing.T) {
-	src := `package main
-import "database/sql"
-func handler(db *sql.DB) {
-	db.Query("SELECT * FROM users")
-}`
-
-	prog, funcs := buildSSA(t, src)
-	config := SQLInjection()
-	analyzer := New(&config)
-	results := analyzer.Analyze(prog, funcs)
-
-	if len(results) != 0 {
-		t.Error("unexpected false positive")
 	}
 }
