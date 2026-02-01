@@ -39,42 +39,42 @@ type RuleInfo struct {
 var (
 	SQLInjectionRule = RuleInfo{
 		ID:          "G701",
-		Description: "Potential SQL injection via string concatenation",
+		Description: "SQL injection via string concatenation",
 		Severity:    "HIGH",
 		CWE:         "CWE-89",
 	}
 
 	CommandInjectionRule = RuleInfo{
 		ID:          "G702",
-		Description: "Potential command injection via user input",
+		Description: "Command injection via user input",
 		Severity:    "CRITICAL",
 		CWE:         "CWE-78",
 	}
 
 	PathTraversalRule = RuleInfo{
 		ID:          "G703",
-		Description: "Potential path traversal via user input",
+		Description: "Path traversal via user input",
 		Severity:    "HIGH",
 		CWE:         "CWE-22",
 	}
 
 	SSRFRule = RuleInfo{
 		ID:          "G704",
-		Description: "Potential SSRF via user-controlled URL",
+		Description: "SSRF via user-controlled URL",
 		Severity:    "HIGH",
 		CWE:         "CWE-918",
 	}
 
 	XSSRule = RuleInfo{
 		ID:          "G705",
-		Description: "Potential XSS via unescaped user input",
+		Description: "XSS via unescaped user input",
 		Severity:    "MEDIUM",
 		CWE:         "CWE-79",
 	}
 
 	LogInjectionRule = RuleInfo{
 		ID:          "G706",
-		Description: "Potential log injection via user input",
+		Description: "Log injection via user input",
 		Severity:    "LOW",
 		CWE:         "CWE-117",
 	}
@@ -113,7 +113,7 @@ func makeAnalyzerRunner(rule RuleInfo, config Config) func(*analysis.Pass) (inte
 		}
 
 		// Run taint analysis
-		analyzer := New(config)
+		analyzer := New(&config)
 		results := analyzer.Analyze(srcFuncs[0].Prog, srcFuncs)
 
 		// Convert results to findings

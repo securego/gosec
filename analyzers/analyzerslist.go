@@ -16,8 +16,6 @@ package analyzers
 
 import (
 	"golang.org/x/tools/go/analysis"
-
-	"github.com/securego/gosec/v2/analyzers/taint"
 )
 
 // AnalyzerDefinition contains the description of an analyzer and a mechanism to
@@ -100,29 +98,4 @@ func Generate(trackSuppressions bool, filters ...AnalyzerFilter) *AnalyzerList {
 		}
 	}
 	return &AnalyzerList{Analyzers: analyzerMap, AnalyzerSuppressed: analyzerSuppressedMap}
-}
-
-// Taint analyzer constructors
-func newSQLInjectionAnalyzer(id string, description string) *analysis.Analyzer {
-	return taint.NewGosecAnalyzer(taint.SQLInjectionRule, taint.SQLInjection())
-}
-
-func newCommandInjectionAnalyzer(id string, description string) *analysis.Analyzer {
-	return taint.NewGosecAnalyzer(taint.CommandInjectionRule, taint.CommandInjection())
-}
-
-func newPathTraversalAnalyzer(id string, description string) *analysis.Analyzer {
-	return taint.NewGosecAnalyzer(taint.PathTraversalRule, taint.PathTraversal())
-}
-
-func newSSRFAnalyzer(id string, description string) *analysis.Analyzer {
-	return taint.NewGosecAnalyzer(taint.SSRFRule, taint.SSRF())
-}
-
-func newXSSAnalyzer(id string, description string) *analysis.Analyzer {
-	return taint.NewGosecAnalyzer(taint.XSSRule, taint.XSS())
-}
-
-func newLogInjectionAnalyzer(id string, description string) *analysis.Analyzer {
-	return taint.NewGosecAnalyzer(taint.LogInjectionRule, taint.LogInjection())
 }
