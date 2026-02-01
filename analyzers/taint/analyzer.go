@@ -82,7 +82,7 @@ var (
 
 // NewGosecAnalyzer creates a golang.org/x/tools/go/analysis.Analyzer
 // compatible with gosec's analyzer framework.
-func NewGosecAnalyzer(rule RuleInfo, config Config) *analysis.Analyzer {
+func NewGosecAnalyzer(rule *RuleInfo, config *Config) *analysis.Analyzer {
 	return &analysis.Analyzer{
 		Name:     rule.ID,
 		Doc:      rule.Description,
@@ -92,7 +92,7 @@ func NewGosecAnalyzer(rule RuleInfo, config Config) *analysis.Analyzer {
 }
 
 // makeAnalyzerRunner creates the run function for an analyzer.
-func makeAnalyzerRunner(rule RuleInfo, config Config) func(*analysis.Pass) (interface{}, error) {
+func makeAnalyzerRunner(rule *RuleInfo, config *Config) func(*analysis.Pass) (interface{}, error) {
 	return func(pass *analysis.Pass) (interface{}, error) {
 		// Get SSA result from buildssa analyzer
 		ssaInfo, ok := pass.ResultOf[buildssa.Analyzer].(*buildssa.SSA)
@@ -113,7 +113,7 @@ func makeAnalyzerRunner(rule RuleInfo, config Config) func(*analysis.Pass) (inte
 		}
 
 		// Run taint analysis
-		analyzer := New(&config)
+		analyzer := New(config)
 		results := analyzer.Analyze(srcFuncs[0].Prog, srcFuncs)
 
 		// Convert results to findings
@@ -150,22 +150,29 @@ func makeAnalyzerRunner(rule RuleInfo, config Config) func(*analysis.Pass) (inte
 
 // DefaultAnalyzers returns all predefined taint analyzers.
 func DefaultAnalyzers() []*analysis.Analyzer {
+	sqlConfig := SQLInjection()
+	cmdConfig := CommandInjection()
+	pathConfig := PathTraversal()
+	ssrfConfig := SSRF()
+	xssConfig := XSS()
+	logConfig := LogInjection()
+
 	return []*analysis.Analyzer{
-		NewGosecAnalyzer(SQLInjectionRule, SQLInjection()),
-		NewGosecAnalyzer(CommandInjectionRule, CommandInjection()),
-		NewGosecAnalyzer(PathTraversalRule, PathTraversal()),
-		NewGosecAnalyzer(SSRFRule, SSRF()),
-		NewGosecAnalyzer(XSSRule, XSS()),
-		NewGosecAnalyzer(LogInjectionRule, LogInjection()),
+		NewGosecAnalyzer(&SQLInjectionRule, &sqlConfig),
+		NewGosecAnalyzer(&CommandInjectionRule, &cmdConfig),
+		NewGosecAnalyzer(&PathTraversalRule, &pathConfig),
+		NewGosecAnalyzer(&SSRFRule, &ssrfConfig),
+		NewGosecAnalyzer(&XSSRule, &xssConfig),
+		NewGosecAnalyzer(&LogInjectionRule, &logConfig),
 	}
 }
 
 // String returns a human-readable representation of a finding.
-func (f Finding) String() string {
+func (f *Finding) String() string {
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("[%s] %s\n", f.RuleID, f.Description))
-	sb.WriteString(fmt.Sprintf("  Severity: %s, CWE: %s\n", f.Severity, f.CWE))
-	sb.WriteString(fmt.Sprintf("  Location: %s:%d:%d\n", f.Filename, f.Line, f.Column))
+	fmt.Fprintf(&sb, "[%s] %s\n", f.RuleID, f.Description)
+	fmt.Fprintf(&sb, "  Severity: %s, CWE: %s\n", f.Severity, f.CWE)
+	fmt.Fprintf(&sb, "  Location: %s:%d:%d\n", f.Filename, f.Line, f.Column)
 	if len(f.Path) > 0 {
 		sb.WriteString(fmt.Sprintf("  Call path: %s\n", strings.Join(f.Path, " -> ")))
 	}

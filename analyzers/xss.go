@@ -30,5 +30,5 @@ func newXSSAnalyzer(id string, description string) *analysis.Analyzer {
 		Severity:    "MEDIUM",
 		CWE:         "CWE-79",
 	}
-	return taint.NewGosecAnalyzer(rule, config)
+	return taint.NewGosecAnalyzer(&rule, &config)
 }

@@ -30,5 +30,5 @@ func newSSRFAnalyzer(id string, description string) *analysis.Analyzer {
 		Severity:    "HIGH",
 		CWE:         "CWE-918",
 	}
-	return taint.NewGosecAnalyzer(rule, config)
+	return taint.NewGosecAnalyzer(&rule, &config)
 }

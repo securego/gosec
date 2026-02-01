@@ -510,6 +510,112 @@ $ gosec -fmt=json -out=results.json -stdout -verbose=text *.go
 
 [CONTRIBUTING.md](https://github.com/securego/gosec/blob/master/CONTRIBUTING.md) contains detailed information about adding new rules to gosec.
 
+### Creating Taint Analysis Rules
+
+gosec supports taint analysis to track data flow from untrusted sources (user input) to dangerous sinks (functions that could cause security vulnerabilities). The taint analysis rules (G701-G706) detect issues like SQL injection, command injection, path traversal, SSRF, XSS, and log injection.
+
+#### Creating a New Taint Rule
+
+To create a new taint analysis rule:
+
+1. **Define the configuration** in `analyzers/taint/configs.go`:
+
+```go
+// NewVulnerability returns a configuration for detecting your vulnerability
+func NewVulnerability() Config {
+    return Config{
+        Sources: []Source{
+            {Package: "net/http", Name: "Request", Pointer: true},
+            {Package: "os", Name: "Args"},
+        },
+        Sinks: []Sink{
+            {Package: "dangerous/package", Method: "DangerousFunc"},
+            {Package: "another/pkg", Receiver: "Type", Method: "Method", Pointer: true},
+        },
+    }
+}
+```
+
+2. **Create the analyzer file** in `analyzers/` (e.g., `analyzers/newvuln.go`):
+
+```go
+package analyzers
+
+import (
+    "golang.org/x/tools/go/analysis"
+    "github.com/securego/gosec/v2/analyzers/taint"
+)
+
+func newNewVulnAnalyzer(id string, description string) *analysis.Analyzer {
+    config := taint.NewVulnerability()
+    rule := taint.RuleInfo{
+        ID:          id,
+        Description: description,
+        Severity:    "HIGH",  // or LOW, MEDIUM, CRITICAL
+        CWE:         "CWE-XXX",
+    }
+    return taint.NewGosecAnalyzer(&rule, &config)
+}
+```
+
+3. **Register the analyzer** in `analyzers/analyzerslist.go`:
+
+```go
+var defaultAnalyzers = []AnalyzerDefinition{
+    // ... existing analyzers ...
+    {"G7XX", "Description of vulnerability", newNewVulnAnalyzer},
+}
+```
+
+#### Source and Sink Configuration
+
+**Sources** define where tainted (untrusted) data originates:
+- `Package`: The import path (e.g., `"net/http"`)
+- `Name`: The type or function name (e.g., `"Request"`)
+- `Pointer`: Set to `true` if it's a pointer type (e.g., `*http.Request`)
+
+**Sinks** define dangerous functions that should not receive tainted data:
+- `Package`: The import path (e.g., `"database/sql"`)
+- `Receiver`: The type name for methods (e.g., `"DB"`), or empty for package functions
+- `Method`: The function or method name (e.g., `"Query"`)
+- `Pointer`: Set to `true` if the receiver is a pointer type
+
+#### Common Taint Sources
+
+| Source Type | Package | Type/Method | Pointer |
+|-------------|---------|-------------|---------|
+| HTTP Request | `net/http` | `Request` | `true` |
+| Query Parameters | `net/http` | `Request.URL.Query()` | - |
+| Form Data | `net/http` | `Request.FormValue()` | - |
+| Headers | `net/http` | `Request.Header` | - |
+| Command Line Args | `os` | `Args` | `false` |
+| Environment Variables | `os` | `Getenv` | `false` |
+| File Content | `bufio` | `Reader` | `true` |
+
+#### Testing Your Rule
+
+Create tests in `analyzers/taint/` using the `buildSSA` helper:
+
+```go
+func TestAnalyzeNewVulnerability(t *testing.T) {
+    src := `package main
+import ("dangerous/package"; "net/http")
+func handler(r *http.Request) {
+    input := r.URL.Query().Get("param")
+    dangerous.DangerousFunc(input)  // Should detect
+}`
+
+    prog, funcs := buildSSA(t, src)
+    config := NewVulnerability()
+    analyzer := New(&config)
+    results := analyzer.Analyze(prog, funcs)
+
+    if len(results) == 0 {
+        t.Error("expected vulnerability detection")
+    }
+}
+```
+
 ### Build
 
 You can build the binary with:

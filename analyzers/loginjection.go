@@ -30,5 +30,5 @@ func newLogInjectionAnalyzer(id string, description string) *analysis.Analyzer {
 		Severity:    "LOW",
 		CWE:         "CWE-117",
 	}
-	return taint.NewGosecAnalyzer(rule, config)
+	return taint.NewGosecAnalyzer(&rule, &config)
 }
