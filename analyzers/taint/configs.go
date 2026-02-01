@@ -10,6 +10,8 @@ func SQLInjection() Config {
 			{Package: "net/http", Name: "Request", Pointer: true},
 			{Package: "net/url", Name: "URL", Pointer: true},
 			{Package: "net/url", Name: "Values"},
+			{Package: "os", Name: "Args"},
+			{Package: "os", Name: "Getenv"},
 		},
 		Sinks: []Sink{
 			{Package: "database/sql", Receiver: "DB", Method: "Query", Pointer: true},
@@ -38,6 +40,7 @@ func CommandInjection() Config {
 		Sources: []Source{
 			{Package: "net/http", Name: "Request", Pointer: true},
 			{Package: "os", Name: "Args"},
+			{Package: "os", Name: "Getenv"},
 			{Package: "bufio", Name: "Reader", Pointer: true},
 		},
 		Sinks: []Sink{
@@ -47,6 +50,7 @@ func CommandInjection() Config {
 			{Package: "os/exec", Receiver: "Cmd", Method: "Run", Pointer: true},
 			{Package: "os/exec", Receiver: "Cmd", Method: "Output", Pointer: true},
 			{Package: "os/exec", Receiver: "Cmd", Method: "CombinedOutput", Pointer: true},
+			{Package: "os", Method: "StartProcess"},
 			{Package: "syscall", Method: "Exec"},
 			{Package: "syscall", Method: "ForkExec"},
 			{Package: "syscall", Method: "StartProcess"},
@@ -60,6 +64,8 @@ func PathTraversal() Config {
 		Sources: []Source{
 			{Package: "net/http", Name: "Request", Pointer: true},
 			{Package: "net/url", Name: "URL", Pointer: true},
+			{Package: "os", Name: "Args"},
+			{Package: "os", Name: "Getenv"},
 		},
 		Sinks: []Sink{
 			{Package: "os", Method: "Open"},
