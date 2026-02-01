@@ -13,55 +13,71 @@ package taint
 import (
 	"go/token"
 	"go/types"
-	"strings"
 
 	"golang.org/x/tools/go/callgraph"
 	"golang.org/x/tools/go/callgraph/cha"
 	"golang.org/x/tools/go/ssa"
 )
 
+// maxTaintDepth limits recursion depth to prevent stack overflow on large codebases
+const maxTaintDepth = 50
+
 // Source defines where tainted data originates.
 // Format: "package/path.TypeOrFunc" or "*package/path.Type" for pointer types.
 type Source struct {
-	Package string // e.g., "net/http"
-	Name    string // e.g., "Request" or "Get"
-	Pointer bool   // true if *Type
+	// Package is the import path of the package containing the source (e.g., "net/http")
+	Package string
+	// Name is the type or function name that produces tainted data (e.g., "Request" for type, "Get" for function)
+	Name string
+	// Pointer indicates whether the source is a pointer type (true for *Type)
+	Pointer bool
 }
 
 // Sink defines a dangerous function that should not receive tainted data.
 // Format: "(*package/path.Type).Method" or "package/path.Func"
 type Sink struct {
-	Package  string // e.g., "database/sql"
-	Receiver string // e.g., "DB" (empty for package-level funcs)
-	Method   string // e.g., "Query"
-	Pointer  bool   // true if receiver is pointer
+	// Package is the import path of the package containing the sink (e.g., "database/sql")
+	Package string
+	// Receiver is the type name for methods (e.g., "DB"), or empty for package-level functions
+	Receiver string
+	// Method is the function or method name that represents the sink (e.g., "Query")
+	Method string
+	// Pointer indicates whether the receiver is a pointer type (true for *Type methods)
+	Pointer bool
 }
 
 // Result represents a detected taint flow from source to sink.
 type Result struct {
-	Source   Source
-	Sink     Sink
-	SinkPos  token.Pos       // Position of the sink call
-	Path     []*ssa.Function // Call path from entry to sink
-	SinkCall *ssa.Call       // The actual sink call instruction
+	// Source is the origin of the tainted data
+	Source Source
+	// Sink is the dangerous function that receives the tainted data
+	Sink Sink
+	// SinkPos is the source code position of the sink call
+	SinkPos token.Pos
+	// Path is the sequence of functions from entry point to the sink
+	Path []*ssa.Function
+	// SinkCall is the SSA instruction representing the sink call
+	SinkCall *ssa.Call
 }
 
 // Config holds taint analysis configuration.
 type Config struct {
+	// Sources is the list of data origins that produce tainted values
 	Sources []Source
-	Sinks   []Sink
+	// Sinks is the list of dangerous functions that should not receive tainted data
+	Sinks []Sink
 }
 
 // Analyzer performs taint analysis on SSA programs.
 type Analyzer struct {
-	config    Config
+	config    *Config
 	sources   map[string]Source // keyed by full type string
 	sinks     map[string]Sink   // keyed by full function string
 	callGraph *callgraph.Graph
 }
 
 // New creates a new taint analyzer with the given configuration.
-func New(config Config) *Analyzer {
+func New(config *Config) *Analyzer {
 	a := &Analyzer{
 		config:  config,
 		sources: make(map[string]Source),
@@ -70,10 +86,7 @@ func New(config Config) *Analyzer {
 
 	// Index sources for fast lookup
 	for _, src := range config.Sources {
-		key := src.Package + "." + src.Name
-		if src.Pointer {
-			key = "*" + key
-		}
+		key := formatSourceKey(src)
 		a.sources[key] = src
 	}
 
@@ -84,6 +97,15 @@ func New(config Config) *Analyzer {
 	}
 
 	return a
+}
+
+// formatSourceKey creates a lookup key for a source.
+func formatSourceKey(src Source) string {
+	key := src.Package + "." + src.Name
+	if src.Pointer {
+		key = "*" + key
+	}
+	return key
 }
 
 // formatSinkKey creates a lookup key for a sink.
@@ -142,15 +164,14 @@ func (a *Analyzer) analyzeFunctionSinks(fn *ssa.Function) []Result {
 			}
 
 			// Check if any argument is tainted
-			for i, arg := range call.Call.Args {
-				if a.isTainted(arg, fn, make(map[ssa.Value]bool)) {
+			for _, arg := range call.Call.Args {
+				if a.isTainted(arg, fn, make(map[ssa.Value]bool), 0) {
 					results = append(results, Result{
 						Sink:     sink,
 						SinkPos:  call.Pos(),
 						SinkCall: call,
-						Path:     a.buildPath(fn, call),
+						Path:     a.buildPath(fn),
 					})
-					_ = i // arg index could be used for more detailed reporting
 					break
 				}
 			}
@@ -169,24 +190,22 @@ func (a *Analyzer) isSinkCall(call *ssa.Call) (Sink, bool) {
 
 	key := callee.String()
 
-	// Try direct lookup
+	// Direct lookup using formatted key
 	if sink, ok := a.sinks[key]; ok {
 		return sink, true
-	}
-
-	// Try matching by parts
-	for sinkKey, sink := range a.sinks {
-		if strings.Contains(key, sinkKey) {
-			return sink, true
-		}
 	}
 
 	return Sink{}, false
 }
 
 // isTainted recursively checks if a value is tainted (originates from a source).
-func (a *Analyzer) isTainted(v ssa.Value, fn *ssa.Function, visited map[ssa.Value]bool) bool {
+func (a *Analyzer) isTainted(v ssa.Value, fn *ssa.Function, visited map[ssa.Value]bool, depth int) bool {
 	if v == nil {
+		return false
+	}
+
+	// Prevent stack overflow on large codebases
+	if depth > maxTaintDepth {
 		return false
 	}
 
@@ -205,7 +224,7 @@ func (a *Analyzer) isTainted(v ssa.Value, fn *ssa.Function, visited map[ssa.Valu
 	switch val := v.(type) {
 	case *ssa.Parameter:
 		// Parameters can be tainted if the function is called with tainted args
-		return a.isParameterTainted(val, fn, visited)
+		return a.isParameterTainted(val, fn, visited, depth+1)
 
 	case *ssa.Call:
 		// Check if the call returns a tainted type
@@ -214,64 +233,64 @@ func (a *Analyzer) isTainted(v ssa.Value, fn *ssa.Function, visited map[ssa.Valu
 		}
 		// Check if any argument to this call is tainted
 		for _, arg := range val.Call.Args {
-			if a.isTainted(arg, fn, visited) {
+			if a.isTainted(arg, fn, visited, depth+1) {
 				return true
 			}
 		}
 
 	case *ssa.FieldAddr:
 		// Field access on a tainted struct
-		return a.isTainted(val.X, fn, visited)
+		return a.isTainted(val.X, fn, visited, depth+1)
 
 	case *ssa.IndexAddr:
 		// Index into a tainted slice/array
-		return a.isTainted(val.X, fn, visited)
+		return a.isTainted(val.X, fn, visited, depth+1)
 
 	case *ssa.UnOp:
 		// Unary operation (like pointer dereference)
-		return a.isTainted(val.X, fn, visited)
+		return a.isTainted(val.X, fn, visited, depth+1)
 
 	case *ssa.BinOp:
 		// Binary operation - tainted if either operand is tainted
-		return a.isTainted(val.X, fn, visited) || a.isTainted(val.Y, fn, visited)
+		return a.isTainted(val.X, fn, visited, depth+1) || a.isTainted(val.Y, fn, visited, depth+1)
 
 	case *ssa.Phi:
 		// Phi node - tainted if any edge is tainted
 		for _, edge := range val.Edges {
-			if a.isTainted(edge, fn, visited) {
+			if a.isTainted(edge, fn, visited, depth+1) {
 				return true
 			}
 		}
 
 	case *ssa.Extract:
 		// Extract from tuple - check the tuple
-		return a.isTainted(val.Tuple, fn, visited)
+		return a.isTainted(val.Tuple, fn, visited, depth+1)
 
 	case *ssa.TypeAssert:
 		// Type assertion - check the underlying value
-		return a.isTainted(val.X, fn, visited)
+		return a.isTainted(val.X, fn, visited, depth+1)
 
 	case *ssa.MakeInterface:
 		// Interface creation - check the underlying value
-		return a.isTainted(val.X, fn, visited)
+		return a.isTainted(val.X, fn, visited, depth+1)
 
 	case *ssa.Slice:
 		// Slice operation - check the sliced value
-		return a.isTainted(val.X, fn, visited)
+		return a.isTainted(val.X, fn, visited, depth+1)
 
 	case *ssa.Convert:
 		// Type conversion - check the converted value
-		return a.isTainted(val.X, fn, visited)
+		return a.isTainted(val.X, fn, visited, depth+1)
 
 	case *ssa.ChangeType:
 		// Type change - check the underlying value
-		return a.isTainted(val.X, fn, visited)
+		return a.isTainted(val.X, fn, visited, depth+1)
 
 	case *ssa.Alloc:
 		// Allocation - check referrers for assignments
 		for _, ref := range *val.Referrers() {
 			if store, ok := ref.(*ssa.Store); ok {
-				if a.isTainted(store.Val, fn, visited) {
+				if a.isTainted(store.Val, fn, visited, depth+1) {
 					return true
 				}
 			}
@@ -279,7 +298,7 @@ func (a *Analyzer) isTainted(v ssa.Value, fn *ssa.Function, visited map[ssa.Valu
 
 	case *ssa.Lookup:
 		// Map/string lookup - check the map/string
-		return a.isTainted(val.X, fn, visited)
+		return a.isTainted(val.X, fn, visited, depth+1)
 
 	case *ssa.MakeSlice, *ssa.MakeMap, *ssa.MakeChan:
 		// New containers are not tainted by default
@@ -345,19 +364,16 @@ func (a *Analyzer) isSourceCall(call *ssa.Call) bool {
 		return true
 	}
 
-	// Check if function itself is a source
-	key := callee.String()
-	for srcKey := range a.sources {
-		if strings.Contains(key, srcKey) {
-			return true
-		}
-	}
-
 	return false
 }
 
 // isParameterTainted checks if a function parameter receives tainted data.
-func (a *Analyzer) isParameterTainted(param *ssa.Parameter, fn *ssa.Function, visited map[ssa.Value]bool) bool {
+func (a *Analyzer) isParameterTainted(param *ssa.Parameter, fn *ssa.Function, visited map[ssa.Value]bool, depth int) bool {
+	// Prevent stack overflow
+	if depth > maxTaintDepth {
+		return false
+	}
+
 	// Check if parameter type is a source
 	if a.isSourceType(param.Type()) {
 		return true
@@ -400,7 +416,7 @@ func (a *Analyzer) isParameterTainted(param *ssa.Parameter, fn *ssa.Function, vi
 		}
 
 		if paramIdx < len(callArgs) {
-			if a.isTainted(callArgs[paramIdx], inEdge.Caller.Func, visited) {
+			if a.isTainted(callArgs[paramIdx], inEdge.Caller.Func, visited, depth+1) {
 				return true
 			}
 		}
@@ -410,7 +426,7 @@ func (a *Analyzer) isParameterTainted(param *ssa.Parameter, fn *ssa.Function, vi
 }
 
 // buildPath constructs the call path from entry point to the sink.
-func (a *Analyzer) buildPath(fn *ssa.Function, _ *ssa.Call) []*ssa.Function {
+func (a *Analyzer) buildPath(fn *ssa.Function) []*ssa.Function {
 	if a.callGraph == nil {
 		return []*ssa.Function{fn}
 	}

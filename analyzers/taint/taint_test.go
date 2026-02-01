@@ -240,7 +240,7 @@ func main() {}
 
 // TestSourceMatching tests the source type matching logic.
 func TestSourceMatching(t *testing.T) {
-	config := Config{
+	config := &Config{
 		Sources: []Source{
 			{Package: "net/http", Name: "Request", Pointer: true},
 			{Package: "os", Name: "Args"},
@@ -272,7 +272,7 @@ func TestSourceMatching(t *testing.T) {
 
 // TestSinkMatching tests the sink function matching logic.
 func TestSinkMatching(t *testing.T) {
-	config := Config{
+	config := &Config{
 		Sources: []Source{},
 		Sinks: []Sink{
 			{Package: "database/sql", Receiver: "DB", Method: "Query", Pointer: true},
@@ -405,7 +405,7 @@ func TestAllConfigs(t *testing.T) {
 func BenchmarkTaintAnalysis(b *testing.B) {
 	// This would need a real SSA program to benchmark
 	config := SQLInjection()
-	analyzer := New(config)
+	analyzer := New(&config)
 	_ = analyzer
 
 	b.ResetTimer()
@@ -416,7 +416,7 @@ func BenchmarkTaintAnalysis(b *testing.B) {
 
 // TestNew tests the analyzer constructor.
 func TestNew(t *testing.T) {
-	config := Config{
+	config := &Config{
 		Sources: []Source{
 			{Package: "net/http", Name: "Request", Pointer: true},
 			{Package: "os", Name: "Getenv"},
@@ -467,7 +467,7 @@ func TestNew(t *testing.T) {
 // TestAnalyzeEmpty tests analyzer with no functions.
 func TestAnalyzeEmpty(t *testing.T) {
 	config := SQLInjection()
-	analyzer := New(config)
+	analyzer := New(&config)
 
 	prog := ssa.NewProgram(token.NewFileSet(), ssa.SanityCheckFunctions)
 	results := analyzer.Analyze(prog, nil)
@@ -503,7 +503,7 @@ func TestSourceType(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			config := Config{Sources: []Source{tt.source}}
+			config := &Config{Sources: []Source{tt.source}}
 			analyzer := New(config)
 
 			if _, ok := analyzer.sources[tt.wantKey]; !ok {
@@ -539,7 +539,7 @@ func TestSinkType(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			config := Config{Sinks: []Sink{tt.sink}}
+			config := &Config{Sinks: []Sink{tt.sink}}
 			analyzer := New(config)
 
 			// Check the key exists in the sinks map
@@ -631,7 +631,7 @@ func TestPredefinedConfigs(t *testing.T) {
 // TestAnalyzerWithNilFunction tests handling of nil functions.
 func TestAnalyzerWithNilFunction(t *testing.T) {
 	config := SQLInjection()
-	analyzer := New(config)
+	analyzer := New(&config)
 
 	prog := ssa.NewProgram(token.NewFileSet(), ssa.SanityCheckFunctions)
 	results := analyzer.Analyze(prog, []*ssa.Function{nil})
@@ -715,7 +715,7 @@ func TestConfigValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			analyzer := New(tt.config)
+			analyzer := New(&tt.config)
 			if analyzer == nil && tt.valid {
 				t.Error("expected valid analyzer, got nil")
 			}
@@ -725,7 +725,7 @@ func TestConfigValidation(t *testing.T) {
 
 // TestMultipleSourcesAndSinks tests analyzer with multiple sources and sinks.
 func TestMultipleSourcesAndSinks(t *testing.T) {
-	config := Config{
+	config := &Config{
 		Sources: []Source{
 			{Package: "net/http", Name: "Request", Pointer: true},
 			{Package: "os", Name: "Args"},
@@ -780,7 +780,7 @@ func TestSourceKeyFormats(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			config := Config{Sources: []Source{tt.source}}
+			config := &Config{Sources: []Source{tt.source}}
 			analyzer := New(config)
 
 			if _, ok := analyzer.sources[tt.wantKey]; !ok {
@@ -793,7 +793,7 @@ func TestSourceKeyFormats(t *testing.T) {
 // TestAnalyzerCallGraphNil tests analyzer behavior with nil call graph.
 func TestAnalyzerCallGraphNil(t *testing.T) {
 	config := SQLInjection()
-	analyzer := New(config)
+	analyzer := New(&config)
 
 	// Call graph should be nil until Analyze is called
 	if analyzer.callGraph != nil {
@@ -835,7 +835,7 @@ func TestSinkWithoutReceiver(t *testing.T) {
 
 // TestSourcePointerVariations tests pointer vs non-pointer sources.
 func TestSourcePointerVariations(t *testing.T) {
-	config := Config{
+	config := &Config{
 		Sources: []Source{
 			{Package: "pkg", Name: "Type", Pointer: false},
 			{Package: "pkg", Name: "Type", Pointer: true},
@@ -904,7 +904,8 @@ func handler(db *sql.DB, r *http.Request) {
 }`
 
 	prog, funcs := buildSSA(t, src)
-	analyzer := New(SQLInjection())
+	config := SQLInjection()
+	analyzer := New(&config)
 	results := analyzer.Analyze(prog, funcs)
 
 	if len(results) == 0 {
@@ -922,7 +923,8 @@ func handler(r *http.Request) {
 }`
 
 	prog, funcs := buildSSA(t, src)
-	analyzer := New(PathTraversal())
+	config := PathTraversal()
+	analyzer := New(&config)
 	results := analyzer.Analyze(prog, funcs)
 
 	if len(results) == 0 {
@@ -939,7 +941,8 @@ func handler(db *sql.DB) {
 }`
 
 	prog, funcs := buildSSA(t, src)
-	analyzer := New(SQLInjection())
+	config := SQLInjection()
+	analyzer := New(&config)
 	results := analyzer.Analyze(prog, funcs)
 
 	if len(results) != 0 {
