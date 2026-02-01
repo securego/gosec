@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/securego/gosec/v2/analyzers/taint"
+
 	"golang.org/x/tools/go/packages"
 	"golang.org/x/tools/go/ssa"
 	"golang.org/x/tools/go/ssa/ssautil"

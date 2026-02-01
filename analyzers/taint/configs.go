@@ -12,6 +12,9 @@ func SQLInjection() Config {
 			{Package: "net/url", Name: "Values"},
 			{Package: "os", Name: "Args"},
 			{Package: "os", Name: "Getenv"},
+			{Package: "bufio", Name: "Reader", Pointer: true},
+			{Package: "bufio", Name: "Scanner", Pointer: true},
+			{Package: "os", Name: "File", Pointer: true},
 		},
 		Sinks: []Sink{
 			{Package: "database/sql", Receiver: "DB", Method: "Query", Pointer: true},
@@ -42,6 +45,8 @@ func CommandInjection() Config {
 			{Package: "os", Name: "Args"},
 			{Package: "os", Name: "Getenv"},
 			{Package: "bufio", Name: "Reader", Pointer: true},
+			{Package: "bufio", Name: "Scanner", Pointer: true},
+			{Package: "os", Name: "File", Pointer: true},
 		},
 		Sinks: []Sink{
 			{Package: "os/exec", Method: "Command"},
@@ -66,6 +71,9 @@ func PathTraversal() Config {
 			{Package: "net/url", Name: "URL", Pointer: true},
 			{Package: "os", Name: "Args"},
 			{Package: "os", Name: "Getenv"},
+			{Package: "bufio", Name: "Reader", Pointer: true},
+			{Package: "bufio", Name: "Scanner", Pointer: true},
+			{Package: "os", Name: "File", Pointer: true},
 		},
 		Sinks: []Sink{
 			{Package: "os", Method: "Open"},
@@ -98,6 +106,9 @@ func SSRF() Config {
 			{Package: "net/http", Name: "Request", Pointer: true},
 			{Package: "os", Name: "Args"},
 			{Package: "os", Name: "Getenv"},
+			{Package: "bufio", Name: "Reader", Pointer: true},
+			{Package: "bufio", Name: "Scanner", Pointer: true},
+			{Package: "os", Name: "File", Pointer: true},
 		},
 		Sinks: []Sink{
 			{Package: "net/http", Method: "Get"},
@@ -124,6 +135,10 @@ func XSS() Config {
 		Sources: []Source{
 			{Package: "net/http", Name: "Request", Pointer: true},
 			{Package: "net/url", Name: "Values"},
+			{Package: "os", Name: "Args"},
+			{Package: "bufio", Name: "Reader", Pointer: true},
+			{Package: "bufio", Name: "Scanner", Pointer: true},
+			{Package: "os", Name: "File", Pointer: true},
 		},
 		Sinks: []Sink{
 			{Package: "net/http", Receiver: "ResponseWriter", Method: "Write"},
@@ -144,6 +159,11 @@ func LogInjection() Config {
 	return Config{
 		Sources: []Source{
 			{Package: "net/http", Name: "Request", Pointer: true},
+			{Package: "os", Name: "Args"},
+			{Package: "os", Name: "Getenv"},
+			{Package: "bufio", Name: "Reader", Pointer: true},
+			{Package: "bufio", Name: "Scanner", Pointer: true},
+			{Package: "os", Name: "File", Pointer: true},
 		},
 		Sinks: []Sink{
 			{Package: "log", Method: "Print"},
