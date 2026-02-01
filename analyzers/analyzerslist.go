@@ -69,6 +69,12 @@ var defaultAnalyzers = []AnalyzerDefinition{
 	{"G115", "Type conversion which leads to integer overflow", newConversionOverflowAnalyzer},
 	{"G602", "Possible slice bounds out of range", newSliceBoundsAnalyzer},
 	{"G407", "Use of hardcoded IV/nonce for encryption", newHardCodedNonce},
+	{"G701", "SQL injection via taint analysis", newSQLInjectionAnalyzer},
+	{"G702", "Command injection via taint analysis", newCommandInjectionAnalyzer},
+	{"G703", "Path traversal via taint analysis", newPathTraversalAnalyzer},
+	{"G704", "SSRF via taint analysis", newSSRFAnalyzer},
+	{"G705", "XSS via taint analysis", newXSSAnalyzer},
+	{"G706", "Log injection via taint analysis", newLogInjectionAnalyzer},
 }
 
 // Generate the list of analyzers to use
