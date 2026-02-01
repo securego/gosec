@@ -30,5 +30,5 @@ func newPathTraversalAnalyzer(id string, description string) *analysis.Analyzer 
 		Severity:    "HIGH",
 		CWE:         "CWE-22",
 	}
-	return taint.NewGosecAnalyzer(rule, config)
+	return taint.NewGosecAnalyzer(&rule, &config)
 }

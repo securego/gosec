@@ -30,5 +30,5 @@ func newSQLInjectionAnalyzer(id string, description string) *analysis.Analyzer {
 		Severity:    "HIGH",
 		CWE:         "CWE-89",
 	}
-	return taint.NewGosecAnalyzer(rule, config)
+	return taint.NewGosecAnalyzer(&rule, &config)
 }

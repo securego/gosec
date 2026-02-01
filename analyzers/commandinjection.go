@@ -30,5 +30,5 @@ func newCommandInjectionAnalyzer(id string, description string) *analysis.Analyz
 		Severity:    "CRITICAL",
 		CWE:         "CWE-78",
 	}
-	return taint.NewGosecAnalyzer(rule, config)
+	return taint.NewGosecAnalyzer(&rule, &config)
 }
