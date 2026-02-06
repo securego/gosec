@@ -267,7 +267,12 @@ func runSliceBounds(pass *analysis.Pass) (result any, err error) {
 			}
 		}
 
-		for i, block := range ifref.Block().Succs {
+		// Guard against nil Block()
+		ifBlock := ifref.Block()
+		if ifBlock == nil {
+			continue
+		}
+		for i, block := range ifBlock.Succs {
 			if i == 1 {
 				bound = invBound(bound)
 			}
@@ -322,8 +327,11 @@ func runSliceBounds(pass *analysis.Pass) (result any, err error) {
 							}
 						}
 					} else if nestedIfInstr, ok := instr.(*ssa.If); ok {
-						for _, nestedBlock := range nestedIfInstr.Block().Succs {
-							processBlock(nestedBlock, depth)
+						// Guard against nil Block()
+						if nestedIfBlock := nestedIfInstr.Block(); nestedIfBlock != nil {
+							for _, nestedBlock := range nestedIfBlock.Succs {
+								processBlock(nestedBlock, depth)
+							}
 						}
 					}
 				}
