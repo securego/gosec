@@ -62,5 +62,29 @@ var _ = Describe("gosec analyzers", func() {
 		It("should detect out of bounds slice access", func() {
 			runner("G602", testutils.SampleCodeG602)
 		})
+
+		It("should detect SQL injection via taint analysis", func() {
+			runner("G701", testutils.SampleCodeG701)
+		})
+
+		It("should detect command injection via taint analysis", func() {
+			runner("G702", testutils.SampleCodeG702)
+		})
+
+		It("should detect path traversal via taint analysis", func() {
+			runner("G703", testutils.SampleCodeG703)
+		})
+
+		It("should detect SSRF via taint analysis", func() {
+			runner("G704", testutils.SampleCodeG704)
+		})
+
+		It("should detect XSS via taint analysis", func() {
+			runner("G705", testutils.SampleCodeG705)
+		})
+
+		It("should detect log injection via taint analysis", func() {
+			runner("G706", testutils.SampleCodeG706)
+		})
 	})
 })

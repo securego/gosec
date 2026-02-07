@@ -54,7 +54,7 @@ func newOverflowState(pass *analysis.Pass) *overflowState {
 
 // runConversionOverflow analyzes the SSA representation of the code to find potential integer overflows in type conversions.
 func runConversionOverflow(pass *analysis.Pass) (any, error) {
-	ssaResult, err := getSSAResult(pass)
+	ssaResult, err := GetSSAResult(pass)
 	if err != nil {
 		return nil, fmt.Errorf("building ssa representation: %w", err)
 	}

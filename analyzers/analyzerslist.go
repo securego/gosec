@@ -16,6 +16,8 @@ package analyzers
 
 import (
 	"golang.org/x/tools/go/analysis"
+
+	"github.com/securego/gosec/v2/taint"
 )
 
 // AnalyzerDefinition contains the description of an analyzer and a mechanism to
@@ -28,6 +30,51 @@ type AnalyzerDefinition struct {
 
 // AnalyzerBuilder is used to register an analyzer definition with the analyzer
 type AnalyzerBuilder func(id string, description string) *analysis.Analyzer
+
+// Taint analysis rule definitions
+var (
+	SQLInjectionRule = taint.RuleInfo{
+		ID:          "G701",
+		Description: "SQL injection via string concatenation",
+		Severity:    "HIGH",
+		CWE:         "CWE-89",
+	}
+
+	CommandInjectionRule = taint.RuleInfo{
+		ID:          "G702",
+		Description: "Command injection via user input",
+		Severity:    "CRITICAL",
+		CWE:         "CWE-78",
+	}
+
+	PathTraversalRule = taint.RuleInfo{
+		ID:          "G703",
+		Description: "Path traversal via user input",
+		Severity:    "HIGH",
+		CWE:         "CWE-22",
+	}
+
+	SSRFRule = taint.RuleInfo{
+		ID:          "G704",
+		Description: "SSRF via user-controlled URL",
+		Severity:    "HIGH",
+		CWE:         "CWE-918",
+	}
+
+	XSSRule = taint.RuleInfo{
+		ID:          "G705",
+		Description: "XSS via unescaped user input",
+		Severity:    "MEDIUM",
+		CWE:         "CWE-79",
+	}
+
+	LogInjectionRule = taint.RuleInfo{
+		ID:          "G706",
+		Description: "Log injection via user input",
+		Severity:    "LOW",
+		CWE:         "CWE-117",
+	}
+)
 
 // AnalyzerList contains a mapping of analyzer ID's to analyzer definitions and a mapping
 // of analyzer ID's to whether analyzers are suppressed.
@@ -69,6 +116,12 @@ var defaultAnalyzers = []AnalyzerDefinition{
 	{"G115", "Type conversion which leads to integer overflow", newConversionOverflowAnalyzer},
 	{"G602", "Possible slice bounds out of range", newSliceBoundsAnalyzer},
 	{"G407", "Use of hardcoded IV/nonce for encryption", newHardCodedNonce},
+	{"G701", "SQL injection via taint analysis", newSQLInjectionAnalyzer},
+	{"G702", "Command injection via taint analysis", newCommandInjectionAnalyzer},
+	{"G703", "Path traversal via taint analysis", newPathTraversalAnalyzer},
+	{"G704", "SSRF via taint analysis", newSSRFAnalyzer},
+	{"G705", "XSS via taint analysis", newXSSAnalyzer},
+	{"G706", "Log injection via taint analysis", newLogInjectionAnalyzer},
 }
 
 // Generate the list of analyzers to use
@@ -92,4 +145,23 @@ func Generate(trackSuppressions bool, filters ...AnalyzerFilter) *AnalyzerList {
 		}
 	}
 	return &AnalyzerList{Analyzers: analyzerMap, AnalyzerSuppressed: analyzerSuppressedMap}
+}
+
+// DefaultTaintAnalyzers returns all predefined taint analysis analyzers.
+func DefaultTaintAnalyzers() []*analysis.Analyzer {
+	sqlConfig := SQLInjection()
+	cmdConfig := CommandInjection()
+	pathConfig := PathTraversal()
+	ssrfConfig := SSRF()
+	xssConfig := XSS()
+	logConfig := LogInjection()
+
+	return []*analysis.Analyzer{
+		taint.NewGosecAnalyzer(&SQLInjectionRule, &sqlConfig),
+		taint.NewGosecAnalyzer(&CommandInjectionRule, &cmdConfig),
+		taint.NewGosecAnalyzer(&PathTraversalRule, &pathConfig),
+		taint.NewGosecAnalyzer(&SSRFRule, &ssrfConfig),
+		taint.NewGosecAnalyzer(&XSSRule, &xssConfig),
+		taint.NewGosecAnalyzer(&LogInjectionRule, &logConfig),
+	}
 }
