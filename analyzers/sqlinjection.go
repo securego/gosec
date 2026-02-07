@@ -17,18 +17,15 @@ package analyzers
 import (
 	"golang.org/x/tools/go/analysis"
 
-	"github.com/securego/gosec/v2/analyzers/taint"
+	"github.com/securego/gosec/v2/taint"
 )
 
 // newSQLInjectionAnalyzer creates an analyzer for detecting SQL injection vulnerabilities
 // via taint analysis (G701)
 func newSQLInjectionAnalyzer(id string, description string) *analysis.Analyzer {
-	config := taint.SQLInjection()
-	rule := taint.RuleInfo{
-		ID:          id,
-		Description: description,
-		Severity:    "HIGH",
-		CWE:         "CWE-89",
-	}
+	config := SQLInjection()
+	rule := SQLInjectionRule
+	rule.ID = id
+	rule.Description = description
 	return taint.NewGosecAnalyzer(&rule, &config)
 }

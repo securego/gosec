@@ -35,51 +35,6 @@ type RuleInfo struct {
 	CWE         string
 }
 
-// Predefined rules for gosec integration.
-var (
-	SQLInjectionRule = RuleInfo{
-		ID:          "G701",
-		Description: "SQL injection via string concatenation",
-		Severity:    "HIGH",
-		CWE:         "CWE-89",
-	}
-
-	CommandInjectionRule = RuleInfo{
-		ID:          "G702",
-		Description: "Command injection via user input",
-		Severity:    "CRITICAL",
-		CWE:         "CWE-78",
-	}
-
-	PathTraversalRule = RuleInfo{
-		ID:          "G703",
-		Description: "Path traversal via user input",
-		Severity:    "HIGH",
-		CWE:         "CWE-22",
-	}
-
-	SSRFRule = RuleInfo{
-		ID:          "G704",
-		Description: "SSRF via user-controlled URL",
-		Severity:    "HIGH",
-		CWE:         "CWE-918",
-	}
-
-	XSSRule = RuleInfo{
-		ID:          "G705",
-		Description: "XSS via unescaped user input",
-		Severity:    "MEDIUM",
-		CWE:         "CWE-79",
-	}
-
-	LogInjectionRule = RuleInfo{
-		ID:          "G706",
-		Description: "Log injection via user input",
-		Severity:    "LOW",
-		CWE:         "CWE-117",
-	}
-)
-
 // NewGosecAnalyzer creates a golang.org/x/tools/go/analysis.Analyzer
 // compatible with gosec's analyzer framework.
 func NewGosecAnalyzer(rule *RuleInfo, config *Config) *analysis.Analyzer {
@@ -145,25 +100,6 @@ func makeAnalyzerRunner(rule *RuleInfo, config *Config) func(*analysis.Pass) (in
 		}
 
 		return &AnalyzerResult{Findings: findings}, nil
-	}
-}
-
-// DefaultAnalyzers returns all predefined taint analyzers.
-func DefaultAnalyzers() []*analysis.Analyzer {
-	sqlConfig := SQLInjection()
-	cmdConfig := CommandInjection()
-	pathConfig := PathTraversal()
-	ssrfConfig := SSRF()
-	xssConfig := XSS()
-	logConfig := LogInjection()
-
-	return []*analysis.Analyzer{
-		NewGosecAnalyzer(&SQLInjectionRule, &sqlConfig),
-		NewGosecAnalyzer(&CommandInjectionRule, &cmdConfig),
-		NewGosecAnalyzer(&PathTraversalRule, &pathConfig),
-		NewGosecAnalyzer(&SSRFRule, &ssrfConfig),
-		NewGosecAnalyzer(&XSSRule, &xssConfig),
-		NewGosecAnalyzer(&LogInjectionRule, &logConfig),
 	}
 }
 

@@ -17,18 +17,15 @@ package analyzers
 import (
 	"golang.org/x/tools/go/analysis"
 
-	"github.com/securego/gosec/v2/analyzers/taint"
+	"github.com/securego/gosec/v2/taint"
 )
 
-// newXSSAnalyzer creates an analyzer for detecting Cross-Site Scripting vulnerabilities
+// newXSSAnalyzer creates an analyzer for detecting XSS vulnerabilities
 // via taint analysis (G705)
 func newXSSAnalyzer(id string, description string) *analysis.Analyzer {
-	config := taint.XSS()
-	rule := taint.RuleInfo{
-		ID:          id,
-		Description: description,
-		Severity:    "MEDIUM",
-		CWE:         "CWE-79",
-	}
+	config := XSS()
+	rule := XSSRule
+	rule.ID = id
+	rule.Description = description
 	return taint.NewGosecAnalyzer(&rule, &config)
 }

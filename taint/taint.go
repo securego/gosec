@@ -56,8 +56,6 @@ type Result struct {
 	SinkPos token.Pos
 	// Path is the sequence of functions from entry point to the sink
 	Path []*ssa.Function
-	// SinkCall is the SSA instruction representing the sink call
-	SinkCall *ssa.Call
 }
 
 // Config holds taint analysis configuration.
@@ -167,10 +165,9 @@ func (a *Analyzer) analyzeFunctionSinks(fn *ssa.Function) []Result {
 			for _, arg := range call.Call.Args {
 				if a.isTainted(arg, fn, make(map[ssa.Value]bool), 0) {
 					results = append(results, Result{
-						Sink:     sink,
-						SinkPos:  call.Pos(),
-						SinkCall: call,
-						Path:     a.buildPath(fn),
+						Sink:    sink,
+						SinkPos: call.Pos(),
+						Path:    a.buildPath(fn),
 					})
 					break
 				}
@@ -188,9 +185,43 @@ func (a *Analyzer) isSinkCall(call *ssa.Call) (Sink, bool) {
 		return Sink{}, false
 	}
 
-	key := callee.String()
+	// Extract package path
+	if callee.Pkg == nil || callee.Pkg.Pkg == nil {
+		return Sink{}, false
+	}
+	pkg := callee.Pkg.Pkg.Path()
 
-	// Direct lookup using formatted key
+	// Extract receiver and method
+	recv := callee.Signature.Recv()
+	var key string
+	if recv != nil {
+		// Method call - extract receiver type
+		recvType := recv.Type()
+		recvName := ""
+		isPointer := false
+
+		if ptr, ok := recvType.(*types.Pointer); ok {
+			isPointer = true
+			recvType = ptr.Elem()
+		}
+
+		if named, ok := recvType.(*types.Named); ok {
+			recvName = named.Obj().Name()
+		}
+
+		if recvName != "" {
+			recvKey := pkg + "." + recvName
+			if isPointer {
+				recvKey = "*" + recvKey
+			}
+			key = "(" + recvKey + ")." + callee.Name()
+		}
+	} else {
+		// Package-level function
+		key = pkg + "." + callee.Name()
+	}
+
+	// Lookup using properly formatted key
 	if sink, ok := a.sinks[key]; ok {
 		return sink, true
 	}

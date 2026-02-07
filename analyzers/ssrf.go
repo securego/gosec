@@ -17,18 +17,15 @@ package analyzers
 import (
 	"golang.org/x/tools/go/analysis"
 
-	"github.com/securego/gosec/v2/analyzers/taint"
+	"github.com/securego/gosec/v2/taint"
 )
 
-// newSSRFAnalyzer creates an analyzer for detecting Server-Side Request Forgery vulnerabilities
+// newSSRFAnalyzer creates an analyzer for detecting SSRF vulnerabilities
 // via taint analysis (G704)
 func newSSRFAnalyzer(id string, description string) *analysis.Analyzer {
-	config := taint.SSRF()
-	rule := taint.RuleInfo{
-		ID:          id,
-		Description: description,
-		Severity:    "HIGH",
-		CWE:         "CWE-918",
-	}
+	config := SSRF()
+	rule := SSRFRule
+	rule.ID = id
+	rule.Description = description
 	return taint.NewGosecAnalyzer(&rule, &config)
 }

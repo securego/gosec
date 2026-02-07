@@ -17,18 +17,15 @@ package analyzers
 import (
 	"golang.org/x/tools/go/analysis"
 
-	"github.com/securego/gosec/v2/analyzers/taint"
+	"github.com/securego/gosec/v2/taint"
 )
 
 // newLogInjectionAnalyzer creates an analyzer for detecting log injection vulnerabilities
 // via taint analysis (G706)
 func newLogInjectionAnalyzer(id string, description string) *analysis.Analyzer {
-	config := taint.LogInjection()
-	rule := taint.RuleInfo{
-		ID:          id,
-		Description: description,
-		Severity:    "LOW",
-		CWE:         "CWE-117",
-	}
+	config := LogInjection()
+	rule := LogInjectionRule
+	rule.ID = id
+	rule.Description = description
 	return taint.NewGosecAnalyzer(&rule, &config)
 }

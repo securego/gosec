@@ -512,23 +512,23 @@ $ gosec -fmt=json -out=results.json -stdout -verbose=text *.go
 
 ### Creating Taint Analysis Rules
 
-gosec supports taint analysis to track data flow from untrusted sources (user input) to dangerous sinks (functions that could cause security vulnerabilities). The taint analysis rules (G701-G706) detect issues like SQL injection, command injection, path traversal, SSRF, XSS, and log injection.
+gosec supports taint analysis to track data flow from untrusted sources (user input) to dangerous sinks (functions that could cause security vulnerabilities). The taint analysis rules detect issues like SQL injection, command injection, path traversal, SSRF, XSS, and log injection.
 
 #### Creating a New Taint Rule
 
 To create a new taint analysis rule:
 
-1. **Define the configuration** in `analyzers/taint/configs.go`:
+1. **Define the configuration** in `analyzers/configs.go`:
 
 ```go
 // NewVulnerability returns a configuration for detecting your vulnerability
-func NewVulnerability() Config {
-    return Config{
-        Sources: []Source{
+func NewVulnerability() taint.Config {
+    return taint.Config{
+        Sources: []taint.Source{
             {Package: "net/http", Name: "Request", Pointer: true},
             {Package: "os", Name: "Args"},
         },
-        Sinks: []Sink{
+        Sinks: []taint.Sink{
             {Package: "dangerous/package", Method: "DangerousFunc"},
             {Package: "another/pkg", Receiver: "Type", Method: "Method", Pointer: true},
         },
@@ -543,11 +543,11 @@ package analyzers
 
 import (
     "golang.org/x/tools/go/analysis"
-    "github.com/securego/gosec/v2/analyzers/taint"
+    "github.com/securego/gosec/v2/taint"
 )
 
 func newNewVulnAnalyzer(id string, description string) *analysis.Analyzer {
-    config := taint.NewVulnerability()
+    config := NewVulnerability()
     rule := taint.RuleInfo{
         ID:          id,
         Description: description,
@@ -565,6 +565,51 @@ var defaultAnalyzers = []AnalyzerDefinition{
     // ... existing analyzers ...
     {"G7XX", "Description of vulnerability", newNewVulnAnalyzer},
 }
+```
+
+4. **Add test samples** in `testutils/g7xx_samples.go`:
+
+```go
+package testutils
+
+import "github.com/securego/gosec/v2"
+
+// SampleCodeG7XX - Description of vulnerability
+var SampleCodeG7XX = []CodeSample{
+    {[]string{`
+package main
+
+import (
+    "dangerous/package"
+    "net/http"
+)
+
+func handler(r *http.Request) {
+    input := r.URL.Query().Get("param")
+    dangerous.DangerousFunc(input)  // Should detect
+}
+`}, 1, gosec.NewConfig()},
+    {[]string{`
+package main
+
+import (
+    "dangerous/package"
+)
+
+func safeHandler() {
+    // Safe - no user input
+    dangerous.DangerousFunc("constant")
+}
+`}, 0, gosec.NewConfig()},
+}
+```
+
+Then add the test case to `analyzers/analyzers_test.go`:
+
+```go
+It("should detect your new vulnerability", func() {
+    runner("G7XX", testutils.SampleCodeG7XX)
+})
 ```
 
 #### Source and Sink Configuration
@@ -591,30 +636,6 @@ var defaultAnalyzers = []AnalyzerDefinition{
 | Command Line Args | `os` | `Args` | `false` |
 | Environment Variables | `os` | `Getenv` | `false` |
 | File Content | `bufio` | `Reader` | `true` |
-
-#### Testing Your Rule
-
-Create tests in `analyzers/taint/` using the `buildSSA` helper:
-
-```go
-func TestAnalyzeNewVulnerability(t *testing.T) {
-    src := `package main
-import ("dangerous/package"; "net/http")
-func handler(r *http.Request) {
-    input := r.URL.Query().Get("param")
-    dangerous.DangerousFunc(input)  // Should detect
-}`
-
-    prog, funcs := buildSSA(t, src)
-    config := NewVulnerability()
-    analyzer := New(&config)
-    results := analyzer.Analyze(prog, funcs)
-
-    if len(results) == 0 {
-        t.Error("expected vulnerability detection")
-    }
-}
-```
 
 ### Build
 

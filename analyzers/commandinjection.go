@@ -17,18 +17,15 @@ package analyzers
 import (
 	"golang.org/x/tools/go/analysis"
 
-	"github.com/securego/gosec/v2/analyzers/taint"
+	"github.com/securego/gosec/v2/taint"
 )
 
 // newCommandInjectionAnalyzer creates an analyzer for detecting command injection vulnerabilities
 // via taint analysis (G702)
 func newCommandInjectionAnalyzer(id string, description string) *analysis.Analyzer {
-	config := taint.CommandInjection()
-	rule := taint.RuleInfo{
-		ID:          id,
-		Description: description,
-		Severity:    "CRITICAL",
-		CWE:         "CWE-78",
-	}
+	config := CommandInjection()
+	rule := CommandInjectionRule
+	rule.ID = id
+	rule.Description = description
 	return taint.NewGosecAnalyzer(&rule, &config)
 }

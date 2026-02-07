@@ -1,12 +1,16 @@
-package taint
+package analyzers
+
+import (
+	"github.com/securego/gosec/v2/taint"
+)
 
 // Predefined configurations for common security vulnerabilities.
 // These can be used directly or as templates for custom configurations.
 
 // SQLInjection returns a configuration for detecting SQL injection vulnerabilities.
-func SQLInjection() Config {
-	return Config{
-		Sources: []Source{
+func SQLInjection() taint.Config {
+	return taint.Config{
+		Sources: []taint.Source{
 			{Package: "net/http", Name: "Request", Pointer: true},
 			{Package: "net/url", Name: "URL", Pointer: true},
 			{Package: "net/url", Name: "Values"},
@@ -16,7 +20,7 @@ func SQLInjection() Config {
 			{Package: "bufio", Name: "Scanner", Pointer: true},
 			{Package: "os", Name: "File", Pointer: true},
 		},
-		Sinks: []Sink{
+		Sinks: []taint.Sink{
 			{Package: "database/sql", Receiver: "DB", Method: "Query", Pointer: true},
 			{Package: "database/sql", Receiver: "DB", Method: "QueryContext", Pointer: true},
 			{Package: "database/sql", Receiver: "DB", Method: "QueryRow", Pointer: true},
@@ -38,9 +42,9 @@ func SQLInjection() Config {
 }
 
 // CommandInjection returns a configuration for detecting command injection vulnerabilities.
-func CommandInjection() Config {
-	return Config{
-		Sources: []Source{
+func CommandInjection() taint.Config {
+	return taint.Config{
+		Sources: []taint.Source{
 			{Package: "net/http", Name: "Request", Pointer: true},
 			{Package: "os", Name: "Args"},
 			{Package: "os", Name: "Getenv"},
@@ -48,7 +52,7 @@ func CommandInjection() Config {
 			{Package: "bufio", Name: "Scanner", Pointer: true},
 			{Package: "os", Name: "File", Pointer: true},
 		},
-		Sinks: []Sink{
+		Sinks: []taint.Sink{
 			{Package: "os/exec", Method: "Command"},
 			{Package: "os/exec", Method: "CommandContext"},
 			{Package: "os/exec", Receiver: "Cmd", Method: "Start", Pointer: true},
@@ -64,9 +68,9 @@ func CommandInjection() Config {
 }
 
 // PathTraversal returns a configuration for detecting path traversal vulnerabilities.
-func PathTraversal() Config {
-	return Config{
-		Sources: []Source{
+func PathTraversal() taint.Config {
+	return taint.Config{
+		Sources: []taint.Source{
 			{Package: "net/http", Name: "Request", Pointer: true},
 			{Package: "net/url", Name: "URL", Pointer: true},
 			{Package: "os", Name: "Args"},
@@ -75,7 +79,7 @@ func PathTraversal() Config {
 			{Package: "bufio", Name: "Scanner", Pointer: true},
 			{Package: "os", Name: "File", Pointer: true},
 		},
-		Sinks: []Sink{
+		Sinks: []taint.Sink{
 			{Package: "os", Method: "Open"},
 			{Package: "os", Method: "OpenFile"},
 			{Package: "os", Method: "Create"},
@@ -100,9 +104,9 @@ func PathTraversal() Config {
 }
 
 // SSRF returns a configuration for detecting Server-Side Request Forgery vulnerabilities.
-func SSRF() Config {
-	return Config{
-		Sources: []Source{
+func SSRF() taint.Config {
+	return taint.Config{
+		Sources: []taint.Source{
 			{Package: "net/http", Name: "Request", Pointer: true},
 			{Package: "os", Name: "Args"},
 			{Package: "os", Name: "Getenv"},
@@ -110,7 +114,7 @@ func SSRF() Config {
 			{Package: "bufio", Name: "Scanner", Pointer: true},
 			{Package: "os", Name: "File", Pointer: true},
 		},
-		Sinks: []Sink{
+		Sinks: []taint.Sink{
 			{Package: "net/http", Method: "Get"},
 			{Package: "net/http", Method: "Post"},
 			{Package: "net/http", Method: "Head"},
@@ -130,9 +134,9 @@ func SSRF() Config {
 }
 
 // XSS returns a configuration for detecting Cross-Site Scripting vulnerabilities.
-func XSS() Config {
-	return Config{
-		Sources: []Source{
+func XSS() taint.Config {
+	return taint.Config{
+		Sources: []taint.Source{
 			{Package: "net/http", Name: "Request", Pointer: true},
 			{Package: "net/url", Name: "Values"},
 			{Package: "os", Name: "Args"},
@@ -140,7 +144,7 @@ func XSS() Config {
 			{Package: "bufio", Name: "Scanner", Pointer: true},
 			{Package: "os", Name: "File", Pointer: true},
 		},
-		Sinks: []Sink{
+		Sinks: []taint.Sink{
 			{Package: "net/http", Receiver: "ResponseWriter", Method: "Write"},
 			{Package: "fmt", Method: "Fprintf"},
 			{Package: "fmt", Method: "Fprint"},
@@ -155,9 +159,9 @@ func XSS() Config {
 }
 
 // LogInjection returns a configuration for detecting log injection vulnerabilities.
-func LogInjection() Config {
-	return Config{
-		Sources: []Source{
+func LogInjection() taint.Config {
+	return taint.Config{
+		Sources: []taint.Source{
 			{Package: "net/http", Name: "Request", Pointer: true},
 			{Package: "os", Name: "Args"},
 			{Package: "os", Name: "Getenv"},
@@ -165,7 +169,7 @@ func LogInjection() Config {
 			{Package: "bufio", Name: "Scanner", Pointer: true},
 			{Package: "os", Name: "File", Pointer: true},
 		},
-		Sinks: []Sink{
+		Sinks: []taint.Sink{
 			{Package: "log", Method: "Print"},
 			{Package: "log", Method: "Printf"},
 			{Package: "log", Method: "Println"},
@@ -191,8 +195,8 @@ func LogInjection() Config {
 }
 
 // AllConfigs returns all predefined taint configurations.
-func AllConfigs() map[string]Config {
-	return map[string]Config{
+func AllConfigs() map[string]taint.Config {
+	return map[string]taint.Config{
 		"sql_injection":     SQLInjection(),
 		"command_injection": CommandInjection(),
 		"path_traversal":    PathTraversal(),

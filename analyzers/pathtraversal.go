@@ -17,18 +17,15 @@ package analyzers
 import (
 	"golang.org/x/tools/go/analysis"
 
-	"github.com/securego/gosec/v2/analyzers/taint"
+	"github.com/securego/gosec/v2/taint"
 )
 
 // newPathTraversalAnalyzer creates an analyzer for detecting path traversal vulnerabilities
 // via taint analysis (G703)
 func newPathTraversalAnalyzer(id string, description string) *analysis.Analyzer {
-	config := taint.PathTraversal()
-	rule := taint.RuleInfo{
-		ID:          id,
-		Description: description,
-		Severity:    "HIGH",
-		CWE:         "CWE-22",
-	}
+	config := PathTraversal()
+	rule := PathTraversalRule
+	rule.ID = id
+	rule.Description = description
 	return taint.NewGosecAnalyzer(&rule, &config)
 }
