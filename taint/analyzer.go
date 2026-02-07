@@ -2,30 +2,17 @@ package taint
 
 import (
 	"fmt"
-	"strings"
+	"go/token"
+	"os"
+	"strconv"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/buildssa"
 	"golang.org/x/tools/go/ssa"
+
+	"github.com/securego/gosec/v2/internal/ssautil"
+	"github.com/securego/gosec/v2/issue"
 )
-
-// AnalyzerResult contains findings from a taint analysis pass.
-type AnalyzerResult struct {
-	Findings []Finding
-}
-
-// Finding represents a security finding from taint analysis.
-type Finding struct {
-	RuleID      string
-	Description string
-	Severity    string
-	CWE         string
-	Filename    string
-	Line        int
-	Column      int
-	Code        string
-	Path        []string // function call path
-}
 
 // RuleInfo holds metadata about a taint analysis rule.
 type RuleInfo struct {
@@ -49,68 +36,109 @@ func NewGosecAnalyzer(rule *RuleInfo, config *Config) *analysis.Analyzer {
 // makeAnalyzerRunner creates the run function for an analyzer.
 func makeAnalyzerRunner(rule *RuleInfo, config *Config) func(*analysis.Pass) (interface{}, error) {
 	return func(pass *analysis.Pass) (interface{}, error) {
-		// Get SSA result from buildssa analyzer
-		ssaInfo, ok := pass.ResultOf[buildssa.Analyzer].(*buildssa.SSA)
-		if !ok {
-			return &AnalyzerResult{}, nil
+		// Get SSA result using shared helper (same as G602, G115, G407)
+		ssaResult, err := ssautil.GetSSAResult(pass)
+		if err != nil {
+			return nil, fmt.Errorf("taint analysis %s: failed to get SSA result: %w", rule.ID, err)
 		}
 
-		// Collect source functions
+		// Collect source functions (filter out nil)
 		var srcFuncs []*ssa.Function
-		for _, fn := range ssaInfo.SrcFuncs {
+		for _, fn := range ssaResult.SSA.SrcFuncs {
 			if fn != nil {
 				srcFuncs = append(srcFuncs, fn)
 			}
 		}
 
 		if len(srcFuncs) == 0 {
-			return &AnalyzerResult{}, nil
+			return nil, nil // No functions to analyze - this is OK
 		}
 
 		// Run taint analysis
 		analyzer := New(config)
 		results := analyzer.Analyze(srcFuncs[0].Prog, srcFuncs)
 
-		// Convert results to findings
-		var findings []Finding
+		// Convert results to gosec issues
+		var issues []*issue.Issue
 		for _, result := range results {
-			pos := pass.Fset.Position(result.SinkPos)
-
-			// Build path description
-			var pathStrs []string
-			for _, fn := range result.Path {
-				pathStrs = append(pathStrs, fn.Name())
+			// Map severity string to issue.Score
+			var severity issue.Score
+			switch rule.Severity {
+			case "LOW":
+				severity = issue.Low
+			case "MEDIUM":
+				severity = issue.Medium
+			case "HIGH":
+				severity = issue.High
+			case "CRITICAL":
+				severity = issue.High // gosec uses High for critical
+			default:
+				severity = issue.Medium
 			}
 
-			finding := Finding{
-				RuleID:      rule.ID,
-				Description: rule.Description,
-				Severity:    rule.Severity,
-				CWE:         rule.CWE,
-				Filename:    pos.Filename,
-				Line:        pos.Line,
-				Column:      pos.Column,
-				Path:        pathStrs,
-			}
+			// Create gosec issue using the standard helper
+			newIssue := newIssue(
+				rule.ID,
+				rule.Description,
+				pass.Fset,
+				result.SinkPos,
+				severity,
+				issue.High, // confidence
+			)
 
-			findings = append(findings, finding)
+			issues = append(issues, newIssue)
 
 			// Report to analysis pass (for use with go vet style tools)
 			pass.Reportf(result.SinkPos, "%s: %s", rule.ID, rule.Description)
 		}
 
-		return &AnalyzerResult{Findings: findings}, nil
+		if len(issues) > 0 {
+			return issues, nil
+		}
+		return nil, nil
 	}
 }
 
-// String returns a human-readable representation of a finding.
-func (f *Finding) String() string {
-	var sb strings.Builder
-	fmt.Fprintf(&sb, "[%s] %s\n", f.RuleID, f.Description)
-	fmt.Fprintf(&sb, "  Severity: %s, CWE: %s\n", f.Severity, f.CWE)
-	fmt.Fprintf(&sb, "  Location: %s:%d:%d\n", f.Filename, f.Line, f.Column)
-	if len(f.Path) > 0 {
-		sb.WriteString(fmt.Sprintf("  Call path: %s\n", strings.Join(f.Path, " -> ")))
+// newIssue creates a new gosec issue
+func newIssue(analyzerID string, desc string, fileSet *token.FileSet,
+	pos token.Pos, severity, confidence issue.Score,
+) *issue.Issue {
+	file := fileSet.File(pos)
+	if file == nil {
+		return &issue.Issue{}
 	}
-	return sb.String()
+	line := file.Line(pos)
+	col := file.Position(pos).Column
+
+	return &issue.Issue{
+		RuleID:     analyzerID,
+		File:       file.Name(),
+		Line:       strconv.Itoa(line),
+		Col:        strconv.Itoa(col),
+		Severity:   severity,
+		Confidence: confidence,
+		What:       desc,
+		Cwe:        issue.GetCweByRule(analyzerID),
+		Code:       issueCodeSnippet(fileSet, pos),
+	}
+}
+
+func issueCodeSnippet(fileSet *token.FileSet, pos token.Pos) string {
+	file := fileSet.File(pos)
+	start := (int64)(file.Line(pos))
+	if start-issue.SnippetOffset > 0 {
+		start = start - issue.SnippetOffset
+	}
+	end := (int64)(file.Line(pos))
+	end = end + issue.SnippetOffset
+
+	var code string
+	if f, err := os.Open(file.Name()); err == nil {
+		defer f.Close() // #nosec
+		code, err = issue.CodeSnippet(f, start, end)
+		if err != nil {
+			return err.Error()
+		}
+	}
+	return code
 }

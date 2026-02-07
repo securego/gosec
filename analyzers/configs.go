@@ -53,12 +53,11 @@ func CommandInjection() taint.Config {
 			{Package: "os", Name: "File", Pointer: true},
 		},
 		Sinks: []taint.Sink{
+			// Detect at command creation, not execution (avoids double detection)
 			{Package: "os/exec", Method: "Command"},
 			{Package: "os/exec", Method: "CommandContext"},
-			{Package: "os/exec", Receiver: "Cmd", Method: "Start", Pointer: true},
-			{Package: "os/exec", Receiver: "Cmd", Method: "Run", Pointer: true},
-			{Package: "os/exec", Receiver: "Cmd", Method: "Output", Pointer: true},
-			{Package: "os/exec", Receiver: "Cmd", Method: "CombinedOutput", Pointer: true},
+			// Note: Removed Cmd.Run/Start/Output/CombinedOutput
+			// The vulnerability is at Command() creation, not execution
 			{Package: "os", Method: "StartProcess"},
 			{Package: "syscall", Method: "Exec"},
 			{Package: "syscall", Method: "ForkExec"},

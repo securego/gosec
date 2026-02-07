@@ -41,6 +41,7 @@ import (
 	"golang.org/x/tools/go/packages"
 
 	"github.com/securego/gosec/v2/analyzers"
+	"github.com/securego/gosec/v2/internal/ssautil"
 	"github.com/securego/gosec/v2/issue"
 )
 
@@ -555,7 +556,7 @@ func (gosec *Analyzer) CheckAnalyzersWithSSA(pkg *packages.Package, ssaResult *b
 // checkAnalyzersWithSSA runs analyzers on a given package using an existing SSA result (Stateless API).
 func (gosec *Analyzer) checkAnalyzersWithSSA(pkg *packages.Package, ssaResult *buildssa.SSA, allIgnores ignores) ([]*issue.Issue, *Metrics) {
 	resultMap := map[*analysis.Analyzer]any{
-		buildssa.Analyzer: &analyzers.SSAAnalyzerResult{
+		buildssa.Analyzer: &ssautil.SSAAnalyzerResult{
 			Config: gosec.Config(),
 			Logger: gosec.logger,
 			SSA:    ssaResult,

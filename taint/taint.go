@@ -162,7 +162,24 @@ func (a *Analyzer) analyzeFunctionSinks(fn *ssa.Function) []Result {
 			}
 
 			// Check if any argument is tainted
-			for _, arg := range call.Call.Args {
+			// For method calls in SSA, Args[0] is the receiver
+			argsToCheck := call.Call.Args
+
+			// For SQL sinks, only check the query string argument
+			// In method calls, Args[0] is receiver, Args[1] is the query string
+			// Subsequent arguments are parameters for prepared statements and are safe
+			if a.isSQLSink(sink) && len(call.Call.Args) > 1 {
+				if sink.Receiver != "" {
+					// Method call: Args[0] is receiver, Args[1] is query string
+					// Only check Args[1] (the query string)
+					argsToCheck = call.Call.Args[1:2]
+				} else {
+					// Function call: Args[0] is the query string
+					argsToCheck = call.Call.Args[:1]
+				}
+			}
+
+			for _, arg := range argsToCheck {
 				if a.isTainted(arg, fn, make(map[ssa.Value]bool), 0) {
 					results = append(results, Result{
 						Sink:    sink,
@@ -178,52 +195,83 @@ func (a *Analyzer) analyzeFunctionSinks(fn *ssa.Function) []Result {
 	return results
 }
 
+// isSQLSink checks if a sink is SQL-related (database operations).
+// For SQL sinks, only the query string (first argument) should be checked for taint.
+func (a *Analyzer) isSQLSink(sink Sink) bool {
+	return sink.Package == "database/sql"
+}
+
 // isSinkCall checks if a call instruction is a sink and returns the sink info.
 func (a *Analyzer) isSinkCall(call *ssa.Call) (Sink, bool) {
-	callee := call.Call.StaticCallee()
-	if callee == nil {
-		return Sink{}, false
-	}
+	// Try to get receiver info first (works for both concrete and interface calls)
+	var pkg, receiverName, methodName string
+	var isPointer bool
 
-	// Extract package path
-	if callee.Pkg == nil || callee.Pkg.Pkg == nil {
-		return Sink{}, false
-	}
-	pkg := callee.Pkg.Pkg.Path()
+	// Check for method call (invoke or static with receiver)
+	if call.Call.IsInvoke() {
+		// Interface method call - receiver is in Call.Value, not Args
+		if call.Call.Value != nil {
+			recvType := call.Call.Value.Type()
+			methodName = call.Call.Method.Name()
 
-	// Extract receiver and method
-	recv := callee.Signature.Recv()
-	var key string
-	if recv != nil {
-		// Method call - extract receiver type
-		recvType := recv.Type()
-		recvName := ""
-		isPointer := false
-
-		if ptr, ok := recvType.(*types.Pointer); ok {
-			isPointer = true
-			recvType = ptr.Elem()
-		}
-
-		if named, ok := recvType.(*types.Named); ok {
-			recvName = named.Obj().Name()
-		}
-
-		if recvName != "" {
-			recvKey := pkg + "." + recvName
-			if isPointer {
-				recvKey = "*" + recvKey
+			// For interface calls, the type is usually a Named type pointing to the interface
+			if named, ok := recvType.(*types.Named); ok {
+				receiverName = named.Obj().Name()
+				if pkgObj := named.Obj(); pkgObj != nil && pkgObj.Pkg() != nil {
+					pkg = pkgObj.Pkg().Path()
+				}
 			}
-			key = "(" + recvKey + ")." + callee.Name()
+
+			// Match against sinks (interface methods don't have Pointer field usually)
+			for _, sink := range a.sinks {
+				if sink.Package == pkg && sink.Receiver == receiverName && sink.Method == methodName {
+					return sink, true
+				}
+			}
 		}
-	} else {
-		// Package-level function
-		key = pkg + "." + callee.Name()
 	}
 
-	// Lookup using properly formatted key
-	if sink, ok := a.sinks[key]; ok {
-		return sink, true
+	// Try static callee (for non-interface method calls and functions)
+	callee := call.Call.StaticCallee()
+	if callee != nil {
+		if callee.Pkg != nil && callee.Pkg.Pkg != nil {
+			pkg = callee.Pkg.Pkg.Path()
+		}
+		methodName = callee.Name()
+
+		// Check if it has a receiver (method call)
+		if recv := callee.Signature.Recv(); recv != nil {
+			recvType := recv.Type()
+			if named, ok := recvType.(*types.Named); ok {
+				receiverName = named.Obj().Name()
+			}
+			if ptr, ok := recvType.(*types.Pointer); ok {
+				isPointer = true
+				if named, ok := ptr.Elem().(*types.Named); ok {
+					receiverName = named.Obj().Name()
+				}
+			}
+		}
+	}
+
+	// Match against configured sinks
+	for _, sink := range a.sinks {
+		// Package must match
+		if sink.Package != pkg {
+			continue
+		}
+
+		// For method sinks (with receiver)
+		if sink.Receiver != "" {
+			if sink.Receiver == receiverName && sink.Method == methodName && sink.Pointer == isPointer {
+				return sink, true
+			}
+		} else {
+			// For function sinks (no receiver)
+			if sink.Method == methodName && receiverName == "" {
+				return sink, true
+			}
+		}
 	}
 
 	return Sink{}, false
@@ -258,6 +306,19 @@ func (a *Analyzer) isTainted(v ssa.Value, fn *ssa.Function, visited map[ssa.Valu
 		return a.isParameterTainted(val, fn, visited, depth+1)
 
 	case *ssa.Call:
+		// Check if calling a method on a tainted receiver propagates taint
+		if val.Call.IsInvoke() {
+			// Method call on interface: check if receiver is tainted
+			if len(val.Call.Args) > 0 && a.isTainted(val.Call.Args[0], fn, visited, depth+1) {
+				return true
+			}
+		} else if callee := val.Call.StaticCallee(); callee != nil && callee.Signature.Recv() != nil {
+			// Method call with receiver: check if receiver is tainted
+			if len(val.Call.Args) > 0 && a.isTainted(val.Call.Args[0], fn, visited, depth+1) {
+				return true
+			}
+		}
+
 		// Check if the call returns a tainted type
 		if a.isSourceCall(val) {
 			return true
@@ -269,9 +330,20 @@ func (a *Analyzer) isTainted(v ssa.Value, fn *ssa.Function, visited map[ssa.Valu
 			}
 		}
 		// Check if any argument to this call is tainted
+		// This handles conversions like []byte(taintedString)
 		for _, arg := range val.Call.Args {
 			if a.isTainted(arg, fn, visited, depth+1) {
 				return true
+			}
+		}
+		// Check for builtin conversions (like string to []byte)
+		if builtin, ok := val.Call.Value.(*ssa.Builtin); ok {
+			_ = builtin // Builtins like "append", "copy", etc.
+			// For builtins, if any argument is tainted, result is tainted
+			for _, arg := range val.Call.Args {
+				if a.isTainted(arg, fn, visited, depth+1) {
+					return true
+				}
 			}
 		}
 
@@ -326,9 +398,22 @@ func (a *Analyzer) isTainted(v ssa.Value, fn *ssa.Function, visited map[ssa.Valu
 	case *ssa.Alloc:
 		// Allocation - check referrers for assignments
 		for _, ref := range *val.Referrers() {
+			// Direct stores to the allocation
 			if store, ok := ref.(*ssa.Store); ok {
 				if a.isTainted(store.Val, fn, visited, depth+1) {
 					return true
+				}
+			}
+			// For arrays/slices, check stores to indexed addresses (e.g., varargs)
+			if indexAddr, ok := ref.(*ssa.IndexAddr); ok {
+				if indexRefs := indexAddr.Referrers(); indexRefs != nil {
+					for _, indexRef := range *indexRefs {
+						if store, ok := indexRef.(*ssa.Store); ok {
+							if a.isTainted(store.Val, fn, visited, depth+1) {
+								return true
+							}
+						}
+					}
 				}
 			}
 		}
@@ -337,8 +422,34 @@ func (a *Analyzer) isTainted(v ssa.Value, fn *ssa.Function, visited map[ssa.Valu
 		// Map/string lookup - check the map/string
 		return a.isTainted(val.X, fn, visited, depth+1)
 
-	case *ssa.MakeSlice, *ssa.MakeMap, *ssa.MakeChan:
-		// New containers are not tainted by default
+	case *ssa.MakeSlice:
+		// MakeSlice - check if it's being populated with tainted data
+		// This handles cases like []byte(taintedString)
+		if refs := val.Referrers(); refs != nil {
+			for _, ref := range *refs {
+				// Check stores into the slice
+				if store, ok := ref.(*ssa.Store); ok {
+					if a.isTainted(store.Val, fn, visited, depth+1) {
+						return true
+					}
+				}
+				// Check if used in a call that populates it (like copy())
+				if call, ok := ref.(*ssa.Call); ok {
+					for _, arg := range call.Call.Args {
+						if arg == val {
+							continue // Skip the slice itself
+						}
+						if a.isTainted(arg, fn, visited, depth+1) {
+							return true
+						}
+					}
+				}
+			}
+		}
+		return false
+
+	case *ssa.MakeMap, *ssa.MakeChan:
+		// New maps/channels are not tainted by default
 		return false
 
 	case *ssa.Const:
@@ -346,8 +457,23 @@ func (a *Analyzer) isTainted(v ssa.Value, fn *ssa.Function, visited map[ssa.Valu
 		return false
 
 	case *ssa.Global:
-		// Global variables - check if they're a known source
-		return a.isSourceType(val.Type())
+		// Global variables - check if they're a known source (e.g., os.Args)
+		if a.isSourceType(val.Type()) {
+			return true
+		}
+		// Check if the global variable itself is configured as a source
+		if val.Pkg != nil && val.Pkg.Pkg != nil {
+			globalKey := val.Pkg.Pkg.Path() + "." + val.Name()
+			if _, ok := a.sources[globalKey]; ok {
+				return true
+			}
+		}
+		return false
+
+	default:
+		// Unhandled SSA instruction type - be conservative and don't propagate taint
+		// to avoid false positives, but this might cause false negatives
+		return false
 	}
 
 	return false
@@ -399,6 +525,15 @@ func (a *Analyzer) isSourceCall(call *ssa.Call) bool {
 	// Check if return type is a source
 	if a.isSourceType(call.Type()) {
 		return true
+	}
+
+	// Check if the function itself is a source (e.g., os.Getenv, os.ReadFile)
+	if callee.Pkg != nil && callee.Pkg.Pkg != nil {
+		pkg := callee.Pkg.Pkg.Path()
+		funcKey := pkg + "." + callee.Name()
+		if _, ok := a.sources[funcKey]; ok {
+			return true
+		}
 	}
 
 	return false

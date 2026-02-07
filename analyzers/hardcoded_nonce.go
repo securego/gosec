@@ -74,7 +74,7 @@ func newHardCodedNonce(id string, description string) *analysis.Analyzer {
 }
 
 func runHardCodedNonce(pass *analysis.Pass) (any, error) {
-	ssaResult, err := getSSAResult(pass)
+	ssaResult, err := GetSSAResult(pass)
 	if err != nil {
 		return nil, err
 	}

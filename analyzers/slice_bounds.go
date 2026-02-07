@@ -146,7 +146,7 @@ func runSliceBounds(pass *analysis.Pass) (result any, err error) {
 		}
 	}()
 
-	ssaResult, err := getSSAResult(pass)
+	ssaResult, err := GetSSAResult(pass)
 	if err != nil {
 		return nil, err
 	}
