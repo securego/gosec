@@ -262,6 +262,12 @@ func (a *Analyzer) isTainted(v ssa.Value, fn *ssa.Function, visited map[ssa.Valu
 		if a.isSourceCall(val) {
 			return true
 		}
+		// Check if the receiver (for method calls) is tainted
+		if val.Call.Value != nil {
+			if a.isTainted(val.Call.Value, fn, visited, depth+1) {
+				return true
+			}
+		}
 		// Check if any argument to this call is tainted
 		for _, arg := range val.Call.Args {
 			if a.isTainted(arg, fn, visited, depth+1) {
