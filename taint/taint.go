@@ -177,6 +177,11 @@ func (a *Analyzer) analyzeFunctionSinks(fn *ssa.Function) []Result {
 					// Function call: Args[0] is the query string
 					argsToCheck = call.Call.Args[:1]
 				}
+			} else if a.isFmtPrintSink(sink) && len(call.Call.Args) > 1 {
+				// For fmt.Fprintf/Fprint/Fprintln, Args[0] is the writer (destination)
+				// Skip Args[0] and only check Args[1:] (format string and arguments)
+				// This avoids false positives when writing to os.Stderr/os.Stdout
+				argsToCheck = call.Call.Args[1:]
 			}
 
 			for _, arg := range argsToCheck {
@@ -199,6 +204,16 @@ func (a *Analyzer) analyzeFunctionSinks(fn *ssa.Function) []Result {
 // For SQL sinks, only the query string (first argument) should be checked for taint.
 func (a *Analyzer) isSQLSink(sink Sink) bool {
 	return sink.Package == "database/sql"
+}
+
+// isFmtPrintSink checks if a sink is a fmt print function (Fprintf, Fprint, Fprintln).
+// For these sinks, Args[0] is the writer (destination), and should not be checked for taint.
+// Only Args[1:] (format string and arguments) should be checked.
+func (a *Analyzer) isFmtPrintSink(sink Sink) bool {
+	if sink.Package != "fmt" {
+		return false
+	}
+	return sink.Method == "Fprintf" || sink.Method == "Fprint" || sink.Method == "Fprintln"
 }
 
 // isSinkCall checks if a call instruction is a sink and returns the sink info.
