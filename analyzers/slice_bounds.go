@@ -138,7 +138,14 @@ func (s *sliceBoundsState) Reset() {
 	clear(s.trackCache)
 }
 
-func runSliceBounds(pass *analysis.Pass) (any, error) {
+func runSliceBounds(pass *analysis.Pass) (result any, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			result = nil
+			err = nil // Return nil error to allow other analyzers to continue
+		}
+	}()
+
 	ssaResult, err := getSSAResult(pass)
 	if err != nil {
 		return nil, err
@@ -201,6 +208,9 @@ func runSliceBounds(pass *analysis.Pass) (any, error) {
 						}
 					}
 				case *ssa.IndexAddr:
+					if instr.X == nil {
+						break
+					}
 					switch indexInstr := instr.X.(type) {
 					case *ssa.Const:
 						if _, ok := indexInstr.Type().Underlying().(*types.Slice); ok {
@@ -257,7 +267,12 @@ func runSliceBounds(pass *analysis.Pass) (any, error) {
 			}
 		}
 
-		for i, block := range ifref.Block().Succs {
+		// Guard against nil Block()
+		ifBlock := ifref.Block()
+		if ifBlock == nil {
+			continue
+		}
+		for i, block := range ifBlock.Succs {
 			if i == 1 {
 				bound = invBound(bound)
 			}
@@ -312,8 +327,11 @@ func runSliceBounds(pass *analysis.Pass) (any, error) {
 							}
 						}
 					} else if nestedIfInstr, ok := instr.(*ssa.If); ok {
-						for _, nestedBlock := range nestedIfInstr.Block().Succs {
-							processBlock(nestedBlock, depth)
+						// Guard against nil Block()
+						if nestedIfBlock := nestedIfInstr.Block(); nestedIfBlock != nil {
+							for _, nestedBlock := range nestedIfBlock.Succs {
+								processBlock(nestedBlock, depth)
+							}
 						}
 					}
 				}
@@ -336,6 +354,9 @@ func runSliceBounds(pass *analysis.Pass) (any, error) {
 // extractLenBound checks if the binop is of form "Var < Len + Offset" or equivalent patterns
 // (including offsets on the left-hand side like "(Var + Const) < Len")
 func extractLenBound(binop *ssa.BinOp) (ssa.Value, int, bool) {
+	if binop == nil {
+		return nil, 0, false
+	}
 	// Only handle Less Than for now
 	if binop.Op != token.LSS {
 		return nil, 0, false
@@ -564,6 +585,10 @@ func (s *sliceBoundsState) extractIntValueIndexAddr(refinstr *ssa.IndexAddr, sli
 		var hasStart bool
 		var next ssa.Value
 		for _, edge := range p.Edges {
+			// Guard against nil edges
+			if edge == nil {
+				continue
+			}
 			eBase, eOffset := decomposeIndex(edge)
 			if val, ok := GetConstantInt64(eBase); ok {
 				start = int(val) + eOffset
@@ -797,6 +822,9 @@ func invBound(bound bound) bound {
 var errExtractBinOp = errors.New("unable to extract constant from binop")
 
 func extractBinOpBound(binop *ssa.BinOp) (bound, int, error) {
+	if binop == nil {
+		return lowerUnbounded, 0, errExtractBinOp
+	}
 	if binop.X != nil {
 		if x, ok := binop.X.(*ssa.Const); ok {
 			if x.Value == nil {
