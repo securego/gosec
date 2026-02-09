@@ -518,9 +518,16 @@ gosec supports taint analysis to track data flow from untrusted sources (user in
 
 To create a new taint analysis rule:
 
-1. **Define the configuration** in `analyzers/configs.go`:
+1. **Create the analyzer file** in `analyzers/` (e.g., `analyzers/newvuln.go`) with both the configuration and analyzer:
 
 ```go
+package analyzers
+
+import (
+    "golang.org/x/tools/go/analysis"
+    "github.com/securego/gosec/v2/taint"
+)
+
 // NewVulnerability returns a configuration for detecting your vulnerability
 func NewVulnerability() taint.Config {
     return taint.Config{
@@ -534,31 +541,22 @@ func NewVulnerability() taint.Config {
         },
     }
 }
-```
-
-2. **Create the analyzer file** in `analyzers/` (e.g., `analyzers/newvuln.go`):
-
-```go
-package analyzers
-
-import (
-    "golang.org/x/tools/go/analysis"
-    "github.com/securego/gosec/v2/taint"
-)
 
 func newNewVulnAnalyzer(id string, description string) *analysis.Analyzer {
     config := NewVulnerability()
-    rule := taint.RuleInfo{
-        ID:          id,
-        Description: description,
-        Severity:    "HIGH",  // or LOW, MEDIUM, CRITICAL
-        CWE:         "CWE-XXX",
-    }
+    rule := NewVulnerabilityRule  // Define this as a variable in the same file
+    rule.ID = id
+    rule.Description = description
     return taint.NewGosecAnalyzer(&rule, &config)
 }
 ```
 
-3. **Register the analyzer** in `analyzers/analyzerslist.go`:
+**Note**: Each taint analyzer keeps its configuration function in the same file as the analyzer. For examples, see:
+- `analyzers/sqlinjection.go` - SQL injection detection (G701)
+- `analyzers/commandinjection.go` - Command injection detection (G702)
+- `analyzers/pathtraversal.go` - Path traversal detection (G703)
+
+2. **Register the analyzer** in `analyzers/analyzerslist.go`:
 
 ```go
 var defaultAnalyzers = []AnalyzerDefinition{
@@ -567,7 +565,7 @@ var defaultAnalyzers = []AnalyzerDefinition{
 }
 ```
 
-4. **Add test samples** in `testutils/g7xx_samples.go`:
+3. **Add test samples** in `testutils/g7xx_samples.go`:
 
 ```go
 package testutils

@@ -20,6 +20,31 @@ import (
 	"github.com/securego/gosec/v2/taint"
 )
 
+// CommandInjection returns a configuration for detecting command injection vulnerabilities.
+func CommandInjection() taint.Config {
+	return taint.Config{
+		Sources: []taint.Source{
+			{Package: "net/http", Name: "Request", Pointer: true},
+			{Package: "os", Name: "Args"},
+			{Package: "os", Name: "Getenv"},
+			{Package: "bufio", Name: "Reader", Pointer: true},
+			{Package: "bufio", Name: "Scanner", Pointer: true},
+			{Package: "os", Name: "File", Pointer: true},
+		},
+		Sinks: []taint.Sink{
+			// Detect at command creation, not execution (avoids double detection)
+			{Package: "os/exec", Method: "Command"},
+			{Package: "os/exec", Method: "CommandContext"},
+			// Note: Removed Cmd.Run/Start/Output/CombinedOutput
+			// The vulnerability is at Command() creation, not execution
+			{Package: "os", Method: "StartProcess"},
+			{Package: "syscall", Method: "Exec"},
+			{Package: "syscall", Method: "ForkExec"},
+			{Package: "syscall", Method: "StartProcess"},
+		},
+	}
+}
+
 // newCommandInjectionAnalyzer creates an analyzer for detecting command injection vulnerabilities
 // via taint analysis (G702)
 func newCommandInjectionAnalyzer(id string, description string) *analysis.Analyzer {

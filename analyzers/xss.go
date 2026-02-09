@@ -20,6 +20,33 @@ import (
 	"github.com/securego/gosec/v2/taint"
 )
 
+// XSS returns a configuration for detecting Cross-Site Scripting vulnerabilities.
+func XSS() taint.Config {
+	return taint.Config{
+		Sources: []taint.Source{
+			{Package: "net/http", Name: "Request", Pointer: true},
+			{Package: "net/url", Name: "Values"},
+			{Package: "os", Name: "Args"},
+			{Package: "bufio", Name: "Reader", Pointer: true},
+			{Package: "bufio", Name: "Scanner", Pointer: true},
+			{Package: "os", Name: "File", Pointer: true},
+		},
+		Sinks: []taint.Sink{
+			{Package: "net/http", Receiver: "ResponseWriter", Method: "Write"},
+			// For fmt print functions, Args[0] is writer - skip it, check format and data args
+			{Package: "fmt", Method: "Fprintf", CheckArgs: []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}},
+			{Package: "fmt", Method: "Fprint", CheckArgs: []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}},
+			{Package: "fmt", Method: "Fprintln", CheckArgs: []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}},
+			{Package: "io", Method: "WriteString", CheckArgs: []int{1}},
+			// Template functions that unsafely inject untrusted content
+			{Package: "html/template", Method: "HTML"},
+			{Package: "html/template", Method: "HTMLAttr"},
+			{Package: "html/template", Method: "JS"},
+			{Package: "html/template", Method: "CSS"},
+		},
+	}
+}
+
 // newXSSAnalyzer creates an analyzer for detecting XSS vulnerabilities
 // via taint analysis (G705)
 func newXSSAnalyzer(id string, description string) *analysis.Analyzer {

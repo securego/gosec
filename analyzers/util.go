@@ -195,11 +195,6 @@ func BuildDefaultAnalyzers() []*analysis.Analyzer {
 	}
 }
 
-// GetSSAResult retrieves the SSA result from analysis pass
-func GetSSAResult(pass *analysis.Pass) (*SSAAnalyzerResult, error) {
-	return ssautil.GetSSAResult(pass)
-}
-
 // newIssue creates a new gosec issue
 func newIssue(analyzerID string, desc string, fileSet *token.FileSet,
 	pos token.Pos, severity, confidence issue.Score,

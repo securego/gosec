@@ -44,6 +44,13 @@ type Sink struct {
 	Method string
 	// Pointer indicates whether the receiver is a pointer type (true for *Type methods)
 	Pointer bool
+	// CheckArgs specifies which argument positions to check for taint (0-indexed).
+	// For method calls, Args[0] is the receiver.
+	// If nil or empty, all arguments are checked.
+	// Examples:
+	//   - SQL methods: [1] - only check query string (Args[1]), skip receiver
+	//   - fmt.Fprintf: [1,2,3,...] - skip writer (Args[0]), check format and data
+	CheckArgs []int
 }
 
 // Result represents a detected taint flow from source to sink.
@@ -161,29 +168,22 @@ func (a *Analyzer) analyzeFunctionSinks(fn *ssa.Function) []Result {
 				continue
 			}
 
-			// Check if any argument is tainted
-			// For method calls in SSA, Args[0] is the receiver
-			argsToCheck := call.Call.Args
+			// Determine which arguments to check for taint
+			var argsToCheck []ssa.Value
 
-			// For SQL sinks, only check the query string argument
-			// In method calls, Args[0] is receiver, Args[1] is the query string
-			// Subsequent arguments are parameters for prepared statements and are safe
-			if a.isSQLSink(sink) && len(call.Call.Args) > 1 {
-				if sink.Receiver != "" {
-					// Method call: Args[0] is receiver, Args[1] is query string
-					// Only check Args[1] (the query string)
-					argsToCheck = call.Call.Args[1:2]
-				} else {
-					// Function call: Args[0] is the query string
-					argsToCheck = call.Call.Args[:1]
+			if len(sink.CheckArgs) > 0 {
+				// Sink specifies which argument positions to check
+				for _, idx := range sink.CheckArgs {
+					if idx < len(call.Call.Args) {
+						argsToCheck = append(argsToCheck, call.Call.Args[idx])
+					}
 				}
-			} else if a.isFmtPrintSink(sink) && len(call.Call.Args) > 1 {
-				// For fmt.Fprintf/Fprint/Fprintln, Args[0] is the writer (destination)
-				// Skip Args[0] and only check Args[1:] (format string and arguments)
-				// This avoids false positives when writing to os.Stderr/os.Stdout
-				argsToCheck = call.Call.Args[1:]
+			} else {
+				// No CheckArgs specified: check all arguments
+				argsToCheck = call.Call.Args
 			}
 
+			// Check if any of the specified arguments are tainted
 			for _, arg := range argsToCheck {
 				if a.isTainted(arg, fn, make(map[ssa.Value]bool), 0) {
 					results = append(results, Result{
@@ -198,22 +198,6 @@ func (a *Analyzer) analyzeFunctionSinks(fn *ssa.Function) []Result {
 	}
 
 	return results
-}
-
-// isSQLSink checks if a sink is SQL-related (database operations).
-// For SQL sinks, only the query string (first argument) should be checked for taint.
-func (a *Analyzer) isSQLSink(sink Sink) bool {
-	return sink.Package == "database/sql"
-}
-
-// isFmtPrintSink checks if a sink is a fmt print function (Fprintf, Fprint, Fprintln).
-// For these sinks, Args[0] is the writer (destination), and should not be checked for taint.
-// Only Args[1:] (format string and arguments) should be checked.
-func (a *Analyzer) isFmtPrintSink(sink Sink) bool {
-	if sink.Package != "fmt" {
-		return false
-	}
-	return sink.Method == "Fprintf" || sink.Method == "Fprint" || sink.Method == "Fprintln"
 }
 
 // isSinkCall checks if a call instruction is a sink and returns the sink info.

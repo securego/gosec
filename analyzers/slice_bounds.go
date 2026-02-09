@@ -26,6 +26,7 @@ import (
 	"golang.org/x/tools/go/analysis/passes/buildssa"
 	"golang.org/x/tools/go/ssa"
 
+	"github.com/securego/gosec/v2/internal/ssautil"
 	"github.com/securego/gosec/v2/issue"
 )
 
@@ -146,7 +147,7 @@ func runSliceBounds(pass *analysis.Pass) (result any, err error) {
 		}
 	}()
 
-	ssaResult, err := GetSSAResult(pass)
+	ssaResult, err := ssautil.GetSSAResult(pass)
 	if err != nil {
 		return nil, err
 	}

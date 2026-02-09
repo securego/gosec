@@ -20,6 +20,42 @@ import (
 	"github.com/securego/gosec/v2/taint"
 )
 
+// SQLInjection returns a configuration for detecting SQL injection vulnerabilities.
+func SQLInjection() taint.Config {
+	return taint.Config{
+		Sources: []taint.Source{
+			{Package: "net/http", Name: "Request", Pointer: true},
+			{Package: "net/url", Name: "URL", Pointer: true},
+			{Package: "net/url", Name: "Values"},
+			{Package: "os", Name: "Args"},
+			{Package: "os", Name: "Getenv"},
+			{Package: "bufio", Name: "Reader", Pointer: true},
+			{Package: "bufio", Name: "Scanner", Pointer: true},
+			{Package: "os", Name: "File", Pointer: true},
+		},
+		Sinks: []taint.Sink{
+			// For SQL methods, Args[0] is receiver, Args[1] is query string
+			// Only check query string argument; prepared statement params are safe
+			{Package: "database/sql", Receiver: "DB", Method: "Query", Pointer: true, CheckArgs: []int{1}},
+			{Package: "database/sql", Receiver: "DB", Method: "QueryContext", Pointer: true, CheckArgs: []int{1}},
+			{Package: "database/sql", Receiver: "DB", Method: "QueryRow", Pointer: true, CheckArgs: []int{1}},
+			{Package: "database/sql", Receiver: "DB", Method: "QueryRowContext", Pointer: true, CheckArgs: []int{1}},
+			{Package: "database/sql", Receiver: "DB", Method: "Exec", Pointer: true, CheckArgs: []int{1}},
+			{Package: "database/sql", Receiver: "DB", Method: "ExecContext", Pointer: true, CheckArgs: []int{1}},
+			{Package: "database/sql", Receiver: "DB", Method: "Prepare", Pointer: true, CheckArgs: []int{1}},
+			{Package: "database/sql", Receiver: "DB", Method: "PrepareContext", Pointer: true, CheckArgs: []int{1}},
+			{Package: "database/sql", Receiver: "Tx", Method: "Query", Pointer: true, CheckArgs: []int{1}},
+			{Package: "database/sql", Receiver: "Tx", Method: "QueryContext", Pointer: true, CheckArgs: []int{1}},
+			{Package: "database/sql", Receiver: "Tx", Method: "QueryRow", Pointer: true, CheckArgs: []int{1}},
+			{Package: "database/sql", Receiver: "Tx", Method: "QueryRowContext", Pointer: true, CheckArgs: []int{1}},
+			{Package: "database/sql", Receiver: "Tx", Method: "Exec", Pointer: true, CheckArgs: []int{1}},
+			{Package: "database/sql", Receiver: "Tx", Method: "ExecContext", Pointer: true, CheckArgs: []int{1}},
+			{Package: "database/sql", Receiver: "Tx", Method: "Prepare", Pointer: true, CheckArgs: []int{1}},
+			{Package: "database/sql", Receiver: "Tx", Method: "PrepareContext", Pointer: true, CheckArgs: []int{1}},
+		},
+	}
+}
+
 // newSQLInjectionAnalyzer creates an analyzer for detecting SQL injection vulnerabilities
 // via taint analysis (G701)
 func newSQLInjectionAnalyzer(id string, description string) *analysis.Analyzer {

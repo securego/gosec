@@ -26,6 +26,7 @@ import (
 	"golang.org/x/tools/go/analysis/passes/buildssa"
 	"golang.org/x/tools/go/ssa"
 
+	"github.com/securego/gosec/v2/internal/ssautil"
 	"github.com/securego/gosec/v2/issue"
 )
 
@@ -74,7 +75,7 @@ func newHardCodedNonce(id string, description string) *analysis.Analyzer {
 }
 
 func runHardCodedNonce(pass *analysis.Pass) (any, error) {
-	ssaResult, err := GetSSAResult(pass)
+	ssaResult, err := ssautil.GetSSAResult(pass)
 	if err != nil {
 		return nil, err
 	}
