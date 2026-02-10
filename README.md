@@ -5,6 +5,12 @@ Inspects source code for security problems by scanning the Go AST and SSA code r
 
 <img src="https://securego.io/img/gosec.png" width="320">
 
+## Features
+
+- **Pattern-based rules** for detecting common security issues in Go code
+- **SSA-based analyzers** for type conversions, slice bounds, and crypto issues
+- **Taint analysis** for tracking data flow from user input to dangerous functions (SQL injection, command injection, path traversal, SSRF, XSS, log injection)
+
 ## License
 
 Licensed under the Apache License, Version 2.0 (the "License").
@@ -216,6 +222,12 @@ directory you can supply `./...` as the input argument.
 - G507: Import blocklist: golang.org/x/crypto/ripemd160
 - G601: Implicit memory aliasing of items from a range statement (only for Go 1.21 or lower)
 - G602: Slice access out of bounds
+- G701: SQL injection via taint analysis
+- G702: Command injection via taint analysis
+- G703: Path traversal via taint analysis
+- G704: SSRF via taint analysis
+- G705: XSS via taint analysis
+- G706: Log injection via taint analysis
 
 ### Retired rules
 
@@ -497,6 +509,144 @@ $ gosec -fmt=json -out=results.json -stdout -verbose=text *.go
 ## Development
 
 [CONTRIBUTING.md](https://github.com/securego/gosec/blob/master/CONTRIBUTING.md) contains detailed information about adding new rules to gosec.
+
+### Creating Taint Analysis Rules
+
+gosec supports taint analysis to track data flow from untrusted sources (user input) to dangerous sinks (functions that could cause security vulnerabilities). The taint analysis rules detect issues like SQL injection, command injection, path traversal, SSRF, XSS, and log injection.
+
+#### Creating a New Taint Rule
+
+To create a new taint analysis rule:
+
+1. **Create the analyzer file** in `analyzers/` (e.g., `analyzers/newvuln.go`) with both the configuration and analyzer:
+
+```go
+package analyzers
+
+import (
+    "golang.org/x/tools/go/analysis"
+    "github.com/securego/gosec/v2/taint"
+)
+
+// NewVulnerability returns a configuration for detecting your vulnerability
+func NewVulnerability() taint.Config {
+    return taint.Config{
+        Sources: []taint.Source{
+            {Package: "net/http", Name: "Request", Pointer: true},
+            {Package: "os", Name: "Args"},
+        },
+        Sinks: []taint.Sink{
+            {Package: "dangerous/package", Method: "DangerousFunc"},
+            {Package: "another/pkg", Receiver: "Type", Method: "Method", Pointer: true},
+            {Package: "database/sql", Receiver: "DB", Method: "Query", Pointer: true, CheckArgs: []int{1}},
+        },
+    }
+}
+
+func newNewVulnAnalyzer(id string, description string) *analysis.Analyzer {
+    config := NewVulnerability()
+    rule := NewVulnerabilityRule  // Define this as a variable in the same file
+    rule.ID = id
+    rule.Description = description
+    return taint.NewGosecAnalyzer(&rule, &config)
+}
+```
+
+**Note**: Each taint analyzer keeps its configuration function in the same file as the analyzer. For examples, see:
+- `analyzers/sqlinjection.go` - SQL injection detection (G701)
+- `analyzers/commandinjection.go` - Command injection detection (G702)
+- `analyzers/pathtraversal.go` - Path traversal detection (G703)
+
+2. **Register the analyzer** in `analyzers/analyzerslist.go`:
+
+```go
+var defaultAnalyzers = []AnalyzerDefinition{
+    // ... existing analyzers ...
+    {"G7XX", "Description of vulnerability", newNewVulnAnalyzer},
+}
+```
+
+3. **Add test samples** in `testutils/g7xx_samples.go`:
+
+```go
+package testutils
+
+import "github.com/securego/gosec/v2"
+
+// SampleCodeG7XX - Description of vulnerability
+var SampleCodeG7XX = []CodeSample{
+    {[]string{`
+package main
+
+import (
+    "dangerous/package"
+    "net/http"
+)
+
+func handler(r *http.Request) {
+    input := r.URL.Query().Get("param")
+    dangerous.DangerousFunc(input)  // Should detect
+}
+`}, 1, gosec.NewConfig()},
+    {[]string{`
+package main
+
+import (
+    "dangerous/package"
+)
+
+func safeHandler() {
+    // Safe - no user input
+    dangerous.DangerousFunc("constant")
+}
+`}, 0, gosec.NewConfig()},
+}
+```
+
+Then add the test case to `analyzers/analyzers_test.go`:
+
+```go
+It("should detect your new vulnerability", func() {
+    runner("G7XX", testutils.SampleCodeG7XX)
+})
+```
+
+#### Source and Sink Configuration
+
+**Sources** define where tainted (untrusted) data originates:
+- `Package`: The import path (e.g., `"net/http"`)
+- `Name`: The type or function name (e.g., `"Request"`)
+- `Pointer`: Set to `true` if it's a pointer type (e.g., `*http.Request`)
+
+**Sinks** define dangerous functions that should not receive tainted data:
+- `Package`: The import path (e.g., `"database/sql"`)
+- `Receiver`: The type name for methods (e.g., `"DB"`), or empty for package functions
+- `Method`: The function or method name (e.g., `"Query"`)
+- `Pointer`: Set to `true` if the receiver is a pointer type
+- `CheckArgs`: Optional list of argument indices to check (e.g., `[]int{1}` to check only the second argument). If omitted, all arguments are checked. Useful when some arguments are safe (like prepared statement parameters) or should be ignored (like writer arguments in `fmt.Fprintf`)
+
+**Example with CheckArgs:**
+```go
+// For SQL methods, Args[0] is the receiver (*sql.DB), Args[1] is the query string
+// Only check the query string; prepared statement parameters (Args[2+]) are safe
+{Package: "database/sql", Receiver: "DB", Method: "Query", Pointer: true, CheckArgs: []int{1}}
+
+// For fmt.Fprintf, Args[0] is the writer (os.Stderr), Args[1+] are format and data
+// Skip the writer argument, only check format string and data arguments
+{Package: "fmt", Method: "Fprintf", CheckArgs: []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}}
+```
+
+#### Common Taint Sources
+
+| Source Type | Package | Type/Method | Pointer |
+|-------------|---------|-------------|---------|
+| HTTP Request | `net/http` | `Request` | `true` |
+| Query Parameters | `net/http` | `Request.URL.Query()` | - |
+| Form Data | `net/http` | `Request.FormValue()` | - |
+| Headers | `net/http` | `Request.Header` | - |
+| Command Line Args | `os` | `Args` | `false` |
+| Environment Variables | `os` | `Getenv` | `false` |
+| File Content | `bufio` | `Reader` | `true` |
 
 ### Build
 

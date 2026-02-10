@@ -15,21 +15,19 @@
 package analyzers
 
 import (
-	"errors"
 	"fmt"
 	"go/constant"
 	"go/token"
 	"go/types"
-	"log"
 	"math"
 	"os"
 	"strconv"
 	"sync"
 
 	"golang.org/x/tools/go/analysis"
-	"golang.org/x/tools/go/analysis/passes/buildssa"
 	"golang.org/x/tools/go/ssa"
 
+	"github.com/securego/gosec/v2/internal/ssautil"
 	"github.com/securego/gosec/v2/issue"
 )
 
@@ -42,13 +40,8 @@ const (
 	maxInt64  = uint64(math.MaxInt64)
 )
 
-// SSAAnalyzerResult contains various information returned by the
-// SSA analysis along with some configuration
-type SSAAnalyzerResult struct {
-	Config map[string]any
-	Logger *log.Logger
-	SSA    *buildssa.SSA
-}
+// SSAAnalyzerResult is a type alias for the shared SSA result type
+type SSAAnalyzerResult = ssautil.SSAAnalyzerResult
 
 // BaseAnalyzerState provides a shared state for Gosec analyzers,
 // encapsulating common fields and reusable objects to reduce allocations.
@@ -62,9 +55,10 @@ type BaseAnalyzerState struct {
 	Depth        int
 }
 
+// Error aliases for backward compatibility
 var (
-	ErrNoSSAResult    = errors.New("no SSA result found in the analysis pass")
-	ErrInvalidSSAType = errors.New("the analysis pass result is not of type SSA")
+	ErrNoSSAResult    = ssautil.ErrNoSSAResult
+	ErrInvalidSSAType = ssautil.ErrInvalidSSAType
 )
 
 var (
@@ -199,19 +193,6 @@ func BuildDefaultAnalyzers() []*analysis.Analyzer {
 		newSliceBoundsAnalyzer("G602", "Possible slice bounds out of range"),
 		newHardCodedNonce("G407", "Use of hardcoded IV/nonce for encryption"),
 	}
-}
-
-// getSSAResult retrieves the SSA result from analysis pass
-func getSSAResult(pass *analysis.Pass) (*SSAAnalyzerResult, error) {
-	result, ok := pass.ResultOf[buildssa.Analyzer]
-	if !ok {
-		return nil, ErrNoSSAResult
-	}
-	ssaResult, ok := result.(*SSAAnalyzerResult)
-	if !ok {
-		return nil, ErrInvalidSSAType
-	}
-	return ssaResult, nil
 }
 
 // newIssue creates a new gosec issue
