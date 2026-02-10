@@ -538,6 +538,7 @@ func NewVulnerability() taint.Config {
         Sinks: []taint.Sink{
             {Package: "dangerous/package", Method: "DangerousFunc"},
             {Package: "another/pkg", Receiver: "Type", Method: "Method", Pointer: true},
+            {Package: "database/sql", Receiver: "DB", Method: "Query", Pointer: true, CheckArgs: []int{1}},
         },
     }
 }
@@ -622,6 +623,18 @@ It("should detect your new vulnerability", func() {
 - `Receiver`: The type name for methods (e.g., `"DB"`), or empty for package functions
 - `Method`: The function or method name (e.g., `"Query"`)
 - `Pointer`: Set to `true` if the receiver is a pointer type
+- `CheckArgs`: Optional list of argument indices to check (e.g., `[]int{1}` to check only the second argument). If omitted, all arguments are checked. Useful when some arguments are safe (like prepared statement parameters) or should be ignored (like writer arguments in `fmt.Fprintf`)
+
+**Example with CheckArgs:**
+```go
+// For SQL methods, Args[0] is the receiver (*sql.DB), Args[1] is the query string
+// Only check the query string; prepared statement parameters (Args[2+]) are safe
+{Package: "database/sql", Receiver: "DB", Method: "Query", Pointer: true, CheckArgs: []int{1}}
+
+// For fmt.Fprintf, Args[0] is the writer (os.Stderr), Args[1+] are format and data
+// Skip the writer argument, only check format string and data arguments
+{Package: "fmt", Method: "Fprintf", CheckArgs: []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}}
+```
 
 #### Common Taint Sources
 
