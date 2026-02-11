@@ -10,7 +10,7 @@ inputs:
 
 runs:
   using: "docker"
-  image: "docker://securego/gosec:2.22.11"
+  image: "docker://securego/gosec:2.23.0"
   args:
     - ${{ inputs.args }}
 
