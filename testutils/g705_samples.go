@@ -43,5 +43,17 @@ func safeHandler(w http.ResponseWriter, r *http.Request) {
 	name := r.URL.Query().Get("name")
 	fmt.Fprintf(w, "<h1>Hello %s</h1>", html.EscapeString(name))
 }
-`}, 1, gosec.NewConfig()},
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import (
+	"fmt"
+	"net/http"
+)
+
+func staticHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "<h1>Hello World</h1>")
+}
+`}, 0, gosec.NewConfig()},
 }

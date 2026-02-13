@@ -24,12 +24,16 @@ import (
 func XSS() taint.Config {
 	return taint.Config{
 		Sources: []taint.Source{
+			// Type sources: tainted when received as parameters
 			{Package: "net/http", Name: "Request", Pointer: true},
 			{Package: "net/url", Name: "Values"},
-			{Package: "os", Name: "Args"},
+
+			// Function sources
+			{Package: "os", Name: "Args", IsFunc: true},
+
+			// I/O sources
 			{Package: "bufio", Name: "Reader", Pointer: true},
 			{Package: "bufio", Name: "Scanner", Pointer: true},
-			{Package: "os", Name: "File", Pointer: true},
 		},
 		Sinks: []taint.Sink{
 			{Package: "net/http", Receiver: "ResponseWriter", Method: "Write"},
@@ -43,6 +47,17 @@ func XSS() taint.Config {
 			{Package: "html/template", Method: "HTMLAttr"},
 			{Package: "html/template", Method: "JS"},
 			{Package: "html/template", Method: "CSS"},
+		},
+		Sanitizers: []taint.Sanitizer{
+			// html.EscapeString escapes HTML special characters
+			{Package: "html", Method: "EscapeString"},
+			// html/template auto-escaping functions
+			{Package: "html/template", Method: "HTMLEscapeString"},
+			{Package: "html/template", Method: "JSEscapeString"},
+			{Package: "html/template", Method: "URLQueryEscaper"},
+			// url.QueryEscape for URL parameter escaping
+			{Package: "net/url", Method: "QueryEscape"},
+			{Package: "net/url", Method: "PathEscape"},
 		},
 	}
 }

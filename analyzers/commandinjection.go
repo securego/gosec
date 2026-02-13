@@ -24,23 +24,27 @@ import (
 func CommandInjection() taint.Config {
 	return taint.Config{
 		Sources: []taint.Source{
+			// Type sources: tainted when received as parameters
 			{Package: "net/http", Name: "Request", Pointer: true},
-			{Package: "os", Name: "Args"},
-			{Package: "os", Name: "Getenv"},
 			{Package: "bufio", Name: "Reader", Pointer: true},
 			{Package: "bufio", Name: "Scanner", Pointer: true},
-			{Package: "os", Name: "File", Pointer: true},
+
+			// Function sources
+			{Package: "os", Name: "Args", IsFunc: true},
+			{Package: "os", Name: "Getenv", IsFunc: true},
 		},
 		Sinks: []taint.Sink{
 			// Detect at command creation, not execution (avoids double detection)
 			{Package: "os/exec", Method: "Command"},
 			{Package: "os/exec", Method: "CommandContext"},
-			// Note: Removed Cmd.Run/Start/Output/CombinedOutput
-			// The vulnerability is at Command() creation, not execution
 			{Package: "os", Method: "StartProcess"},
 			{Package: "syscall", Method: "Exec"},
 			{Package: "syscall", Method: "ForkExec"},
 			{Package: "syscall", Method: "StartProcess"},
+		},
+		Sanitizers: []taint.Sanitizer{
+			// No general-purpose stdlib sanitizer for command injection.
+			// The proper fix is to use exec.Command with separate args, not shell strings.
 		},
 	}
 }
