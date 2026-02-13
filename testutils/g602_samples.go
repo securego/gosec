@@ -651,4 +651,49 @@ func main() {
 	fmt.Println(s[idx])
 }
 `}, 1, gosec.NewConfig()},
+	// Issue #1495: G602 false positive for array element access with coexisting slice expression
+	{[]string{`
+package main
+import (
+	"log/slog"
+	"runtime"
+	"time"
+)
+func main() {
+	var pcs [1]uintptr
+	runtime.Callers(2, pcs[:])
+	r := slog.NewRecord(time.Now(), slog.LevelError, "test", pcs[0])
+	_ = r
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+func main() {
+	var buf [4]byte
+	copy(buf[:], []byte("test"))
+	_ = buf[0]
+	_ = buf[1]
+	_ = buf[2]
+	_ = buf[3]
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+func main() {
+	var buf [2]byte
+	copy(buf[:], []byte("ab"))
+	idx := 3
+	_ = buf[idx]
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+func doWork(s []int) {}
+func main() {
+	var arr [5]int
+	doWork(arr[:])
+	_ = arr[0]
+	_ = arr[4]
+}
+`}, 0, gosec.NewConfig()},
 }
