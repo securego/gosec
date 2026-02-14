@@ -2433,4 +2433,108 @@ func main() {
 			}
 		})
 	})
+
+	Context("when using public API methods", func() {
+		It("should have CheckRules method available", func() {
+			analyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G401")).RulesInfo())
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("test.go", `
+package main
+import (
+	"crypto/md5"
+	"fmt"
+)
+func main() {
+	h := md5.New()
+	fmt.Println(h)
+}
+`)
+			err := pkg.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+
+			config := &packages.Config{
+				Mode:  packages.LoadAllSyntax,
+				Tests: false,
+				Dir:   pkg.Path,
+			}
+			pkgs, err := packages.Load(config, "./...")
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(pkgs).ShouldNot(BeEmpty())
+
+			// Verify method exists and can be called without panic
+			analyzer.CheckRules(pkgs[0])
+		})
+
+		It("should have CheckAnalyzers method available", func() {
+			analyzer.LoadAnalyzers(analyzers.Generate(false, analyzers.NewAnalyzerFilter(false, "G115")).AnalyzersInfo())
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("test.go", `
+package main
+func main() {
+	var x uint = 10
+	y := int(x)
+	println(y)
+}
+`)
+			err := pkg.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+
+			config := &packages.Config{
+				Mode:  packages.LoadAllSyntax,
+				Tests: false,
+				Dir:   pkg.Path,
+			}
+			pkgs, err := packages.Load(config, "./...")
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(pkgs).ShouldNot(BeEmpty())
+
+			// First run CheckRules to populate ignores
+			analyzer.CheckRules(pkgs[0])
+			// Then run CheckAnalyzers - verify method exists and can be called
+			analyzer.CheckAnalyzers(pkgs[0])
+		})
+
+		It("should handle CheckRules with no rules loaded", func() {
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("test.go", `package main; func main() {}`)
+			err := pkg.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+
+			config := &packages.Config{
+				Mode:  packages.LoadAllSyntax,
+				Tests: false,
+				Dir:   pkg.Path,
+			}
+			pkgs, err := packages.Load(config, "./...")
+			Expect(err).ShouldNot(HaveOccurred())
+
+			// Should not panic with no rules
+			analyzer.CheckRules(pkgs[0])
+
+			issues, _, _ := analyzer.Report()
+			Expect(issues).Should(BeEmpty())
+		})
+
+		It("should handle CheckAnalyzers with no analyzers loaded", func() {
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("test.go", `package main; func main() {}`)
+			err := pkg.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+
+			config := &packages.Config{
+				Mode:  packages.LoadAllSyntax,
+				Tests: false,
+				Dir:   pkg.Path,
+			}
+			pkgs, err := packages.Load(config, "./...")
+			Expect(err).ShouldNot(HaveOccurred())
+
+			// Should not panic with no analyzers
+			analyzer.CheckAnalyzers(pkgs[0])
+		})
+	})
 })
