@@ -68,6 +68,11 @@ var idWeaknesses = map[string]*Weakness{
 		Description: "During installation, installed file permissions are set to allow anyone to modify those files.",
 		Name:        "Incorrect Default Permissions",
 	},
+	"287": {
+		ID:          "287",
+		Description: "The software does not perform or incorrectly performs authentication.",
+		Name:        "Improper Authentication",
+	},
 	"295": {
 		ID:          "295",
 		Description: "The software does not validate, or incorrectly validates, a certificate.",

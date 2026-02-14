@@ -213,6 +213,7 @@ directory you can supply `./...` as the input argument.
 - G405: Detect the usage of DES or RC4
 - G406: Detect the usage of MD4 or RIPEMD160
 - G407: Detect the usage of hardcoded Initialization Vector(IV)/Nonce
+- G408: Stateful misuse of ssh.PublicKeyCallback leading to auth bypass
 - G501: Import blocklist: crypto/md5
 - G502: Import blocklist: crypto/des
 - G503: Import blocklist: crypto/rc4
