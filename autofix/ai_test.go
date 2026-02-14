@@ -89,3 +89,104 @@ func TestGenerateSolution_UnsupportedProvider(t *testing.T) {
 	// Expect an error during client initialization or API call
 	require.Error(t, err)
 }
+
+func TestGenerateSolution_CachesSameIssue(t *testing.T) {
+	// Arrange
+	issues := []*issue.Issue{
+		{What: "SQL injection vulnerability"},
+		{What: "SQL injection vulnerability"}, // Same issue
+		{What: "XSS vulnerability"},
+	}
+
+	mockClient := new(MockGenAIClient)
+	// Should only be called twice, not three times (cache hit on second SQL injection)
+	mockClient.On("GenerateSolution", mock.Anything, mock.MatchedBy(func(prompt string) bool {
+		return prompt == "Provide a brief explanation and a solution to fix this security issue\n  in Go programming language: \"SQL injection vulnerability\".\n  Answer in markdown format and keep the response limited to 200 words."
+	})).Return("Fix SQL injection", nil).Once()
+	mockClient.On("GenerateSolution", mock.Anything, mock.MatchedBy(func(prompt string) bool {
+		return prompt == "Provide a brief explanation and a solution to fix this security issue\n  in Go programming language: \"XSS vulnerability\".\n  Answer in markdown format and keep the response limited to 200 words."
+	})).Return("Fix XSS", nil).Once()
+
+	// Act
+	err := generateSolution(mockClient, issues)
+
+	// Assert
+	require.NoError(t, err)
+	assert.Equal(t, "Fix SQL injection", issues[0].Autofix)
+	assert.Equal(t, "Fix SQL injection", issues[1].Autofix) // Cached value
+	assert.Equal(t, "Fix XSS", issues[2].Autofix)
+	mock.AssertExpectationsForObjects(t, mockClient)
+}
+
+func TestGenerateSolution_MultipleIssues(t *testing.T) {
+	// Arrange
+	issues := []*issue.Issue{
+		{What: "Issue 1"},
+		{What: "Issue 2"},
+		{What: "Issue 3"},
+	}
+
+	mockClient := new(MockGenAIClient)
+	mockClient.On("GenerateSolution", mock.Anything, mock.Anything).Return("Fix 1", nil).Once()
+	mockClient.On("GenerateSolution", mock.Anything, mock.Anything).Return("Fix 2", nil).Once()
+	mockClient.On("GenerateSolution", mock.Anything, mock.Anything).Return("Fix 3", nil).Once()
+
+	// Act
+	err := generateSolution(mockClient, issues)
+
+	// Assert
+	require.NoError(t, err)
+	assert.Equal(t, "Fix 1", issues[0].Autofix)
+	assert.Equal(t, "Fix 2", issues[1].Autofix)
+	assert.Equal(t, "Fix 3", issues[2].Autofix)
+	mock.AssertExpectationsForObjects(t, mockClient)
+}
+
+func TestGenerateSolution_EmptyIssues(t *testing.T) {
+	// Arrange
+	issues := []*issue.Issue{}
+	mockClient := new(MockGenAIClient)
+
+	// Act
+	err := generateSolution(mockClient, issues)
+
+	// Assert
+	require.NoError(t, err)
+	mock.AssertExpectationsForObjects(t, mockClient)
+}
+
+func TestGenerateSolution_ClaudeProvider(t *testing.T) {
+	// Arrange - test with valid claude model but no API key
+	issues := []*issue.Issue{{What: "Test issue"}}
+
+	// Act
+	err := GenerateSolution("claude-sonnet-4-0", "", "", false, issues)
+
+	// Assert
+	// Without a real API key, we expect an error from the API
+	require.Error(t, err)
+}
+
+func TestGenerateSolution_GeminiProvider(t *testing.T) {
+	// Arrange - test with valid gemini model but no API key
+	issues := []*issue.Issue{{What: "Test issue"}}
+
+	// Act
+	err := GenerateSolution("gemini-2.0-flash", "", "", false, issues)
+
+	// Assert
+	// Without a real API key, we expect an error from the API
+	require.Error(t, err)
+}
+
+func TestGenerateSolution_OpenAIProvider(t *testing.T) {
+	// Arrange - test with valid openai model but no API key
+	issues := []*issue.Issue{{What: "Test issue"}}
+
+	// Act
+	err := GenerateSolution("gpt-4o", "", "", false, issues)
+
+	// Assert
+	// Without a real API key, we expect an error from the API
+	require.Error(t, err)
+}

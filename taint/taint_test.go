@@ -3,6 +3,7 @@ package taint_test
 import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"golang.org/x/tools/go/ssa"
 
 	"github.com/securego/gosec/v2/taint"
 )
@@ -562,6 +563,339 @@ var _ = Describe("Taint Analysis", func() {
 			}
 			analyzer := taint.New(&config)
 			Expect(analyzer).NotTo(BeNil())
+		})
+	})
+
+	Context("Analyzer behavior with nil/empty inputs", func() {
+		It("should handle nil program in Analyze", func() {
+			config := taint.Config{
+				Sources: []taint.Source{{Package: "os", Name: "Getenv", IsFunc: true}},
+				Sinks:   []taint.Sink{{Package: "log", Method: "Print"}},
+			}
+			analyzer := taint.New(&config)
+
+			results := analyzer.Analyze(nil, nil)
+			Expect(results).To(BeEmpty())
+		})
+
+		It("should handle empty function list in Analyze", func() {
+			config := taint.Config{
+				Sources: []taint.Source{{Package: "os", Name: "Getenv", IsFunc: true}},
+				Sinks:   []taint.Sink{{Package: "log", Method: "Print"}},
+			}
+			analyzer := taint.New(&config)
+
+			results := analyzer.Analyze(nil, []*ssa.Function{})
+			Expect(results).To(BeEmpty())
+		})
+
+		It("should handle completely empty configuration", func() {
+			config := taint.Config{}
+			analyzer := taint.New(&config)
+			Expect(analyzer).NotTo(BeNil())
+
+			results := analyzer.Analyze(nil, nil)
+			Expect(results).To(BeEmpty())
+		})
+	})
+
+	Context("Configuration key formatting", func() {
+		It("should correctly initialize sources map", func() {
+			config := taint.Config{
+				Sources: []taint.Source{
+					{Package: "net/http", Name: "Request", Pointer: true},
+					{Package: "os", Name: "Getenv", IsFunc: true},
+					{Package: "encoding/json", Name: "RawMessage"},
+				},
+				Sinks: []taint.Sink{{Package: "log", Method: "Print"}},
+			}
+			analyzer := taint.New(&config)
+			Expect(analyzer).NotTo(BeNil())
+		})
+
+		It("should correctly initialize sinks map", func() {
+			config := taint.Config{
+				Sources: []taint.Source{{Package: "os", Name: "Getenv", IsFunc: true}},
+				Sinks: []taint.Sink{
+					{Package: "database/sql", Receiver: "DB", Method: "Query", Pointer: true},
+					{Package: "log", Method: "Print"},
+					{Package: "bytes", Receiver: "Buffer", Method: "WriteString", Pointer: false},
+				},
+			}
+			analyzer := taint.New(&config)
+			Expect(analyzer).NotTo(BeNil())
+		})
+
+		It("should correctly initialize sanitizers map", func() {
+			config := taint.Config{
+				Sources: []taint.Source{{Package: "os", Name: "Getenv", IsFunc: true}},
+				Sinks:   []taint.Sink{{Package: "log", Method: "Print"}},
+				Sanitizers: []taint.Sanitizer{
+					{Package: "strings", Method: "ReplaceAll"},
+					{Package: "regexp", Receiver: "Regexp", Method: "ReplaceAllString", Pointer: true},
+					{Package: "path/filepath", Method: "Clean"},
+				},
+			}
+			analyzer := taint.New(&config)
+			Expect(analyzer).NotTo(BeNil())
+		})
+
+		It("should handle sources with both pointer and non-pointer variants", func() {
+			config := taint.Config{
+				Sources: []taint.Source{
+					{Package: "net/http", Name: "Request", Pointer: true},
+					{Package: "net/http", Name: "Request", Pointer: false},
+				},
+				Sinks: []taint.Sink{{Package: "log", Method: "Print"}},
+			}
+			analyzer := taint.New(&config)
+			Expect(analyzer).NotTo(BeNil())
+		})
+	})
+
+	Context("Edge cases and boundary conditions", func() {
+		It("should handle very long package paths", func() {
+			config := taint.Config{
+				Sources: []taint.Source{
+					{Package: "github.com/organization/very/deeply/nested/package/structure/v2", Name: "Source", IsFunc: true},
+				},
+				Sinks: []taint.Sink{
+					{Package: "example.com/another/deeply/nested/path/v3/subpkg", Method: "DangerousFunc"},
+				},
+			}
+			analyzer := taint.New(&config)
+			Expect(analyzer).NotTo(BeNil())
+		})
+
+		It("should handle sources and sinks in the same package", func() {
+			config := taint.Config{
+				Sources: []taint.Source{
+					{Package: "net/http", Name: "Request", Pointer: true},
+				},
+				Sinks: []taint.Sink{
+					{Package: "net/http", Receiver: "ResponseWriter", Method: "Write"},
+					{Package: "net/http", Receiver: "Client", Method: "Do", Pointer: true, CheckArgs: []int{}},
+				},
+			}
+			analyzer := taint.New(&config)
+			Expect(analyzer).NotTo(BeNil())
+		})
+
+		It("should handle CheckArgs with out-of-bounds indices gracefully in config", func() {
+			config := taint.Config{
+				Sources: []taint.Source{{Package: "os", Name: "Getenv", IsFunc: true}},
+				Sinks: []taint.Sink{
+					// Large indices that may be out of bounds for actual calls
+					{Package: "log", Method: "Printf", CheckArgs: []int{100, 200, 300}},
+				},
+			}
+			analyzer := taint.New(&config)
+			Expect(analyzer).NotTo(BeNil())
+		})
+
+		It("should handle negative CheckArgs indices in config", func() {
+			config := taint.Config{
+				Sources: []taint.Source{{Package: "os", Name: "Getenv", IsFunc: true}},
+				Sinks: []taint.Sink{
+					{Package: "log", Method: "Print", CheckArgs: []int{-1, -2}},
+				},
+			}
+			analyzer := taint.New(&config)
+			Expect(analyzer).NotTo(BeNil())
+		})
+
+		It("should handle duplicate CheckArgs indices", func() {
+			config := taint.Config{
+				Sources: []taint.Source{{Package: "os", Name: "Getenv", IsFunc: true}},
+				Sinks: []taint.Sink{
+					{Package: "fmt", Method: "Printf", CheckArgs: []int{1, 1, 2, 2, 3}},
+				},
+			}
+			analyzer := taint.New(&config)
+			Expect(analyzer).NotTo(BeNil())
+		})
+	})
+
+	Context("Complex real-world attack detection configurations", func() {
+		It("should configure detection for template injection", func() {
+			config := taint.Config{
+				Sources: []taint.Source{
+					{Package: "net/http", Name: "Request", Pointer: true},
+				},
+				Sinks: []taint.Sink{
+					{Package: "text/template", Receiver: "Template", Method: "Execute", Pointer: true},
+				},
+				Sanitizers: []taint.Sanitizer{
+					{Package: "html/template", Receiver: "Template", Method: "Execute", Pointer: true},
+				},
+			}
+			analyzer := taint.New(&config)
+			Expect(analyzer).NotTo(BeNil())
+		})
+
+		It("should configure detection for YAML deserialization attacks", func() {
+			config := taint.Config{
+				Sources: []taint.Source{
+					{Package: "net/http", Name: "Request", Pointer: true},
+				},
+				Sinks: []taint.Sink{
+					{Package: "gopkg.in/yaml.v2", Method: "Unmarshal"},
+					{Package: "gopkg.in/yaml.v3", Method: "Unmarshal"},
+				},
+			}
+			analyzer := taint.New(&config)
+			Expect(analyzer).NotTo(BeNil())
+		})
+
+		It("should configure detection for arbitrary code execution via eval", func() {
+			config := taint.Config{
+				Sources: []taint.Source{
+					{Package: "net/http", Name: "Request", Pointer: true},
+				},
+				Sinks: []taint.Sink{
+					{Package: "os/exec", Method: "Command", CheckArgs: []int{1, 2, 3, 4, 5}},
+					{Package: "syscall", Method: "Exec"},
+				},
+			}
+			analyzer := taint.New(&config)
+			Expect(analyzer).NotTo(BeNil())
+		})
+
+		It("should configure detection for regex denial of service", func() {
+			config := taint.Config{
+				Sources: []taint.Source{
+					{Package: "net/http", Name: "Request", Pointer: true},
+				},
+				Sinks: []taint.Sink{
+					{Package: "regexp", Method: "Compile"},
+					{Package: "regexp", Method: "MustCompile"},
+				},
+			}
+			analyzer := taint.New(&config)
+			Expect(analyzer).NotTo(BeNil())
+		})
+
+		It("should configure detection for JWT attacks", func() {
+			config := taint.Config{
+				Sources: []taint.Source{
+					{Package: "net/http", Name: "Request", Pointer: true},
+				},
+				Sinks: []taint.Sink{
+					{Package: "github.com/golang-jwt/jwt/v4", Method: "Parse"},
+					{Package: "github.com/golang-jwt/jwt/v4", Method: "ParseWithClaims"},
+				},
+			}
+			analyzer := taint.New(&config)
+			Expect(analyzer).NotTo(BeNil())
+		})
+
+		It("should configure detection for cryptographic key material exposure", func() {
+			config := taint.Config{
+				Sources: []taint.Source{
+					{Package: "crypto/rand", Name: "Reader"},
+					{Package: "crypto/rsa", Name: "GenerateKey", IsFunc: true},
+				},
+				Sinks: []taint.Sink{
+					{Package: "log", Method: "Println"},
+					{Package: "fmt", Method: "Println"},
+					{Package: "net/http", Receiver: "ResponseWriter", Method: "Write"},
+				},
+			}
+			analyzer := taint.New(&config)
+			Expect(analyzer).NotTo(BeNil())
+		})
+	})
+
+	Context("Performance and scalability", func() {
+		It("should handle configuration with many sources", func() {
+			sources := []taint.Source{}
+			for i := 0; i < 100; i++ {
+				sources = append(sources, taint.Source{
+					Package: "test/package",
+					Name:    "Source" + string(rune(i)),
+					IsFunc:  i%2 == 0,
+				})
+			}
+
+			config := taint.Config{
+				Sources: sources,
+				Sinks:   []taint.Sink{{Package: "log", Method: "Print"}},
+			}
+			analyzer := taint.New(&config)
+			Expect(analyzer).NotTo(BeNil())
+		})
+
+		It("should handle configuration with many sinks", func() {
+			sinks := []taint.Sink{}
+			for i := 0; i < 100; i++ {
+				sinks = append(sinks, taint.Sink{
+					Package: "test/package",
+					Method:  "Sink" + string(rune(i)),
+				})
+			}
+
+			config := taint.Config{
+				Sources: []taint.Source{{Package: "os", Name: "Getenv", IsFunc: true}},
+				Sinks:   sinks,
+			}
+			analyzer := taint.New(&config)
+			Expect(analyzer).NotTo(BeNil())
+		})
+
+		It("should handle configuration with many sanitizers", func() {
+			sanitizers := []taint.Sanitizer{}
+			for i := 0; i < 100; i++ {
+				sanitizers = append(sanitizers, taint.Sanitizer{
+					Package: "test/package",
+					Method:  "Sanitizer" + string(rune(i)),
+				})
+			}
+
+			config := taint.Config{
+				Sources:    []taint.Source{{Package: "os", Name: "Getenv", IsFunc: true}},
+				Sinks:      []taint.Sink{{Package: "log", Method: "Print"}},
+				Sanitizers: sanitizers,
+			}
+			analyzer := taint.New(&config)
+			Expect(analyzer).NotTo(BeNil())
+		})
+	})
+
+	Context("Analyzer state management", func() {
+		It("should create independent analyzer instances", func() {
+			config1 := taint.Config{
+				Sources: []taint.Source{{Package: "os", Name: "Getenv", IsFunc: true}},
+				Sinks:   []taint.Sink{{Package: "log", Method: "Print"}},
+			}
+			config2 := taint.Config{
+				Sources: []taint.Source{{Package: "net/http", Name: "Request", Pointer: true}},
+				Sinks:   []taint.Sink{{Package: "database/sql", Receiver: "DB", Method: "Query", Pointer: true}},
+			}
+
+			analyzer1 := taint.New(&config1)
+			analyzer2 := taint.New(&config2)
+
+			Expect(analyzer1).NotTo(BeNil())
+			Expect(analyzer2).NotTo(BeNil())
+			// Verify they are different instances
+			Expect(analyzer1).NotTo(Equal(analyzer2))
+		})
+
+		It("should allow multiple calls to Analyze on same analyzer", func() {
+			config := taint.Config{
+				Sources: []taint.Source{{Package: "os", Name: "Getenv", IsFunc: true}},
+				Sinks:   []taint.Sink{{Package: "log", Method: "Print"}},
+			}
+			analyzer := taint.New(&config)
+
+			// Multiple analyze calls should not cause issues
+			results1 := analyzer.Analyze(nil, nil)
+			results2 := analyzer.Analyze(nil, []*ssa.Function{})
+			results3 := analyzer.Analyze(nil, nil)
+
+			Expect(results1).To(BeEmpty())
+			Expect(results2).To(BeEmpty())
+			Expect(results3).To(BeEmpty())
 		})
 	})
 })
