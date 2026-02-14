@@ -36,7 +36,7 @@ func benchmarkAnalyzerStress(b *testing.B, analyzerID string, generator func() s
 
 	// Create a dummy go.mod to ensure we are in a module
 	goMod := filepath.Join(tmpDir, "go.mod")
-	if err := os.WriteFile(goMod, []byte("module bench\n\ngo 1.24\n"), 0o600); err != nil {
+	if err := os.WriteFile(goMod, []byte("module bench\n\ngo 1.25\n"), 0o600); err != nil {
 		b.Fatalf("failed to write go.mod: %v", err)
 	}
 
