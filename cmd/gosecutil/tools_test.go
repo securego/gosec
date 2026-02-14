@@ -975,7 +975,8 @@ var _ = Describe("Edge cases", func() {
 
 		// Create file with long name
 		longName := filepath.Join(tempDir, strings.Repeat("a", 100)+".go")
-		err = os.WriteFile(longName, []byte("package main\nfunc main() {}"), 0600)
+
+		err = os.WriteFile(longName, []byte("package main\nfunc main() {}"), 0o600)
 		if err == nil {
 			defer os.Remove(longName)
 			// Should not panic
