@@ -298,13 +298,13 @@ var _ = Describe("Slice utility functions", func() {
 		})
 
 		It("should return h when l=0 and h > 0", func() {
-			cap := ComputeSliceNewCap(0, 10, 0, 20)
-			Expect(cap).To(Equal(10))
+			newCap := ComputeSliceNewCap(0, 10, 0, 20)
+			Expect(newCap).To(Equal(10))
 		})
 
 		It("should return h - l otherwise", func() {
-			cap := ComputeSliceNewCap(3, 8, 0, 20)
-			Expect(cap).To(Equal(5)) // 8 - 3
+			newCap := ComputeSliceNewCap(3, 8, 0, 20)
+			Expect(newCap).To(Equal(5)) // 8 - 3
 		})
 	})
 

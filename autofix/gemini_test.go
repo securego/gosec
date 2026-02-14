@@ -192,7 +192,7 @@ func TestGeminiModel_Constants(t *testing.T) {
 	assert.Equal(t, ModelGeminiPro2_5, GenAIModel("gemini-2.5-pro"))
 	assert.Equal(t, ModelGeminiFlash2_5, GenAIModel("gemini-2.5-flash"))
 	assert.Equal(t, ModelGeminiFlash2_5Lite, GenAIModel("gemini-2.5-flash-lite"))
-	assert.Equal(t, GenAIModel("gemini-2.0-flash"), ModelGeminiFlash2_0)
-	assert.Equal(t, GenAIModel("gemini-2.0-flash-lite"), ModelGeminiFlash2_0Lite)
-	assert.Equal(t, GenAIModel("gemini-1.5-flash"), ModelGeminiFlash1_5)
+	assert.Equal(t, ModelGeminiFlash2_0, GenAIModel("gemini-2.0-flash"))
+	assert.Equal(t, ModelGeminiFlash2_0Lite, GenAIModel("gemini-2.0-flash-lite"))
+	assert.Equal(t, ModelGeminiFlash1_5, GenAIModel("gemini-1.5-flash"))
 }

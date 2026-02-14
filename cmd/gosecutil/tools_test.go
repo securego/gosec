@@ -210,7 +210,7 @@ var _ = Describe("shouldSkip", func() {
 		os.Stderr = old
 
 		var buf bytes.Buffer
-		io.Copy(&buf, r)
+		_, _ = io.Copy(&buf, r)
 		output := buf.String()
 
 		Expect(result).To(BeTrue())
@@ -255,7 +255,7 @@ func main() {
 		os.Stdout = old
 
 		var buf bytes.Buffer
-		io.Copy(&buf, r)
+		_, _ = io.Copy(&buf, r)
 		output := buf.String()
 
 		// AST output should contain node information
@@ -279,7 +279,7 @@ func main() {
 		os.Stdout = oldOut
 
 		var bufErr bytes.Buffer
-		io.Copy(&bufErr, rErr)
+		_, _ = io.Copy(&bufErr, rErr)
 		io.Copy(io.Discard, rOut)
 
 		Expect(bufErr.String()).To(ContainSubstring("Skipping"))

@@ -114,7 +114,7 @@ func TestAnalyzerSet_RegisterSameAnalyzerTwice(t *testing.T) {
 	set.Register(analyzer, true)
 
 	// Both registrations should be recorded
-	assert.Equal(t, 2, len(set.Analyzers))
+	assert.Len(t, set.Analyzers, 2)
 	// Last registration wins for suppression status
 	assert.True(t, set.AnalyzerSuppressedMap["duplicate"])
 }

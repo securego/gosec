@@ -344,5 +344,5 @@ func TestNewOpenAIClient_DefaultValues(t *testing.T) {
 
 	// Verify defaults
 	assert.Equal(t, 1024, wrapper.maxTokens, "should use default maxTokens")
-	assert.Equal(t, 0.7, wrapper.temperature, "should use default temperature")
+	assert.InEpsilon(t, 0.7, wrapper.temperature, 0.001, "should use default temperature")
 }
