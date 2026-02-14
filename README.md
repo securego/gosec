@@ -617,6 +617,7 @@ It("should detect your new vulnerability", func() {
 - `Package`: The import path (e.g., `"net/http"`)
 - `Name`: The type or function name (e.g., `"Request"`)
 - `Pointer`: Set to `true` if it's a pointer type (e.g., `*http.Request`)
+- `IsFunc`: Set to `true` if the source is a function that returns tainted data (e.g., `os.Getenv`), rather than a type (e.g., `*http.Request`). Default is `false`.
 
 **Sinks** define dangerous functions that should not receive tainted data:
 - `Package`: The import path (e.g., `"database/sql"`)
@@ -636,17 +637,44 @@ It("should detect your new vulnerability", func() {
 {Package: "fmt", Method: "Fprintf", CheckArgs: []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}}
 ```
 
+**Sanitizers** define functions that validate or sanitize tainted data, breaking the taint chain:
+- `Package`: The import path (e.g., `"strings"`)
+- `Receiver`: The type name for methods (e.g., `"Builder"`), or empty for package functions
+- `Method`: The function or method name (e.g., `"ReplaceAll"`)
+- `Pointer`: Set to `true` if the receiver is a pointer type
+
+**Example configuration with sanitizers:**
+```go
+func LogInjection() taint.Config {
+    return taint.Config{
+        Sources: []taint.Source{
+            {Package: "net/http", Name: "Request", Pointer: true},  // Type source
+            {Package: "os", Name: "Getenv", IsFunc: true},          // Function source
+        },
+        Sinks: []taint.Sink{
+            {Package: "log", Method: "Println"},
+        },
+        Sanitizers: []taint.Sanitizer{
+            {Package: "strings", Method: "ReplaceAll"},  // Removes dangerous chars
+            {Package: "strconv", Method: "Quote"},       // Escapes string safely
+        },
+    }
+}
+```
+
+When tainted data passes through a sanitizer, it's no longer considered tainted. This prevents false positives when input is properly validated before use.
+
 #### Common Taint Sources
 
-| Source Type | Package | Type/Method | Pointer |
-|-------------|---------|-------------|---------|
-| HTTP Request | `net/http` | `Request` | `true` |
-| Query Parameters | `net/http` | `Request.URL.Query()` | - |
-| Form Data | `net/http` | `Request.FormValue()` | - |
-| Headers | `net/http` | `Request.Header` | - |
-| Command Line Args | `os` | `Args` | `false` |
-| Environment Variables | `os` | `Getenv` | `false` |
-| File Content | `bufio` | `Reader` | `true` |
+| Source Type | Package | Type/Method | Pointer | IsFunc |
+|-------------|---------|-------------|---------|--------|
+| HTTP Request | `net/http` | `Request` | `true` | `false` |
+| Query Parameters | `net/http` | `Request.URL.Query()` | - | - |
+| Form Data | `net/http` | `Request.FormValue()` | - | - |
+| Headers | `net/http` | `Request.Header` | - | - |
+| Command Line Args | `os` | `Args` | `false` | `true` |
+| Environment Variables | `os` | `Getenv` | `false` | `true` |
+| File Content | `bufio` | `Reader` | `true` | `false` |
 
 ### Build
 

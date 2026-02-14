@@ -24,28 +24,48 @@ import (
 func SSRF() taint.Config {
 	return taint.Config{
 		Sources: []taint.Source{
+			// Type sources: tainted when received as function parameters from external callers
 			{Package: "net/http", Name: "Request", Pointer: true},
-			{Package: "os", Name: "Args"},
-			{Package: "os", Name: "Getenv"},
+
+			// Function sources: always produce tainted data
+			{Package: "os", Name: "Args", IsFunc: true},
+			{Package: "os", Name: "Getenv", IsFunc: true},
+
+			// I/O sources that read from external input
 			{Package: "bufio", Name: "Reader", Pointer: true},
 			{Package: "bufio", Name: "Scanner", Pointer: true},
-			{Package: "os", Name: "File", Pointer: true},
+
+			// NOTE: *os.File is NOT a source type here. A file opened with a
+			// hardcoded path (e.g., config file) is not an external input source.
+			// If the file was opened from user-controlled input, the taint would
+			// flow through the path argument, and that's a path traversal issue (G703),
+			// not SSRF.
 		},
 		Sinks: []taint.Sink{
-			{Package: "net/http", Method: "Get"},
-			{Package: "net/http", Method: "Post"},
-			{Package: "net/http", Method: "Head"},
-			{Package: "net/http", Method: "PostForm"},
-			{Package: "net/http", Method: "NewRequest"},
-			{Package: "net/http", Receiver: "Client", Method: "Do", Pointer: true},
-			{Package: "net/http", Receiver: "Client", Method: "Get", Pointer: true},
-			{Package: "net/http", Receiver: "Client", Method: "Post", Pointer: true},
-			{Package: "net/http", Receiver: "Client", Method: "Head", Pointer: true},
-			{Package: "net", Method: "Dial"},
-			{Package: "net", Method: "DialTimeout"},
-			{Package: "net", Method: "LookupHost"},
-			{Package: "net/http/httputil", Method: "NewSingleHostReverseProxy"},
-			{Package: "net/http/httputil", Receiver: "ReverseProxy", Method: "ServeHTTP", Pointer: true},
+			// URL argument is what we check - these are the first data arg
+			{Package: "net/http", Method: "Get", CheckArgs: []int{0}},
+			{Package: "net/http", Method: "Post", CheckArgs: []int{0}},
+			{Package: "net/http", Method: "Head", CheckArgs: []int{0}},
+			{Package: "net/http", Method: "PostForm", CheckArgs: []int{0}},
+			// NewRequest/NewRequestWithContext: URL is arg index 1 (method=0, url=1, body=2)
+			// or for WithContext: ctx=0, method=1, url=2, body=3
+			{Package: "net/http", Method: "NewRequest", CheckArgs: []int{1}},
+			{Package: "net/http", Method: "NewRequestWithContext", CheckArgs: []int{2}},
+			// Client methods - the request object carries the taint
+			{Package: "net/http", Receiver: "Client", Method: "Do", Pointer: true, CheckArgs: []int{1}},
+			{Package: "net/http", Receiver: "Client", Method: "Get", Pointer: true, CheckArgs: []int{1}},
+			{Package: "net/http", Receiver: "Client", Method: "Post", Pointer: true, CheckArgs: []int{1}},
+			{Package: "net/http", Receiver: "Client", Method: "Head", Pointer: true, CheckArgs: []int{1}},
+			{Package: "net", Method: "Dial", CheckArgs: []int{1}},
+			{Package: "net", Method: "DialTimeout", CheckArgs: []int{1}},
+			{Package: "net", Method: "LookupHost", CheckArgs: []int{0}},
+			{Package: "net/http/httputil", Method: "NewSingleHostReverseProxy", CheckArgs: []int{0}},
+		},
+		Sanitizers: []taint.Sanitizer{
+			// URL validation/parsing that enforces allowlists would be custom;
+			// there are no stdlib sanitizers that truly prevent SSRF.
+			// However, url.Parse itself is not a sanitizer — it doesn't restrict
+			// which hosts can be accessed.
 		},
 	}
 }
