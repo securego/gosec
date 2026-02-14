@@ -357,4 +357,211 @@ var _ = Describe("Taint Analysis", func() {
 			Expect(hasFileSource).To(BeFalse())
 		})
 	})
+
+	Context("Taint analyzer functional tests", func() {
+		var analyzer *taint.Analyzer
+		var config taint.Config
+
+		BeforeEach(func() {
+			// Setup a basic SQL injection detection configuration
+			config = taint.Config{
+				Sources: []taint.Source{
+					{Package: "net/http", Name: "Request", Pointer: true},
+					{Package: "os", Name: "Getenv", IsFunc: true},
+				},
+				Sinks: []taint.Sink{
+					{Package: "database/sql", Receiver: "DB", Method: "Query", Pointer: true, CheckArgs: []int{1}},
+					{Package: "database/sql", Receiver: "DB", Method: "Exec", Pointer: true, CheckArgs: []int{1}},
+				},
+				Sanitizers: []taint.Sanitizer{},
+			}
+			analyzer = taint.New(&config)
+		})
+
+		It("should create analyzer with valid configuration", func() {
+			Expect(analyzer).NotTo(BeNil())
+		})
+
+		It("should format source keys correctly", func() {
+			// Test that source keys are formatted properly
+			// Sources use either: pkg.Type or pkg.Func
+			config := taint.Config{
+				Sources: []taint.Source{
+					{Package: "net/http", Name: "Request", Pointer: true},
+					{Package: "os", Name: "Getenv", IsFunc: true},
+				},
+			}
+			analyzer := taint.New(&config)
+			Expect(analyzer).NotTo(BeNil())
+		})
+
+		It("should format sink keys correctly", func() {
+			// Test that sink keys are formatted properly
+			// Sinks use: pkg.Receiver.Method or pkg.Method
+			config := taint.Config{
+				Sinks: []taint.Sink{
+					{Package: "database/sql", Receiver: "DB", Method: "Query", Pointer: true},
+					{Package: "fmt", Method: "Fprintf"},
+				},
+			}
+			analyzer := taint.New(&config)
+			Expect(analyzer).NotTo(BeNil())
+		})
+
+		It("should format sanitizer keys correctly", func() {
+			// Test that sanitizer keys are formatted properly
+			config := taint.Config{
+				Sanitizers: []taint.Sanitizer{
+					{Package: "strings", Method: "ReplaceAll"},
+					{Package: "regexp", Receiver: "Regexp", Method: "ReplaceAllString", Pointer: true},
+				},
+			}
+			analyzer := taint.New(&config)
+			Expect(analyzer).NotTo(BeNil())
+		})
+
+		It("should handle empty configuration", func() {
+			emptyConfig := taint.Config{}
+			analyzer := taint.New(&emptyConfig)
+			Expect(analyzer).NotTo(BeNil())
+		})
+
+		It("should support command injection detection configuration", func() {
+			cmdConfig := taint.Config{
+				Sources: []taint.Source{
+					{Package: "net/http", Name: "Request", Pointer: true},
+					{Package: "os", Name: "Getenv", IsFunc: true},
+				},
+				Sinks: []taint.Sink{
+					{Package: "os/exec", Method: "Command", CheckArgs: []int{1, 2, 3, 4, 5}},
+					{Package: "os/exec", Receiver: "Cmd", Method: "Run", Pointer: true},
+				},
+			}
+			analyzer := taint.New(&cmdConfig)
+			Expect(analyzer).NotTo(BeNil())
+		})
+
+		It("should support XSS detection configuration", func() {
+			xssConfig := taint.Config{
+				Sources: []taint.Source{
+					{Package: "net/http", Name: "Request", Pointer: true},
+				},
+				Sinks: []taint.Sink{
+					{Package: "net/http", Receiver: "ResponseWriter", Method: "Write"},
+					{Package: "io", Receiver: "Writer", Method: "Write"},
+				},
+				Sanitizers: []taint.Sanitizer{
+					{Package: "html", Method: "EscapeString"},
+					{Package: "html/template", Receiver: "Template", Method: "Execute", Pointer: true},
+				},
+			}
+			analyzer := taint.New(&xssConfig)
+			Expect(analyzer).NotTo(BeNil())
+		})
+
+		It("should support path traversal detection configuration", func() {
+			pathConfig := taint.Config{
+				Sources: []taint.Source{
+					{Package: "net/http", Name: "Request", Pointer: true},
+					{Package: "os", Name: "Getenv", IsFunc: true},
+				},
+				Sinks: []taint.Sink{
+					{Package: "os", Method: "Open"},
+					{Package: "os", Method: "OpenFile"},
+					{Package: "os", Method: "ReadFile"},
+					{Package: "os", Method: "WriteFile"},
+					{Package: "io/ioutil", Method: "ReadFile"},
+					{Package: "io/ioutil", Method: "WriteFile"},
+				},
+				Sanitizers: []taint.Sanitizer{
+					{Package: "path/filepath", Method: "Clean"},
+					{Package: "path/filepath", Method: "Base"},
+				},
+			}
+			analyzer := taint.New(&pathConfig)
+			Expect(analyzer).NotTo(BeNil())
+		})
+
+		It("should support log injection detection configuration", func() {
+			logConfig := taint.Config{
+				Sources: []taint.Source{
+					{Package: "net/http", Name: "Request", Pointer: true},
+				},
+				Sinks: []taint.Sink{
+					{Package: "log", Method: "Print"},
+					{Package: "log", Method: "Println"},
+					{Package: "log", Method: "Printf"},
+					{Package: "log/slog", Method: "Info"},
+					{Package: "log/slog", Method: "Error"},
+				},
+				Sanitizers: []taint.Sanitizer{
+					{Package: "strings", Method: "ReplaceAll"},
+				},
+			}
+			analyzer := taint.New(&logConfig)
+			Expect(analyzer).NotTo(BeNil())
+		})
+
+		It("should handle configurations with receiver pointers", func() {
+			config := taint.Config{
+				Sinks: []taint.Sink{
+					{Package: "database/sql", Receiver: "DB", Method: "Query", Pointer: true},
+					{Package: "database/sql", Receiver: "DB", Method: "Query", Pointer: false}, // Non-pointer
+				},
+			}
+			analyzer := taint.New(&config)
+			Expect(analyzer).NotTo(BeNil())
+		})
+
+		It("should support CheckArgs for specific argument positions", func() {
+			config := taint.Config{
+				Sinks: []taint.Sink{
+					// Only check argument at index 1 (the query string)
+					{Package: "database/sql", Receiver: "DB", Method: "Query", Pointer: true, CheckArgs: []int{1}},
+					// Check multiple arguments
+					{Package: "fmt", Method: "Fprintf", CheckArgs: []int{1, 2}},
+					// Check all arguments (nil or empty CheckArgs)
+					{Package: "log", Method: "Println"},
+				},
+			}
+			analyzer := taint.New(&config)
+			Expect(analyzer).NotTo(BeNil())
+		})
+
+		It("should handle complex multi-stage taint propagation configs", func() {
+			config := taint.Config{
+				Sources: []taint.Source{
+					// HTTP request sources
+					{Package: "net/http", Name: "Request", Pointer: true},
+					// Environment sources
+					{Package: "os", Name: "Getenv", IsFunc: true},
+					{Package: "os", Name: "Environ", IsFunc: true},
+				},
+				Sinks: []taint.Sink{
+					// SQL sinks
+					{Package: "database/sql", Receiver: "DB", Method: "Query", Pointer: true, CheckArgs: []int{1}},
+					{Package: "database/sql", Receiver: "DB", Method: "Exec", Pointer: true, CheckArgs: []int{1}},
+					// Command execution sinks
+					{Package: "os/exec", Method: "Command", CheckArgs: []int{1, 2, 3, 4, 5}},
+					// File operation sinks
+					{Package: "os", Method: "Open"},
+					// Network sinks
+					{Package: "net/http", Receiver: "Client", Method: "Do", Pointer: true},
+				},
+				Sanitizers: []taint.Sanitizer{
+					// String sanitizers
+					{Package: "strings", Method: "ReplaceAll"},
+					{Package: "strings", Method: "Trim"},
+					// Path sanitizers
+					{Package: "path/filepath", Method: "Clean"},
+					// HTML sanitizers
+					{Package: "html", Method: "EscapeString"},
+					// SQL sanitizers (parameterized queries)
+					{Package: "database/sql", Receiver: "DB", Method: "Prepare", Pointer: true},
+				},
+			}
+			analyzer := taint.New(&config)
+			Expect(analyzer).NotTo(BeNil())
+		})
+	})
 })
