@@ -393,7 +393,7 @@ func main() {
 		os.Stderr = old
 
 		var buf bytes.Buffer
-		io.Copy(&buf, r)
+		_, _ = io.Copy(&buf, r)
 		output := buf.String()
 
 		Expect(ctx).To(BeNil())
@@ -432,7 +432,7 @@ var _ = Describe("printObject", func() {
 		os.Stdout = old
 
 		var buf bytes.Buffer
-		io.Copy(&buf, r)
+		_, _ = io.Copy(&buf, r)
 		output := buf.String()
 
 		Expect(output).To(ContainSubstring("object is nil"))
@@ -463,7 +463,7 @@ func main() {}
 					os.Stdout = old
 
 					var buf bytes.Buffer
-					io.Copy(&buf, r)
+					_, _ = io.Copy(&buf, r)
 					output := buf.String()
 
 					Expect(output).To(ContainSubstring("OBJECT"))
@@ -488,7 +488,7 @@ var _ = Describe("checkContext", func() {
 		os.Stderr = old
 
 		var buf bytes.Buffer
-		io.Copy(&buf, r)
+		_, _ = io.Copy(&buf, r)
 		output := buf.String()
 
 		Expect(result).To(BeFalse())
@@ -548,7 +548,7 @@ func main() {
 		os.Stdout = old
 
 		var buf bytes.Buffer
-		io.Copy(&buf, r)
+		_, _ = io.Copy(&buf, r)
 		output := buf.String()
 
 		// Should contain object information
@@ -567,7 +567,7 @@ func main() {
 		os.Stderr = old
 
 		var buf bytes.Buffer
-		io.Copy(&buf, r)
+		_, _ = io.Copy(&buf, r)
 		output := buf.String()
 
 		Expect(output).To(ContainSubstring("Skipping"))
@@ -612,7 +612,7 @@ func main() {
 		os.Stdout = old
 
 		var buf bytes.Buffer
-		io.Copy(&buf, r)
+		_, _ = io.Copy(&buf, r)
 		output := buf.String()
 
 		// Should contain IDENT and OBJECT
@@ -629,7 +629,7 @@ func main() {
 
 		w.Close()
 		os.Stderr = old
-		io.Copy(io.Discard, r)
+		_, _ = io.Copy(io.Discard, r)
 
 		// Should not panic
 	})
@@ -671,7 +671,7 @@ func main() {
 		os.Stdout = old
 
 		var buf bytes.Buffer
-		io.Copy(&buf, r)
+		_, _ = io.Copy(&buf, r)
 		output := buf.String()
 
 		// Should contain EXPR and TYPE
@@ -722,7 +722,7 @@ func main() {
 		os.Stdout = old
 
 		var buf bytes.Buffer
-		io.Copy(&buf, r)
+		_, _ = io.Copy(&buf, r)
 		output := buf.String()
 
 		// Should contain IDENT and OBJ
@@ -771,7 +771,7 @@ func main() {
 		os.Stdout = old
 
 		var buf bytes.Buffer
-		io.Copy(&buf, r)
+		_, _ = io.Copy(&buf, r)
 		output := buf.String()
 
 		// Should contain comment text
@@ -837,7 +837,7 @@ func main() {
 		os.Stdout = old
 
 		var buf bytes.Buffer
-		io.Copy(&buf, r)
+		_, _ = io.Copy(&buf, r)
 		output := buf.String()
 
 		// Should contain import information
@@ -950,7 +950,7 @@ var _ = Describe("Edge cases", func() {
 
 		w.Close()
 		os.Stderr = old
-		io.Copy(io.Discard, r)
+		_, _ = io.Copy(io.Discard, r)
 
 		// Should not panic
 	})
@@ -975,7 +975,6 @@ var _ = Describe("Edge cases", func() {
 
 		// Create file with long name
 		longName := filepath.Join(tempDir, strings.Repeat("a", 100)+".go")
-
 		err = os.WriteFile(longName, []byte("package main\nfunc main() {}"), 0600)
 		if err == nil {
 			defer os.Remove(longName)
