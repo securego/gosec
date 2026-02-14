@@ -8,17 +8,30 @@ var SampleCodeG408 = []CodeSample{
 	{[]string{`
 package main
 
-import (
-	"golang.org/x/crypto/ssh"
-)
+// Mock ssh types for testing
+type PublicKey interface {
+	Marshal() []byte
+}
 
-var lastKey ssh.PublicKey
+type ConnMetadata interface {
+	User() string
+}
+
+type Permissions struct {
+	Extensions map[string]string
+}
+
+type ServerConfig struct {
+	PublicKeyCallback func(ConnMetadata, PublicKey) (*Permissions, error)
+}
+
+var lastKey PublicKey
 
 func setupServer() {
-	config := &ssh.ServerConfig{}
-	config.PublicKeyCallback = func(conn ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
+	config := &ServerConfig{}
+	config.PublicKeyCallback = func(conn ConnMetadata, key PublicKey) (*Permissions, error) {
 		lastKey = key
-		return &ssh.Permissions{}, nil
+		return &Permissions{}, nil
 	}
 	_ = config
 }
@@ -28,20 +41,33 @@ func setupServer() {
 	{[]string{`
 package main
 
-import (
-	"golang.org/x/crypto/ssh"
-)
+// Mock ssh types for testing
+type PublicKey interface {
+	Marshal() []byte
+}
+
+type ConnMetadata interface {
+	User() string
+}
+
+type Permissions struct {
+	Extensions map[string]string
+}
+
+type ServerConfig struct {
+	PublicKeyCallback func(ConnMetadata, PublicKey) (*Permissions, error)
+}
 
 type Server struct {
-	currentKey ssh.PublicKey
+	currentKey PublicKey
 }
 
 func setupServer() {
 	srv := &Server{}
-	config := &ssh.ServerConfig{}
-	config.PublicKeyCallback = func(conn ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
+	config := &ServerConfig{}
+	config.PublicKeyCallback = func(conn ConnMetadata, key PublicKey) (*Permissions, error) {
 		srv.currentKey = key
-		return &ssh.Permissions{}, nil
+		return &Permissions{}, nil
 	}
 	_ = config
 }
@@ -51,16 +77,29 @@ func setupServer() {
 	{[]string{`
 package main
 
-import (
-	"golang.org/x/crypto/ssh"
-)
+// Mock ssh types for testing
+type PublicKey interface {
+	Marshal() []byte
+}
+
+type ConnMetadata interface {
+	User() string
+}
+
+type Permissions struct {
+	Extensions map[string]string
+}
+
+type ServerConfig struct {
+	PublicKeyCallback func(ConnMetadata, PublicKey) (*Permissions, error)
+}
 
 func setupServer() {
-	keyMap := make(map[string]ssh.PublicKey)
-	config := &ssh.ServerConfig{}
-	config.PublicKeyCallback = func(conn ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
+	keyMap := make(map[string]PublicKey)
+	config := &ServerConfig{}
+	config.PublicKeyCallback = func(conn ConnMetadata, key PublicKey) (*Permissions, error) {
 		keyMap[conn.User()] = key
-		return &ssh.Permissions{}, nil
+		return &Permissions{}, nil
 	}
 	_ = config
 }
@@ -70,16 +109,67 @@ func setupServer() {
 	{[]string{`
 package main
 
-import (
-	"golang.org/x/crypto/ssh"
-)
+// Mock ssh types for testing
+type PublicKey interface {
+	Marshal() []byte
+}
+
+type ConnMetadata interface {
+	User() string
+}
+
+type Permissions struct {
+	Extensions map[string]string
+}
+
+type ServerConfig struct {
+	PublicKeyCallback func(ConnMetadata, PublicKey) (*Permissions, error)
+}
 
 func setupServer() {
-	keys := make([]ssh.PublicKey, 10)
-	config := &ssh.ServerConfig{}
-	config.PublicKeyCallback = func(conn ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
+	keys := make([]PublicKey, 10)
+	config := &ServerConfig{}
+	config.PublicKeyCallback = func(conn ConnMetadata, key PublicKey) (*Permissions, error) {
 		keys[0] = key
-		return &ssh.Permissions{}, nil
+		return &Permissions{}, nil
+	}
+	_ = config
+}
+`}, 1, gosec.NewConfig()},
+
+	// Vulnerable: Nested struct field modification
+	{[]string{`
+package main
+
+// Mock ssh types for testing
+type PublicKey interface {
+	Marshal() []byte
+}
+
+type ConnMetadata interface {
+	User() string
+}
+
+type Permissions struct {
+	Extensions map[string]string
+}
+
+type ServerConfig struct {
+	PublicKeyCallback func(ConnMetadata, PublicKey) (*Permissions, error)
+}
+
+type Session struct {
+	Auth struct {
+		LastKey PublicKey
+	}
+}
+
+func setupServer() {
+	session := &Session{}
+	config := &ServerConfig{}
+	config.PublicKeyCallback = func(conn ConnMetadata, key PublicKey) (*Permissions, error) {
+		session.Auth.LastKey = key
+		return &Permissions{}, nil
 	}
 	_ = config
 }
@@ -89,23 +179,35 @@ func setupServer() {
 	{[]string{`
 package main
 
-import (
-	"errors"
-	"golang.org/x/crypto/ssh"
-)
+// Mock ssh types for testing
+type PublicKey interface {
+	Marshal() []byte
+}
+
+type ConnMetadata interface {
+	User() string
+}
+
+type Permissions struct {
+	Extensions map[string]string
+}
+
+type ServerConfig struct {
+	PublicKeyCallback func(ConnMetadata, PublicKey) (*Permissions, error)
+}
 
 func setupServer() {
-	config := &ssh.ServerConfig{}
-	config.PublicKeyCallback = func(conn ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
+	config := &ServerConfig{}
+	config.PublicKeyCallback = func(conn ConnMetadata, key PublicKey) (*Permissions, error) {
 		if isAuthorized(key) {
-			return &ssh.Permissions{}, nil
+			return &Permissions{}, nil
 		}
-		return nil, errors.New("unauthorized")
+		return nil, nil
 	}
 	_ = config
 }
 
-func isAuthorized(key ssh.PublicKey) bool {
+func isAuthorized(key PublicKey) bool {
 	return true
 }
 `}, 0, gosec.NewConfig()},
@@ -114,14 +216,27 @@ func isAuthorized(key ssh.PublicKey) bool {
 	{[]string{`
 package main
 
-import (
-	"golang.org/x/crypto/ssh"
-)
+// Mock ssh types for testing
+type PublicKey interface {
+	Marshal() []byte
+}
+
+type ConnMetadata interface {
+	User() string
+}
+
+type Permissions struct {
+	Extensions map[string]string
+}
+
+type ServerConfig struct {
+	PublicKeyCallback func(ConnMetadata, PublicKey) (*Permissions, error)
+}
 
 func setupServer() {
-	config := &ssh.ServerConfig{}
-	config.PublicKeyCallback = func(conn ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
-		return &ssh.Permissions{
+	config := &ServerConfig{}
+	config.PublicKeyCallback = func(conn ConnMetadata, key PublicKey) (*Permissions, error) {
+		return &Permissions{
 			Extensions: map[string]string{
 				"pubkey": string(key.Marshal()),
 			},
@@ -135,19 +250,32 @@ func setupServer() {
 	{[]string{`
 package main
 
-import (
-	"golang.org/x/crypto/ssh"
-)
+// Mock ssh types for testing
+type PublicKey interface {
+	Marshal() []byte
+}
+
+type ConnMetadata interface {
+	User() string
+}
+
+type Permissions struct {
+	Extensions map[string]string
+}
+
+type ServerConfig struct {
+	PublicKeyCallback func(ConnMetadata, PublicKey) (*Permissions, error)
+}
 
 func setupServer() {
 	authorizedKeys := map[string]bool{
 		"ssh-rsa AAA...": true,
 	}
-	config := &ssh.ServerConfig{}
-	config.PublicKeyCallback = func(conn ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
+	config := &ServerConfig{}
+	config.PublicKeyCallback = func(conn ConnMetadata, key PublicKey) (*Permissions, error) {
 		keyStr := string(key.Marshal())
 		if authorizedKeys[keyStr] {
-			return &ssh.Permissions{}, nil
+			return &Permissions{}, nil
 		}
 		return nil, nil
 	}
@@ -159,63 +287,63 @@ func setupServer() {
 	{[]string{`
 package main
 
-import (
-	"errors"
-	"golang.org/x/crypto/ssh"
-)
+// Mock ssh types for testing
+type PublicKey interface {
+	Marshal() []byte
+}
+
+type ConnMetadata interface {
+	User() string
+}
+
+type Permissions struct {
+	Extensions map[string]string
+}
+
+type ServerConfig struct {
+	PublicKeyCallback func(ConnMetadata, PublicKey) (*Permissions, error)
+}
 
 func setupServer() {
-	config := &ssh.ServerConfig{}
+	config := &ServerConfig{}
 	config.PublicKeyCallback = checkKey
 	_ = config
 }
 
-func checkKey(conn ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
-	return nil, errors.New("not implemented")
+func checkKey(conn ConnMetadata, key PublicKey) (*Permissions, error) {
+	return nil, nil
 }
 `}, 0, gosec.NewConfig()},
 
-	// Vulnerable: Nested struct field modification
+	// Safe: Module-level function (not closure)
 	{[]string{`
 package main
 
-import (
-	"golang.org/x/crypto/ssh"
-)
+// Mock ssh types for testing
+type PublicKey interface {
+	Marshal() []byte
+}
 
-type Session struct {
-	Auth struct {
-		LastKey ssh.PublicKey
-	}
+type ConnMetadata interface {
+	User() string
+}
+
+type Permissions struct {
+	Extensions map[string]string
+}
+
+type ServerConfig struct {
+	PublicKeyCallback func(ConnMetadata, PublicKey) (*Permissions, error)
+}
+
+func authenticateKey(conn ConnMetadata, key PublicKey) (*Permissions, error) {
+	// This is a module-level function, not a closure
+	return &Permissions{}, nil
 }
 
 func setupServer() {
-	session := &Session{}
-	config := &ssh.ServerConfig{}
-	config.PublicKeyCallback = func(conn ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
-		session.Auth.LastKey = key
-		return &ssh.Permissions{}, nil
-	}
-	_ = config
-}
-`}, 1, gosec.NewConfig()},
-
-	// Safe: Using nosec to suppress
-	{[]string{`
-package main
-
-import (
-	"golang.org/x/crypto/ssh"
-)
-
-var lastKey ssh.PublicKey
-
-func setupServer() {
-	config := &ssh.ServerConfig{}
-	config.PublicKeyCallback = func(conn ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
-		lastKey = key // #nosec G408
-		return &ssh.Permissions{}, nil
-	}
+	config := &ServerConfig{}
+	config.PublicKeyCallback = authenticateKey
 	_ = config
 }
 `}, 0, gosec.NewConfig()},

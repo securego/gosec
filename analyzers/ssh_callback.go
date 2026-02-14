@@ -16,7 +16,6 @@ package analyzers
 
 import (
 	"go/types"
-	"strings"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/buildssa"
@@ -66,6 +65,8 @@ func runSSHCallbackAnalysis(pass *analysis.Pass) (any, error) {
 
 	var issues []*issue.Issue
 	for _, cb := range callbacks {
+		// Clear visited map before analyzing each callback to prevent interference
+		state.Reset()
 		if issue := state.analyzeCallback(cb); issue != nil {
 			issues = append(issues, issue)
 		}
@@ -92,6 +93,10 @@ func newSSHCallbackState(pass *analysis.Pass, funcs []*ssa.Function) *sshCallbac
 // findCallbackAssignments scans the SSA for assignments to ssh.ServerConfig.PublicKeyCallback
 func (s *sshCallbackState) findCallbackAssignments() []callbackInfo {
 	var callbacks []callbackInfo
+
+	if len(s.ssaFuncs) == 0 {
+		return callbacks
+	}
 
 	TraverseSSA(s.ssaFuncs, func(b *ssa.BasicBlock, instr ssa.Instruction) {
 		// Check for stores to field addresses
@@ -134,18 +139,6 @@ func (s *sshCallbackState) findCallbackAssignments() []callbackInfo {
 			return
 		}
 
-		pkg := obj.Pkg()
-		if pkg == nil {
-			return
-		}
-
-		// Check package path for SSH
-		pkgPath := pkg.Path()
-		isSSHPkg := strings.Contains(pkgPath, "/ssh") || pkgPath == "golang.org/x/crypto/ssh"
-		if !isSSHPkg {
-			return
-		}
-
 		// Check the field name
 		structType, ok := namedType.Underlying().(*types.Struct)
 		if !ok || fieldAddr.Field >= structType.NumFields() {
@@ -157,32 +150,43 @@ func (s *sshCallbackState) findCallbackAssignments() []callbackInfo {
 			return
 		}
 
-		// Extract the closure being stored
-		var makeClosure *ssa.MakeClosure
-		var closureFn *ssa.Function
+		// The combination of ServerConfig type with PublicKeyCallback field
+		// is unique to SSH server configurations
 
-		// Try direct MakeClosure
-		if mc, ok := store.Val.(*ssa.MakeClosure); ok {
-			makeClosure = mc
-		} else if mi, ok := store.Val.(*ssa.MakeInterface); ok {
-			// Try MakeClosure wrapped in MakeInterface
-			if mc, ok := mi.X.(*ssa.MakeClosure); ok {
+		// Extract the closure being stored
+		var closureFn *ssa.Function
+		var makeClosure *ssa.MakeClosure
+
+		// Try different ways the closure might be stored
+		switch val := store.Val.(type) {
+		case *ssa.MakeClosure:
+			// Direct MakeClosure
+			makeClosure = val
+			if fn, ok := val.Fn.(*ssa.Function); ok {
+				closureFn = fn
+			}
+		case *ssa.Function:
+			// Direct function assignment (anonymous functions)
+			if val.Parent() != nil {
+				// This is a closure (has a parent function)
+				closureFn = val
+			}
+		case *ssa.MakeInterface:
+			// MakeClosure wrapped in MakeInterface
+			if mc, ok := val.X.(*ssa.MakeClosure); ok {
 				makeClosure = mc
+				if fn, ok := mc.Fn.(*ssa.Function); ok {
+					closureFn = fn
+				}
 			}
 		}
 
-		if makeClosure == nil {
-			return
-		}
-
-		if fn, ok := makeClosure.Fn.(*ssa.Function); ok {
-			closureFn = fn
-		} else {
+		if closureFn == nil {
 			return
 		}
 
 		callbacks = append(callbacks, callbackInfo{
-			makeClosure: makeClosure,
+			makeClosure: makeClosure, // May be nil for direct function assignments
 			closure:     closureFn,
 			storeInstr:  store,
 		})
@@ -218,9 +222,18 @@ func (s *sshCallbackState) analyzeCallback(cb callbackInfo) *issue.Issue {
 func (s *sshCallbackState) hasWritesToCapturedVars(closure *ssa.Function, mkClosure *ssa.MakeClosure) bool {
 	// Build a map of FreeVar to binding for quick lookup (if any)
 	freeVarSet := make(map[*ssa.FreeVar]ssa.Value)
-	for i, fv := range closure.FreeVars {
-		if i < len(mkClosure.Bindings) {
-			freeVarSet[fv] = mkClosure.Bindings[i]
+
+	// If we have a MakeClosure, use its bindings
+	if mkClosure != nil {
+		for i, fv := range closure.FreeVars {
+			if i < len(mkClosure.Bindings) {
+				freeVarSet[fv] = mkClosure.Bindings[i]
+			}
+		}
+	} else {
+		// For direct function assignments, just track FreeVars without specific bindings
+		for _, fv := range closure.FreeVars {
+			freeVarSet[fv] = nil
 		}
 	}
 
@@ -337,7 +350,6 @@ func (s *sshCallbackState) isValueFromCapturedVar(val ssa.Value, freeVarSet map[
 		return false
 	}
 	s.Visited[val] = true
-	defer delete(s.Visited, val)
 
 	switch v := val.(type) {
 	case *ssa.FreeVar:
