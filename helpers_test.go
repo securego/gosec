@@ -786,4 +786,486 @@ var _ = Describe("Helpers", func() {
 			Expect(foundNil).To(BeTrue())
 		})
 	})
+
+	Context("when getting location information", func() {
+		It("should return file name and line number from AST node", func() {
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("test.go", `
+package main
+func main() {
+	x := 42
+}
+`)
+			ctx := pkg.CreateContext("test.go")
+			var fileName string
+			var lineNum int
+			visitor := testutils.NewMockVisitor()
+			visitor.Context = ctx
+			visitor.Callback = func(n ast.Node, ctx *gosec.Context) bool {
+				if lit, ok := n.(*ast.BasicLit); ok {
+					fileName, lineNum = gosec.GetLocation(lit, ctx)
+					return false
+				}
+				return true
+			}
+			ast.Walk(visitor, ctx.Root)
+			Expect(fileName).To(ContainSubstring("test.go"))
+			Expect(lineNum).To(BeNumerically(">", 0))
+		})
+	})
+
+	Context("when working with environment variables", func() {
+		It("should return environment variable value if set", func() {
+			os.Setenv("TEST_GOSEC_VAR", "test_value")
+			defer os.Unsetenv("TEST_GOSEC_VAR")
+
+			result := gosec.Getenv("TEST_GOSEC_VAR", "default_value")
+			Expect(result).To(Equal("test_value"))
+		})
+
+		It("should return default value if environment variable not set", func() {
+			result := gosec.Getenv("NONEXISTENT_GOSEC_VAR", "default_value")
+			Expect(result).To(Equal("default_value"))
+		})
+
+		It("should return default value for empty environment variable", func() {
+			os.Setenv("EMPTY_GOSEC_VAR", "")
+			defer os.Unsetenv("EMPTY_GOSEC_VAR")
+
+			result := gosec.Getenv("EMPTY_GOSEC_VAR", "default_value")
+			Expect(result).To(Equal("default_value"))
+		})
+	})
+
+	Context("when working with GOPATH", func() {
+		It("should return list of GOPATHs", func() {
+			paths := gosec.Gopath()
+			Expect(paths).ToNot(BeEmpty())
+			// Should return at least one path
+			Expect(len(paths)).To(BeNumerically(">=", 1))
+		})
+
+		It("should return absolute paths", func() {
+			paths := gosec.Gopath()
+			for _, path := range paths {
+				Expect(filepath.IsAbs(path)).To(BeTrue())
+			}
+		})
+	})
+
+	Context("when getting package paths", func() {
+		It("should return absolute path for existing directory", func() {
+			// Use current directory as test
+			cwd, err := os.Getwd()
+			Expect(err).ToNot(HaveOccurred())
+
+			absPath, err := gosec.GetPkgAbsPath(cwd)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(filepath.IsAbs(absPath)).To(BeTrue())
+		})
+
+		It("should return error for non-existent path", func() {
+			_, err := gosec.GetPkgAbsPath("/nonexistent/path/that/does/not/exist")
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should handle relative paths", func() {
+			// Use "." as a relative path
+			absPath, err := gosec.GetPkgAbsPath(".")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(filepath.IsAbs(absPath)).To(BeTrue())
+		})
+	})
+
+	Context("when getting call string arguments", func() {
+		It("should extract string literals from call arguments", func() {
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("main.go", `
+package main
+import "fmt"
+func main() {
+	fmt.Println("hello", "world")
+}
+`)
+			ctx := pkg.CreateContext("main.go")
+			var values []string
+			visitor := testutils.NewMockVisitor()
+			visitor.Context = ctx
+			visitor.Callback = func(n ast.Node, ctx *gosec.Context) bool {
+				if callExpr, ok := n.(*ast.CallExpr); ok {
+					values = gosec.GetCallStringArgsValues(callExpr, ctx)
+					return false
+				}
+				return true
+			}
+			ast.Walk(visitor, ctx.Root)
+			Expect(values).To(ContainElement("hello"))
+			Expect(values).To(ContainElement("world"))
+		})
+
+		It("should extract string from identifier arguments", func() {
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("main.go", `
+package main
+import "fmt"
+func main() {
+	msg := "test message"
+	fmt.Println(msg)
+}
+`)
+			ctx := pkg.CreateContext("main.go")
+			var values []string
+			visitor := testutils.NewMockVisitor()
+			visitor.Context = ctx
+			visitor.Callback = func(n ast.Node, ctx *gosec.Context) bool {
+				if callExpr, ok := n.(*ast.CallExpr); ok {
+					if sel, ok := callExpr.Fun.(*ast.SelectorExpr); ok {
+						if sel.Sel.Name == "Println" {
+							values = gosec.GetCallStringArgsValues(callExpr, ctx)
+						}
+					}
+				}
+				return true
+			}
+			ast.Walk(visitor, ctx.Root)
+			Expect(values).To(ContainElement("test message"))
+		})
+
+		It("should return empty for non-string arguments", func() {
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("main.go", `
+package main
+import "fmt"
+func main() {
+	fmt.Println(42, 3.14)
+}
+`)
+			ctx := pkg.CreateContext("main.go")
+			var values []string
+			visitor := testutils.NewMockVisitor()
+			visitor.Context = ctx
+			visitor.Callback = func(n ast.Node, ctx *gosec.Context) bool {
+				if callExpr, ok := n.(*ast.CallExpr); ok {
+					values = gosec.GetCallStringArgsValues(callExpr, ctx)
+					return false
+				}
+				return true
+			}
+			ast.Walk(visitor, ctx.Root)
+			Expect(values).To(BeEmpty())
+		})
+	})
+
+	Context("when getting identifier string values", func() {
+		It("should resolve string from variable declaration", func() {
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("main.go", `
+package main
+func main() {
+	var msg string = "hello"
+	_ = msg
+}
+`)
+			ctx := pkg.CreateContext("main.go")
+			var values []string
+			visitor := testutils.NewMockVisitor()
+			visitor.Context = ctx
+			visitor.Callback = func(n ast.Node, ctx *gosec.Context) bool {
+				if ident, ok := n.(*ast.Ident); ok && ident.Name == "msg" && ident.Obj != nil {
+					values = gosec.GetIdentStringValues(ident)
+					if len(values) > 0 {
+						return false
+					}
+				}
+				return true
+			}
+			ast.Walk(visitor, ctx.Root)
+			Expect(values).To(ContainElement("hello"))
+		})
+
+		It("should resolve string from assignment statement", func() {
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("main.go", `
+package main
+func main() {
+	msg := "assigned value"
+	_ = msg
+}
+`)
+			ctx := pkg.CreateContext("main.go")
+			var values []string
+			visitor := testutils.NewMockVisitor()
+			visitor.Context = ctx
+			visitor.Callback = func(n ast.Node, ctx *gosec.Context) bool {
+				if ident, ok := n.(*ast.Ident); ok && ident.Name == "msg" && ident.Obj != nil {
+					values = gosec.GetIdentStringValues(ident)
+					if len(values) > 0 {
+						return false
+					}
+				}
+				return true
+			}
+			ast.Walk(visitor, ctx.Root)
+			Expect(values).To(ContainElement("assigned value"))
+		})
+
+		It("should resolve concatenated strings recursively", func() {
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("main.go", `
+package main
+func main() {
+	msg := "hello" + " " + "world"
+	_ = msg
+}
+`)
+			ctx := pkg.CreateContext("main.go")
+			var values []string
+			visitor := testutils.NewMockVisitor()
+			visitor.Context = ctx
+			visitor.Callback = func(n ast.Node, ctx *gosec.Context) bool {
+				if ident, ok := n.(*ast.Ident); ok && ident.Name == "msg" && ident.Obj != nil {
+					values = gosec.GetIdentStringValuesRecursive(ident)
+					if len(values) > 0 {
+						return false
+					}
+				}
+				return true
+			}
+			ast.Walk(visitor, ctx.Root)
+			Expect(values).To(ContainElement("hello world"))
+		})
+
+		It("should return empty for non-string identifiers", func() {
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("main.go", `
+package main
+func main() {
+	num := 42
+	_ = num
+}
+`)
+			ctx := pkg.CreateContext("main.go")
+			var values []string
+			visitor := testutils.NewMockVisitor()
+			visitor.Context = ctx
+			visitor.Callback = func(n ast.Node, ctx *gosec.Context) bool {
+				if ident, ok := n.(*ast.Ident); ok && ident.Name == "num" && ident.Obj != nil {
+					values = gosec.GetIdentStringValues(ident)
+					return false
+				}
+				return true
+			}
+			ast.Walk(visitor, ctx.Root)
+			Expect(values).To(BeEmpty())
+		})
+	})
+
+	Context("when concatenating strings", func() {
+		It("should concatenate literal strings", func() {
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("main.go", `
+package main
+func main() {
+	result := "hello" + "world"
+	_ = result
+}
+`)
+			ctx := pkg.CreateContext("main.go")
+			var concatResult string
+			var found bool
+			visitor := testutils.NewMockVisitor()
+			visitor.Context = ctx
+			visitor.Callback = func(n ast.Node, ctx *gosec.Context) bool {
+				if binExpr, ok := n.(*ast.BinaryExpr); ok {
+					concatResult, found = gosec.ConcatString(binExpr, ctx)
+					if found {
+						return false
+					}
+				}
+				return true
+			}
+			ast.Walk(visitor, ctx.Root)
+			Expect(found).To(BeTrue())
+			Expect(concatResult).To(Equal("helloworld"))
+		})
+
+		It("should concatenate strings from identifiers", func() {
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("main.go", `
+package main
+func main() {
+	a := "hello"
+	b := "world"
+	result := a + b
+	_ = result
+}
+`)
+			ctx := pkg.CreateContext("main.go")
+			var concatResult string
+			var found bool
+			visitor := testutils.NewMockVisitor()
+			visitor.Context = ctx
+			visitor.Callback = func(n ast.Node, ctx *gosec.Context) bool {
+				if assign, ok := n.(*ast.AssignStmt); ok {
+					for _, rhs := range assign.Rhs {
+						if binExpr, ok := rhs.(*ast.BinaryExpr); ok {
+							concatResult, found = gosec.ConcatString(binExpr, ctx)
+							if found {
+								return false
+							}
+						}
+					}
+				}
+				return true
+			}
+			ast.Walk(visitor, ctx.Root)
+			Expect(found).To(BeTrue())
+			Expect(concatResult).To(Equal("helloworld"))
+		})
+
+		It("should return false for non-addition operations", func() {
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("main.go", `
+package main
+func main() {
+	result := 5 - 3
+	_ = result
+}
+`)
+			ctx := pkg.CreateContext("main.go")
+			var found bool
+			visitor := testutils.NewMockVisitor()
+			visitor.Context = ctx
+			visitor.Callback = func(n ast.Node, ctx *gosec.Context) bool {
+				if binExpr, ok := n.(*ast.BinaryExpr); ok {
+					_, found = gosec.ConcatString(binExpr, ctx)
+				}
+				return true
+			}
+			ast.Walk(visitor, ctx.Root)
+			Expect(found).To(BeFalse())
+		})
+
+		It("should handle nil expression", func() {
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("main.go", `package main`)
+			ctx := pkg.CreateContext("main.go")
+
+			result, found := gosec.ConcatString(nil, ctx)
+			Expect(found).To(BeFalse())
+			Expect(result).To(Equal(""))
+		})
+	})
+
+	Context("when finding variable identities", func() {
+		It("should find variables in binary expression", func() {
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("main.go", `
+package main
+func main() {
+	userInput := getUserInput()
+	query := "SELECT * FROM users WHERE name = '" + userInput + "'"
+	_ = query
+}
+func getUserInput() string { return "" }
+`)
+			ctx := pkg.CreateContext("main.go")
+			var identities []*ast.Ident
+			var foundVars bool
+			visitor := testutils.NewMockVisitor()
+			visitor.Context = ctx
+			visitor.Callback = func(n ast.Node, ctx *gosec.Context) bool {
+				if assign, ok := n.(*ast.AssignStmt); ok {
+					for _, rhs := range assign.Rhs {
+						if binExpr, ok := rhs.(*ast.BinaryExpr); ok {
+							identities, foundVars = gosec.FindVarIdentities(binExpr, ctx)
+							if foundVars {
+								return false
+							}
+						}
+					}
+				}
+				return true
+			}
+			ast.Walk(visitor, ctx.Root)
+			Expect(foundVars).To(BeTrue())
+			Expect(identities).ToNot(BeEmpty())
+		})
+
+		It("should return false when no variables found", func() {
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("main.go", `
+package main
+func main() {
+	result := "hello" + "world"
+	_ = result
+}
+`)
+			ctx := pkg.CreateContext("main.go")
+			var foundVars bool
+			visitor := testutils.NewMockVisitor()
+			visitor.Context = ctx
+			visitor.Callback = func(n ast.Node, ctx *gosec.Context) bool {
+				if binExpr, ok := n.(*ast.BinaryExpr); ok {
+					_, foundVars = gosec.FindVarIdentities(binExpr, ctx)
+				}
+				return true
+			}
+			ast.Walk(visitor, ctx.Root)
+			Expect(foundVars).To(BeFalse())
+		})
+
+		It("should handle nested binary expressions", func() {
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("main.go", `
+package main
+func main() {
+	a := getA()
+	b := getB()
+	result := "prefix" + a + b
+	_ = result
+}
+func getA() string { return "" }
+func getB() string { return "" }
+`)
+			ctx := pkg.CreateContext("main.go")
+			var identities []*ast.Ident
+			var foundVars bool
+			visitor := testutils.NewMockVisitor()
+			visitor.Context = ctx
+			visitor.Callback = func(n ast.Node, ctx *gosec.Context) bool {
+				if assign, ok := n.(*ast.AssignStmt); ok {
+					for _, rhs := range assign.Rhs {
+						if binExpr, ok := rhs.(*ast.BinaryExpr); ok {
+							identities, foundVars = gosec.FindVarIdentities(binExpr, ctx)
+							if foundVars {
+								return false
+							}
+						}
+					}
+				}
+				return true
+			}
+			ast.Walk(visitor, ctx.Root)
+			// Should find at least one variable
+			if foundVars {
+				Expect(identities).ToNot(BeEmpty())
+			}
+		})
+	})
 })

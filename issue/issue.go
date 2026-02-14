@@ -202,8 +202,16 @@ func codeSnippetEndLine(node ast.Node, fobj *token.File) int64 {
 // New creates a new Issue
 func New(fobj *token.File, node ast.Node, ruleID, desc string, severity, confidence Score) *Issue {
 	name := fobj.Name()
-	line := GetLine(fobj, node)
-	col := strconv.Itoa(fobj.Position(node.Pos()).Column)
+	var line string
+	var col string
+
+	if node == nil {
+		line = "0"
+		col = "0"
+	} else {
+		line = GetLine(fobj, node)
+		col = strconv.Itoa(fobj.Position(node.Pos()).Column)
+	}
 
 	var code string
 	if node == nil {
