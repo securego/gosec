@@ -59,6 +59,10 @@ var _ = Describe("gosec analyzers", func() {
 			runner("G407", testutils.SampleCodeG407)
 		})
 
+		It("should detect SSH PublicKeyCallback stateful misuse", func() {
+			runner("G408", testutils.SampleCodeG408)
+		})
+
 		It("should detect out of bounds slice access", func() {
 			runner("G602", testutils.SampleCodeG602)
 		})

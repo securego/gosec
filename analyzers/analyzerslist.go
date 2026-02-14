@@ -116,6 +116,7 @@ var defaultAnalyzers = []AnalyzerDefinition{
 	{"G115", "Type conversion which leads to integer overflow", newConversionOverflowAnalyzer},
 	{"G602", "Possible slice bounds out of range", newSliceBoundsAnalyzer},
 	{"G407", "Use of hardcoded IV/nonce for encryption", newHardCodedNonce},
+	{"G408", "Stateful misuse of ssh.PublicKeyCallback leading to auth bypass", newSSHCallbackAnalyzer},
 	{"G701", "SQL injection via taint analysis", newSQLInjectionAnalyzer},
 	{"G702", "Command injection via taint analysis", newCommandInjectionAnalyzer},
 	{"G703", "Path traversal via taint analysis", newPathTraversalAnalyzer},
