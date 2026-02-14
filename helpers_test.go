@@ -842,8 +842,6 @@ func main() {
 		It("should return list of GOPATHs", func() {
 			paths := gosec.Gopath()
 			Expect(paths).ToNot(BeEmpty())
-			// Should return at least one path
-			Expect(len(paths)).To(BeNumerically(">=", 1))
 		})
 
 		It("should return absolute paths", func() {
