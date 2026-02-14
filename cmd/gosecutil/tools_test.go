@@ -131,7 +131,7 @@ func main() {}
 		os.Stdout = old
 
 		var buf bytes.Buffer
-		io.Copy(&buf, r)
+		_, _ = io.Copy(&buf, r)
 		output := buf.String()
 
 		// Should contain AST output
@@ -170,7 +170,7 @@ var _ = Describe("shouldSkip", func() {
 
 		w.Close()
 		os.Stderr = old
-		io.Copy(io.Discard, r)
+		_, _ = io.Copy(io.Discard, r)
 
 		Expect(result).To(BeFalse())
 	})
@@ -187,7 +187,7 @@ var _ = Describe("shouldSkip", func() {
 		os.Stderr = old
 
 		var buf bytes.Buffer
-		io.Copy(&buf, r)
+		_, _ = io.Copy(&buf, r)
 		output := buf.String()
 
 		Expect(result).To(BeTrue())
@@ -415,7 +415,7 @@ func main() {
 
 		ctx := createContext(commentFile.Name())
 		Expect(ctx).NotTo(BeNil())
-		Expect(len(ctx.comments)).To(BeNumerically(">", 0))
+		Expect(ctx.comments).ToNot(BeEmpty())
 	})
 })
 
@@ -975,7 +975,7 @@ var _ = Describe("Edge cases", func() {
 
 		// Create file with long name
 		longName := filepath.Join(tempDir, strings.Repeat("a", 100)+".go")
-		err = os.WriteFile(longName, []byte("package main\nfunc main() {}"), 0644)
+		err = os.WriteFile(longName, []byte("package main\nfunc main() {}"), 0600)
 		if err == nil {
 			defer os.Remove(longName)
 			// Should not panic

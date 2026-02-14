@@ -118,7 +118,7 @@ var _ = Describe("Text Writer", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			result := buf.String()
-			Expect(len(result)).To(BeNumerically(">", 0))
+			Expect(result).ToNot(BeEmpty())
 		})
 
 		It("should format code snippets correctly", func() {

@@ -208,7 +208,7 @@ func TestNewOpenAIClient_WithTokensAndTemperature(t *testing.T) {
 
 			wrapper := client.(*openaiWrapper)
 			assert.Equal(t, tt.expectedTokens, wrapper.maxTokens)
-			assert.Equal(t, tt.expectedTemp, wrapper.temperature)
+			assert.InEpsilon(t, tt.expectedTemp, wrapper.temperature, 0.001)
 		})
 	}
 }
@@ -261,7 +261,7 @@ func TestOpenAIWrapper_ClientProperties(t *testing.T) {
 	assert.NotNil(t, wrapper.client)
 	assert.Equal(t, openai.ChatModelGPT4o, wrapper.model)
 	assert.Equal(t, 2048, wrapper.maxTokens)
-	assert.Equal(t, 0.8, wrapper.temperature)
+	assert.InEpsilon(t, 0.8, wrapper.temperature, 0.001)
 }
 
 func TestOpenAIModel_Constants(t *testing.T) {
@@ -292,7 +292,7 @@ func TestNewOpenAIClient_CompleteConfig(t *testing.T) {
 	wrapper := client.(*openaiWrapper)
 	assert.Equal(t, openai.ChatModel("custom-model"), wrapper.model)
 	assert.Equal(t, 4096, wrapper.maxTokens)
-	assert.Equal(t, 0.9, wrapper.temperature)
+	assert.InEpsilon(t, 0.9, wrapper.temperature, 0.001)
 }
 
 func TestNewOpenAIClient_AllSupportedModels(t *testing.T) {

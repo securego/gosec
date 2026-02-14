@@ -13,8 +13,8 @@ func TestNewAnalyzerSet(t *testing.T) {
 	require.NotNil(t, set)
 	// Analyzers can be nil initially (nil slice is valid in Go)
 	assert.NotNil(t, set.AnalyzerSuppressedMap)
-	assert.Equal(t, 0, len(set.Analyzers))
-	assert.Equal(t, 0, len(set.AnalyzerSuppressedMap))
+	assert.Empty(t, set.Analyzers)
+	assert.Empty(t, set.AnalyzerSuppressedMap)
 }
 
 func TestAnalyzerSet_Register(t *testing.T) {
@@ -26,7 +26,7 @@ func TestAnalyzerSet_Register(t *testing.T) {
 
 	set.Register(analyzer, false)
 
-	assert.Equal(t, 1, len(set.Analyzers))
+	assert.Len(t, set.Analyzers, 1)
 	assert.Equal(t, analyzer, set.Analyzers[0])
 	assert.False(t, set.AnalyzerSuppressedMap["test-analyzer"])
 }
@@ -40,7 +40,7 @@ func TestAnalyzerSet_RegisterSuppressed(t *testing.T) {
 
 	set.Register(analyzer, true)
 
-	assert.Equal(t, 1, len(set.Analyzers))
+	assert.Len(t, set.Analyzers, 1)
 	assert.True(t, set.AnalyzerSuppressedMap["suppressed-analyzer"])
 }
 
@@ -55,7 +55,7 @@ func TestAnalyzerSet_RegisterMultiple(t *testing.T) {
 	set.Register(analyzer2, true)
 	set.Register(analyzer3, false)
 
-	assert.Equal(t, 3, len(set.Analyzers))
+	assert.Len(t, set.Analyzers, 3)
 	assert.False(t, set.AnalyzerSuppressedMap["analyzer1"])
 	assert.True(t, set.AnalyzerSuppressedMap["analyzer2"])
 	assert.False(t, set.AnalyzerSuppressedMap["analyzer3"])
@@ -92,7 +92,7 @@ func TestAnalyzerSet_PreservesOrder(t *testing.T) {
 	set.Register(analyzer2, false)
 	set.Register(analyzer3, false)
 
-	require.Equal(t, 3, len(set.Analyzers))
+	require.Len(t, set.Analyzers, 3)
 	assert.Equal(t, "first", set.Analyzers[0].Name)
 	assert.Equal(t, "second", set.Analyzers[1].Name)
 	assert.Equal(t, "third", set.Analyzers[2].Name)
@@ -102,7 +102,7 @@ func TestAnalyzerSet_EmptySet(t *testing.T) {
 	set := NewAnalyzerSet()
 
 	// Empty set should have no analyzers
-	assert.Equal(t, 0, len(set.Analyzers))
+	assert.Empty(t, set.Analyzers)
 	assert.False(t, set.IsSuppressed("anything"))
 }
 

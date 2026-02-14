@@ -189,9 +189,9 @@ func TestGeminiWrapper_ClientProperties(t *testing.T) {
 
 func TestGeminiModel_Constants(t *testing.T) {
 	// Verify model constants are properly defined
-	assert.Equal(t, GenAIModel("gemini-2.5-pro"), ModelGeminiPro2_5)
-	assert.Equal(t, GenAIModel("gemini-2.5-flash"), ModelGeminiFlash2_5)
-	assert.Equal(t, GenAIModel("gemini-2.5-flash-lite"), ModelGeminiFlash2_5Lite)
+	assert.Equal(t, ModelGeminiPro2_5, GenAIModel("gemini-2.5-pro"))
+	assert.Equal(t, ModelGeminiFlash2_5, GenAIModel("gemini-2.5-flash"))
+	assert.Equal(t, ModelGeminiFlash2_5Lite, GenAIModel("gemini-2.5-flash-lite"))
 	assert.Equal(t, GenAIModel("gemini-2.0-flash"), ModelGeminiFlash2_0)
 	assert.Equal(t, GenAIModel("gemini-2.0-flash-lite"), ModelGeminiFlash2_0Lite)
 	assert.Equal(t, GenAIModel("gemini-1.5-flash"), ModelGeminiFlash1_5)

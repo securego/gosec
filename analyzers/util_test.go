@@ -241,10 +241,10 @@ var _ = Describe("BaseAnalyzerState", func() {
 
 		state.Reset()
 
-		Expect(len(state.Visited)).To(Equal(0))
-		Expect(len(state.FuncMap)).To(Equal(0))
-		Expect(len(state.BlockMap)).To(Equal(0))
-		Expect(len(state.ClosureCache)).To(Equal(0))
+		Expect(state.Visited).To(BeEmpty())
+		Expect(state.FuncMap).To(BeEmpty())
+		Expect(state.BlockMap).To(BeEmpty())
+		Expect(state.ClosureCache).To(BeEmpty())
 		Expect(state.Depth).To(Equal(0))
 	})
 
@@ -265,7 +265,7 @@ var _ = Describe("BaseAnalyzerState", func() {
 
 		state.ResolveFuncs(nil, &funcs)
 
-		Expect(len(funcs)).To(Equal(0))
+		Expect(funcs).To(BeEmpty())
 	})
 
 	It("should handle ResolveFuncs with max depth", func() {
@@ -276,25 +276,25 @@ var _ = Describe("BaseAnalyzerState", func() {
 
 		state.ResolveFuncs(fn, &funcs)
 
-		Expect(len(funcs)).To(Equal(0))
+		Expect(funcs).To(BeEmpty())
 	})
 })
 
 var _ = Describe("Slice utility functions", func() {
 	Describe("ComputeSliceNewCap", func() {
 		It("should return maxIdx - l when maxIdx > 0", func() {
-			cap := ComputeSliceNewCap(2, 5, 10, 20)
-			Expect(cap).To(Equal(8)) // 10 - 2
+			newCap := ComputeSliceNewCap(2, 5, 10, 20)
+			Expect(newCap).To(Equal(8)) // 10 - 2
 		})
 
 		It("should return oldCap when l=0 and h=0", func() {
-			cap := ComputeSliceNewCap(0, 0, 0, 20)
-			Expect(cap).To(Equal(20))
+			newCap := ComputeSliceNewCap(0, 0, 0, 20)
+			Expect(newCap).To(Equal(20))
 		})
 
 		It("should return oldCap - l when l > 0 and h=0", func() {
-			cap := ComputeSliceNewCap(5, 0, 0, 20)
-			Expect(cap).To(Equal(15)) // 20 - 5
+			newCap := ComputeSliceNewCap(5, 0, 0, 20)
+			Expect(newCap).To(Equal(15)) // 20 - 5
 		})
 
 		It("should return h when l=0 and h > 0", func() {
@@ -545,14 +545,14 @@ var _ = Describe("Utility helper functions", func() {
 			typ := types.Typ[types.Uint]
 			basic, ok := typ.Underlying().(*types.Basic)
 			Expect(ok).To(BeTrue())
-			Expect(basic.Info()&types.IsUnsigned != 0).To(BeTrue())
+			Expect(basic.Info() & types.IsUnsigned).ToNot(BeZero())
 		})
 
 		It("should return false for int basic type", func() {
 			typ := types.Typ[types.Int]
 			basic, ok := typ.Underlying().(*types.Basic)
 			Expect(ok).To(BeTrue())
-			Expect(basic.Info()&types.IsUnsigned != 0).To(BeFalse())
+			Expect(basic.Info() & types.IsUnsigned).To(BeZero())
 		})
 	})
 

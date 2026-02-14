@@ -179,7 +179,7 @@ var _ = Describe("loadRules", func() {
 	It("should load default rules when no filters specified", func() {
 		rules := loadRules("", "")
 		Expect(rules).NotTo(BeNil())
-		Expect(len(rules.Rules)).To(BeNumerically(">", 0))
+		Expect(rules.Rules).ToNot(BeEmpty())
 	})
 
 	It("should load only included rules", func() {
