@@ -2,6 +2,7 @@ package gosec_test
 
 import (
 	"go/ast"
+	"go/token"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -399,6 +400,390 @@ var _ = Describe("Helpers", func() {
 
 			result := gosec.FindModuleRoot(nestedPkg)
 			Expect(result).To(Equal(nestedMod))
+		})
+	})
+
+	Context("when getting integer values", func() {
+		It("should extract integer from BasicLit", func() {
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("main.go", `
+			package main
+			func main() {
+				x := 42
+				_ = x
+			}
+			`)
+			ctx := pkg.CreateContext("main.go")
+			var intVal int64
+			visitor := testutils.NewMockVisitor()
+			visitor.Context = ctx
+			visitor.Callback = func(n ast.Node, ctx *gosec.Context) bool {
+				if lit, ok := n.(*ast.BasicLit); ok && lit.Kind == token.INT {
+					val, err := gosec.GetInt(lit)
+					if err == nil {
+						intVal = val
+					}
+				}
+				return true
+			}
+			ast.Walk(visitor, ctx.Root)
+			Expect(intVal).To(Equal(int64(42)))
+		})
+
+		It("should return error for non-integer node", func() {
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("main.go", `
+			package main
+			func main() {
+				x := "not a number"
+				_ = x
+			}
+			`)
+			ctx := pkg.CreateContext("main.go")
+			foundError := false
+			visitor := testutils.NewMockVisitor()
+			visitor.Context = ctx
+			visitor.Callback = func(n ast.Node, ctx *gosec.Context) bool {
+				if lit, ok := n.(*ast.BasicLit); ok && lit.Kind == token.STRING {
+					_, err := gosec.GetInt(lit)
+					if err != nil {
+						foundError = true
+					}
+				}
+				return true
+			}
+			ast.Walk(visitor, ctx.Root)
+			Expect(foundError).To(BeTrue())
+		})
+	})
+
+	Context("when getting float values", func() {
+		It("should extract float from BasicLit", func() {
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("main.go", `
+			package main
+			func main() {
+				x := 3.14
+				_ = x
+			}
+			`)
+			ctx := pkg.CreateContext("main.go")
+			var floatVal float64
+			visitor := testutils.NewMockVisitor()
+			visitor.Context = ctx
+			visitor.Callback = func(n ast.Node, ctx *gosec.Context) bool {
+				if lit, ok := n.(*ast.BasicLit); ok && lit.Kind == token.FLOAT {
+					val, err := gosec.GetFloat(lit)
+					if err == nil {
+						floatVal = val
+					}
+				}
+				return true
+			}
+			ast.Walk(visitor, ctx.Root)
+			Expect(floatVal).To(Equal(3.14))
+		})
+
+		It("should return error for non-float node", func() {
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("main.go", `
+			package main
+			func main() {
+				x := 42
+				_ = x
+			}
+			`)
+			ctx := pkg.CreateContext("main.go")
+			foundError := false
+			visitor := testutils.NewMockVisitor()
+			visitor.Context = ctx
+			visitor.Callback = func(n ast.Node, ctx *gosec.Context) bool {
+				if lit, ok := n.(*ast.BasicLit); ok && lit.Kind == token.INT {
+					_, err := gosec.GetFloat(lit)
+					if err != nil {
+						foundError = true
+					}
+				}
+				return true
+			}
+			ast.Walk(visitor, ctx.Root)
+			Expect(foundError).To(BeTrue())
+		})
+	})
+
+	Context("when getting char values", func() {
+		It("should extract char from BasicLit", func() {
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("main.go", `
+			package main
+			func main() {
+				x := 'A'
+				_ = x
+			}
+			`)
+			ctx := pkg.CreateContext("main.go")
+			var charVal byte
+			visitor := testutils.NewMockVisitor()
+			visitor.Context = ctx
+			visitor.Callback = func(n ast.Node, ctx *gosec.Context) bool {
+				if lit, ok := n.(*ast.BasicLit); ok && lit.Kind == token.CHAR {
+					val, err := gosec.GetChar(lit)
+					if err == nil {
+						charVal = val
+					}
+				}
+				return true
+			}
+			ast.Walk(visitor, ctx.Root)
+			Expect(charVal).To(Equal(byte('\'')))
+		})
+
+		It("should return error for non-char node", func() {
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("main.go", `
+			package main
+			func main() {
+				x := 42
+				_ = x
+			}
+			`)
+			ctx := pkg.CreateContext("main.go")
+			foundError := false
+			visitor := testutils.NewMockVisitor()
+			visitor.Context = ctx
+			visitor.Callback = func(n ast.Node, ctx *gosec.Context) bool {
+				if lit, ok := n.(*ast.BasicLit); ok && lit.Kind == token.INT {
+					_, err := gosec.GetChar(lit)
+					if err != nil {
+						foundError = true
+					}
+				}
+				return true
+			}
+			ast.Walk(visitor, ctx.Root)
+			Expect(foundError).To(BeTrue())
+		})
+	})
+
+	Context("when getting string recursively", func() {
+		It("should extract concatenated strings from binary expression", func() {
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("main.go", `
+			package main
+			func main() {
+				x := "Hello, " + "World!"
+				_ = x
+			}
+			`)
+			ctx := pkg.CreateContext("main.go")
+			var result string
+			visitor := testutils.NewMockVisitor()
+			visitor.Context = ctx
+			visitor.Callback = func(n ast.Node, ctx *gosec.Context) bool {
+				if binExpr, ok := n.(*ast.BinaryExpr); ok {
+					val, err := gosec.GetStringRecursive(binExpr)
+					if err == nil && val != "" {
+						result = val
+					}
+				}
+				return true
+			}
+			ast.Walk(visitor, ctx.Root)
+			Expect(result).To(Equal("Hello, World!"))
+		})
+
+		It("should extract string from basic literal", func() {
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("main.go", `
+			package main
+			func main() {
+				x := "single string"
+				_ = x
+			}
+			`)
+			ctx := pkg.CreateContext("main.go")
+			var result string
+			visitor := testutils.NewMockVisitor()
+			visitor.Context = ctx
+			visitor.Callback = func(n ast.Node, ctx *gosec.Context) bool {
+				if lit, ok := n.(*ast.BasicLit); ok && lit.Kind == token.STRING {
+					val, err := gosec.GetStringRecursive(lit)
+					if err == nil {
+						result = val
+					}
+				}
+				return true
+			}
+			ast.Walk(visitor, ctx.Root)
+			Expect(result).To(Equal("single string"))
+		})
+
+		It("should return empty string for non-string node", func() {
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("main.go", `
+			package main
+			func main() {
+				x := 42 + 10
+				_ = x
+			}
+			`)
+			ctx := pkg.CreateContext("main.go")
+			foundEmpty := false
+			visitor := testutils.NewMockVisitor()
+			visitor.Context = ctx
+			visitor.Callback = func(n ast.Node, ctx *gosec.Context) bool {
+				if binExpr, ok := n.(*ast.BinaryExpr); ok {
+					if lit, ok := binExpr.X.(*ast.BasicLit); ok && lit.Kind == token.INT {
+						val, err := gosec.GetStringRecursive(binExpr)
+						if err == nil && val == "" {
+							foundEmpty = true
+						}
+					}
+				}
+				return true
+			}
+			ast.Walk(visitor, ctx.Root)
+			Expect(foundEmpty).To(BeTrue())
+		})
+	})
+
+	Context("when matching composite literals", func() {
+		It("should match composite literal by type", func() {
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("main.go", `
+			package main
+			import "net/http"
+			func main() {
+				_ = http.Client{}
+			}
+			`)
+			ctx := pkg.CreateContext("main.go")
+			var matched bool
+			visitor := testutils.NewMockVisitor()
+			visitor.Context = ctx
+			visitor.Callback = func(n ast.Node, ctx *gosec.Context) bool {
+				result := gosec.MatchCompLit(n, ctx, "net/http.Client")
+				if result != nil {
+					matched = true
+				}
+				return true
+			}
+			ast.Walk(visitor, ctx.Root)
+			Expect(matched).To(BeTrue())
+		})
+
+		It("should return nil for non-matching type", func() {
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("main.go", `
+			package main
+			import "net/http"
+			func main() {
+				_ = http.Client{}
+			}
+			`)
+			ctx := pkg.CreateContext("main.go")
+			matched := false
+			visitor := testutils.NewMockVisitor()
+			visitor.Context = ctx
+			visitor.Callback = func(n ast.Node, ctx *gosec.Context) bool {
+				result := gosec.MatchCompLit(n, ctx, "net/http.Server")
+				if result != nil {
+					matched = true
+				}
+				return true
+			}
+			ast.Walk(visitor, ctx.Root)
+			Expect(matched).To(BeFalse())
+		})
+	})
+
+	Context("when getting call objects", func() {
+		It("should get call object for identifier", func() {
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("main.go", `
+			package main
+			func test() {}
+			func main() {
+				test()
+			}
+			`)
+			ctx := pkg.CreateContext("main.go")
+			var foundObj bool
+			visitor := testutils.NewMockVisitor()
+			visitor.Context = ctx
+			visitor.Callback = func(n ast.Node, ctx *gosec.Context) bool {
+				callExpr, obj := gosec.GetCallObject(n, ctx)
+				if callExpr != nil && obj != nil {
+					foundObj = true
+				}
+				return true
+			}
+			ast.Walk(visitor, ctx.Root)
+			Expect(foundObj).To(BeTrue())
+		})
+
+		It("should get call object for selector expression", func() {
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("main.go", `
+			package main
+			import "fmt"
+			func main() {
+				fmt.Println("test")
+			}
+			`)
+			ctx := pkg.CreateContext("main.go")
+			var foundObj bool
+			visitor := testutils.NewMockVisitor()
+			visitor.Context = ctx
+			visitor.Callback = func(n ast.Node, ctx *gosec.Context) bool {
+				callExpr, obj := gosec.GetCallObject(n, ctx)
+				if callExpr != nil && obj != nil {
+					foundObj = true
+				}
+				return true
+			}
+			ast.Walk(visitor, ctx.Root)
+			Expect(foundObj).To(BeTrue())
+		})
+
+		It("should return nil for non-call expression", func() {
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("main.go", `
+			package main
+			func main() {
+				x := 42
+				_ = x
+			}
+			`)
+			ctx := pkg.CreateContext("main.go")
+			foundNil := false
+			visitor := testutils.NewMockVisitor()
+			visitor.Context = ctx
+			visitor.Callback = func(n ast.Node, ctx *gosec.Context) bool {
+				if _, ok := n.(*ast.BasicLit); ok {
+					callExpr, obj := gosec.GetCallObject(n, ctx)
+					if callExpr == nil && obj == nil {
+						foundNil = true
+					}
+				}
+				return true
+			}
+			ast.Walk(visitor, ctx.Root)
+			Expect(foundNil).To(BeTrue())
 		})
 	})
 })
