@@ -280,7 +280,7 @@ func main() {
 
 		var bufErr bytes.Buffer
 		_, _ = io.Copy(&bufErr, rErr)
-		io.Copy(io.Discard, rOut)
+		_, _ = io.Copy(io.Discard, rOut)
 
 		Expect(bufErr.String()).To(ContainSubstring("Skipping"))
 	})
@@ -304,7 +304,7 @@ func main() {
 		os.Stderr = old
 
 		var buf bytes.Buffer
-		io.Copy(&buf, r)
+		_, _ = io.Copy(&buf, r)
 		output := buf.String()
 
 		Expect(output).To(ContainSubstring("Unable to parse"))
@@ -369,7 +369,7 @@ func main() {
 
 		w.Close()
 		os.Stderr = old
-		io.Copy(io.Discard, r)
+		_, _ = io.Copy(io.Discard, r)
 
 		Expect(ctx).To(BeNil())
 	})
@@ -975,6 +975,7 @@ var _ = Describe("Edge cases", func() {
 
 		// Create file with long name
 		longName := filepath.Join(tempDir, strings.Repeat("a", 100)+".go")
+
 		err = os.WriteFile(longName, []byte("package main\nfunc main() {}"), 0600)
 		if err == nil {
 			defer os.Remove(longName)
