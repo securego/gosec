@@ -113,6 +113,7 @@ func NewAnalyzerFilter(action bool, analyzerIDs ...string) AnalyzerFilter {
 }
 
 var defaultAnalyzers = []AnalyzerDefinition{
+	{"G118", "Context propagation failure leading to goroutine/resource leaks", newContextPropagationAnalyzer},
 	{"G113", "HTTP request smuggling via conflicting headers or bare LF in body parsing", newRequestSmugglingAnalyzer},
 	{"G115", "Type conversion which leads to integer overflow", newConversionOverflowAnalyzer},
 	{"G602", "Possible slice bounds out of range", newSliceBoundsAnalyzer},
