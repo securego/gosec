@@ -191,6 +191,7 @@ directory you can supply `./...` as the input argument.
 - G110: Potential DoS vulnerability via decompression bomb
 - G111: Potential directory traversal
 - G112: Potential slowloris attack
+- G113: HTTP request smuggling via conflicting headers or bare LF in body parsing
 - G114: Use of net/http serve function that has no support for setting timeouts
 - G115: Potential integer overflow when converting between integer types
 - G116: Detect Trojan Source attacks using bidirectional Unicode control characters

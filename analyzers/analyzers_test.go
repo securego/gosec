@@ -51,6 +51,10 @@ var _ = Describe("gosec analyzers", func() {
 	})
 
 	Context("report correct errors for all samples", func() {
+		It("should detect HTTP request smuggling", func() {
+			runner("G113", testutils.SampleCodeG113)
+		})
+
 		It("should detect integer conversion overflow", func() {
 			runner("G115", testutils.SampleCodeG115)
 		})
