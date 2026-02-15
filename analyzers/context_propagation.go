@@ -674,21 +674,67 @@ func isCancelFuncType(t types.Type) bool {
 }
 
 func isCancelCalled(cancelValue ssa.Value) bool {
-	for _, ref := range safeReferrers(cancelValue) {
-		switch r := ref.(type) {
-		case ssa.CallInstruction:
-			common := r.Common()
-			if common == nil {
-				continue
-			}
-			if common.Value == cancelValue {
-				return true
-			}
-			for _, arg := range common.Args {
-				if arg == cancelValue {
+	if cancelValue == nil {
+		return false
+	}
+
+	queue := []ssa.Value{cancelValue}
+	visited := make(map[ssa.Value]bool, 8)
+
+	for len(queue) > 0 {
+		current := queue[0]
+		queue = queue[1:]
+		if current == nil || visited[current] {
+			continue
+		}
+		visited[current] = true
+
+		for _, ref := range safeReferrers(current) {
+			switch r := ref.(type) {
+			case ssa.CallInstruction:
+				if isUsedInCall(r.Common(), current) {
 					return true
 				}
+			case *ssa.Store:
+				if r.Val != current {
+					continue
+				}
+				queue = append(queue, r.Addr)
+			case *ssa.UnOp:
+				if r.Op == token.MUL && r.X == current {
+					queue = append(queue, r)
+				}
+			case *ssa.Phi:
+				queue = append(queue, r)
+			case *ssa.ChangeType:
+				if r.X == current {
+					queue = append(queue, r)
+				}
+			case *ssa.Convert:
+				if r.X == current {
+					queue = append(queue, r)
+				}
+			case *ssa.MakeInterface:
+				if r.X == current {
+					queue = append(queue, r)
+				}
 			}
+		}
+	}
+
+	return false
+}
+
+func isUsedInCall(common *ssa.CallCommon, target ssa.Value) bool {
+	if common == nil || target == nil {
+		return false
+	}
+	if common.Value == target {
+		return true
+	}
+	for _, arg := range common.Args {
+		if arg == target {
+			return true
 		}
 	}
 	return false

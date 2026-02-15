@@ -117,6 +117,20 @@ func work(ctx context.Context) {
 }
 `}, 0, gosec.NewConfig()},
 
+	// Safe: cancel is forwarded then deferred (regression for SSA store/load flow)
+	{[]string{`
+package main
+
+import "context"
+
+func forwarded(ctx context.Context) {
+	child, cancel := context.WithCancel(ctx)
+	_ = child
+	cancelCopy := cancel
+	defer cancelCopy()
+}
+`}, 0, gosec.NewConfig()},
+
 	// Safe: loop has explicit ctx.Done guard
 	{[]string{`
 package main
