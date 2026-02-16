@@ -28,9 +28,8 @@ import (
 )
 
 const (
-	//nolint:gosec // Message strings reference AddInsecureBypassPattern API name and trigger a false-positive hardcoded-credential check.
-	msgOverbroadBypassPattern = "Overbroad AddInsecureBypassPattern disables cross-origin protections for too many paths"
-	msgRequestBypassPattern   = "AddInsecureBypassPattern argument derived from request data can allow bypass of cross-origin protections"
+	msgOverbroadBypassPattern = "Overbroad AddInsecureBypassPattern disables cross-origin protections for too many paths"                  // #nosec G101 -- Message string includes API name, not credentials.
+	msgRequestBypassPattern   = "AddInsecureBypassPattern argument derived from request data can allow bypass of cross-origin protections" // #nosec G101 -- Message string includes API name, not credentials.
 )
 
 func newCORSBypassPatternAnalyzer(id string, description string) *analysis.Analyzer {
