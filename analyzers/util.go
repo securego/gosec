@@ -643,6 +643,11 @@ func isSameOrRelated(a, b ssa.Value) bool {
 			return aField.Field == bField.Field && isSameOrRelated(aField.X, bField.X)
 		}
 	}
+	if aIndex, ok := aVal.(*ssa.IndexAddr); ok {
+		if bIndex, ok := bVal.(*ssa.IndexAddr); ok {
+			return isSameOrRelated(aIndex.X, bIndex.X) && isSameOrRelated(aIndex.Index, bIndex.Index)
+		}
+	}
 	if aUnOp, ok := aVal.(*ssa.UnOp); ok {
 		if aUnOp.Op == token.MUL {
 			if bUnOp, ok := bVal.(*ssa.UnOp); ok && bUnOp.Op == token.MUL {
