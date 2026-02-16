@@ -71,6 +71,10 @@ var _ = Describe("gosec analyzers", func() {
 			runner("G120", testutils.SampleCodeG120)
 		})
 
+		It("should detect unsafe CORS bypass patterns", func() {
+			runner("G121", testutils.SampleCodeG121)
+		})
+
 		It("should detect hardcoded nonce/IV", func() {
 			runner("G407", testutils.SampleCodeG407)
 		})
