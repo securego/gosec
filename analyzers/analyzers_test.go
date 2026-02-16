@@ -51,16 +51,20 @@ var _ = Describe("gosec analyzers", func() {
 	})
 
 	Context("report correct errors for all samples", func() {
-		It("should detect context propagation failures", func() {
-			runner("G118", testutils.SampleCodeG118)
-		})
-
 		It("should detect HTTP request smuggling", func() {
 			runner("G113", testutils.SampleCodeG113)
 		})
 
 		It("should detect integer conversion overflow", func() {
 			runner("G115", testutils.SampleCodeG115)
+		})
+
+		It("should detect context propagation failures", func() {
+			runner("G118", testutils.SampleCodeG118)
+		})
+
+		It("should detect unsafe redirect header propagation", func() {
+			runner("G119", testutils.SampleCodeG119)
 		})
 
 		It("should detect hardcoded nonce/IV", func() {

@@ -113,9 +113,10 @@ func NewAnalyzerFilter(action bool, analyzerIDs ...string) AnalyzerFilter {
 }
 
 var defaultAnalyzers = []AnalyzerDefinition{
-	{"G118", "Context propagation failure leading to goroutine/resource leaks", newContextPropagationAnalyzer},
 	{"G113", "HTTP request smuggling via conflicting headers or bare LF in body parsing", newRequestSmugglingAnalyzer},
 	{"G115", "Type conversion which leads to integer overflow", newConversionOverflowAnalyzer},
+	{"G118", "Context propagation failure leading to goroutine/resource leaks", newContextPropagationAnalyzer},
+	{"G119", "Unsafe redirect policy may propagate sensitive headers", newRedirectHeaderPropagationAnalyzer},
 	{"G602", "Possible slice bounds out of range", newSliceBoundsAnalyzer},
 	{"G407", "Use of hardcoded IV/nonce for encryption", newHardCodedNonce},
 	{"G408", "Stateful misuse of ssh.PublicKeyCallback leading to auth bypass", newSSHCallbackAnalyzer},
