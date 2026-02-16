@@ -67,6 +67,10 @@ var _ = Describe("gosec analyzers", func() {
 			runner("G119", testutils.SampleCodeG119)
 		})
 
+		It("should detect unbounded form parsing", func() {
+			runner("G120", testutils.SampleCodeG120)
+		})
+
 		It("should detect hardcoded nonce/IV", func() {
 			runner("G407", testutils.SampleCodeG407)
 		})

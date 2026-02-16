@@ -117,6 +117,7 @@ var defaultAnalyzers = []AnalyzerDefinition{
 	{"G115", "Type conversion which leads to integer overflow", newConversionOverflowAnalyzer},
 	{"G118", "Context propagation failure leading to goroutine/resource leaks", newContextPropagationAnalyzer},
 	{"G119", "Unsafe redirect policy may propagate sensitive headers", newRedirectHeaderPropagationAnalyzer},
+	{"G120", "Unbounded form parsing in HTTP handlers can cause memory exhaustion", newFormParsingLimitAnalyzer},
 	{"G602", "Possible slice bounds out of range", newSliceBoundsAnalyzer},
 	{"G407", "Use of hardcoded IV/nonce for encryption", newHardCodedNonce},
 	{"G408", "Stateful misuse of ssh.PublicKeyCallback leading to auth bypass", newSSHCallbackAnalyzer},
