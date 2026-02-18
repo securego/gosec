@@ -74,7 +74,7 @@ func (u *utilities) run(args ...string) {
 }
 
 func shouldSkip(path string) bool {
-	st, e := os.Stat(path)
+	st, e := os.Stat(path) // #nosec G703 -- gosecutil intentionally inspects user-supplied local file paths
 	if e != nil {
 		//#nosec
 		fmt.Fprintf(os.Stderr, "Skipping: %s - %s\n", path, e)
