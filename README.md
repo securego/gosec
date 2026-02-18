@@ -195,7 +195,7 @@ directory you can supply `./...` as the input argument.
 - G114: Use of net/http serve function that has no support for setting timeouts
 - G115: Potential integer overflow when converting between integer types
 - G116: Detect Trojan Source attacks using bidirectional Unicode control characters
-- G117: Potential exposure of secrets via JSON marshaling
+- G117: Potential exposure of secrets in values marshaled by encoding/json
 - G118: Context propagation failure leading to goroutine/resource leaks
 - G119: Unsafe redirect policy may propagate sensitive headers
 - G120: Unbounded form parsing in HTTP handlers can cause memory exhaustion
