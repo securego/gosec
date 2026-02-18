@@ -77,7 +77,7 @@ func Generate(trackSuppressions bool, filters ...RuleFilter) RuleList {
 		{"G112", "Detect ReadHeaderTimeout not configured as a potential risk", NewSlowloris},
 		{"G114", "Use of net/http serve function that has no support for setting timeouts", NewHTTPServeWithoutTimeouts},
 		{"G116", "Detect Trojan Source attacks using bidirectional Unicode characters", NewTrojanSource},
-		{"G117", "Potential exposure of secrets via JSON marshaling", NewSecretSerialization},
+		{"G117", "Potential exposure of secrets via JSON/YAML/XML/TOML marshaling", NewSecretSerialization},
 
 		// injection
 		{"G201", "SQL query construction using format string", NewSQLStrFormat},

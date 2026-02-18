@@ -237,6 +237,52 @@ func main() {
 }
 `}, 1, gosec.NewConfig()},
 
+	// Positive: YAML marshal on sensitive field
+	{[]string{`
+package main
+
+import "go.yaml.in/yaml/v3"
+
+type Config struct {
+	Password string ` + "`yaml:\"password\"`" + `
+}
+
+func main() {
+	_, _ = yaml.Marshal(Config{})
+}
+`}, 1, gosec.NewConfig()},
+
+	// Positive: XML marshal on sensitive tag key
+	{[]string{`
+package main
+
+import "encoding/xml"
+
+type Config struct {
+	SafeField string ` + "`xml:\"api_key\"`" + `
+}
+
+func main() {
+	_, _ = xml.Marshal(Config{})
+}
+`}, 1, gosec.NewConfig()},
+
+	// Positive: TOML Encoder.Encode on sensitive field
+	{[]string{`
+package main
+
+import "github.com/BurntSushi/toml"
+import "os"
+
+type Config struct {
+	Password string ` + "`toml:\"password\"`" + `
+}
+
+func main() {
+	_ = toml.NewEncoder(os.Stdout).Encode(Config{})
+}
+`}, 1, gosec.NewConfig()},
+
 	// Negative: sensitive field is never marshaled to JSON
 	{[]string{`
 package main
@@ -290,6 +336,52 @@ type Config struct {
 
 func main() {
 	_, _ = json.Marshal(Config{})
+}
+`}, 0, gosec.NewConfig()},
+
+	// Negative: yaml:"-" (omitted)
+	{[]string{`
+package main
+
+import "go.yaml.in/yaml/v3"
+
+type Config struct {
+	Password string ` + "`yaml:\"-\"`" + `
+}
+
+func main() {
+	_, _ = yaml.Marshal(Config{})
+}
+`}, 0, gosec.NewConfig()},
+
+	// Negative: xml:"-" (omitted)
+	{[]string{`
+package main
+
+import "encoding/xml"
+
+type Config struct {
+	Password string ` + "`xml:\"-\"`" + `
+}
+
+func main() {
+	_, _ = xml.Marshal(Config{})
+}
+`}, 0, gosec.NewConfig()},
+
+	// Negative: toml:"-" (omitted)
+	{[]string{`
+package main
+
+import "github.com/BurntSushi/toml"
+import "os"
+
+type Config struct {
+	Password string ` + "`toml:\"-\"`" + `
+}
+
+func main() {
+	_ = toml.NewEncoder(os.Stdout).Encode(Config{})
 }
 `}, 0, gosec.NewConfig()},
 
@@ -487,6 +579,52 @@ type Config struct {
 
 func main() {
 	_ = json.NewEncoder(os.Stdout).Encode(Config{}) // #nosec G117
+}
+`}, 0, gosec.NewConfig()},
+
+	// Suppression: YAML marshal call line
+	{[]string{`
+package main
+
+import "go.yaml.in/yaml/v3"
+
+type Config struct {
+	Password string
+}
+
+func main() {
+	_, _ = yaml.Marshal(Config{}) // #nosec G117
+}
+`}, 0, gosec.NewConfig()},
+
+	// Suppression: XML marshal call line
+	{[]string{`
+package main
+
+import "encoding/xml"
+
+type Config struct {
+	Password string
+}
+
+func main() {
+	_, _ = xml.Marshal(Config{}) // #nosec G117
+}
+`}, 0, gosec.NewConfig()},
+
+	// Suppression: TOML Encode call line
+	{[]string{`
+package main
+
+import "github.com/BurntSushi/toml"
+import "os"
+
+type Config struct {
+	Password string
+}
+
+func main() {
+	_ = toml.NewEncoder(os.Stdout).Encode(Config{}) // #nosec G117
 }
 `}, 0, gosec.NewConfig()},
 

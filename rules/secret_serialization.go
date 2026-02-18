@@ -6,6 +6,7 @@ import (
 	"go/types"
 	"reflect"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -19,10 +20,84 @@ type secretSerialization struct {
 	cache   sync.Map
 }
 
+type formatSpec struct {
+	name          string
+	tagKey        string
+	functionSinks []functionSink
+	methodSinks   []methodSink
+}
+
+type functionSink struct {
+	pkgPath string
+	names   []string
+}
+
+type methodSink struct {
+	pkgPath  string
+	typeName string
+	method   string
+}
+
+type typeAnalysisCacheKey struct {
+	typ    types.Type
+	tagKey string
+}
+
 type sensitiveFieldMatch struct {
 	fieldName string
 	jsonKey   string
 	found     bool
+}
+
+var g117Formats = []formatSpec{
+	{
+		name:   "json",
+		tagKey: "json",
+		functionSinks: []functionSink{
+			{pkgPath: "encoding/json", names: []string{"Marshal", "MarshalIndent"}},
+		},
+		methodSinks: []methodSink{
+			{pkgPath: "encoding/json", typeName: "Encoder", method: "Encode"},
+		},
+	},
+	{
+		name:   "yaml",
+		tagKey: "yaml",
+		functionSinks: []functionSink{
+			{pkgPath: "go.yaml.in/yaml/v3", names: []string{"Marshal"}},
+			{pkgPath: "gopkg.in/yaml.v3", names: []string{"Marshal"}},
+			{pkgPath: "gopkg.in/yaml.v2", names: []string{"Marshal"}},
+			{pkgPath: "sigs.k8s.io/yaml", names: []string{"Marshal"}},
+		},
+		methodSinks: []methodSink{
+			{pkgPath: "go.yaml.in/yaml/v3", typeName: "Encoder", method: "Encode"},
+			{pkgPath: "gopkg.in/yaml.v3", typeName: "Encoder", method: "Encode"},
+			{pkgPath: "gopkg.in/yaml.v2", typeName: "Encoder", method: "Encode"},
+		},
+	},
+	{
+		name:   "xml",
+		tagKey: "xml",
+		functionSinks: []functionSink{
+			{pkgPath: "encoding/xml", names: []string{"Marshal", "MarshalIndent"}},
+		},
+		methodSinks: []methodSink{
+			{pkgPath: "encoding/xml", typeName: "Encoder", method: "Encode"},
+		},
+	},
+	{
+		name:   "toml",
+		tagKey: "toml",
+		functionSinks: []functionSink{
+			{pkgPath: "github.com/pelletier/go-toml", names: []string{"Marshal"}},
+			{pkgPath: "github.com/pelletier/go-toml/v2", names: []string{"Marshal"}},
+		},
+		methodSinks: []methodSink{
+			{pkgPath: "github.com/pelletier/go-toml", typeName: "Encoder", method: "Encode"},
+			{pkgPath: "github.com/pelletier/go-toml/v2", typeName: "Encoder", method: "Encode"},
+			{pkgPath: "github.com/BurntSushi/toml", typeName: "Encoder", method: "Encode"},
+		},
+	},
 }
 
 func (r *secretSerialization) Match(n ast.Node, ctx *gosec.Context) (*issue.Issue, error) {
@@ -31,17 +106,17 @@ func (r *secretSerialization) Match(n ast.Node, ctx *gosec.Context) (*issue.Issu
 		return nil, nil
 	}
 
-	jsonArg := r.findJSONMarshalArgument(callExpr, ctx)
-	if jsonArg == nil || ctx.Info == nil {
+	serializedArg, format, ok := r.findSerializedArgument(callExpr, ctx)
+	if !ok || serializedArg == nil || ctx.Info == nil {
 		return nil, nil
 	}
 
-	typ := ctx.Info.TypeOf(jsonArg)
+	typ := ctx.Info.TypeOf(serializedArg)
 	if typ == nil {
 		return nil, nil
 	}
 
-	if match := r.findSensitiveFieldForType(typ); match.found {
+	if match := r.findSensitiveFieldForType(typ, format.tagKey); match.found {
 		msg := fmt.Sprintf("Marshaled struct field %q (JSON key %q) matches secret pattern", match.fieldName, match.jsonKey)
 		return ctx.NewIssue(callExpr, r.ID(), msg, r.Severity, r.Confidence), nil
 	}
@@ -49,42 +124,17 @@ func (r *secretSerialization) Match(n ast.Node, ctx *gosec.Context) (*issue.Issu
 	return nil, nil
 }
 
-func (r *secretSerialization) findJSONMarshalArgument(callExpr *ast.CallExpr, ctx *gosec.Context) ast.Expr {
-	if _, matched := gosec.MatchCallByPackage(callExpr, ctx, "encoding/json", "Marshal", "MarshalIndent"); matched {
-		if len(callExpr.Args) > 0 {
-			return callExpr.Args[0]
-		}
-		return nil
-	}
-
-	selector, ok := callExpr.Fun.(*ast.SelectorExpr)
-	if !ok || selector.Sel == nil || selector.Sel.Name != "Encode" || ctx.Info == nil {
-		return nil
-	}
-
-	receiverType := ctx.Info.TypeOf(selector.X)
-	if !isEncodingJSONEncoderType(receiverType) {
-		return nil
-	}
-
-	if len(callExpr.Args) > 0 {
-		return callExpr.Args[0]
-	}
-
-	return nil
-}
-
-func isEncodingJSONEncoderType(typ types.Type) bool {
+func isNamedTypeInPackage(typ types.Type, pkgPath, typeName string) bool {
 	if typ == nil {
 		return false
 	}
 
 	switch t := typ.(type) {
 	case *types.Pointer:
-		return isEncodingJSONEncoderType(t.Elem())
+		return isNamedTypeInPackage(t.Elem(), pkgPath, typeName)
 	case *types.Named:
-		if obj := t.Obj(); obj != nil && obj.Name() == "Encoder" {
-			if pkg := obj.Pkg(); pkg != nil && pkg.Path() == "encoding/json" {
+		if obj := t.Obj(); obj != nil && obj.Name() == typeName {
+			if pkg := obj.Pkg(); pkg != nil && pkg.Path() == pkgPath {
 				return true
 			}
 		}
@@ -93,16 +143,188 @@ func isEncodingJSONEncoderType(typ types.Type) bool {
 	return false
 }
 
-func (r *secretSerialization) findSensitiveFieldForType(typ types.Type) sensitiveFieldMatch {
-	return r.findSensitiveFieldForTypeWithVisited(typ, make(map[types.Type]struct{}))
+func (r *secretSerialization) findSerializedArgument(callExpr *ast.CallExpr, ctx *gosec.Context) (ast.Expr, formatSpec, bool) {
+	for _, format := range g117Formats {
+		for _, sink := range format.functionSinks {
+			if callMatchesPackageFunction(callExpr, ctx, sink.pkgPath, sink.names...) {
+				if len(callExpr.Args) > 0 {
+					return callExpr.Args[0], format, true
+				}
+				return nil, format, true
+			}
+		}
+
+		for _, sink := range format.methodSinks {
+			if !callMatchesMethodSink(callExpr, ctx, sink) {
+				continue
+			}
+			if len(callExpr.Args) > 0 {
+				return callExpr.Args[0], format, true
+			}
+			return nil, format, true
+		}
+	}
+
+	return nil, formatSpec{}, false
 }
 
-func (r *secretSerialization) findSensitiveFieldForTypeWithVisited(typ types.Type, visited map[types.Type]struct{}) sensitiveFieldMatch {
+func callMatchesMethodSink(callExpr *ast.CallExpr, ctx *gosec.Context, sink methodSink) bool {
+	selector, ok := callExpr.Fun.(*ast.SelectorExpr)
+	if !ok || selector.Sel == nil || selector.Sel.Name != sink.method {
+		return false
+	}
+
+	if ctx != nil && ctx.Info != nil {
+		receiverType := ctx.Info.TypeOf(selector.X)
+		if isNamedTypeInPackage(receiverType, sink.pkgPath, sink.typeName) {
+			return true
+		}
+	}
+
+	constructorCall, ok := selector.X.(*ast.CallExpr)
+	if !ok {
+		return false
+	}
+
+	constructorName := "New" + sink.typeName
+	if callMatchesPackageFunction(constructorCall, ctx, sink.pkgPath, constructorName) {
+		return true
+	}
+
+	if strings.Contains(strings.ToLower(sink.pkgPath), "toml") {
+		ctorSelector, ok := constructorCall.Fun.(*ast.SelectorExpr)
+		if !ok || ctorSelector.Sel == nil || ctorSelector.Sel.Name != constructorName {
+			return false
+		}
+		pkgIdent, ok := ctorSelector.X.(*ast.Ident)
+		if !ok {
+			return false
+		}
+		return importAliasPathContains(ctx, pkgIdent.Name, "toml")
+	}
+
+	return false
+}
+
+func callMatchesPackageFunction(callExpr *ast.CallExpr, ctx *gosec.Context, pkgPath string, names ...string) bool {
+	if callExpr == nil || ctx == nil {
+		return false
+	}
+
+	selector, ok := callExpr.Fun.(*ast.SelectorExpr)
+	if !ok || selector.Sel == nil {
+		return false
+	}
+
+	matchedName := false
+	for _, name := range names {
+		if selector.Sel.Name == name {
+			matchedName = true
+			break
+		}
+	}
+	if !matchedName {
+		return false
+	}
+
+	if ctx.Info != nil {
+		obj := ctx.Info.Uses[selector.Sel]
+		if obj != nil && obj.Pkg() != nil && packagePathMatches(obj.Pkg().Path(), pkgPath) {
+			return true
+		}
+	}
+
+	if _, matched := gosec.MatchCallByPackage(callExpr, ctx, pkgPath, names...); matched {
+		return true
+	}
+
+	pkgIdent, ok := selector.X.(*ast.Ident)
+	if !ok {
+		return false
+	}
+
+	return importAliasMatchesPath(ctx, pkgIdent.Name, pkgPath)
+}
+
+func importAliasMatchesPath(ctx *gosec.Context, alias, pkgPath string) bool {
+	if ctx == nil || ctx.Root == nil {
+		return false
+	}
+
+	for _, imp := range ctx.Root.Imports {
+		pathValue, err := strconv.Unquote(imp.Path.Value)
+		if err != nil || !packagePathMatches(pathValue, pkgPath) {
+			continue
+		}
+
+		importAlias := packageNameFromPath(pathValue)
+		if imp.Name != nil {
+			importAlias = imp.Name.Name
+		}
+
+		if importAlias == alias {
+			return true
+		}
+	}
+
+	return false
+}
+
+func importAliasPathContains(ctx *gosec.Context, alias, fragment string) bool {
+	if ctx == nil || ctx.Root == nil {
+		return false
+	}
+
+	for _, imp := range ctx.Root.Imports {
+		pathValue, err := strconv.Unquote(imp.Path.Value)
+		if err != nil {
+			continue
+		}
+
+		importAlias := packageNameFromPath(pathValue)
+		if imp.Name != nil {
+			importAlias = imp.Name.Name
+		}
+
+		if importAlias == alias && strings.Contains(strings.ToLower(pathValue), strings.ToLower(fragment)) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func packageNameFromPath(path string) string {
+	if idx := strings.LastIndexByte(path, '/'); idx >= 0 && idx+1 < len(path) {
+		return path[idx+1:]
+	}
+	return path
+}
+
+func packagePathMatches(actual, expected string) bool {
+	if actual == expected {
+		return true
+	}
+
+	if strings.Contains(expected, "toml") {
+		actualLower := strings.ToLower(actual)
+		return strings.Contains(actualLower, "toml")
+	}
+
+	return false
+}
+
+func (r *secretSerialization) findSensitiveFieldForType(typ types.Type, tagKey string) sensitiveFieldMatch {
+	return r.findSensitiveFieldForTypeWithVisited(typ, tagKey, make(map[types.Type]struct{}))
+}
+
+func (r *secretSerialization) findSensitiveFieldForTypeWithVisited(typ types.Type, tagKey string, visited map[types.Type]struct{}) sensitiveFieldMatch {
 	if typ == nil {
 		return sensitiveFieldMatch{}
 	}
 
-	if cached, ok := r.cache.Load(typ); ok {
+	cacheKey := typeAnalysisCacheKey{typ: typ, tagKey: tagKey}
+	if cached, ok := r.cache.Load(cacheKey); ok {
 		return cached.(sensitiveFieldMatch)
 	}
 
@@ -115,31 +337,31 @@ func (r *secretSerialization) findSensitiveFieldForTypeWithVisited(typ types.Typ
 
 	switch t := typ.(type) {
 	case *types.Named:
-		match = r.findSensitiveFieldForTypeWithVisited(t.Underlying(), visited)
+		match = r.findSensitiveFieldForTypeWithVisited(t.Underlying(), tagKey, visited)
 	case *types.Pointer:
-		match = r.findSensitiveFieldForTypeWithVisited(t.Elem(), visited)
+		match = r.findSensitiveFieldForTypeWithVisited(t.Elem(), tagKey, visited)
 	case *types.Struct:
-		match = r.findSensitiveSerializedField(t)
+		match = r.findSensitiveSerializedField(t, tagKey)
 	case *types.Slice:
-		match = r.findSensitiveFieldForTypeWithVisited(t.Elem(), visited)
+		match = r.findSensitiveFieldForTypeWithVisited(t.Elem(), tagKey, visited)
 	case *types.Array:
-		match = r.findSensitiveFieldForTypeWithVisited(t.Elem(), visited)
+		match = r.findSensitiveFieldForTypeWithVisited(t.Elem(), tagKey, visited)
 	case *types.Map:
-		match = r.findSensitiveFieldForTypeWithVisited(t.Elem(), visited)
+		match = r.findSensitiveFieldForTypeWithVisited(t.Elem(), tagKey, visited)
 	case *types.Interface:
 		for i := 0; i < t.NumEmbeddeds(); i++ {
-			match = r.findSensitiveFieldForTypeWithVisited(t.EmbeddedType(i), visited)
+			match = r.findSensitiveFieldForTypeWithVisited(t.EmbeddedType(i), tagKey, visited)
 			if match.found {
 				break
 			}
 		}
 	}
 
-	r.cache.Store(typ, match)
+	r.cache.Store(cacheKey, match)
 	return match
 }
 
-func (r *secretSerialization) findSensitiveSerializedField(st *types.Struct) sensitiveFieldMatch {
+func (r *secretSerialization) findSensitiveSerializedField(st *types.Struct, tagKey string) sensitiveFieldMatch {
 	if st == nil {
 		return sensitiveFieldMatch{}
 	}
@@ -154,7 +376,7 @@ func (r *secretSerialization) findSensitiveSerializedField(st *types.Struct) sen
 			continue
 		}
 
-		effectiveKey, omitted := jsonNameFromStructTag(field.Name(), st.Tag(i))
+		effectiveKey, omitted := serializedNameFromTag(field.Name(), st.Tag(i), tagKey)
 		if omitted {
 			continue
 		}
@@ -190,22 +412,22 @@ func isSecretCandidateType(typ types.Type) bool {
 	return false
 }
 
-func jsonNameFromStructTag(defaultName, tag string) (name string, omitted bool) {
+func serializedNameFromTag(defaultName, tag, tagKey string) (name string, omitted bool) {
 	if tag == "" {
 		return defaultName, false
 	}
 
-	jsonTag := reflect.StructTag(tag).Get("json")
-	if jsonTag == "" {
+	tagValue := reflect.StructTag(tag).Get(tagKey)
+	if tagValue == "" {
 		return defaultName, false
 	}
-	if jsonTag == "-" {
+	if tagValue == "-" {
 		return "", true
 	}
 
-	name = jsonTag
-	if idx := strings.IndexByte(jsonTag, ','); idx >= 0 {
-		name = jsonTag[:idx]
+	name = tagValue
+	if idx := strings.IndexByte(tagValue, ','); idx >= 0 {
+		name = tagValue[:idx]
 	}
 
 	if name == "" {
@@ -228,6 +450,6 @@ func NewSecretSerialization(id string, conf gosec.Config) (gosec.Rule, []ast.Nod
 
 	return &secretSerialization{
 		pattern:  regexp.MustCompile(patternStr),
-		MetaData: issue.NewMetaData(id, "Exported struct field appears to be a secret and is not ignored by JSON marshaling", issue.Medium, issue.Medium),
+		MetaData: issue.NewMetaData(id, "Exported struct field appears to be a secret and is serialized by JSON/YAML/XML/TOML", issue.Medium, issue.Medium),
 	}, []ast.Node{(*ast.CallExpr)(nil)}
 }
