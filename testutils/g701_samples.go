@@ -1938,4 +1938,64 @@ func handler(db *sql.DB, r *http.Request) {
 	db.Query(query)
 }
 `}, 1, gosec.NewConfig()},
+
+	// Simple function return of tainted value
+	{[]string{`
+package main
+
+import (
+	"database/sql"
+	"net/http"
+)
+
+func getUserInput(r *http.Request) string {
+	return r.FormValue("input")
+}
+
+func handler(db *sql.DB, r *http.Request) {
+	userInput := getUserInput(r)
+	query := "SELECT * FROM users WHERE name = '" + userInput + "'"
+	db.Query(query)
+}
+`}, 1, gosec.NewConfig()},
+
+	// Taint through slice operations
+	{[]string{`
+package main
+
+import (
+	"database/sql"
+	"net/http"
+)
+
+func handler(db *sql.DB, r *http.Request) {
+	filters := []string{r.FormValue("filter")}
+	query := "SELECT * FROM users WHERE status = '" + filters[0] + "'"
+	db.Query(query)
+}
+`}, 1, gosec.NewConfig()},
+
+	// Multiple function call chain
+	{[]string{`
+package main
+
+import (
+	"database/sql"
+	"net/http"
+)
+
+func getInput(r *http.Request) string {
+	return r.FormValue("input")
+}
+
+func processInput(r *http.Request) string {
+	return getInput(r)
+}
+
+func handler(db *sql.DB, r *http.Request) {
+	userInput := processInput(r)
+	query := "SELECT * FROM users WHERE name = '" + userInput + "'"
+	db.Query(query)
+}
+`}, 1, gosec.NewConfig()},
 }
