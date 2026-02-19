@@ -30,8 +30,8 @@ extract_metrics() {
       }
 
       line = $0
-      sub(/^.*\"Output\":\"/, "", line)
-      sub(/\".*$/, "", line)
+      sub(/^.*"Output":"/, "", line)
+      sub(/".*$/, "", line)
 
       gsub(/\\t/, "\t", line)
       gsub(/\\n/, "", line)
