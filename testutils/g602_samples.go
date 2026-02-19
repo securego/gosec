@@ -696,4 +696,23 @@ func main() {
 	_ = arr[4]
 }
 `}, 0, gosec.NewConfig()},
+	// Issue #1525: G602 false positive for array index in range-over-array loops
+	{[]string{`
+package main
+func main() {
+	var arr [8]int
+	for i := range arr {
+		arr[i] = i
+	}
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+func main() {
+	var arr [8]int
+	for i := range arr {
+		_ = arr[i+1]
+	}
+}
+`}, 1, gosec.NewConfig()},
 }
