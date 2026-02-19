@@ -20,6 +20,7 @@ type SSAAnalyzerResult struct {
 	Config map[string]any
 	Logger *log.Logger
 	SSA    *buildssa.SSA
+	Shared *PackageAnalysisCache
 }
 
 // GetSSAResult retrieves the SSA result from analysis pass

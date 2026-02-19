@@ -102,6 +102,11 @@ type Analyzer struct {
 	callGraph  *callgraph.Graph
 }
 
+// SetCallGraph injects a precomputed call graph.
+func (a *Analyzer) SetCallGraph(cg *callgraph.Graph) {
+	a.callGraph = cg
+}
+
 // New creates a new taint analyzer with the given configuration.
 func New(config *Config) *Analyzer {
 	a := &Analyzer{
@@ -176,10 +181,12 @@ func (a *Analyzer) Analyze(prog *ssa.Program, srcFuncs []*ssa.Function) []Result
 		return nil
 	}
 
-	// Build call graph using Class Hierarchy Analysis (CHA).
-	// CHA is fast and sound (no false negatives) but may have false positives.
-	// For more precision, use VTA (Variable Type Analysis) instead.
-	a.callGraph = cha.CallGraph(prog)
+	if a.callGraph == nil {
+		// Build call graph using Class Hierarchy Analysis (CHA).
+		// CHA is fast and sound (no false negatives) but may have false positives.
+		// For more precision, use VTA (Variable Type Analysis) instead.
+		a.callGraph = cha.CallGraph(prog)
+	}
 
 	var results []Result
 

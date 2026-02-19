@@ -559,55 +559,77 @@ func (gosec *Analyzer) CheckAnalyzersWithSSA(pkg *packages.Package, ssaResult *b
 
 // checkAnalyzersWithSSA runs analyzers on a given package using an existing SSA result (Stateless API).
 func (gosec *Analyzer) checkAnalyzersWithSSA(pkg *packages.Package, ssaResult *buildssa.SSA, allIgnores ignores) ([]*issue.Issue, *Metrics) {
-	resultMap := map[*analysis.Analyzer]any{
-		buildssa.Analyzer: &ssautil.SSAAnalyzerResult{
-			Config: gosec.Config(),
-			Logger: gosec.logger,
-			SSA:    ssaResult,
-		},
+	sharedCache := ssautil.NewPackageAnalysisCache(ssaResult)
+	ssaAnalyzerResult := &ssautil.SSAAnalyzerResult{
+		Config: gosec.Config(),
+		Logger: gosec.logger,
+		SSA:    ssaResult,
+		Shared: sharedCache,
 	}
 
 	generatedFiles := gosec.generatedFiles(pkg)
 	issues := make([]*issue.Issue, 0)
 	stats := &Metrics{}
+	analyzerRuns := make([][]*issue.Issue, len(gosec.analyzerSet.Analyzers))
 
-	for _, analyzer := range gosec.analyzerSet.Analyzers {
-		pass := &analysis.Pass{
-			Analyzer:          analyzer,
-			Fset:              pkg.Fset,
-			Files:             pkg.Syntax,
-			OtherFiles:        pkg.OtherFiles,
-			IgnoredFiles:      pkg.IgnoredFiles,
-			Pkg:               pkg.Types,
-			TypesInfo:         pkg.TypesInfo,
-			TypesSizes:        pkg.TypesSizes,
-			ResultOf:          resultMap,
-			Report:            func(d analysis.Diagnostic) {},
-			ImportObjectFact:  nil,
-			ExportObjectFact:  nil,
-			ImportPackageFact: nil,
-			ExportPackageFact: nil,
-			AllObjectFacts:    nil,
-			AllPackageFacts:   nil,
-		}
-		result, err := pass.Analyzer.Run(pass)
-		if err != nil {
-			gosec.logger.Printf("Error running analyzer %s: %s\n", analyzer.Name, err)
-			continue
-		}
-		if result != nil {
+	runner := errgroup.Group{}
+	runner.SetLimit(max(gosec.concurrency, 1))
+
+	for index, analyzer := range gosec.analyzerSet.Analyzers {
+		runner.Go(func() error {
+			pass := &analysis.Pass{
+				Analyzer:     analyzer,
+				Fset:         pkg.Fset,
+				Files:        pkg.Syntax,
+				OtherFiles:   pkg.OtherFiles,
+				IgnoredFiles: pkg.IgnoredFiles,
+				Pkg:          pkg.Types,
+				TypesInfo:    pkg.TypesInfo,
+				TypesSizes:   pkg.TypesSizes,
+				ResultOf: map[*analysis.Analyzer]any{
+					buildssa.Analyzer: ssaAnalyzerResult,
+				},
+				Report:            func(d analysis.Diagnostic) {},
+				ImportObjectFact:  nil,
+				ExportObjectFact:  nil,
+				ImportPackageFact: nil,
+				ExportPackageFact: nil,
+				AllObjectFacts:    nil,
+				AllPackageFacts:   nil,
+			}
+
+			result, err := pass.Analyzer.Run(pass)
+			if err != nil {
+				gosec.logger.Printf("Error running analyzer %s: %s\n", analyzer.Name, err)
+				return nil
+			}
+
+			if result == nil {
+				return nil
+			}
+
 			if passIssues, ok := result.([]*issue.Issue); ok {
-				for _, iss := range passIssues {
-					if gosec.excludeGenerated {
-						if _, ok := generatedFiles[iss.File]; ok {
-							continue
-						}
-					}
+				analyzerRuns[index] = passIssues
+			}
 
-					// issue filtering logic
-					issues = gosec.updateIssues(iss, issues, stats, allIgnores)
+			return nil
+		})
+	}
+
+	if err := runner.Wait(); err != nil {
+		gosec.logger.Printf("Error waiting for analyzers: %s\n", err)
+	}
+
+	for _, passIssues := range analyzerRuns {
+		for _, iss := range passIssues {
+			if gosec.excludeGenerated {
+				if _, ok := generatedFiles[iss.File]; ok {
+					continue
 				}
 			}
+
+			// issue filtering logic
+			issues = gosec.updateIssues(iss, issues, stats, allIgnores)
 		}
 	}
 	return issues, stats

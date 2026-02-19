@@ -171,6 +171,27 @@ nogo(
 go install github.com/securego/gosec/v2/cmd/gosec@latest
 ```
 
+## Performance regression guard
+
+CI includes a taint-analysis benchmark guard based on `BenchmarkTaintPackageAnalyzers_SharedCache`.
+
+- Baseline values and allowed regression thresholds are stored in [.github/benchmarks/taint_benchmark_baseline.env](.github/benchmarks/taint_benchmark_baseline.env).
+- CI runs the guard script [tools/check_taint_benchmark.sh](tools/check_taint_benchmark.sh), averages several benchmark samples, and fails if `ns/op`, `B/op`, or `allocs/op` exceed configured thresholds.
+
+Run the guard locally:
+
+```bash
+bash tools/check_taint_benchmark.sh
+```
+
+Update the baseline after intentional performance changes:
+
+```bash
+BENCH_COUNT=10 bash tools/check_taint_benchmark.sh --update-baseline
+```
+
+When baseline updates are intentional, commit both the benchmark-related code changes and the updated baseline file.
+
 ## Usage
 
 Gosec can be configured to only run a subset of rules, to exclude certain file

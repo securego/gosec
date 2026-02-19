@@ -43,8 +43,28 @@ jobs:
         run: make test
       - name: Perf Diff
         run: make perf-diff
+  taint-perf-guard:
+    runs-on: ubuntu-latest
+    env:
+      GO111MODULE: on
+      BENCH_COUNT: "5"
+    steps:
+      - name: Setup go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.26.0"
+      - name: Checkout Source
+        uses: actions/checkout@v6
+      - uses: actions/cache@v5
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - name: Check taint benchmark regression
+        run: bash tools/check_taint_benchmark.sh
   coverage:
-    needs: [test]
+    needs: [test, taint-perf-guard]
     runs-on: ubuntu-latest
     env:
       GO111MODULE: on

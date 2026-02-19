@@ -56,6 +56,9 @@ func makeAnalyzerRunner(rule *RuleInfo, config *Config) func(*analysis.Pass) (in
 
 		// Run taint analysis
 		analyzer := New(config)
+		if ssaResult.Shared != nil {
+			analyzer.SetCallGraph(ssaResult.Shared.CallGraph())
+		}
 		results := analyzer.Analyze(srcFuncs[0].Prog, srcFuncs)
 
 		// Convert results to gosec issues
