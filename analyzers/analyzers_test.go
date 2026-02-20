@@ -75,6 +75,10 @@ var _ = Describe("gosec analyzers", func() {
 			runner("G121", testutils.SampleCodeG121)
 		})
 
+		It("should detect Walk/WalkDir symlink TOCTOU callback path usage", func() {
+			runner("G122", testutils.SampleCodeG122)
+		})
+
 		It("should detect hardcoded nonce/IV", func() {
 			runner("G407", testutils.SampleCodeG407)
 		})

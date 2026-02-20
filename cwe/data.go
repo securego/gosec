@@ -108,6 +108,11 @@ var idWeaknesses = map[string]*Weakness{
 		Description: "The product uses a Pseudo-Random Number Generator (PRNG) in a security context, but the PRNG's algorithm is not cryptographically strong.",
 		Name:        "Use of Cryptographically Weak Pseudo-Random Number Generator (PRNG)",
 	},
+	"367": {
+		ID:          "367",
+		Description: "The software checks the state of a resource before using that resource, but the resource's state can change between the check and the use in a way that invalidates the results of the check.",
+		Name:        "Time-of-check Time-of-use (TOCTOU) Race Condition",
+	},
 	"377": {
 		ID:          "377",
 		Description: "Creating and using insecure temporary files can leave application and system data vulnerable to attack.",
