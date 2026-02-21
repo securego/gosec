@@ -43,6 +43,11 @@ var idWeaknesses = map[string]*Weakness{
 		Description: "The software constructs all or part of an SQL command using externally-influenced input from an upstream component, but it does not neutralize or incorrectly neutralizes special elements that could modify the intended SQL command when it is sent to a downstream component.",
 		Name:        "Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')",
 	},
+	"93": {
+		ID:          "93",
+		Description: "The software does not properly neutralize CRLF sequences before using externally-influenced input in protocol elements that rely on CRLF as delimiters, allowing attackers to inject additional commands or headers.",
+		Name:        "Improper Neutralization of CRLF Sequences ('CRLF Injection')",
+	},
 	"118": {
 		ID:          "118",
 		Description: "The software does not restrict or incorrectly restricts operations within the boundaries of a resource that is accessed using an index or pointer, such as memory or files.",

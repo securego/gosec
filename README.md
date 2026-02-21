@@ -257,6 +257,7 @@ directory you can supply `./...` as the input argument.
 - G704: SSRF via taint analysis
 - G705: XSS via taint analysis
 - G706: Log injection via taint analysis
+- G707: SMTP command/header injection via taint analysis
 
 ### Retired rules
 
