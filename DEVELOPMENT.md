@@ -271,6 +271,14 @@ From the repository root:
 go generate ./...
 ```
 
+If `go generate` fails with `exec: "tlsconfig": executable file not found in $PATH`, install the local generator and add `$(go env GOPATH)/bin` to `PATH`:
+
+```bash
+export PATH="$(go env GOPATH)/bin:$PATH"
+go install ./cmd/tlsconfig
+go generate ./...
+```
+
 This updates `rules/tls_config.go`.
 
 If you need to install the generator binary outside this repository:
