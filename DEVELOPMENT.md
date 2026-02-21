@@ -6,14 +6,14 @@
 - [Contributing: adding rules and analyzers](#contributing-adding-rules-and-analyzers)
 	- [Add an AST rule](#add-an-ast-rule)
 	- [Add an SSA analyzer](#add-an-ssa-analyzer)
-- [Creating taint analysis rules](#creating-taint-analysis-rules)
-	- [Steps](#steps)
+	- [Creating taint analysis rules](#creating-taint-analysis-rules)
+		- [Steps](#steps)
+		- [Taint configuration reference](#taint-configuration-reference)
+			- [Sources](#sources)
+			- [Sinks](#sinks)
+			- [Sanitizers](#sanitizers)
+		- [Common taint sources](#common-taint-sources)
 - [Rule development utilities](#rule-development-utilities)
-- [Taint configuration reference](#taint-configuration-reference)
-	- [Sources](#sources)
-	- [Sinks](#sinks)
-	- [Sanitizers](#sanitizers)
-- [Common taint sources](#common-taint-sources)
 - [SARIF types generation](#sarif-types-generation)
 - [Performance regression guard](#performance-regression-guard)
 - [Generate TLS rule data](#generate-tls-rule-data)
@@ -91,12 +91,12 @@ func runMyAnalyzer(pass *analysis.Pass) (interface{}, error) {
 }
 ```
 
-## Creating taint analysis rules
+### Creating taint analysis rules
 
 gosec taint analyzers track data flow from untrusted sources to dangerous sinks.
 Current taint rules include SQL injection, command injection, path traversal, SSRF, XSS, log injection, and SMTP injection.
 
-### Steps
+#### Steps
 
 1. Create a new analyzer file in `analyzers/` (for example `analyzers/newvuln.go`) with both:
    - the taint `Config` (sources, sinks, optional sanitizers)
@@ -175,9 +175,9 @@ gosecutil -tool ast main.go
 
 Valid `-tool` values: `ast`, `callobj`, `uses`, `types`, `defs`, `comments`, `imports`.
 
-## Taint configuration reference
+#### Taint configuration reference
 
-### Sources
+##### Sources
 
 Sources define where untrusted data starts:
 - `Package`: import path (for example `"net/http"`)
@@ -185,7 +185,7 @@ Sources define where untrusted data starts:
 - `Pointer`: set `true` for pointer types (for example `*http.Request`)
 - `IsFunc`: set `true` when the source is a function that returns tainted data
 
-### Sinks
+##### Sinks
 
 Sinks define where tainted data must not reach:
 - `Package`
@@ -204,7 +204,7 @@ Example:
 {Package: "fmt", Method: "Fprintf", CheckArgs: []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}}
 ```
 
-### Sanitizers
+##### Sanitizers
 
 Sanitizers break taint flow after validation/escaping:
 - `Package`
@@ -214,7 +214,7 @@ Sanitizers break taint flow after validation/escaping:
 
 If data passes through a configured sanitizer, it is treated as safe for subsequent sinks.
 
-## Common taint sources
+#### Common taint sources
 
 | Source Type | Package | Type/Method | Pointer | IsFunc |
 |-------------|---------|-------------|---------|--------|
