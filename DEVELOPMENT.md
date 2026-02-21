@@ -1,6 +1,24 @@
 # Development
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution workflow and coding standards.
+## Table of Contents
+
+- [Local workflow](#local-workflow)
+- [Contributing: adding rules and analyzers](#contributing-adding-rules-and-analyzers)
+	- [Add an AST rule](#add-an-ast-rule)
+	- [Add an SSA analyzer](#add-an-ssa-analyzer)
+- [Creating taint analysis rules](#creating-taint-analysis-rules)
+	- [Steps](#steps)
+- [Rule development utilities](#rule-development-utilities)
+- [Taint configuration reference](#taint-configuration-reference)
+	- [Sources](#sources)
+	- [Sinks](#sinks)
+	- [Sanitizers](#sanitizers)
+- [Common taint sources](#common-taint-sources)
+- [SARIF types generation](#sarif-types-generation)
+- [Performance regression guard](#performance-regression-guard)
+- [Generate TLS rule data](#generate-tls-rule-data)
+- [Release](#release)
+- [Docker image](#docker-image)
 
 ## Local workflow
 
@@ -8,6 +26,70 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution workflow and coding stan
 - Build: `make`
 - Run all checks used in CI (format, vet, security scan, vulnerability scan, tests): `make test`
 - Run linter only: `make golangci`
+
+## Contributing: adding rules and analyzers
+
+gosec supports three implementation styles:
+
+- **AST rules** (`gosec.Rule`) for node-level checks in `rules/`
+- **SSA analyzers** (`analysis.Analyzer`) for whole-program context in `analyzers/`
+- **Taint analyzers** for source-to-sink data-flow checks in `analyzers/` via `taint.NewGosecAnalyzer`
+
+### Add an AST rule
+
+1. Create a new file in `rules/` (for example, use `rules/unsafe.go` as a simple template).
+2. Implement your rule constructor and `Match` logic.
+3. Register the rule in `rules/rulelist.go`.
+4. Add rule-to-CWE mapping in `issue/issue.go` (and add CWE data in `cwe/data.go` only if needed).
+5. Add tests and samples:
+   - sample code in `testutils/`
+   - rule tests in `rules/` or integration tests in `analyzer_test.go`
+
+### Add an SSA analyzer
+
+1. Create a new file in `analyzers/`.
+2. Define the analyzer and require `buildssa.Analyzer`.
+3. Read SSA input using `ssautil.GetSSAResult(pass)`.
+4. Return findings as `[]*issue.Issue`.
+5. Register in `analyzers/analyzerslist.go`.
+6. Add rule-to-CWE mapping in `issue/issue.go`.
+7. Add tests and sample code in `analyzers/` and `testutils/`.
+
+Minimal skeleton:
+
+```go
+package analyzers
+
+import (
+	"fmt"
+
+	"golang.org/x/tools/go/analysis"
+	"golang.org/x/tools/go/analysis/passes/buildssa"
+
+	"github.com/securego/gosec/v2/internal/ssautil"
+	"github.com/securego/gosec/v2/issue"
+)
+
+func newMyAnalyzer(id, description string) *analysis.Analyzer {
+	return &analysis.Analyzer{
+		Name:     id,
+		Doc:      description,
+		Run:      runMyAnalyzer,
+		Requires: []*analysis.Analyzer{buildssa.Analyzer},
+	}
+}
+
+func runMyAnalyzer(pass *analysis.Pass) (interface{}, error) {
+	ssaResult, err := ssautil.GetSSAResult(pass)
+	if err != nil {
+		return nil, fmt.Errorf("getting SSA result: %w", err)
+	}
+	_ = ssaResult
+
+	var issues []*issue.Issue
+	return issues, nil
+}
+```
 
 ## Creating taint analysis rules
 
@@ -74,6 +156,24 @@ Reference implementations:
 - `analyzers/sqlinjection.go` (G701)
 - `analyzers/commandinjection.go` (G702)
 - `analyzers/pathtraversal.go` (G703)
+
+## Rule development utilities
+
+Use these tools while building or debugging rules:
+
+- Dump SSA with [`ssadump`](https://pkg.go.dev/golang.org/x/tools/cmd/ssadump):
+
+```bash
+ssadump -build F main.go
+```
+
+- Inspect AST/types/defs/imports with `gosecutil`:
+
+```bash
+gosecutil -tool ast main.go
+```
+
+Valid `-tool` values: `ast`, `callobj`, `uses`, `types`, `defs`, `comments`, `imports`.
 
 ## Taint configuration reference
 

@@ -5,6 +5,15 @@ Inspects source code for security problems by scanning the Go AST and SSA code r
 
 <img src="https://securego.io/img/gosec.png" width="320">
 
+## Quick links
+
+- [GitHub Action](#github-action)
+- [Local installation](#local-installation)
+- [Quick start](#quick-start)
+- [Common usage patterns](#common-usage-patterns)
+- [Selecting rules](#selecting-rules)
+- [Output formats](#output-formats)
+
 ## Features
 
 - **Pattern-based rules** for detecting common security issues in Go code

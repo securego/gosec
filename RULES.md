@@ -1,5 +1,23 @@
 # Rule Documentation
 
+## Table of Contents
+
+- [Rules List](#rules-list)
+  - [G1xx: General Secure Coding](#g1xx-general-secure-coding)
+  - [G2xx: Injection Patterns](#g2xx-injection-patterns)
+  - [G3xx: Filesystem and Permissions](#g3xx-filesystem-and-permissions)
+  - [G4xx: Crypto and Protocol security](#g4xx-crypto-and-protocol-security)
+  - [G5xx: Import Blocklist](#g5xx-import-blocklist)
+  - [G6xx: Language/Runtime safety](#g6xx-languageruntime-safety)
+  - [G7xx: Taint Analysis](#g7xx-taint-analysis)
+  - [Retired and reassigned IDs](#retired-and-reassigned-ids)
+- [Rules configuration](#rules-configuration)
+  - [G101](#g101)
+  - [G104](#g104)
+  - [G111](#g111)
+  - [G117](#g117)
+  - [G301, G302, G306, G307](#g301-g302-g306-g307)
+
 ## Rules List
 
 ### G1xx: General Secure Coding
