@@ -157,24 +157,6 @@ Reference implementations:
 - `analyzers/commandinjection.go` (G702)
 - `analyzers/pathtraversal.go` (G703)
 
-## Rule development utilities
-
-Use these tools while building or debugging rules:
-
-- Dump SSA with [`ssadump`](https://pkg.go.dev/golang.org/x/tools/cmd/ssadump):
-
-```bash
-ssadump -build F main.go
-```
-
-- Inspect AST/types/defs/imports with `gosecutil`:
-
-```bash
-gosecutil -tool ast main.go
-```
-
-Valid `-tool` values: `ast`, `callobj`, `uses`, `types`, `defs`, `comments`, `imports`.
-
 #### Taint configuration reference
 
 ##### Sources
@@ -222,6 +204,25 @@ If data passes through a configured sanitizer, it is treated as safe for subsequ
 | Command Line Args | `os` | `Args` | `false` | `true` |
 | Environment Variables | `os` | `Getenv` | `false` | `true` |
 | File Content | `bufio` | `Reader` | `true` | `false` |
+
+## Rule development utilities
+
+Use these tools while building or debugging rules:
+
+- Dump SSA with [`ssadump`](https://pkg.go.dev/golang.org/x/tools/cmd/ssadump):
+
+```bash
+ssadump -build F main.go
+```
+
+- Inspect AST/types/defs/imports with `gosecutil`:
+
+```bash
+gosecutil -tool ast main.go
+```
+
+Valid `-tool` values: `ast`, `callobj`, `uses`, `types`, `defs`, `comments`, `imports`.
+
 
 ## SARIF types generation
 
