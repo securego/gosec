@@ -3,6 +3,7 @@ package taint
 import (
 	"go/parser"
 	"go/token"
+	"go/types"
 	"os"
 	"path/filepath"
 	"testing"
@@ -97,6 +98,79 @@ func TestIssueCodeSnippetReadsSource(t *testing.T) {
 	snippet := issueCodeSnippet(fset, parsed.Package)
 	if snippet == "" {
 		t.Fatalf("expected non-empty snippet")
+	}
+}
+
+func TestIsContextTypeWithContextContext(t *testing.T) {
+	t.Parallel()
+
+	// Build a context.Context named type matching the real context package.
+	pkg := types.NewPackage("context", "context")
+	iface := types.NewInterfaceType(nil, nil)
+	obj := types.NewTypeName(token.NoPos, pkg, "Context", nil)
+	named := types.NewNamed(obj, iface, nil)
+
+	if !isContextType(named) {
+		t.Fatalf("expected isContextType to return true for context.Context")
+	}
+}
+
+func TestIsContextTypeRejectsNonContextTypes(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name string
+		typ  types.Type
+	}{
+		{
+			name: "http.Request",
+			typ: func() types.Type {
+				pkg := types.NewPackage("net/http", "http")
+				obj := types.NewTypeName(token.NoPos, pkg, "Request", nil)
+				return types.NewNamed(obj, types.NewStruct(nil, nil), nil)
+			}(),
+		},
+		{
+			name: "string",
+			typ:  types.Typ[types.String],
+		},
+		{
+			name: "wrong package same name",
+			typ: func() types.Type {
+				pkg := types.NewPackage("myapp/context", "context")
+				obj := types.NewTypeName(token.NoPos, pkg, "Context", nil)
+				return types.NewNamed(obj, types.NewInterfaceType(nil, nil), nil)
+			}(),
+		},
+		{
+			name: "context package wrong name",
+			typ: func() types.Type {
+				pkg := types.NewPackage("context", "context")
+				obj := types.NewTypeName(token.NoPos, pkg, "CancelFunc", nil)
+				return types.NewNamed(obj, types.Typ[types.String], nil)
+			}(),
+		},
+		{
+			name: "pointer to context.Context",
+			typ: func() types.Type {
+				pkg := types.NewPackage("context", "context")
+				obj := types.NewTypeName(token.NoPos, pkg, "Context", nil)
+				named := types.NewNamed(obj, types.NewInterfaceType(nil, nil), nil)
+				return types.NewPointer(named)
+			}(),
+		},
+		{
+			name: "nil type",
+			typ:  nil,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if isContextType(tc.typ) {
+				t.Fatalf("expected isContextType to return false for %s", tc.name)
+			}
+		})
 	}
 }
 

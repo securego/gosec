@@ -86,4 +86,27 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(strconv.Itoa(num)))
 }
 `}, 0, gosec.NewConfig()},
+	// Test: context.Context should not propagate taint from *http.Request
+	// This is the pattern from PR #1543 — r.Context() passed to a function
+	// should not taint the function's return value.
+	{[]string{`
+package main
+
+import (
+	"context"
+	"net/http"
+)
+
+type service struct{}
+
+func (s *service) GetData(ctx context.Context, id string) ([]byte, error) {
+	return []byte("safe data"), nil
+}
+
+func handler(w http.ResponseWriter, r *http.Request) {
+	svc := &service{}
+	data, _ := svc.GetData(r.Context(), "static-id")
+	w.Write(data)
+}
+`}, 0, gosec.NewConfig()},
 }
