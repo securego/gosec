@@ -115,6 +115,20 @@ func TestIsContextTypeWithContextContext(t *testing.T) {
 	}
 }
 
+func TestIsContextTypeWithPointerToContextContext(t *testing.T) {
+	t.Parallel()
+
+	pkg := types.NewPackage("context", "context")
+	iface := types.NewInterfaceType(nil, nil)
+	obj := types.NewTypeName(token.NoPos, pkg, "Context", nil)
+	named := types.NewNamed(obj, iface, nil)
+	ptr := types.NewPointer(named)
+
+	if !isContextType(ptr) {
+		t.Fatalf("expected isContextType to return true for *context.Context")
+	}
+}
+
 func TestIsContextTypeRejectsNonContextTypes(t *testing.T) {
 	t.Parallel()
 
@@ -151,12 +165,11 @@ func TestIsContextTypeRejectsNonContextTypes(t *testing.T) {
 			}(),
 		},
 		{
-			name: "pointer to context.Context",
+			name: "pointer to non-context type",
 			typ: func() types.Type {
-				pkg := types.NewPackage("context", "context")
-				obj := types.NewTypeName(token.NoPos, pkg, "Context", nil)
-				named := types.NewNamed(obj, types.NewInterfaceType(nil, nil), nil)
-				return types.NewPointer(named)
+				pkg := types.NewPackage("net/http", "http")
+				obj := types.NewTypeName(token.NoPos, pkg, "Request", nil)
+				return types.NewPointer(types.NewNamed(obj, types.NewStruct(nil, nil), nil))
 			}(),
 		},
 		{

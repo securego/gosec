@@ -28,6 +28,14 @@ const maxTaintDepth = 50
 // Tainted context arguments (e.g., request.Context()) should not propagate taint
 // to function return values, as the context doesn't flow as data to the output.
 func isContextType(t types.Type) bool {
+	// Unwrap pointer layers (e.g., *context.Context) to reach the named type.
+	for {
+		ptr, ok := t.(*types.Pointer)
+		if !ok {
+			break
+		}
+		t = ptr.Elem()
+	}
 	named, ok := t.(*types.Named)
 	if !ok {
 		return false
