@@ -22,6 +22,20 @@ import (
 // maxTaintDepth limits recursion depth to prevent stack overflow on large codebases
 const maxTaintDepth = 50
 
+// isContextType checks if a type is context.Context.
+// context.Context is a control-flow mechanism (deadlines, cancellation, request-scoped values)
+// that does not carry user-controlled data relevant to taint sinks like XSS.
+// Tainted context arguments (e.g., request.Context()) should not propagate taint
+// to function return values, as the context doesn't flow as data to the output.
+func isContextType(t types.Type) bool {
+	named, ok := t.(*types.Named)
+	if !ok {
+		return false
+	}
+	obj := named.Obj()
+	return obj != nil && obj.Pkg() != nil && obj.Pkg().Path() == "context" && obj.Name() == "Context"
+}
+
 // Source defines where tainted data originates.
 // Format: "package/path.TypeOrFunc" or "*package/path.Type" for pointer types.
 type Source struct {
@@ -420,8 +434,12 @@ func (a *Analyzer) isTainted(v ssa.Value, fn *ssa.Function, visited map[ssa.Valu
 			if val.Call.Value != nil && a.isTainted(val.Call.Value, fn, visited, depth+1) {
 				return true
 			}
-			// Also check non-receiver args for interface method calls
+			// Also check non-receiver args for interface method calls.
+			// Skip context.Context args — they don't carry user data to outputs.
 			for _, arg := range val.Call.Args {
+				if isContextType(arg.Type()) {
+					continue
+				}
 				if a.isTainted(arg, fn, visited, depth+1) {
 					return true
 				}
@@ -439,7 +457,11 @@ func (a *Analyzer) isTainted(v ssa.Value, fn *ssa.Function, visited map[ssa.Valu
 					return true
 				}
 			} else if len(val.Call.Args) > 1 {
+				// Skip context.Context args — they don't carry user data to outputs.
 				for _, arg := range val.Call.Args[1:] {
+					if isContextType(arg.Type()) {
+						continue
+					}
 					if a.isTainted(arg, fn, visited, depth+1) {
 						return true
 					}
@@ -461,7 +483,11 @@ func (a *Analyzer) isTainted(v ssa.Value, fn *ssa.Function, visited map[ssa.Valu
 					// External function (no body) — conservatively assume any
 					// tainted arg taints the return. This is correct for stdlib
 					// data-transformation functions (string ops, fmt, etc.).
+					// Skip context.Context args — they don't carry user data to outputs.
 					for _, arg := range val.Call.Args {
+						if isContextType(arg.Type()) {
+							continue
+						}
 						if a.isTainted(arg, fn, visited, depth+1) {
 							return true
 						}
@@ -1085,9 +1111,13 @@ func (a *Analyzer) doTaintedArgsFlowToReturn(call *ssa.Call, callee *ssa.Functio
 		return false
 	}
 
-	// Identify which args are tainted
+	// Identify which args are tainted.
+	// Skip context.Context args — they don't carry user data to outputs.
 	var taintedArgIndices []int
 	for i, arg := range call.Call.Args {
+		if isContextType(arg.Type()) {
+			continue
+		}
 		if a.isTainted(arg, callerFn, visited, depth) {
 			taintedArgIndices = append(taintedArgIndices, i)
 		}
