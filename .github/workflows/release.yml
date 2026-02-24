@@ -52,7 +52,7 @@ jobs:
             type=sha,format=long
             type=semver,pattern={{version}}
       - name: Release Binaries
-        uses: goreleaser/goreleaser-action@v6
+        uses: goreleaser/goreleaser-action@v7
         with:
           version: latest
           args: release --clean
