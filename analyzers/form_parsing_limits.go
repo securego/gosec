@@ -44,6 +44,7 @@ func runFormParsingLimitAnalysis(pass *analysis.Pass) (any, error) {
 	}
 
 	issuesByPos := make(map[token.Pos]*issue.Issue)
+	handlerProtection := computeFormParsingHandlerProtection(ssaResult.SSA.SrcFuncs)
 
 	for _, fn := range collectAnalyzerFunctions(ssaResult.SSA.SrcFuncs) {
 		requestParam, writerParam := findHandlerRequestAndWriterParams(fn)
@@ -51,7 +52,7 @@ func runFormParsingLimitAnalysis(pass *analysis.Pass) (any, error) {
 			continue
 		}
 
-		hasRequestBodyLimit := functionHasRequestBodyLimit(fn, requestParam, writerParam)
+		hasRequestBodyLimit := handlerProtection[fn]
 		if hasRequestBodyLimit {
 			continue
 		}
@@ -80,6 +81,203 @@ func runFormParsingLimitAnalysis(pass *analysis.Pass) (any, error) {
 	}
 
 	return issues, nil
+}
+
+func computeFormParsingHandlerProtection(srcFuncs []*ssa.Function) map[*ssa.Function]bool {
+	protection := make(map[*ssa.Function]bool)
+	allFuncs := collectAnalyzerFunctions(srcFuncs)
+	for _, fn := range allFuncs {
+		requestParam, writerParam := findHandlerRequestAndWriterParams(fn)
+		if requestParam == nil || writerParam == nil {
+			continue
+		}
+		if functionHasRequestBodyLimit(fn, requestParam, writerParam) {
+			protection[fn] = true
+			continue
+		}
+		if isProtectedByWrapperCall(fn, allFuncs) {
+			protection[fn] = true
+		}
+	}
+
+	return protection
+}
+
+func isProtectedByWrapperCall(handler *ssa.Function, allFuncs []*ssa.Function) bool {
+	for _, fn := range allFuncs {
+		if fn == nil {
+			continue
+		}
+		for _, block := range fn.Blocks {
+			for _, instr := range block.Instrs {
+				callInstr, ok := instr.(ssa.CallInstruction)
+				if !ok {
+					continue
+				}
+				common := callInstr.Common()
+				if common == nil {
+					continue
+				}
+				wrapper := common.StaticCallee()
+				if wrapper == nil {
+					continue
+				}
+
+				for argIndex, arg := range common.Args {
+					if !valueDependsOn(arg, handler, 0) {
+						continue
+					}
+					if wrapperProtectsParamHandler(wrapper, argIndex) {
+						return true
+					}
+				}
+			}
+		}
+	}
+
+	return false
+}
+
+func wrapperProtectsParamHandler(wrapper *ssa.Function, paramIndex int) bool {
+	if wrapper == nil || paramIndex < 0 || paramIndex >= len(wrapper.Params) {
+		return false
+	}
+	handlerParam := wrapper.Params[paramIndex]
+
+	if wrapperDelegatesWithRequestLimit(wrapper, handlerParam) {
+		return true
+	}
+
+	for _, block := range wrapper.Blocks {
+		for _, instr := range block.Instrs {
+			makeClosure, ok := instr.(*ssa.MakeClosure)
+			if !ok {
+				continue
+			}
+			closureFn, ok := makeClosure.Fn.(*ssa.Function)
+			if !ok || closureFn == nil {
+				continue
+			}
+
+			requestParam, writerParam := findHandlerRequestAndWriterParams(closureFn)
+			if requestParam == nil || writerParam == nil {
+				continue
+			}
+			if !functionHasRequestBodyLimit(closureFn, requestParam, writerParam) {
+				continue
+			}
+
+			for bindingIndex, binding := range makeClosure.Bindings {
+				if !bindingDependsOnValue(binding, handlerParam) {
+					continue
+				}
+				if closureDelegatesWithRequestLimit(closureFn, bindingIndex, requestParam, writerParam) {
+					return true
+				}
+			}
+		}
+	}
+
+	return false
+}
+
+func bindingDependsOnValue(binding ssa.Value, target ssa.Value) bool {
+	if valueDependsOn(binding, target, 0) {
+		return true
+	}
+
+	alloc, ok := binding.(*ssa.Alloc)
+	if !ok {
+		return false
+	}
+
+	for _, ref := range safeReferrers(alloc) {
+		store, ok := ref.(*ssa.Store)
+		if !ok {
+			continue
+		}
+		if store.Addr != alloc {
+			continue
+		}
+		if valueDependsOn(store.Val, target, 0) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func wrapperDelegatesWithRequestLimit(wrapper *ssa.Function, handlerValue ssa.Value) bool {
+	requestParam, writerParam := findHandlerRequestAndWriterParams(wrapper)
+	if requestParam == nil || writerParam == nil {
+		return false
+	}
+	if !functionHasRequestBodyLimit(wrapper, requestParam, writerParam) {
+		return false
+	}
+	return hasServeHTTPDelegation(wrapper, handlerValue, writerParam, requestParam)
+}
+
+func closureDelegatesWithRequestLimit(closure *ssa.Function, freeVarIndex int, requestParam *ssa.Parameter, writerParam *ssa.Parameter) bool {
+	if freeVarIndex < 0 || freeVarIndex >= len(closure.FreeVars) {
+		return false
+	}
+	handlerValue := closure.FreeVars[freeVarIndex]
+	return hasServeHTTPDelegation(closure, handlerValue, writerParam, requestParam)
+}
+
+func hasServeHTTPDelegation(fn *ssa.Function, handlerValue ssa.Value, writerValue ssa.Value, requestValue ssa.Value) bool {
+	for _, block := range fn.Blocks {
+		for _, instr := range block.Instrs {
+			call, ok := instr.(*ssa.Call)
+			if !ok {
+				continue
+			}
+			common := call.Common()
+			if common == nil {
+				continue
+			}
+
+			var (
+				receiver ssa.Value
+				writer   ssa.Value
+				request  ssa.Value
+			)
+
+			if method := common.Method; method != nil && method.Name() == "ServeHTTP" {
+				if len(common.Args) < 2 {
+					continue
+				}
+				receiver = common.Value
+				writer = common.Args[0]
+				request = common.Args[1]
+			} else {
+				callee := common.StaticCallee()
+				if callee == nil || callee.Name() != "ServeHTTP" || callee.Signature == nil || callee.Signature.Recv() == nil {
+					continue
+				}
+				if len(common.Args) < 3 {
+					continue
+				}
+				receiver = common.Args[0]
+				writer = common.Args[1]
+				request = common.Args[2]
+			}
+
+			if !valueDependsOn(receiver, handlerValue, 0) {
+				continue
+			}
+			if !valueDependsOn(writer, writerValue, 0) {
+				continue
+			}
+			if !valueDependsOn(request, requestValue, 0) {
+				continue
+			}
+			return true
+		}
+	}
+
+	return false
 }
 
 func findHandlerRequestAndWriterParams(fn *ssa.Function) (*ssa.Parameter, *ssa.Parameter) {
