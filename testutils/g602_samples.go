@@ -715,4 +715,29 @@ func main() {
 	}
 }
 `}, 1, gosec.NewConfig()},
+	// Issue #1545: G602 false positive on range-over-array indexing into same-size array
+	{[]string{`
+package main
+
+func main() {
+	ranged := [1]int{1}
+	var accessed [1]*int
+
+	for i, r := range ranged {
+		accessed[i] = &r
+	}
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+func main() {
+	ranged := [2]int{1, 2}
+	var accessed [1]*int
+
+	for i, r := range ranged {
+		accessed[i] = &r
+	}
+}
+`}, 1, gosec.NewConfig()},
 }
