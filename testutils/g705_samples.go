@@ -165,11 +165,9 @@ package main
 import (
 	"fmt"
 	"os"
-	"net/http"
 )
 
 func main() {
-	_ = http.ResponseWriter(nil)
 	fmt.Fprint(os.Stdout, os.Args[1])
 }
 `}, 0, gosec.NewConfig()},
