@@ -307,11 +307,11 @@ func TestGuardsSatisfiedRequiredTypeNotFound(t *testing.T) {
 	t.Parallel()
 	prog := ssa.NewProgram(token.NewFileSet(), 0)
 	// Guard refers to a type that is not present in the program.
-	// The guard must be skipped (continue), so the function returns true.
+	// The guard must not be satisfied.
 	sink := Sink{ArgTypeGuards: map[int]string{0: "missing/pkg.Type"}}
 	arg := ssa.NewConst(constant.MakeString("x"), types.Typ[types.String])
-	if !guardsSatisfied([]ssa.Value{arg}, sink, prog) {
-		t.Fatal("expected true when required type is not found (guard skipped)")
+	if guardsSatisfied([]ssa.Value{arg}, sink, prog) {
+		t.Fatal("expected false when required type is not found")
 	}
 }
 

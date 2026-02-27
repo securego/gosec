@@ -128,9 +128,8 @@ func guardsSatisfied(args []ssa.Value, sink Sink, prog *ssa.Program) bool {
 		argType := resolveOriginalType(args[argIdx])
 		required := lookupNamedType(requiredTypePath, prog)
 		if required == nil {
-			// Type not found in the program — skip this guard rather than
-			// producing a silent false positive for an absent dependency.
-			continue
+			// Type not found in the program — the guard cannot be satisfied.
+			return false
 		}
 		iface, isIface := required.Underlying().(*types.Interface)
 		if isIface {
