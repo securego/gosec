@@ -14,6 +14,7 @@
 			- [Sanitizers](#sanitizers)
 		- [Common taint sources](#common-taint-sources)
 - [AI-generated rule workflow (Copilot)](#ai-generated-rule-workflow-copilot)
+- [AI-generated bug fix workflow (Copilot)](#ai-generated-bug-fix-workflow-copilot)
 - [Rule development utilities](#rule-development-utilities)
 - [SARIF types generation](#sarif-types-generation)
 - [Performance regression guard](#performance-regression-guard)
@@ -241,6 +242,45 @@ Then paste the same issue template fields and confirm after the proposal step.
 2. Confirm the file exists at `.github/prompts/create-gosec-rule.prompt.md`.
 3. Reload VS Code window and start a new chat session.
 4. As fallback, open the prompt file and send its content directly in chat.
+
+## AI-generated bug fix workflow (Copilot)
+
+This repository also includes a Copilot skill and prompt for fixing bugs described in GitHub issues.
+
+- Skill file: `.github/skills/gosec-fix-issue/SKILL.md`
+- Prompt file: `.github/prompts/fix-gosec-bug-from-issue.prompt.md`
+
+### Use via `/prompt` (recommended)
+
+1. In VS Code Copilot Chat, run `/prompt` and select **Fix Gosec Bug From Issue**.
+2. Fill in at least the `GitHub issue URL` field (other fields are optional but useful).
+3. Submit the prompt.
+4. First response should only include:
+	- reproduction status on `master` (or clear blocker)
+	- root cause analysis
+	- detailed fix plan
+	- confirmation request
+5. Reply with explicit confirmation (for example: `Confirmed. Proceed with fix.`).
+
+### Use the skill directly (without `/prompt`)
+
+Send this in Copilot Chat:
+
+```text
+Use the skill "Fix Gosec Bug From Issue" from .github/skills/gosec-fix-issue/SKILL.md.
+```
+
+Then provide the GitHub issue URL and confirm after the analysis and plan step.
+
+### Expected implementation guardrails
+
+After confirmation, the workflow should:
+
+- keep the fix small and isolated to the problem
+- use idiomatic Go and good design
+- add positive and negative tests
+- add or update `testutils/` code samples when appropriate for reproducing/validating the issue
+- validate with build, tests, `golangci-lint`, and a `gosec` CLI run against a sample
 
 ## Rule development utilities
 
