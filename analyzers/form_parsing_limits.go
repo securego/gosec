@@ -28,6 +28,108 @@ import (
 
 const msgUnboundedFormParsing = "Parsing form data without limiting request body size can allow memory exhaustion (use http.MaxBytesReader)"
 
+type dependencyKey struct {
+	value  ssa.Value
+	target ssa.Value
+}
+
+type dependencyChecker struct {
+	memo     map[dependencyKey]bool
+	visiting map[dependencyKey]struct{}
+}
+
+func newDependencyChecker() *dependencyChecker {
+	return &dependencyChecker{
+		memo:     make(map[dependencyKey]bool),
+		visiting: make(map[dependencyKey]struct{}),
+	}
+}
+
+func (c *dependencyChecker) dependsOn(value ssa.Value, target ssa.Value) bool {
+	if c == nil {
+		return valueDependsOn(value, target, 0)
+	}
+	return c.dependsOnDepth(value, target, 0)
+}
+
+func (c *dependencyChecker) dependsOnDepth(value ssa.Value, target ssa.Value, depth int) bool {
+	if value == nil || target == nil || depth > MaxDepth {
+		return false
+	}
+	if value == target {
+		return true
+	}
+
+	key := dependencyKey{value: value, target: target}
+	if result, ok := c.memo[key]; ok {
+		return result
+	}
+	if _, ok := c.visiting[key]; ok {
+		return false
+	}
+
+	c.visiting[key] = struct{}{}
+	result := false
+
+	switch v := value.(type) {
+	case *ssa.ChangeType:
+		result = c.dependsOnDepth(v.X, target, depth+1)
+	case *ssa.MakeInterface:
+		result = c.dependsOnDepth(v.X, target, depth+1)
+	case *ssa.TypeAssert:
+		result = c.dependsOnDepth(v.X, target, depth+1)
+	case *ssa.UnOp:
+		result = c.dependsOnDepth(v.X, target, depth+1)
+	case *ssa.FieldAddr:
+		result = c.dependsOnDepth(v.X, target, depth+1)
+	case *ssa.Field:
+		result = c.dependsOnDepth(v.X, target, depth+1)
+	case *ssa.IndexAddr:
+		result = c.dependsOnDepth(v.X, target, depth+1) || c.dependsOnDepth(v.Index, target, depth+1)
+	case *ssa.Index:
+		result = c.dependsOnDepth(v.X, target, depth+1) || c.dependsOnDepth(v.Index, target, depth+1)
+	case *ssa.Slice:
+		if c.dependsOnDepth(v.X, target, depth+1) {
+			result = true
+			break
+		}
+		if v.Low != nil && c.dependsOnDepth(v.Low, target, depth+1) {
+			result = true
+			break
+		}
+		if v.High != nil && c.dependsOnDepth(v.High, target, depth+1) {
+			result = true
+			break
+		}
+		result = v.Max != nil && c.dependsOnDepth(v.Max, target, depth+1)
+	case *ssa.Extract:
+		result = c.dependsOnDepth(v.Tuple, target, depth+1)
+	case *ssa.Phi:
+		for _, edge := range v.Edges {
+			if c.dependsOnDepth(edge, target, depth+1) {
+				result = true
+				break
+			}
+		}
+	case *ssa.Call:
+		if v.Call.Value != nil && c.dependsOnDepth(v.Call.Value, target, depth+1) {
+			result = true
+			break
+		}
+		for _, arg := range v.Call.Args {
+			if c.dependsOnDepth(arg, target, depth+1) {
+				result = true
+				break
+			}
+		}
+	}
+
+	delete(c.visiting, key)
+	c.memo[key] = result
+
+	return result
+}
+
 func newFormParsingLimitAnalyzer(id string, description string) *analysis.Analyzer {
 	return &analysis.Analyzer{
 		Name:     id,
@@ -43,8 +145,9 @@ func runFormParsingLimitAnalysis(pass *analysis.Pass) (any, error) {
 		return nil, err
 	}
 
+	checker := newDependencyChecker()
 	issuesByPos := make(map[token.Pos]*issue.Issue)
-	handlerProtection := computeFormParsingHandlerProtection(ssaResult.SSA.SrcFuncs)
+	handlerProtection := computeFormParsingHandlerProtection(ssaResult.SSA.SrcFuncs, checker)
 
 	for _, fn := range collectAnalyzerFunctions(ssaResult.SSA.SrcFuncs) {
 		requestParam, writerParam := findHandlerRequestAndWriterParams(fn)
@@ -63,7 +166,7 @@ func runFormParsingLimitAnalysis(pass *analysis.Pass) (any, error) {
 				if !ok {
 					continue
 				}
-				if !isRiskyFormParsingCall(callInstr, requestParam) {
+				if !isRiskyFormParsingCall(callInstr, requestParam, checker) {
 					continue
 				}
 				addRedirectIssue(issuesByPos, pass, instr.Pos(), msgUnboundedFormParsing, issue.Medium, issue.High)
@@ -83,7 +186,7 @@ func runFormParsingLimitAnalysis(pass *analysis.Pass) (any, error) {
 	return issues, nil
 }
 
-func computeFormParsingHandlerProtection(srcFuncs []*ssa.Function) map[*ssa.Function]bool {
+func computeFormParsingHandlerProtection(srcFuncs []*ssa.Function, checker *dependencyChecker) map[*ssa.Function]bool {
 	protection := make(map[*ssa.Function]bool)
 	allFuncs := collectAnalyzerFunctions(srcFuncs)
 	for _, fn := range allFuncs {
@@ -91,11 +194,11 @@ func computeFormParsingHandlerProtection(srcFuncs []*ssa.Function) map[*ssa.Func
 		if requestParam == nil || writerParam == nil {
 			continue
 		}
-		if functionHasRequestBodyLimit(fn, requestParam, writerParam) {
+		if functionHasRequestBodyLimit(fn, requestParam, writerParam, checker) {
 			protection[fn] = true
 			continue
 		}
-		if isProtectedByWrapperCall(fn, allFuncs) {
+		if isProtectedByWrapperCall(fn, allFuncs, checker) {
 			protection[fn] = true
 		}
 	}
@@ -103,7 +206,7 @@ func computeFormParsingHandlerProtection(srcFuncs []*ssa.Function) map[*ssa.Func
 	return protection
 }
 
-func isProtectedByWrapperCall(handler *ssa.Function, allFuncs []*ssa.Function) bool {
+func isProtectedByWrapperCall(handler *ssa.Function, allFuncs []*ssa.Function, checker *dependencyChecker) bool {
 	for _, fn := range allFuncs {
 		if fn == nil {
 			continue
@@ -124,10 +227,10 @@ func isProtectedByWrapperCall(handler *ssa.Function, allFuncs []*ssa.Function) b
 				}
 
 				for argIndex, arg := range common.Args {
-					if !valueDependsOn(arg, handler, 0) {
+					if !checker.dependsOn(arg, handler) {
 						continue
 					}
-					if wrapperProtectsParamHandler(wrapper, argIndex) {
+					if wrapperProtectsParamHandler(wrapper, argIndex, checker) {
 						return true
 					}
 				}
@@ -138,13 +241,13 @@ func isProtectedByWrapperCall(handler *ssa.Function, allFuncs []*ssa.Function) b
 	return false
 }
 
-func wrapperProtectsParamHandler(wrapper *ssa.Function, paramIndex int) bool {
+func wrapperProtectsParamHandler(wrapper *ssa.Function, paramIndex int, checker *dependencyChecker) bool {
 	if wrapper == nil || paramIndex < 0 || paramIndex >= len(wrapper.Params) {
 		return false
 	}
 	handlerParam := wrapper.Params[paramIndex]
 
-	if wrapperDelegatesWithRequestLimit(wrapper, handlerParam) {
+	if wrapperDelegatesWithRequestLimit(wrapper, handlerParam, checker) {
 		return true
 	}
 
@@ -163,15 +266,15 @@ func wrapperProtectsParamHandler(wrapper *ssa.Function, paramIndex int) bool {
 			if requestParam == nil || writerParam == nil {
 				continue
 			}
-			if !functionHasRequestBodyLimit(closureFn, requestParam, writerParam) {
+			if !functionHasRequestBodyLimit(closureFn, requestParam, writerParam, checker) {
 				continue
 			}
 
 			for bindingIndex, binding := range makeClosure.Bindings {
-				if !bindingDependsOnValue(binding, handlerParam) {
+				if !bindingDependsOnValue(binding, handlerParam, checker) {
 					continue
 				}
-				if closureDelegatesWithRequestLimit(closureFn, bindingIndex, requestParam, writerParam) {
+				if closureDelegatesWithRequestLimit(closureFn, bindingIndex, requestParam, writerParam, checker) {
 					return true
 				}
 			}
@@ -181,8 +284,8 @@ func wrapperProtectsParamHandler(wrapper *ssa.Function, paramIndex int) bool {
 	return false
 }
 
-func bindingDependsOnValue(binding ssa.Value, target ssa.Value) bool {
-	if valueDependsOn(binding, target, 0) {
+func bindingDependsOnValue(binding ssa.Value, target ssa.Value, checker *dependencyChecker) bool {
+	if checker.dependsOn(binding, target) {
 		return true
 	}
 
@@ -199,7 +302,7 @@ func bindingDependsOnValue(binding ssa.Value, target ssa.Value) bool {
 		if store.Addr != alloc {
 			continue
 		}
-		if valueDependsOn(store.Val, target, 0) {
+		if checker.dependsOn(store.Val, target) {
 			return true
 		}
 	}
@@ -207,26 +310,26 @@ func bindingDependsOnValue(binding ssa.Value, target ssa.Value) bool {
 	return false
 }
 
-func wrapperDelegatesWithRequestLimit(wrapper *ssa.Function, handlerValue ssa.Value) bool {
+func wrapperDelegatesWithRequestLimit(wrapper *ssa.Function, handlerValue ssa.Value, checker *dependencyChecker) bool {
 	requestParam, writerParam := findHandlerRequestAndWriterParams(wrapper)
 	if requestParam == nil || writerParam == nil {
 		return false
 	}
-	if !functionHasRequestBodyLimit(wrapper, requestParam, writerParam) {
+	if !functionHasRequestBodyLimit(wrapper, requestParam, writerParam, checker) {
 		return false
 	}
-	return hasServeHTTPDelegation(wrapper, handlerValue, writerParam, requestParam)
+	return hasServeHTTPDelegation(wrapper, handlerValue, writerParam, requestParam, checker)
 }
 
-func closureDelegatesWithRequestLimit(closure *ssa.Function, freeVarIndex int, requestParam *ssa.Parameter, writerParam *ssa.Parameter) bool {
+func closureDelegatesWithRequestLimit(closure *ssa.Function, freeVarIndex int, requestParam *ssa.Parameter, writerParam *ssa.Parameter, checker *dependencyChecker) bool {
 	if freeVarIndex < 0 || freeVarIndex >= len(closure.FreeVars) {
 		return false
 	}
 	handlerValue := closure.FreeVars[freeVarIndex]
-	return hasServeHTTPDelegation(closure, handlerValue, writerParam, requestParam)
+	return hasServeHTTPDelegation(closure, handlerValue, writerParam, requestParam, checker)
 }
 
-func hasServeHTTPDelegation(fn *ssa.Function, handlerValue ssa.Value, writerValue ssa.Value, requestValue ssa.Value) bool {
+func hasServeHTTPDelegation(fn *ssa.Function, handlerValue ssa.Value, writerValue ssa.Value, requestValue ssa.Value, checker *dependencyChecker) bool {
 	for _, block := range fn.Blocks {
 		for _, instr := range block.Instrs {
 			call, ok := instr.(*ssa.Call)
@@ -264,13 +367,13 @@ func hasServeHTTPDelegation(fn *ssa.Function, handlerValue ssa.Value, writerValu
 				request = common.Args[2]
 			}
 
-			if !valueDependsOn(receiver, handlerValue, 0) {
+			if !checker.dependsOn(receiver, handlerValue) {
 				continue
 			}
-			if !valueDependsOn(writer, writerValue, 0) {
+			if !checker.dependsOn(writer, writerValue) {
 				continue
 			}
-			if !valueDependsOn(request, requestValue, 0) {
+			if !checker.dependsOn(request, requestValue) {
 				continue
 			}
 			return true
@@ -319,14 +422,14 @@ func isHTTPResponseWriterType(t types.Type) bool {
 	return pkg != nil && pkg.Path() == "net/http"
 }
 
-func functionHasRequestBodyLimit(fn *ssa.Function, requestParam *ssa.Parameter, writerParam *ssa.Parameter) bool {
+func functionHasRequestBodyLimit(fn *ssa.Function, requestParam *ssa.Parameter, writerParam *ssa.Parameter, checker *dependencyChecker) bool {
 	for _, block := range fn.Blocks {
 		for _, instr := range block.Instrs {
 			store, ok := instr.(*ssa.Store)
 			if !ok {
 				continue
 			}
-			if isRequestBodyStoreFromMaxBytesReader(store, requestParam, writerParam) {
+			if isRequestBodyStoreFromMaxBytesReader(store, requestParam, writerParam, checker) {
 				return true
 			}
 		}
@@ -334,24 +437,24 @@ func functionHasRequestBodyLimit(fn *ssa.Function, requestParam *ssa.Parameter, 
 	return false
 }
 
-func isRequestBodyStoreFromMaxBytesReader(store *ssa.Store, requestParam *ssa.Parameter, writerParam *ssa.Parameter) bool {
+func isRequestBodyStoreFromMaxBytesReader(store *ssa.Store, requestParam *ssa.Parameter, writerParam *ssa.Parameter, checker *dependencyChecker) bool {
 	fieldAddr, ok := store.Addr.(*ssa.FieldAddr)
 	if !ok {
 		return false
 	}
 
-	if !valueDependsOn(fieldAddr.X, requestParam, 0) {
+	if !checker.dependsOn(fieldAddr.X, requestParam) {
 		return false
 	}
 
-	if !isMaxBytesReaderValue(store.Val, requestParam, writerParam, 0) {
+	if !isMaxBytesReaderValue(store.Val, requestParam, writerParam, checker, 0) {
 		return false
 	}
 
 	return true
 }
 
-func isMaxBytesReaderValue(v ssa.Value, requestParam *ssa.Parameter, writerParam *ssa.Parameter, depth int) bool {
+func isMaxBytesReaderValue(v ssa.Value, requestParam *ssa.Parameter, writerParam *ssa.Parameter, checker *dependencyChecker, depth int) bool {
 	if v == nil || depth > MaxDepth {
 		return false
 	}
@@ -368,19 +471,19 @@ func isMaxBytesReaderValue(v ssa.Value, requestParam *ssa.Parameter, writerParam
 		if len(value.Call.Args) < 3 {
 			return false
 		}
-		if !valueDependsOn(value.Call.Args[0], writerParam, 0) {
+		if !checker.dependsOn(value.Call.Args[0], writerParam) {
 			return false
 		}
-		return valueDependsOn(value.Call.Args[1], requestParam, 0)
+		return checker.dependsOn(value.Call.Args[1], requestParam)
 	case *ssa.ChangeType:
-		return isMaxBytesReaderValue(value.X, requestParam, writerParam, depth+1)
+		return isMaxBytesReaderValue(value.X, requestParam, writerParam, checker, depth+1)
 	case *ssa.MakeInterface:
-		return isMaxBytesReaderValue(value.X, requestParam, writerParam, depth+1)
+		return isMaxBytesReaderValue(value.X, requestParam, writerParam, checker, depth+1)
 	case *ssa.TypeAssert:
-		return isMaxBytesReaderValue(value.X, requestParam, writerParam, depth+1)
+		return isMaxBytesReaderValue(value.X, requestParam, writerParam, checker, depth+1)
 	case *ssa.Phi:
 		for _, edge := range value.Edges {
-			if isMaxBytesReaderValue(edge, requestParam, writerParam, depth+1) {
+			if isMaxBytesReaderValue(edge, requestParam, writerParam, checker, depth+1) {
 				return true
 			}
 		}
@@ -389,7 +492,7 @@ func isMaxBytesReaderValue(v ssa.Value, requestParam *ssa.Parameter, writerParam
 	return false
 }
 
-func isRiskyFormParsingCall(callInstr ssa.CallInstruction, requestParam *ssa.Parameter) bool {
+func isRiskyFormParsingCall(callInstr ssa.CallInstruction, requestParam *ssa.Parameter, checker *dependencyChecker) bool {
 	common := callInstr.Common()
 	if common == nil {
 		return false
@@ -417,5 +520,5 @@ func isRiskyFormParsingCall(callInstr ssa.CallInstruction, requestParam *ssa.Par
 		return false
 	}
 
-	return valueDependsOn(common.Args[0], requestParam, 0)
+	return checker.dependsOn(common.Args[0], requestParam)
 }
