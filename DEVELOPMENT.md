@@ -15,6 +15,7 @@
 		- [Common taint sources](#common-taint-sources)
 - [AI-generated rule workflow (Copilot)](#ai-generated-rule-workflow-copilot)
 - [AI-generated bug fix workflow (Copilot)](#ai-generated-bug-fix-workflow-copilot)
+- [AI-supported Go version update workflow (Copilot)](#ai-supported-go-version-update-workflow-copilot)
 - [Rule development utilities](#rule-development-utilities)
 - [SARIF types generation](#sarif-types-generation)
 - [Performance regression guard](#performance-regression-guard)
@@ -281,6 +282,41 @@ After confirmation, the workflow should:
 - add positive and negative tests
 - add or update `testutils/` code samples when appropriate for reproducing/validating the issue
 - validate with build, tests, `golangci-lint`, and a `gosec` CLI run against a sample
+
+## AI-supported Go version update workflow (Copilot)
+
+This repository includes a Copilot skill and prompt to update supported Go versions to the latest patch versions of the two newest major Go series.
+
+- Skill file: `.github/skills/gosec-update-go-versions/SKILL.md`
+- Prompt file: `.github/prompts/update-supported-go-versions.prompt.md`
+
+### Use via `/prompt` (recommended)
+
+1. In VS Code Copilot Chat, run `/prompt` and select **Update Supported Go Versions**.
+2. Submit the prompt (no additional fields required).
+3. The workflow should:
+	- read `https://go.dev/doc/devel/release`
+	- detect latest two supported Go series and latest patch for each
+	- update all active repository locations where supported Go versions are configured or documented
+	- run validation checks
+	- create branch, commit, push, and open a PR
+
+### Use the skill directly (without `/prompt`)
+
+Send this in Copilot Chat:
+
+```text
+Use the skill "Update Supported Go Versions" from .github/skills/gosec-update-go-versions/SKILL.md.
+```
+
+### Expected outputs
+
+The result should include:
+
+- detected versions (`previous_patch`, `latest_patch`, `previous_minor`, `latest_minor`)
+- grouped file update summary
+- test command result
+- branch, commit SHA, PR title, and PR URL
 
 ## Rule development utilities
 
