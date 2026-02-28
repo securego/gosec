@@ -13,6 +13,7 @@
 			- [Sinks](#sinks)
 			- [Sanitizers](#sanitizers)
 		- [Common taint sources](#common-taint-sources)
+- [AI-generated rule workflow (Copilot)](#ai-generated-rule-workflow-copilot)
 - [Rule development utilities](#rule-development-utilities)
 - [SARIF types generation](#sarif-types-generation)
 - [Performance regression guard](#performance-regression-guard)
@@ -204,6 +205,42 @@ If data passes through a configured sanitizer, it is treated as safe for subsequ
 | Command Line Args | `os` | `Args` | `false` | `true` |
 | Environment Variables | `os` | `Getenv` | `false` | `true` |
 | File Content | `bufio` | `Reader` | `true` | `false` |
+
+## AI-generated rule workflow (Copilot)
+
+This repository includes a reusable Copilot skill and prompt for creating new gosec rules from an issue description.
+
+- Skill file: `.github/skills/gosec-new-rule/SKILL.md`
+- Prompt file: `.github/prompts/create-gosec-rule.prompt.md`
+
+### Use via `/prompt` (recommended)
+
+1. In VS Code Copilot Chat, run `/prompt` and select **Create Gosec Rule**.
+2. Fill in the issue fields (`Summary`, repro steps, versions, environment, expected, actual).
+3. Submit the prompt.
+4. First response should only propose:
+	- rule ID
+	- implementation approach (SSA / taint / AST)
+	- relevance for Go `1.25` and `1.26`
+	- confirmation request
+5. Reply with explicit confirmation (for example: `Confirmed. Proceed with implementation.`).
+
+### Use the skill directly (without `/prompt`)
+
+Send this in Copilot Chat:
+
+```text
+Use the skill "Create New Gosec Rule" from .github/skills/gosec-new-rule/SKILL.md.
+```
+
+Then paste the same issue template fields and confirm after the proposal step.
+
+### If `/prompt` does not list the prompt
+
+1. Ensure the workspace root is this repository.
+2. Confirm the file exists at `.github/prompts/create-gosec-rule.prompt.md`.
+3. Reload VS Code window and start a new chat session.
+4. As fallback, open the prompt file and send its content directly in chat.
 
 ## Rule development utilities
 
