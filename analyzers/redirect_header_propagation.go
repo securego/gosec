@@ -261,61 +261,6 @@ func extractStringConst(v ssa.Value) string {
 }
 
 func valueDependsOn(value ssa.Value, target ssa.Value, depth int) bool {
-	if value == nil || target == nil || depth > MaxDepth {
-		return false
-	}
-	if value == target {
-		return true
-	}
-
-	switch v := value.(type) {
-	case *ssa.ChangeType:
-		return valueDependsOn(v.X, target, depth+1)
-	case *ssa.MakeInterface:
-		return valueDependsOn(v.X, target, depth+1)
-	case *ssa.TypeAssert:
-		return valueDependsOn(v.X, target, depth+1)
-	case *ssa.UnOp:
-		return valueDependsOn(v.X, target, depth+1)
-	case *ssa.FieldAddr:
-		return valueDependsOn(v.X, target, depth+1)
-	case *ssa.Field:
-		return valueDependsOn(v.X, target, depth+1)
-	case *ssa.IndexAddr:
-		return valueDependsOn(v.X, target, depth+1) || valueDependsOn(v.Index, target, depth+1)
-	case *ssa.Index:
-		return valueDependsOn(v.X, target, depth+1) || valueDependsOn(v.Index, target, depth+1)
-	case *ssa.Slice:
-		if valueDependsOn(v.X, target, depth+1) {
-			return true
-		}
-		if v.Low != nil && valueDependsOn(v.Low, target, depth+1) {
-			return true
-		}
-		if v.High != nil && valueDependsOn(v.High, target, depth+1) {
-			return true
-		}
-		return v.Max != nil && valueDependsOn(v.Max, target, depth+1)
-	case *ssa.Extract:
-		return valueDependsOn(v.Tuple, target, depth+1)
-	case *ssa.Phi:
-		for _, edge := range v.Edges {
-			if valueDependsOn(edge, target, depth+1) {
-				return true
-			}
-		}
-		return false
-	case *ssa.Call:
-		if v.Call.Value != nil && valueDependsOn(v.Call.Value, target, depth+1) {
-			return true
-		}
-		for _, arg := range v.Call.Args {
-			if valueDependsOn(arg, target, depth+1) {
-				return true
-			}
-		}
-		return false
-	default:
-		return false
-	}
+	checker := newDependencyChecker()
+	return checker.dependsOnDepth(value, target, depth)
 }

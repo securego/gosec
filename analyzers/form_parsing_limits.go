@@ -46,9 +46,6 @@ func newDependencyChecker() *dependencyChecker {
 }
 
 func (c *dependencyChecker) dependsOn(value ssa.Value, target ssa.Value) bool {
-	if c == nil {
-		return valueDependsOn(value, target, 0)
-	}
 	return c.dependsOnDepth(value, target, 0)
 }
 
