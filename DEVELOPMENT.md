@@ -414,7 +414,7 @@ The release workflow builds binaries and Docker images, then signs artifacts.
 Verify signatures:
 
 ```bash
-cosign verify --key cosign.pub securego/gosec:<TAG>
+cosign verify --key cosign.pub ghcr.io/securego/gosec:<TAG>
 cosign verify-blob --key cosign.pub --signature gosec_<VERSION>_darwin_amd64.tar.gz.sig gosec_<VERSION>_darwin_amd64.tar.gz
 ```
 
@@ -429,7 +429,7 @@ make image
 Run against a local project:
 
 ```bash
-docker run --rm -it -w /<PROJECT>/ -v <YOUR_PROJECT_PATH>/<PROJECT>:/<PROJECT> securego/gosec /<PROJECT>/...
+docker run --rm -it -w /<PROJECT>/ -v <YOUR_PROJECT_PATH>/<PROJECT>:/<PROJECT> ghcr.io/securego/gosec:latest /<PROJECT>/...
 ```
 
 Set `-w` so module dependencies resolve from the mounted project root.

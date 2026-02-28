@@ -3,6 +3,9 @@
 
 Inspects source code for security problems by scanning the Go AST and SSA code representation.
 
+> ⚠️ Container image migration notice: `gosec` images have been migrated from Docker Hub to `ghcr.io/securego/gosec`.
+> Starting with the next release, Docker Hub images will no longer be published.
+
 <img src="https://securego.io/img/gosec.png" width="320">
 
 ## Quick links
@@ -35,7 +38,7 @@ You may obtain a copy of the License [here](http://www.apache.org/licenses/LICEN
 [![GoDoc](https://pkg.go.dev/badge/github.com/securego/gosec/v2)](https://pkg.go.dev/github.com/securego/gosec/v2)
 [![Docs](https://readthedocs.org/projects/docs/badge/?version=latest)](https://securego.io/)
 [![Downloads](https://img.shields.io/github/downloads/securego/gosec/total.svg)](https://github.com/securego/gosec/releases)
-[![Docker Pulls](https://img.shields.io/docker/pulls/securego/gosec.svg)](https://hub.docker.com/r/securego/gosec/tags)
+[![GHCR](https://img.shields.io/badge/ghcr.io-securego%2Fgosec-blue)](https://github.com/orgs/securego/packages/container/package/gosec)
 [![Slack](https://img.shields.io/badge/Slack-4A154B?style=for-the-badge&logo=slack&logoColor=white)](http://securego.slack.com)
 [![go-recipes](https://raw.githubusercontent.com/nikolaydubina/go-recipes/main/badge.svg?raw=true)](https://github.com/nikolaydubina/go-recipes)
 
