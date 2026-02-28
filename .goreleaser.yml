@@ -27,11 +27,12 @@ builds:
 
 signs:
 - cmd: cosign
+  signature: "${artifact}.sigstore.json"
   stdin: '{{ .Env.COSIGN_PASSWORD}}'
   args:
   - "sign-blob"
   - "--key=/tmp/cosign.key"
-  - "--output-signature=${signature}"
+  - "--bundle=${signature}"
   - "${artifact}"
   - "--yes"
   artifacts: all
