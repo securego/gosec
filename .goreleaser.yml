@@ -31,8 +31,7 @@ signs:
   args:
   - "sign-blob"
   - "--key=/tmp/cosign.key"
-  - "--output=${signature}"
+  - "--output-signature=${signature}"
   - "${artifact}"
   - "--yes"
   artifacts: all
-
