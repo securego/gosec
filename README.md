@@ -3,9 +3,6 @@
 
 Inspects source code for security problems by scanning the Go AST and SSA code representation.
 
-> ⚠️ Container image migration notice: `gosec` images have been migrated from Docker Hub to `ghcr.io/securego/gosec`.
-> Starting with the next release, Docker Hub images will no longer be published.
-
 <img src="https://securego.io/img/gosec.png" width="320">
 
 ## Quick links
@@ -16,6 +13,9 @@ Inspects source code for security problems by scanning the Go AST and SSA code r
 - [Common usage patterns](#common-usage-patterns)
 - [Selecting rules](#selecting-rules)
 - [Output formats](#output-formats)
+
+> ⚠️ Container image migration notice: `gosec` images was migrated from Docker Hub to `ghcr.io/securego/gosec`.
+> Starting with release `v2.24.7` the image is no longer published in Docker Hub.
 
 ## Features
 
