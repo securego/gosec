@@ -1934,4 +1934,34 @@ func loopMissingLower(data []int) uint8 {
 	return out
 }
 	`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+func issue1577RangeChecked(v int64) byte {
+	if v < -128 || v > 255 {
+		return 0
+	}
+	return byte(v)
+}
+	`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+func issue1577UnsafeLower(v int64) byte {
+	if v < -129 || v > 255 {
+		return 0
+	}
+	return byte(v)
+}
+	`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+func issue1577UnsafeUpper(v int64) byte {
+	if v < -128 || v > 256 {
+		return 0
+	}
+	return byte(v)
+}
+	`}, 1, gosec.NewConfig()},
 }
