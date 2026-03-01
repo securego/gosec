@@ -51,6 +51,9 @@ var _ = Describe("Sarif Self Scan", func() {
 })
 
 func currentRepoRoot() string {
-	_, currentFile, _, _ := runtime.Caller(0)
+	programCounter, currentFile, line, ok := runtime.Caller(0)
+	if !ok || programCounter == 0 || line <= 0 {
+		return filepath.Clean(".")
+	}
 	return filepath.Clean(filepath.Join(filepath.Dir(currentFile), "..", ".."))
 }
