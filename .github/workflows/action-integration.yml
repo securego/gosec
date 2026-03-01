@@ -25,7 +25,7 @@ jobs:
       - name: Run action against gosec source
         uses: ./
         with:
-          args: -no-fail -fmt sarif -out results.sarif -exclude-generated ./...
+          args: -no-fail -nosec -fmt sarif -out results.sarif -exclude-generated ./...
 
       - name: Validate SARIF output exists and is valid JSON
         run: |
