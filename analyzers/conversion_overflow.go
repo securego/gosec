@@ -234,14 +234,14 @@ func signedMinForUnsignedSize(size int) int64 {
 	if size >= 64 {
 		return math.MinInt64
 	}
-	return -int64(uint64(1) << (size - 1))
+	return -(int64(1) << (size - 1))
 }
 
 func signedMaxForUnsignedSize(size int) int64 {
 	if size >= 64 {
 		return math.MaxInt64
 	}
-	return int64((uint64(1) << (size - 1)) - 1)
+	return (int64(1) << (size - 1)) - 1
 }
 
 func (s *overflowState) isSafeFromPredecessor(v ssa.Value, dstInt IntTypeInfo, pred *ssa.BasicBlock, targetBlock *ssa.BasicBlock) bool {
