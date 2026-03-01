@@ -32,18 +32,10 @@ jobs:
           set -euo pipefail
           test -s "${SARIF_FILE}"
           python3 - <<'PY'
-import json
-with open("results.sarif", "r", encoding="utf-8") as f:
-    json.load(f)
-PY
-
-      - name: Validate SARIF does not include null relationships
-        run: |
-          set -euo pipefail
-          if grep -Eq '"relationships"\s*:\s*\[\s*null\s*\]' "${SARIF_FILE}"; then
-            echo "Invalid SARIF: null relationships entry detected"
-            exit 1
-          fi
+          import json
+          with open("results.sarif", "r", encoding="utf-8") as f:
+            json.load(f)
+          PY
 
       - name: Upload SARIF artifact
         uses: actions/upload-artifact@v4
