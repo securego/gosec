@@ -17,6 +17,7 @@ package analyzers
 import (
 	"fmt"
 	"go/types"
+	"math"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/buildssa"
@@ -216,7 +217,11 @@ func (s *overflowState) validateRangeLimits(v ssa.Value, res *rangeResult, dstIn
 	}
 	minSafe := true
 	if srcInt.Min < 0 {
-		minSafe = minValueSet && toInt64(minValue) >= 0
+		minBound := int64(0)
+		if res.isRangeCheck && maxValueSet && toInt64(maxValue) > signedMaxForUnsignedSize(dstInt.Size) {
+			minBound = signedMinForUnsignedSize(dstInt.Size)
+		}
+		minSafe = minValueSet && toInt64(minValue) >= minBound
 	}
 	maxSafe := true
 	if srcInt.Max > dstInt.Max {
@@ -225,36 +230,81 @@ func (s *overflowState) validateRangeLimits(v ssa.Value, res *rangeResult, dstIn
 	return minSafe && maxSafe
 }
 
-func (s *overflowState) isSafeFromPredecessor(v ssa.Value, dstInt IntTypeInfo, pred *ssa.BasicBlock, targetBlock *ssa.BasicBlock) bool {
-	if vIf, ok := pred.Instrs[len(pred.Instrs)-1].(*ssa.If); ok {
-		isSrcUnsigned := isUint(v)
-		for i, succ := range pred.Succs {
-			if succ == targetBlock {
-				// We took this specific edge.
-				result := s.Analyzer.getResultRangeForIfEdge(vIf, i == 0, v)
-				defer s.Analyzer.releaseResult(result)
+func signedMinForUnsignedSize(size int) int64 {
+	if size >= 64 {
+		return math.MinInt64
+	}
+	return -int64(uint64(1) << (size - 1))
+}
 
-				if result.isRangeCheck {
-					var safe bool
-					if dstInt.Signed {
-						if isSrcUnsigned {
-							safe = result.maxValueSet && result.maxValue <= dstInt.Max
-						} else {
-							safe = (result.minValueSet && toInt64(result.minValue) >= dstInt.Min) && (result.maxValueSet && toInt64(result.maxValue) <= toInt64(dstInt.Max))
-						}
-					} else {
-						if isSrcUnsigned {
-							safe = result.maxValueSet && result.maxValue <= dstInt.Max
-						} else {
-							safe = (result.minValueSet && toInt64(result.minValue) >= 0) && (result.maxValueSet && result.maxValue <= dstInt.Max)
-						}
-					}
-					if safe {
+func signedMaxForUnsignedSize(size int) int64 {
+	if size >= 64 {
+		return math.MaxInt64
+	}
+	return int64((uint64(1) << (size - 1)) - 1)
+}
+
+func (s *overflowState) isSafeFromPredecessor(v ssa.Value, dstInt IntTypeInfo, pred *ssa.BasicBlock, targetBlock *ssa.BasicBlock) bool {
+	edgeValue := v
+	if phi, ok := v.(*ssa.Phi); ok && phi.Block() == targetBlock {
+		for i, p := range targetBlock.Preds {
+			if p == pred && i < len(phi.Edges) {
+				edgeValue = phi.Edges[i]
+				break
+			}
+		}
+	}
+
+	if len(pred.Instrs) > 0 {
+		if vIf, ok := pred.Instrs[len(pred.Instrs)-1].(*ssa.If); ok {
+			for i, succ := range pred.Succs {
+				if succ == targetBlock {
+					result := s.Analyzer.getResultRangeForIfEdge(vIf, i == 0, edgeValue)
+					defer s.Analyzer.releaseResult(result)
+					if s.isSafeIfEdgeResult(edgeValue, dstInt, result) {
 						return true
 					}
 				}
 			}
 		}
 	}
+
+	if len(pred.Preds) == 1 {
+		parent := pred.Preds[0]
+		if len(parent.Instrs) > 0 {
+			if vIf, ok := parent.Instrs[len(parent.Instrs)-1].(*ssa.If); ok {
+				for i, succ := range parent.Succs {
+					if succ == pred {
+						result := s.Analyzer.getResultRangeForIfEdge(vIf, i == 0, edgeValue)
+						defer s.Analyzer.releaseResult(result)
+						if s.isSafeIfEdgeResult(edgeValue, dstInt, result) {
+							return true
+						}
+					}
+				}
+			}
+		}
+	}
+
 	return false
+}
+
+func (s *overflowState) isSafeIfEdgeResult(v ssa.Value, dstInt IntTypeInfo, result *rangeResult) bool {
+	if !result.isRangeCheck {
+		return false
+	}
+
+	isSrcUnsigned := isUint(v)
+	if dstInt.Signed {
+		if isSrcUnsigned {
+			return result.maxValueSet && result.maxValue <= dstInt.Max
+		}
+		return (result.minValueSet && toInt64(result.minValue) >= dstInt.Min) && (result.maxValueSet && toInt64(result.maxValue) <= toInt64(dstInt.Max))
+	}
+
+	if isSrcUnsigned {
+		return result.maxValueSet && result.maxValue <= dstInt.Max
+	}
+
+	return (result.minValueSet && toInt64(result.minValue) >= 0) && (result.maxValueSet && result.maxValue <= dstInt.Max)
 }
