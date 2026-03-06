@@ -48,7 +48,7 @@ You may obtain a copy of the License [here](http://www.apache.org/licenses/LICEN
 
 You can run `gosec` as a GitHub action as follows:
 
-Use a versioned tag (for example `@v2`) instead of `@master` for stable behavior.
+Use the versioned  tag with `@master` which is pinned to the latest stable release. This will provide a stable behavior.
 
 ```yaml
 name: Run Gosec
@@ -68,7 +68,7 @@ jobs:
       - name: Checkout Source
         uses: actions/checkout@v3
       - name: Run Gosec Security Scanner
-        uses: securego/gosec@v2
+        uses: securego/gosec@master
         with:
           args: ./...
 ```
