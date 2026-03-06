@@ -1,6 +1,7 @@
 module github.com/securego/gosec/v2
 
 require (
+	github.com/BurntSushi/toml v0.3.1
 	github.com/anthropics/anthropic-sdk-go v1.26.0
 	github.com/ccojocar/zxcvbn-go v1.0.4
 	github.com/google/uuid v1.6.0
