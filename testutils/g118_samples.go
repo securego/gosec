@@ -324,7 +324,7 @@ func multiContext(ctx context.Context) {
 }
 `}, 1, gosec.NewConfig()},
 
-	// Vulnerable: cancel returned to caller (analyzer cannot verify caller will use it)
+	// Safe: cancel returned to caller — responsibility is transferred
 	{[]string{`
 package main
 
@@ -333,7 +333,7 @@ import "context"
 func createContext(ctx context.Context) (context.Context, context.CancelFunc) {
 	return context.WithCancel(ctx)
 }
-`}, 1, gosec.NewConfig()},
+`}, 0, gosec.NewConfig()},
 
 	// Note: simple goroutines with Background() not detected when request param unused
 	{[]string{`
@@ -1509,4 +1509,47 @@ func multipleViolations(ctx context.Context) {
 	_, _, _ = cancel1, cancel2, cancel3
 }
 `}, 3, gosec.NewConfig()},
+
+	// Safe: cancel returned as func() and called by caller (issue #1584)
+	{[]string{`
+package main
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+)
+
+type Env struct {
+	DB       *sql.DB
+	Shutdown func()
+}
+
+func withContext(ctx context.Context, env *Env) error {
+	db, closeFn, err := initDatabase(ctx)
+	if err != nil {
+		return fmt.Errorf("creating database: %w", err)
+	}
+
+	prev := env.Shutdown
+	env.Shutdown = func() {
+		prev()
+		closeFn()
+	}
+
+	env.DB = db
+	return nil
+}
+
+func initDatabase(ctx context.Context) (*sql.DB, func(), error) {
+	ctx, cancelFunc := context.WithCancel(ctx)
+	_ = ctx
+
+	db, err := sql.Open("sqlite", "testing")
+	if err != nil {
+		return nil, cancelFunc, fmt.Errorf("opening database: %%w", err)
+	}
+	return db, cancelFunc, nil
+}
+`}, 0, gosec.NewConfig()},
 }

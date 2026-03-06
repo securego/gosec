@@ -725,6 +725,14 @@ func isCancelCalled(cancelValue ssa.Value, allFuncs []*ssa.Function) bool {
 				if r.X == current {
 					queue = append(queue, r)
 				}
+			case *ssa.Return:
+				// Cancel function is returned to the caller — responsibility
+				// is transferred; treat as "called".
+				for _, result := range r.Results {
+					if result == current {
+						return true
+					}
+				}
 			}
 		}
 	}
