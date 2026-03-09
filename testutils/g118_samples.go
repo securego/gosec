@@ -1552,4 +1552,20 @@ func initDatabase(ctx context.Context) (*sql.DB, func(), error) {
 	return db, cancelFunc, nil
 }
 `}, 0, gosec.NewConfig()},
+
+	// Safe: cancel called inside goroutine closure (issue #1590)
+	{[]string{`
+package main
+
+import (
+	"context"
+)
+
+func main() {
+	_, cancel := context.WithCancel(context.Background())
+	go func() {
+		cancel()
+	}()
+}
+`}, 0, gosec.NewConfig()},
 }

@@ -725,6 +725,17 @@ func isCancelCalled(cancelValue ssa.Value, allFuncs []*ssa.Function) bool {
 				if r.X == current {
 					queue = append(queue, r)
 				}
+			case *ssa.MakeClosure:
+				// The cancel value is captured as a free variable in a closure.
+				// Find the corresponding FreeVar inside the closure body and
+				// follow it so that calls within the closure are detected.
+				if fn, ok := r.Fn.(*ssa.Function); ok {
+					for i, binding := range r.Bindings {
+						if binding == current && i < len(fn.FreeVars) {
+							queue = append(queue, fn.FreeVars[i])
+						}
+					}
+				}
 			case *ssa.Return:
 				// Cancel function is returned to the caller — responsibility
 				// is transferred; treat as "called".
