@@ -705,6 +705,11 @@ func isCancelCalled(cancelValue ssa.Value, allFuncs []*ssa.Function) bool {
 					if isCancelCalledViaStructField(fa, allFuncs) {
 						return true
 					}
+					// Check if the struct containing this field is returned,
+					// transferring cancel responsibility to the caller.
+					if isStructFieldReturnedFromFunc(fa) {
+						return true
+					}
 				}
 				queue = append(queue, r.Addr)
 			case *ssa.UnOp:
@@ -744,6 +749,33 @@ func isCancelCalled(cancelValue ssa.Value, allFuncs []*ssa.Function) bool {
 						return true
 					}
 				}
+			}
+		}
+	}
+
+	return false
+}
+
+// isStructFieldReturnedFromFunc checks whether the struct that owns a FieldAddr
+// is loaded and returned from the enclosing function. When a cancel is stored in
+// a struct field and the struct is returned, responsibility for calling the
+// cancel is transferred to the caller.
+func isStructFieldReturnedFromFunc(fa *ssa.FieldAddr) bool {
+	structBase := fa.X
+	if structBase == nil {
+		return false
+	}
+
+	// Follow referrers of the struct base pointer to find loads (*struct)
+	// that are then returned.
+	for _, ref := range safeReferrers(structBase) {
+		load, ok := ref.(*ssa.UnOp)
+		if !ok || load.Op != token.MUL {
+			continue
+		}
+		for _, loadRef := range safeReferrers(load) {
+			if _, ok := loadRef.(*ssa.Return); ok {
+				return true
 			}
 		}
 	}

@@ -1568,4 +1568,28 @@ func main() {
 	}()
 }
 `}, 0, gosec.NewConfig()},
+
+	// Safe: cancel stored in struct field, struct returned, caller invokes it (issue #1591)
+	{[]string{`
+package main
+
+import (
+	"context"
+)
+
+type Foo struct {
+	Cancel func()
+}
+
+func NewFoo() Foo {
+	_, cancel := context.WithCancel(context.Background())
+	foo := Foo{Cancel: cancel}
+	return foo
+}
+
+func main() {
+	foo := NewFoo()
+	foo.Cancel()
+}
+`}, 0, gosec.NewConfig()},
 }
