@@ -194,8 +194,18 @@ func (m *Metrics) Merge(other *Metrics) {
 // Analyzer object is the main object of gosec. It has methods to load and analyze
 // packages, traverse ASTs, and invoke the correct checking rules on each node as required.
 type Analyzer struct {
-	ignoreNosec       bool
-	ruleset           RuleSet
+	ignoreNosec bool
+	ruleset     RuleSet
+	// ruleBuilders and ruleSuppressed store the original arguments passed to
+	// LoadRules so that checkRules can call buildPackageRuleset to produce a
+	// goroutine-local RuleSet for every concurrent package walk. Each walk
+	// therefore owns its own freshly allocated rule instances, which means
+	// rules are free to keep per-package mutable state (e.g. maps tracking
+	// cleaned or joined variables) without any synchronisation. The shared
+	// gosec.ruleset is kept for callers that use the public CheckRules API
+	// directly (backward-compatible path).
+	ruleBuilders      map[string]RuleBuilder
+	ruleSuppressed    map[string]bool
 	context           *Context
 	config            Config
 	logger            *log.Logger
@@ -254,10 +264,30 @@ func (gosec *Analyzer) Config() Config {
 // LoadRules instantiates all the rules to be used when analyzing source
 // packages
 func (gosec *Analyzer) LoadRules(ruleDefinitions map[string]RuleBuilder, ruleSuppressed map[string]bool) {
+	// Persist the builders so checkRules can produce per-package rule
+	// instances via buildPackageRuleset, eliminating shared mutable state
+	// across concurrent goroutines without requiring locks inside rules.
+	gosec.ruleBuilders = ruleDefinitions
+	gosec.ruleSuppressed = ruleSuppressed
+
 	for id, def := range ruleDefinitions {
 		r, nodes := def(id, gosec.config)
 		gosec.ruleset.Register(r, ruleSuppressed[id], nodes...)
 	}
+}
+
+// buildPackageRuleset constructs a brand-new RuleSet by re-invoking every
+// stored RuleBuilder. The returned ruleset is intended to be used for a single
+// package walk: because each concurrent worker calls buildPackageRuleset
+// independently, every goroutine gets its own rule instances with their own
+// internal state (maps, caches, etc.), so rules require no synchronisation.
+func (gosec *Analyzer) buildPackageRuleset() RuleSet {
+	rs := NewRuleSet()
+	for id, def := range gosec.ruleBuilders {
+		r, nodes := def(id, gosec.config)
+		rs.Register(r, gosec.ruleSuppressed[id], nodes...)
+	}
+	return rs
 }
 
 // LoadAnalyzers instantiates all the analyzers to be used when analyzing source
@@ -460,8 +490,20 @@ func (gosec *Analyzer) checkRules(pkg *packages.Package) ([]*issue.Issue, *Metri
 		callCachePool.Put(callCache)
 	}()
 
+	// Build a goroutine-local RuleSet so this package walk owns its own fresh
+	// rule instances. Rules with internal maps (e.g. readfile.cleanedVar,
+	// joinedVar) are therefore safe to use without any synchronisation: each
+	// concurrent worker has completely independent rule objects. Falls back to
+	// the shared ruleset when builders are unavailable (direct CheckRules path).
+	var pkgRuleset *RuleSet
+	if len(gosec.ruleBuilders) > 0 {
+		rs := gosec.buildPackageRuleset()
+		pkgRuleset = &rs
+	}
+
 	visitor := &astVisitor{
 		gosec:             gosec,
+		ruleset:           pkgRuleset,
 		issues:            make([]*issue.Issue, 0, 16),
 		stats:             stats,
 		ignoreNosec:       gosec.ignoreNosec,
@@ -502,7 +544,7 @@ func (gosec *Analyzer) checkRules(pkg *packages.Package) ([]*issue.Issue, *Metri
 
 		visitor.context = ctx
 		visitor.updateIgnores()
-		if len(gosec.ruleset.Rules) > 0 {
+		if len(visitor.activeRuleset().Rules) > 0 {
 			ast.Walk(visitor, file)
 		}
 		stats.NumFiles++
@@ -811,7 +853,12 @@ func findNoSecTag(text, tag string) (bool, string) {
 
 // astVisitor implements ast.Visitor for per-file rule checking and issue collection.
 type astVisitor struct {
-	gosec             *Analyzer
+	gosec *Analyzer
+	// ruleset is a package-local RuleSet built fresh by buildPackageRuleset
+	// for each concurrent package walk. It is non-nil when invoked through
+	// the normal Process → checkRules path and nil when the public CheckRules
+	// API is called directly (falling back to the shared gosec.ruleset).
+	ruleset           *RuleSet
 	context           *Context
 	issues            []*issue.Issue
 	stats             *Metrics
@@ -820,13 +867,22 @@ type astVisitor struct {
 	trackSuppressions bool
 }
 
+// activeRuleset returns the package-local ruleset when available, falling back
+// to the shared analyzer ruleset for direct CheckRules callers.
+func (v *astVisitor) activeRuleset() *RuleSet {
+	if v.ruleset != nil {
+		return v.ruleset
+	}
+	return &v.gosec.ruleset
+}
+
 func (v *astVisitor) Visit(n ast.Node) ast.Visitor {
 	switch i := n.(type) {
 	case *ast.File:
 		v.context.Imports.TrackFile(i)
 	}
 
-	for _, rule := range v.gosec.ruleset.RegisteredFor(n) {
+	for _, rule := range v.activeRuleset().RegisteredFor(n) {
 		issue, err := rule.Match(n, v.context)
 		if err != nil {
 			file, line := GetLocation(n, v.context)
@@ -1012,5 +1068,7 @@ func (gosec *Analyzer) Reset() {
 	gosec.issues = make([]*issue.Issue, 0, 16)
 	gosec.stats = &Metrics{}
 	gosec.ruleset = NewRuleSet()
+	gosec.ruleBuilders = nil
+	gosec.ruleSuppressed = nil
 	gosec.analyzerSet = analyzers.NewAnalyzerSet()
 }
