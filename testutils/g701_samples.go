@@ -1998,4 +1998,202 @@ func handler(db *sql.DB, r *http.Request) {
 	db.Query(query)
 }
 `}, 1, gosec.NewConfig()},
+
+	// Multi-level constructor chain with shared tainted config (issue #1587)
+	// Tests that interprocedural taint analysis terminates when constructors
+	// fan out tainted config through multiple struct levels.
+	// The analysis terminates correctly but does not yet follow double field
+	// indirection (app.cfg.DSN), so no issue is expected.
+	{[]string{`
+package main
+
+import (
+	"database/sql"
+	"net/http"
+)
+
+type Config struct {
+	DSN string
+}
+
+type RepoLayer struct {
+	cfg Config
+}
+
+func NewRepoLayer(cfg Config) *RepoLayer {
+	return &RepoLayer{cfg: cfg}
+}
+
+type ServiceLayer struct {
+	repo *RepoLayer
+	cfg  Config
+}
+
+func NewServiceLayer(cfg Config) *ServiceLayer {
+	return &ServiceLayer{
+		repo: NewRepoLayer(cfg),
+		cfg:  cfg,
+	}
+}
+
+type App struct {
+	svc *ServiceLayer
+	cfg Config
+}
+
+func NewApp(cfg Config) *App {
+	return &App{
+		svc: NewServiceLayer(cfg),
+		cfg: cfg,
+	}
+}
+
+func handler(db *sql.DB, r *http.Request) {
+	cfg := Config{DSN: r.FormValue("dsn")}
+	app := NewApp(cfg)
+	query := "SELECT * FROM t WHERE dsn = '" + app.cfg.DSN + "'"
+	db.Query(query)
+}
+`}, 0, gosec.NewConfig()},
+
+	// Fan-out constructor with multiple children storing tainted data (issue #1587)
+	// Tests termination when one constructor creates multiple child structs that
+	// each store the same tainted parameter.
+	{[]string{`
+package main
+
+import (
+	"database/sql"
+	"net/http"
+)
+
+type ChildA struct {
+	val string
+}
+
+func NewChildA(v string) *ChildA {
+	return &ChildA{val: v}
+}
+
+type ChildB struct {
+	val string
+}
+
+func NewChildB(v string) *ChildB {
+	return &ChildB{val: v}
+}
+
+type ChildC struct {
+	val string
+}
+
+func NewChildC(v string) *ChildC {
+	return &ChildC{val: v}
+}
+
+type Parent struct {
+	a *ChildA
+	b *ChildB
+	c *ChildC
+}
+
+func NewParent(input string) *Parent {
+	return &Parent{
+		a: NewChildA(input),
+		b: NewChildB(input),
+		c: NewChildC(input),
+	}
+}
+
+func handler(db *sql.DB, r *http.Request) {
+	p := NewParent(r.FormValue("name"))
+	query := "SELECT * FROM t WHERE a = '" + p.a.val + "'"
+	db.Query(query)
+}
+`}, 1, gosec.NewConfig()},
+
+	// Deep nested struct field access through constructor chain (issue #1587)
+	// Tests that taint tracks correctly through deeply nested field access
+	// without exponential blowup from revisiting the same call sites.
+	{[]string{`
+package main
+
+import (
+	"database/sql"
+	"net/http"
+)
+
+type Inner struct {
+	data string
+}
+
+func NewInner(d string) *Inner {
+	return &Inner{data: d}
+}
+
+type Middle struct {
+	inner *Inner
+}
+
+func NewMiddle(d string) *Middle {
+	return &Middle{inner: NewInner(d)}
+}
+
+type Outer struct {
+	middle *Middle
+}
+
+func NewOuter(d string) *Outer {
+	return &Outer{middle: NewMiddle(d)}
+}
+
+func handler(db *sql.DB, r *http.Request) {
+	o := NewOuter(r.FormValue("q"))
+	query := "SELECT * FROM t WHERE v = '" + o.middle.inner.data + "'"
+	db.Query(query)
+}
+`}, 1, gosec.NewConfig()},
+
+	// No taint: safe value through multi-level constructors (issue #1587)
+	// Ensures no false positive when a constant flows through the same
+	// multi-level constructor chain.
+	{[]string{`
+package main
+
+import (
+	"database/sql"
+	"net/http"
+)
+
+type Cfg struct {
+	Host string
+}
+
+type Repo struct {
+	cfg Cfg
+}
+
+func NewRepo(cfg Cfg) *Repo {
+	return &Repo{cfg: cfg}
+}
+
+type Svc struct {
+	repo *Repo
+	cfg  Cfg
+}
+
+func NewSvc(cfg Cfg) *Svc {
+	return &Svc{
+		repo: NewRepo(cfg),
+		cfg:  cfg,
+	}
+}
+
+func handler(db *sql.DB, _ *http.Request) {
+	cfg := Cfg{Host: "localhost"}
+	svc := NewSvc(cfg)
+	query := "SELECT * FROM t WHERE host = '" + svc.cfg.Host + "'"
+	db.Query(query)
+}
+`}, 0, gosec.NewConfig()},
 }

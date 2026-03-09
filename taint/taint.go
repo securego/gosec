@@ -1073,6 +1073,12 @@ func (a *Analyzer) isFieldTaintedViaCall(call *ssa.Call, fieldIdx int, callee *s
 		return false
 	}
 
+	// Prevent re-analyzing the same call site
+	if visited[call] {
+		return false
+	}
+	visited[call] = true
+
 	// If we don't have SSA blocks (external function or no body), use fallback logic:
 	// Assume the field is tainted if any argument to the constructor is tainted.
 	if callee.Blocks == nil {
@@ -1114,6 +1120,11 @@ func (a *Analyzer) isFieldOfAllocTaintedInCallee(alloc *ssa.Alloc, fieldIdx int,
 	if alloc.Referrers() == nil || depth > maxTaintDepth {
 		return false
 	}
+
+	if visited[alloc] {
+		return false
+	}
+	visited[alloc] = true
 	for _, ref := range *alloc.Referrers() {
 		fa, ok := ref.(*ssa.FieldAddr)
 		if !ok || fa.Field != fieldIdx {
@@ -1143,6 +1154,12 @@ func (a *Analyzer) isCalleValueTainted(v ssa.Value, callee *ssa.Function, call *
 	if v == nil || depth > maxTaintDepth {
 		return false
 	}
+
+	// Prevent infinite recursion on cyclic SSA value graphs
+	if visited[v] {
+		return false
+	}
+	visited[v] = true
 
 	// If the value is a callee parameter, map it to the caller's argument
 	if param, ok := v.(*ssa.Parameter); ok {
