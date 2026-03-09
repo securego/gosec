@@ -115,6 +115,51 @@ var _ = Describe("Analyzer", func() {
 			Expect(metrics.NumFiles).To(Equal(2))
 		})
 
+		It("should not race when analyzing G304 patterns across many packages concurrently (issue #1586)", func() {
+			const numPackages = 20
+			const concurrency = 16
+
+			// Source that exercises both cleanedVar and joinedVar maps in the
+			// readfile rule: one assignment via filepath.Clean (tracked in
+			// cleanedVar), one via filepath.Join with a variable argument
+			// (tracked in joinedVar), plus an os.Open call that triggers Match.
+			g304Source := `package main
+
+import (
+	"os"
+	"path/filepath"
+)
+
+func main() {
+	name := "input"
+	cleaned := filepath.Clean(name)
+	_, _ = os.Open(cleaned)
+	joined := filepath.Join("/base", name)
+	_, _ = os.Open(joined)
+}
+`
+			concurrentAnalyzer := gosec.NewAnalyzer(nil, false, false, false, concurrency, logger)
+			concurrentAnalyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G304")).RulesInfo())
+
+			pkgs := make([]*testutils.TestPackage, numPackages)
+			paths := make([]string, numPackages)
+			for i := range numPackages {
+				pkgs[i] = testutils.NewTestPackage()
+				pkgs[i].AddFile("main.go", g304Source)
+				err := pkgs[i].Build()
+				Expect(err).ShouldNot(HaveOccurred())
+				paths[i] = pkgs[i].Path
+			}
+			defer func() {
+				for _, p := range pkgs {
+					p.Close()
+				}
+			}()
+
+			err := concurrentAnalyzer.Process(buildTags, paths...)
+			Expect(err).ShouldNot(HaveOccurred())
+		})
+
 		It("should be able to analyze multiple Go packages", func() {
 			analyzer.LoadRules(rules.Generate(false).RulesInfo())
 			pkg1 := testutils.NewTestPackage()
