@@ -710,6 +710,14 @@ func isCancelCalled(cancelValue ssa.Value, allFuncs []*ssa.Function) bool {
 					if isStructFieldReturnedFromFunc(fa) {
 						return true
 					}
+					// Check if any function (including closures capturing the
+					// struct) loads and calls the same field. This handles
+					// post-construction storage such as:
+					//   s.cancel = cancel; defer s.cancel()
+					//   s.cancel = cancel; defer func() { s.cancel() }()
+					if isFieldCalledInAnyFunc(fa, allFuncs) {
+						return true
+					}
 				}
 				queue = append(queue, r.Addr)
 			case *ssa.UnOp:
@@ -780,6 +788,39 @@ func isStructFieldReturnedFromFunc(fa *ssa.FieldAddr) bool {
 		}
 	}
 
+	return false
+}
+
+// isFieldCalledInAnyFunc checks whether a cancel function stored into a struct
+// field is subsequently called in any function (including closures) that
+// accesses the same field by struct pointer type and field index. This covers
+// post-construction storage patterns not handled by isCancelCalledViaStructField:
+//
+//	s.cancel = cancel; defer s.cancel()
+//	s.cancel = cancel; defer func() { s.cancel() }()
+func isFieldCalledInAnyFunc(fa *ssa.FieldAddr, allFuncs []*ssa.Function) bool {
+	structPtrType := fa.X.Type()
+	fieldIdx := fa.Field
+
+	for _, fn := range allFuncs {
+		if fn == nil {
+			continue
+		}
+		for _, block := range fn.Blocks {
+			for _, instr := range block.Instrs {
+				otherFA, ok := instr.(*ssa.FieldAddr)
+				if !ok || otherFA.Field != fieldIdx {
+					continue
+				}
+				if !types.Identical(otherFA.X.Type(), structPtrType) {
+					continue
+				}
+				if isFieldValueCalled(otherFA) {
+					return true
+				}
+			}
+		}
+	}
 	return false
 }
 

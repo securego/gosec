@@ -852,7 +852,7 @@ func multiPhiEdges(ctx context.Context, a, b, c bool) {
 }
 `}, 0, gosec.NewConfig()},
 
-	// Note: nested field access not tracked by current implementation
+	// Safe: nested field cancel called via outer method on Inner type (fixed by isFieldCalledInAnyFunc)
 	{[]string{`
 package main
 
@@ -876,7 +876,7 @@ func (o *Outer) Teardown() {
 		o.inner.cancel()
 	}
 }
-`}, 1, gosec.NewConfig()},
+`}, 0, gosec.NewConfig()},
 
 	// Vulnerable: loop with interface method Do (tests analyzeBlockFeatures invoke)
 	{[]string{`
@@ -1590,6 +1590,42 @@ func NewFoo() Foo {
 func main() {
 	foo := NewFoo()
 	foo.Cancel()
+}
+`}, 0, gosec.NewConfig()},
+
+	// Safe: cancel stored in struct field post-construction, called via defer in same function (issue #1595)
+	{[]string{`
+package main
+
+import "context"
+
+type State struct {
+	done context.CancelFunc
+}
+
+func manage(ctx context.Context) {
+	s := &State{}
+	_, s.done = context.WithCancel(ctx)
+	defer s.done()
+}
+`}, 0, gosec.NewConfig()},
+
+	// Safe: cancel stored in struct field post-construction, called via deferred closure (issue #1595)
+	{[]string{`
+package main
+
+import "context"
+
+type Runner struct {
+	stop context.CancelFunc
+}
+
+func launch(ctx context.Context) {
+	r := &Runner{}
+	_, r.stop = context.WithCancel(ctx)
+	defer func() {
+		r.stop()
+	}()
 }
 `}, 0, gosec.NewConfig()},
 }
