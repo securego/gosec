@@ -80,6 +80,12 @@ func TestTaintAnalyzerConstructors(t *testing.T) {
 			id:          "G709",
 			description: "Unsafe deserialization of untrusted data via taint analysis",
 		},
+		{
+			name:        "InsecureCookie",
+			constructor: newInsecureCookieAnalyzer,
+			id:          "G124",
+			description: "Insecure HTTP cookie configuration",
+		},
 	}
 
 	for _, tt := range tests {

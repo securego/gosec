@@ -142,6 +142,7 @@ var defaultAnalyzers = []AnalyzerDefinition{
 	{"G121", "Unsafe CrossOriginProtection bypass patterns", newCORSBypassPatternAnalyzer},
 	{"G122", "Filesystem TOCTOU race risk in filepath.Walk/WalkDir callbacks", newWalkSymlinkRaceAnalyzer},
 	{"G123", "TLS resumption may bypass VerifyPeerCertificate when VerifyConnection is unset", newTLSResumptionVerifyPeerAnalyzer},
+	{"G124", "Insecure HTTP cookie configuration missing Secure, HttpOnly, or SameSite attributes", newInsecureCookieAnalyzer},
 	{"G602", "Possible slice bounds out of range", newSliceBoundsAnalyzer},
 	{"G407", "Use of hardcoded IV/nonce for encryption", newHardCodedNonce},
 	{"G408", "Stateful misuse of ssh.PublicKeyCallback leading to auth bypass", newSSHCallbackAnalyzer},

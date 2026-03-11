@@ -83,6 +83,10 @@ var _ = Describe("gosec analyzers", func() {
 			runner("G123", testutils.SampleCodeG123)
 		})
 
+		It("should detect insecure HTTP cookie configuration", func() {
+			runner("G124", testutils.SampleCodeG124)
+		})
+
 		It("should detect hardcoded nonce/IV", func() {
 			runner("G407", testutils.SampleCodeG407)
 		})

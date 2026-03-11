@@ -194,7 +194,7 @@ directory you can supply `./...` as the input argument.
 
 gosec includes rules across these categories:
 
-- `G1xx`: general secure coding issues (for example hardcoded credentials, unsafe usage, HTTP hardening)
+- `G1xx`: general secure coding issues (for example hardcoded credentials, unsafe usage, HTTP hardening, cookie security)
 - `G2xx`: injection risks in query/template/command construction
 - `G3xx`: file and path handling risks (permissions, traversal, temp files, archive extraction)
 - `G4xx`: crypto and TLS weaknesses

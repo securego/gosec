@@ -45,6 +45,7 @@
 - G121 — Unsafe CrossOriginProtection bypass patterns (**SSA**)
 - G122 — Filesystem TOCTOU race risk in `filepath.Walk/WalkDir` callbacks (**SSA**)
 - G123 — TLS resumption may bypass `VerifyPeerCertificate` when `VerifyConnection` is unset (**SSA**)
+- G124 — Insecure HTTP cookie configuration missing Secure, HttpOnly, or SameSite attributes (**SSA**)
 
 ### G2xx: Injection Patterns
 
