@@ -168,6 +168,11 @@ var idWeaknesses = map[string]*Weakness{
 		Description: "The product uses a cryptographic primitive that uses an Initialization Vector (IV), but the product does not generate IVs that are sufficiently unpredictable or unique according to the expected cryptographic requirements for that primitive.",
 		Name:        "Generation of Weak Initialization Vector (IV)",
 	},
+	"502": {
+		ID:          "502",
+		Description: "The application deserializes untrusted data without sufficiently verifying that the resulting data will be valid.",
+		Name:        "Deserialization of Untrusted Data",
+	},
 }
 
 // Get Retrieves a CWE weakness by it's id

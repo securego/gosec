@@ -88,6 +88,13 @@ var (
 		Severity:    "CRITICAL",
 		CWE:         "CWE-94",
 	}
+
+	UnsafeDeserializationRule = taint.RuleInfo{
+		ID:          "G709",
+		Description: "Unsafe deserialization of untrusted data",
+		Severity:    "HIGH",
+		CWE:         "CWE-502",
+	}
 )
 
 // AnalyzerList contains a mapping of analyzer ID's to analyzer definitions and a mapping
@@ -146,6 +153,7 @@ var defaultAnalyzers = []AnalyzerDefinition{
 	{"G706", "Log injection via taint analysis", newLogInjectionAnalyzer},
 	{"G707", "SMTP command/header injection via taint analysis", newSMTPInjectionAnalyzer},
 	{"G708", "Server-side template injection via taint analysis", newSSTIAnalyzer},
+	{"G709", "Unsafe deserialization of untrusted data via taint analysis", newUnsafeDeserializationAnalyzer},
 }
 
 // Generate the list of analyzers to use
@@ -181,6 +189,7 @@ func DefaultTaintAnalyzers() []*analysis.Analyzer {
 	logConfig := LogInjection()
 	smtpConfig := SMTPInjection()
 	sstiConfig := SSTI()
+	deserConfig := UnsafeDeserialization()
 
 	return []*analysis.Analyzer{
 		taint.NewGosecAnalyzer(&SQLInjectionRule, &sqlConfig),
@@ -191,5 +200,6 @@ func DefaultTaintAnalyzers() []*analysis.Analyzer {
 		taint.NewGosecAnalyzer(&LogInjectionRule, &logConfig),
 		taint.NewGosecAnalyzer(&SMTPInjectionRule, &smtpConfig),
 		taint.NewGosecAnalyzer(&SSTIRule, &sstiConfig),
+		taint.NewGosecAnalyzer(&UnsafeDeserializationRule, &deserConfig),
 	}
 }
