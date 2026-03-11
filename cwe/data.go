@@ -173,6 +173,11 @@ var idWeaknesses = map[string]*Weakness{
 		Description: "The application deserializes untrusted data without sufficiently verifying that the resulting data will be valid.",
 		Name:        "Deserialization of Untrusted Data",
 	},
+	"614": {
+		ID:          "614",
+		Description: "The Secure attribute for a sensitive cookie is not set, which could cause the user agent to send that cookie in plaintext over an HTTP session.",
+		Name:        "Sensitive Cookie in HTTPS Session Without 'Secure' Attribute",
+	},
 }
 
 // Get Retrieves a CWE weakness by it's id
