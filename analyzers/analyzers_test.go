@@ -122,5 +122,9 @@ var _ = Describe("gosec analyzers", func() {
 		It("should detect SMTP command/header injection via taint analysis", func() {
 			runner("G707", testutils.SampleCodeG707)
 		})
+
+		It("should detect server-side template injection via taint analysis", func() {
+			runner("G708", testutils.SampleCodeG708)
+		})
 	})
 })

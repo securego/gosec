@@ -68,6 +68,12 @@ func TestTaintAnalyzerConstructors(t *testing.T) {
 			id:          "G707",
 			description: "SMTP command/header injection via taint analysis",
 		},
+		{
+			name:        "SSTI",
+			constructor: newSSTIAnalyzer,
+			id:          "G708",
+			description: "Server-side template injection via taint analysis",
+		},
 	}
 
 	for _, tt := range tests {
@@ -95,7 +101,7 @@ func TestTaintAnalyzerConstructors(t *testing.T) {
 
 // TestDefaultAnalyzersIncludeTaint tests that default analyzers include taint rules.
 func TestDefaultAnalyzersIncludeTaint(t *testing.T) {
-	expectedTaintIDs := []string{"G701", "G702", "G703", "G704", "G705", "G706", "G707"}
+	expectedTaintIDs := []string{"G701", "G702", "G703", "G704", "G705", "G706", "G707", "G708"}
 
 	found := make(map[string]bool)
 	for _, def := range defaultAnalyzers {
@@ -113,7 +119,7 @@ func TestDefaultAnalyzersIncludeTaint(t *testing.T) {
 func TestGenerateIncludesTaintAnalyzers(t *testing.T) {
 	analyzerList := Generate(false)
 
-	expectedTaintIDs := []string{"G701", "G702", "G703", "G704", "G705", "G706", "G707"}
+	expectedTaintIDs := []string{"G701", "G702", "G703", "G704", "G705", "G706", "G707", "G708"}
 
 	for _, id := range expectedTaintIDs {
 		if _, ok := analyzerList.Analyzers[id]; !ok {
@@ -278,7 +284,7 @@ func TestAnalyzerList_AnalyzersInfo(t *testing.T) {
 func TestDefaultTaintAnalyzers(t *testing.T) {
 	analyzers := DefaultTaintAnalyzers()
 
-	expectedCount := 7 // SQL, Command, Path, SSRF, XSS, Log, SMTP
+	expectedCount := 8 // SQL, Command, Path, SSRF, XSS, Log, SMTP, SSTI
 	if len(analyzers) != expectedCount {
 		t.Errorf("Expected %d taint analyzers, got %d", expectedCount, len(analyzers))
 	}
@@ -291,6 +297,7 @@ func TestDefaultTaintAnalyzers(t *testing.T) {
 		"G705": false,
 		"G706": false,
 		"G707": false,
+		"G708": false,
 	}
 
 	for _, analyzer := range analyzers {

@@ -200,7 +200,7 @@ gosec includes rules across these categories:
 - `G4xx`: crypto and TLS weaknesses
 - `G5xx`: blocklisted imports
 - `G6xx`: Go-specific correctness/security checks (for example range aliasing and slice bounds)
-- `G7xx`: taint analysis rules (SQL injection, command injection, path traversal, SSRF, XSS, log and SMTP injection)
+- `G7xx`: taint analysis rules (SQL injection, command injection, path traversal, SSRF, XSS, log, SMTP injection and SSTI)
 
 For the full list, rule descriptions, and per-rule configuration, see [RULES.md](RULES.md).
 
