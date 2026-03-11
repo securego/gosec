@@ -81,6 +81,13 @@ var (
 		Severity:    "HIGH",
 		CWE:         "CWE-93",
 	}
+
+	SSTIRule = taint.RuleInfo{
+		ID:          "G708",
+		Description: "Server-side template injection via text/template",
+		Severity:    "CRITICAL",
+		CWE:         "CWE-94",
+	}
 )
 
 // AnalyzerList contains a mapping of analyzer ID's to analyzer definitions and a mapping
@@ -138,6 +145,7 @@ var defaultAnalyzers = []AnalyzerDefinition{
 	{"G705", "XSS via taint analysis", newXSSAnalyzer},
 	{"G706", "Log injection via taint analysis", newLogInjectionAnalyzer},
 	{"G707", "SMTP command/header injection via taint analysis", newSMTPInjectionAnalyzer},
+	{"G708", "Server-side template injection via taint analysis", newSSTIAnalyzer},
 }
 
 // Generate the list of analyzers to use
@@ -172,6 +180,7 @@ func DefaultTaintAnalyzers() []*analysis.Analyzer {
 	xssConfig := XSS()
 	logConfig := LogInjection()
 	smtpConfig := SMTPInjection()
+	sstiConfig := SSTI()
 
 	return []*analysis.Analyzer{
 		taint.NewGosecAnalyzer(&SQLInjectionRule, &sqlConfig),
@@ -181,5 +190,6 @@ func DefaultTaintAnalyzers() []*analysis.Analyzer {
 		taint.NewGosecAnalyzer(&XSSRule, &xssConfig),
 		taint.NewGosecAnalyzer(&LogInjectionRule, &logConfig),
 		taint.NewGosecAnalyzer(&SMTPInjectionRule, &smtpConfig),
+		taint.NewGosecAnalyzer(&SSTIRule, &sstiConfig),
 	}
 }

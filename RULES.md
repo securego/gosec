@@ -98,6 +98,7 @@
 - G705 — XSS via taint analysis (**Taint**)
 - G706 — Log injection via taint analysis (**Taint**)
 - G707 — SMTP command/header injection via taint analysis (**Taint**)
+- G708 — Server-side template injection via `text/template` (**Taint**)
 
 _Note: Implementation types used in this document:_
 - **AST**: rule implemented in `rules/` and evaluated on AST patterns
