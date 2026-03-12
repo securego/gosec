@@ -719,6 +719,15 @@ func isCancelCalled(cancelValue ssa.Value, allFuncs []*ssa.Function) bool {
 						return true
 					}
 				}
+				// Check if storing to a package-level global variable.
+				// When cancel is stored to a global (e.g., in init()), we need
+				// to search all functions in the package for loads of that global
+				// followed by a call.
+				if global, ok := r.Addr.(*ssa.Global); ok {
+					if isGlobalCalledInAnyFunc(global, allFuncs) {
+						return true
+					}
+				}
 				queue = append(queue, r.Addr)
 			case *ssa.UnOp:
 				if r.Op == token.MUL && r.X == current {
@@ -821,6 +830,130 @@ func isFieldCalledInAnyFunc(fa *ssa.FieldAddr, allFuncs []*ssa.Function) bool {
 			}
 		}
 	}
+	return false
+}
+
+// isGlobalCalledInAnyFunc checks whether a cancel function stored into a
+// package-level global variable is subsequently called in any function
+// (including init(), main(), signal handlers, etc.). This handles patterns
+// like:
+//
+//	var cancel context.CancelFunc
+//	func init() { _, cancel = context.WithCancel(ctx) }
+//	func shutdown() { cancel() }
+func isGlobalCalledInAnyFunc(global *ssa.Global, allFuncs []*ssa.Function) bool {
+	if global == nil {
+		return false
+	}
+
+	// Iterate through all functions in the package to find loads from this global
+	for _, fn := range allFuncs {
+		if fn == nil || fn.Blocks == nil {
+			continue
+		}
+
+		for _, block := range fn.Blocks {
+			for _, instr := range block.Instrs {
+				// Look for UnOp (dereference/load) from the global
+				unop, ok := instr.(*ssa.UnOp)
+				if !ok || unop.Op != token.MUL {
+					continue
+				}
+
+				// Check if this load is from our global
+				if unop.X != global {
+					continue
+				}
+
+				// Check if the loaded value is eventually called
+				if isValueCalled(unop) {
+					return true
+				}
+			}
+		}
+	}
+
+	return false
+}
+
+// isValueCalled checks if a value (typically a loaded function pointer) is
+// eventually used as a callee. This performs a BFS through value referrers
+// to find calls, handling phi nodes, stores/loads, type conversions, and closures.
+func isValueCalled(value ssa.Value) bool {
+	if value == nil {
+		return false
+	}
+
+	refs := value.Referrers()
+	if refs == nil {
+		return false
+	}
+
+	queue := []ssa.Value{value}
+	visited := make(map[ssa.Value]bool)
+
+	for len(queue) > 0 {
+		cur := queue[0]
+		queue = queue[1:]
+
+		if cur == nil || visited[cur] {
+			continue
+		}
+		visited[cur] = true
+
+		curRefs := cur.Referrers()
+		if curRefs == nil {
+			continue
+		}
+
+		for _, ref := range *curRefs {
+			switch r := ref.(type) {
+			case ssa.CallInstruction:
+				// Check if cur is used as the callee or an argument
+				if isUsedInCall(r.Common(), cur) {
+					return true
+				}
+			case *ssa.Phi:
+				// Value flows through phi node - continue tracking
+				queue = append(queue, r)
+			case *ssa.Store:
+				// Stored then loaded elsewhere - follow the address
+				if r.Val == cur {
+					queue = append(queue, r.Addr)
+				}
+			case *ssa.UnOp:
+				// Dereference or other operation - continue tracking
+				if r.X == cur {
+					queue = append(queue, r)
+				}
+			case *ssa.ChangeType:
+				// Type conversion - continue tracking
+				if r.X == cur {
+					queue = append(queue, r)
+				}
+			case *ssa.Convert:
+				// Type conversion - continue tracking
+				if r.X == cur {
+					queue = append(queue, r)
+				}
+			case *ssa.MakeInterface:
+				// Wrapped in interface - continue tracking
+				if r.X == cur {
+					queue = append(queue, r)
+				}
+			case *ssa.MakeClosure:
+				// Captured in closure - follow into closure body
+				if fn, ok := r.Fn.(*ssa.Function); ok {
+					for i, binding := range r.Bindings {
+						if binding == cur && i < len(fn.FreeVars) {
+							queue = append(queue, fn.FreeVars[i])
+						}
+					}
+				}
+			}
+		}
+	}
+
 	return false
 }
 

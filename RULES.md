@@ -210,6 +210,23 @@ The following patterns are all recognised as *safe* (cancel is considered called
 | `s.cancel = cancel; defer s.cancel()` | Stored in struct field, deferred in same function |
 | `s.cancel = cancel; defer func() { s.cancel() }()` | Stored in struct field, called in closure |
 | Struct containing field is returned | Caller inherits cancel responsibility |
+| `var cancel CancelFunc` in `init()` + `cancel()` in another function | Package-level variable assigned in init, called in any function (e.g., signal handlers) |
+
+Example of package-level variable pattern:
+
+```go
+// Safe: cancel stored in package-level variable and called in signal handler
+var cancel context.CancelFunc
+
+func init() {
+    ctx, c := context.WithCancel(context.Background())
+    cancel = c
+}
+
+func handleShutdown() {
+    cancel() // Called from signal handler
+}
+```
 
 **2. Goroutine uses `context.Background`/`TODO` when request context is available (CWE-400)**
 
