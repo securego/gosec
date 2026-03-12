@@ -1832,4 +1832,44 @@ func main() {
 	defer app.Stop()
 }
 `}, 0, gosec.NewConfig()},
+
+	// Safe: package-level cancel passed as argument (tests CallInstruction with arg)
+	{[]string{`
+package main
+
+import "context"
+
+var cancel context.CancelFunc
+
+func init() {
+	_, cancel = context.WithCancel(context.Background())
+}
+
+func invoke(fn func()) {
+	fn()
+}
+
+func execute() {
+	invoke(cancel)
+}
+`}, 0, gosec.NewConfig()},
+
+	// Safe: package-level cancel in nested defer closure (tests MakeClosure)
+	{[]string{`
+package main
+
+import "context"
+
+var cancel context.CancelFunc
+
+func init() {
+	_, cancel = context.WithCancel(context.Background())
+}
+
+func setup() {
+	defer func() {
+		defer cancel()
+	}()
+}
+`}, 0, gosec.NewConfig()},
 }
