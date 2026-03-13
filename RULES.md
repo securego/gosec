@@ -41,7 +41,7 @@
 - [G117](#g117) — Potential exposure of secrets via JSON/YAML/XML/TOML marshaling (**AST**)
 - [G118](#g118) — Context propagation failure leading to goroutine/resource leaks (**SSA**)
 - G119 — Unsafe redirect policy may propagate sensitive headers (**SSA**)
-- G120 — Unbounded form parsing in HTTP handlers can cause memory exhaustion (**SSA**)
+- G120 — Unbounded `ParseMultipartForm` in HTTP handlers can cause memory exhaustion (**Taint**)
 - G121 — Unsafe CrossOriginProtection bypass patterns (**SSA**)
 - G122 — Filesystem TOCTOU race risk in `filepath.Walk/WalkDir` callbacks (**SSA**)
 - G123 — TLS resumption may bypass `VerifyPeerCertificate` when `VerifyConnection` is unset (**SSA**)
