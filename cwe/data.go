@@ -168,6 +168,11 @@ var idWeaknesses = map[string]*Weakness{
 		Description: "The product uses a cryptographic primitive that uses an Initialization Vector (IV), but the product does not generate IVs that are sufficiently unpredictable or unique according to the expected cryptographic requirements for that primitive.",
 		Name:        "Generation of Weak Initialization Vector (IV)",
 	},
+	"117": {
+		ID:          "117",
+		Description: "The software does not neutralize or incorrectly neutralizes output that is written to logs.",
+		Name:        "Improper Output Neutralization for Logs",
+	},
 	"502": {
 		ID:          "502",
 		Description: "The application deserializes untrusted data without sufficiently verifying that the resulting data will be valid.",
@@ -177,6 +182,11 @@ var idWeaknesses = map[string]*Weakness{
 		ID:          "614",
 		Description: "The Secure attribute for a sensitive cookie is not set, which could cause the user agent to send that cookie in plaintext over an HTTP session.",
 		Name:        "Sensitive Cookie in HTTPS Session Without 'Secure' Attribute",
+	},
+	"918": {
+		ID:          "918",
+		Description: "The web server receives a URL or similar request from an upstream component and retrieves the contents of this URL, but it does not sufficiently ensure that the request is being sent to the expected destination.",
+		Name:        "Server-Side Request Forgery (SSRF)",
 	},
 }
 

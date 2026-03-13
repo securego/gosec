@@ -156,6 +156,38 @@ func main() {
 			Expect(cwe.ID).Should(Equal("22"))
 		})
 
+		It("should return correct CWE for taint analysis rules", func() {
+			// G701: SQL Injection via taint analysis
+			cweResult := issue.GetCweByRule("G701")
+			Expect(cweResult).ShouldNot(BeNil())
+			Expect(cweResult.ID).Should(Equal("89"))
+
+			// G702: Command Injection via taint analysis
+			cweResult = issue.GetCweByRule("G702")
+			Expect(cweResult).ShouldNot(BeNil())
+			Expect(cweResult.ID).Should(Equal("78"))
+
+			// G703: Path Traversal via taint analysis
+			cweResult = issue.GetCweByRule("G703")
+			Expect(cweResult).ShouldNot(BeNil())
+			Expect(cweResult.ID).Should(Equal("22"))
+
+			// G704: SSRF via taint analysis
+			cweResult = issue.GetCweByRule("G704")
+			Expect(cweResult).ShouldNot(BeNil())
+			Expect(cweResult.ID).Should(Equal("918"))
+
+			// G705: XSS via taint analysis
+			cweResult = issue.GetCweByRule("G705")
+			Expect(cweResult).ShouldNot(BeNil())
+			Expect(cweResult.ID).Should(Equal("79"))
+
+			// G706: Log Injection via taint analysis
+			cweResult = issue.GetCweByRule("G706")
+			Expect(cweResult).ShouldNot(BeNil())
+			Expect(cweResult.ID).Should(Equal("117"))
+		})
+
 		It("should return nil for unknown rule IDs", func() {
 			cwe := issue.GetCweByRule("G999")
 			Expect(cwe).Should(BeNil())
