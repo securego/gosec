@@ -107,3 +107,23 @@ func TestBuildSSATypeInfoValidation(t *testing.T) {
 		t.Fatalf("expected error for missing types info")
 	}
 }
+
+func TestBuildSSAIllTypedPackage(t *testing.T) {
+	t.Parallel()
+
+	a := NewAnalyzer(NewConfig(), false, false, false, 1, log.New(io.Discard, "", 0))
+
+	pkg := &packages.Package{
+		Name:      "illtyped",
+		IllTyped:  true,
+		Types:     types.NewPackage("example.com/p", "p"),
+		TypesInfo: &types.Info{},
+	}
+	_, err := a.buildSSA(pkg)
+	if err == nil {
+		t.Fatalf("expected error for ill-typed package")
+	}
+	if got := err.Error(); got != "package illtyped has type errors, skipping SSA analysis" {
+		t.Fatalf("unexpected error message: %s", err)
+	}
+}
