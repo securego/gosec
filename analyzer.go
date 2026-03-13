@@ -711,6 +711,9 @@ func (gosec *Analyzer) buildSSA(pkg *packages.Package) (*buildssa.SSA, error) {
 	if pkg.TypesInfo == nil {
 		return nil, fmt.Errorf("%w: %s", ErrNoPackageTypeInfo, pkg.Name)
 	}
+	if pkg.IllTyped {
+		return nil, fmt.Errorf("package %s has type errors, skipping SSA analysis", pkg.Name)
+	}
 	pass := &analysis.Pass{
 		Fset:             pkg.Fset,
 		Files:            pkg.Syntax,
