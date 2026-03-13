@@ -81,6 +81,12 @@ func TestTaintAnalyzerConstructors(t *testing.T) {
 			description: "Unsafe deserialization of untrusted data via taint analysis",
 		},
 		{
+			name:        "FormParsingLimit",
+			constructor: newFormParsingLimitAnalyzer,
+			id:          "G120",
+			description: "Unbounded multipart form parsing can cause memory exhaustion",
+		},
+		{
 			name:        "InsecureCookie",
 			constructor: newInsecureCookieAnalyzer,
 			id:          "G124",
@@ -296,7 +302,7 @@ func TestAnalyzerList_AnalyzersInfo(t *testing.T) {
 func TestDefaultTaintAnalyzers(t *testing.T) {
 	analyzers := DefaultTaintAnalyzers()
 
-	expectedCount := 9 // SQL, Command, Path, SSRF, XSS, Log, SMTP, SSTI, Deserialization
+	expectedCount := 10 // SQL, Command, Path, SSRF, XSS, Log, SMTP, SSTI, Deserialization, FormParsing
 	if len(analyzers) != expectedCount {
 		t.Errorf("Expected %d taint analyzers, got %d", expectedCount, len(analyzers))
 	}
@@ -311,6 +317,7 @@ func TestDefaultTaintAnalyzers(t *testing.T) {
 		"G707": false,
 		"G708": false,
 		"G709": false,
+		"G120": false,
 	}
 
 	for _, analyzer := range analyzers {

@@ -95,6 +95,13 @@ var (
 		Severity:    "HIGH",
 		CWE:         "CWE-502",
 	}
+
+	FormParsingLimitRule = taint.RuleInfo{
+		ID:          "G120",
+		Description: "Unbounded multipart form parsing can cause memory exhaustion",
+		Severity:    "MEDIUM",
+		CWE:         "CWE-400",
+	}
 )
 
 // AnalyzerList contains a mapping of analyzer ID's to analyzer definitions and a mapping
@@ -191,6 +198,7 @@ func DefaultTaintAnalyzers() []*analysis.Analyzer {
 	smtpConfig := SMTPInjection()
 	sstiConfig := SSTI()
 	deserConfig := UnsafeDeserialization()
+	formConfig := FormParsingLimits()
 
 	return []*analysis.Analyzer{
 		taint.NewGosecAnalyzer(&SQLInjectionRule, &sqlConfig),
@@ -202,5 +210,6 @@ func DefaultTaintAnalyzers() []*analysis.Analyzer {
 		taint.NewGosecAnalyzer(&SMTPInjectionRule, &smtpConfig),
 		taint.NewGosecAnalyzer(&SSTIRule, &sstiConfig),
 		taint.NewGosecAnalyzer(&UnsafeDeserializationRule, &deserConfig),
+		taint.NewGosecAnalyzer(&FormParsingLimitRule, &formConfig),
 	}
 }
