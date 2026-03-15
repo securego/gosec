@@ -23,6 +23,12 @@ import (
 // maxTaintDepth limits recursion depth to prevent stack overflow on large codebases
 const maxTaintDepth = 50
 
+// maxCallerEdges caps the number of incoming call graph edges examined per function
+// in isParameterTainted. CHA over-approximates call graphs (every interface method
+// call fans out to ALL implementations), so a function can have thousands of callers.
+// Real taint flows come from direct/nearby callers, not the 33rd+ CHA-generated edge.
+const maxCallerEdges = 32
+
 // isContextType checks if a type is context.Context.
 // context.Context is a control-flow mechanism (deadlines, cancellation, request-scoped values)
 // that does not carry user-controlled data relevant to taint sinks like XSS.
@@ -211,14 +217,21 @@ type Config struct {
 }
 
 // Analyzer performs taint analysis on SSA programs.
+// paramKey identifies a specific parameter of a function for memoization.
+type paramKey struct {
+	fn       *ssa.Function
+	paramIdx int
+}
+
 type Analyzer struct {
-	config     *Config
-	sources    map[string]Source   // keyed by full type string
-	funcSrcs   map[string]Source   // function sources keyed by "pkg.Func"
-	sinks      map[string]Sink     // keyed by full function string
-	sanitizers map[string]struct{} // keyed by full function string
-	callGraph  *callgraph.Graph
-	prog       *ssa.Program // set at Analyze time for ArgTypeGuards resolution
+	config          *Config
+	sources         map[string]Source   // keyed by full type string
+	funcSrcs        map[string]Source   // function sources keyed by "pkg.Func"
+	sinks           map[string]Sink     // keyed by full function string
+	sanitizers      map[string]struct{} // keyed by full function string
+	callGraph       *callgraph.Graph
+	prog            *ssa.Program      // set at Analyze time for ArgTypeGuards resolution
+	paramTaintCache map[paramKey]bool // caches true results from isParameterTainted
 }
 
 // SetCallGraph injects a precomputed call graph.
@@ -309,12 +322,16 @@ func (a *Analyzer) Analyze(prog *ssa.Program, srcFuncs []*ssa.Function) []Result
 		a.callGraph = cha.CallGraph(prog)
 	}
 
+	a.paramTaintCache = make(map[paramKey]bool)
+
 	var results []Result
 
 	// Find all sink calls in the program
 	for _, fn := range srcFuncs {
 		results = append(results, a.analyzeFunctionSinks(fn)...)
 	}
+
+	a.paramTaintCache = nil
 
 	return results
 }
@@ -824,11 +841,31 @@ func (a *Analyzer) isParameterTainted(param *ssa.Parameter, fn *ssa.Function, vi
 		return false
 	}
 
+	// Resolve paramIdx early so we can use it for cache lookups.
+	paramIdx := -1
+	for i, p := range fn.Params {
+		if p == param {
+			paramIdx = i
+			break
+		}
+	}
+
+	// Check memoization cache (only true results are cached).
+	if paramIdx >= 0 && a.paramTaintCache != nil {
+		key := paramKey{fn: fn, paramIdx: paramIdx}
+		if a.paramTaintCache[key] {
+			return true
+		}
+	}
+
 	// Check if parameter type is a source type.
 	// This is the ONLY place where type-based source matching should trigger
 	// automatic taint — because parameters represent data flowing IN from
 	// external callers we don't control.
 	if a.isSourceType(param.Type()) {
+		if paramIdx >= 0 && a.paramTaintCache != nil {
+			a.paramTaintCache[paramKey{fn: fn, paramIdx: paramIdx}] = true
+		}
 		return true
 	}
 
@@ -840,14 +877,6 @@ func (a *Analyzer) isParameterTainted(param *ssa.Parameter, fn *ssa.Function, vi
 	node := a.callGraph.Nodes[fn]
 	if node == nil {
 		return false
-	}
-
-	paramIdx := -1
-	for i, p := range fn.Params {
-		if p == param {
-			paramIdx = i
-			break
-		}
 	}
 
 	if paramIdx < 0 {
@@ -867,8 +896,14 @@ func (a *Analyzer) isParameterTainted(param *ssa.Parameter, fn *ssa.Function, vi
 		adjustedIdx = paramIdx
 	}
 
-	// Check each caller
+	// Check each caller, capping at maxCallerEdges to avoid combinatorial
+	// explosion from CHA over-approximation of interface method calls.
+	edgesChecked := 0
 	for _, inEdge := range node.In {
+		if edgesChecked >= maxCallerEdges {
+			break
+		}
+
 		site := inEdge.Site
 		if site == nil {
 			continue
@@ -877,7 +912,11 @@ func (a *Analyzer) isParameterTainted(param *ssa.Parameter, fn *ssa.Function, vi
 		callArgs := site.Common().Args
 
 		if adjustedIdx < len(callArgs) {
+			edgesChecked++
 			if a.isTainted(callArgs[adjustedIdx], inEdge.Caller.Func, visited, depth+1) {
+				if a.paramTaintCache != nil {
+					a.paramTaintCache[paramKey{fn: fn, paramIdx: paramIdx}] = true
+				}
 				return true
 			}
 		}
