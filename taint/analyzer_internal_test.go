@@ -1,6 +1,7 @@
 package taint
 
 import (
+	"fmt"
 	"go/ast"
 	"go/constant"
 	"go/parser"
@@ -9,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/buildssa"
@@ -439,6 +441,109 @@ func f(w W)                               { w.Write([]byte("hello")) }
 	})
 
 	_ = analyzer.Analyze(prog, []*ssa.Function{fn})
+}
+
+// buildManySinkCallsFixture creates an SSA program with many interface implementations
+// and many sink-calling functions, producing a large CHA call graph. Used by both the
+// regression test and benchmark.
+func buildManySinkCallsFixture(tb testing.TB) (*ssa.Program, []*ssa.Function) {
+	tb.Helper()
+
+	src := `package p
+
+type W interface{ Write([]byte) (int, error) }
+`
+	// Generate 20 concrete implementations of W to inflate CHA edges.
+	for i := 0; i < 20; i++ {
+		src += fmt.Sprintf(`
+type Impl%d struct{}
+func (x *Impl%d) Write(p []byte) (int, error) { return len(p), nil }
+`, i, i)
+	}
+
+	// Generate 20 functions, each calling w.Write with a variable arg (potential sink).
+	for i := 0; i < 20; i++ {
+		src += fmt.Sprintf(`
+func caller%d(w W, data []byte) { w.Write(data) }
+`, i)
+	}
+
+	fset := token.NewFileSet()
+	parsed, err := parser.ParseFile(fset, "p.go", src, 0)
+	if err != nil {
+		tb.Fatalf("parse: %v", err)
+	}
+	info := &types.Info{
+		Types:      make(map[ast.Expr]types.TypeAndValue),
+		Defs:       make(map[*ast.Ident]types.Object),
+		Uses:       make(map[*ast.Ident]types.Object),
+		Implicits:  make(map[ast.Node]types.Object),
+		Scopes:     make(map[ast.Node]*types.Scope),
+		Selections: make(map[*ast.SelectorExpr]*types.Selection),
+	}
+	pkg, err := (&types.Config{}).Check("p", fset, []*ast.File{parsed}, info)
+	if err != nil {
+		tb.Fatalf("type-check: %v", err)
+	}
+	prog := ssa.NewProgram(fset, ssa.BuilderMode(0))
+	ssaPkg := prog.CreatePackage(pkg, []*ast.File{parsed}, info, true)
+	prog.Build()
+
+	// Collect all caller* functions as analysis targets.
+	var srcFuncs []*ssa.Function
+	for i := 0; i < 20; i++ {
+		fn := ssaPkg.Func(fmt.Sprintf("caller%d", i))
+		if fn == nil {
+			tb.Fatalf("SSA function caller%d not found", i)
+		}
+		srcFuncs = append(srcFuncs, fn)
+	}
+
+	return prog, srcFuncs
+}
+
+func TestTaintAnalysisPerformanceWithManySinkCalls(t *testing.T) {
+	t.Parallel()
+
+	// This test verifies that taint analysis completes in bounded time even when
+	// CHA produces a large call graph (many interface implementations × many sink calls).
+	// Before the maxCallerEdges cap and paramTaintCache, this scenario could hang.
+	prog, srcFuncs := buildManySinkCallsFixture(t)
+
+	analyzer := New(&Config{
+		Sinks: []Sink{
+			{Package: "p", Receiver: "W", Method: "Write", CheckArgs: []int{1}},
+		},
+	})
+
+	// Must complete within 10 seconds; without the fix this could hang indefinitely.
+	done := make(chan []Result, 1)
+	go func() {
+		done <- analyzer.Analyze(prog, srcFuncs)
+	}()
+
+	select {
+	case <-time.After(10 * time.Second):
+		t.Fatal("taint analysis did not complete within 10 seconds — possible hang regression")
+	case results := <-done:
+		_ = results
+	}
+}
+
+func BenchmarkTaintAnalysisManySinkCalls(b *testing.B) {
+	prog, srcFuncs := buildManySinkCallsFixture(b)
+
+	cfg := &Config{
+		Sinks: []Sink{
+			{Package: "p", Receiver: "W", Method: "Write", CheckArgs: []int{1}},
+		},
+	}
+
+	b.ResetTimer()
+	for b.Loop() {
+		analyzer := New(cfg)
+		analyzer.Analyze(prog, srcFuncs)
+	}
 }
 
 func TestResolveOriginalTypeMakeInterface(t *testing.T) {
