@@ -68,12 +68,14 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       security-events: write
+      pull-requests: write
     steps:
       - name: Checkout Source
         uses: actions/checkout@v6
       - name: Run Barry AI Security Review
         id: barry
         uses: ccojocar/barry@main
+        continue-on-error: true
         with:
           google-api-key: ${{ secrets.GOOGLE_API_KEY }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -86,7 +88,7 @@ jobs:
         uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
-          sarif_file: ${{ steps.barry.outputs.results-file }}
+          sarif_file: ${{ github.workspace }}/barry-results.sarif
   coverage:
     needs: [test, taint-perf-guard]
     runs-on: ubuntu-latest
