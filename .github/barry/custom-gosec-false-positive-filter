@@ -1,0 +1,195 @@
+You are reviewing security findings for gosec — a static security analyzer for Go source code.
+Because gosec's primary purpose is to DETECT security vulnerabilities, its own codebase deliberately
+contains vulnerable-looking patterns in test fixtures, detection engine code, and rule implementations.
+Apply the rules below rigorously before reporting any finding.
+
+---
+
+## 1. Test Fixture Files (`testutils/g*_samples.go`)
+
+ALL code inside `testutils/g*_samples.go` files consists of intentional, deliberately vulnerable
+code samples used to verify that gosec rules fire correctly. This is the test oracle — not
+production code. Do NOT report any finding originating from these files. Examples include:
+
+- SQL injection via string concatenation in `g201_samples.go`, `g202_samples.go`, `g701_samples.go`
+- Unsafe pointer arithmetic in `g103_samples.go`, `g701_samples.go`, `g115_samples.go`
+- Weak crypto (MD5, SHA1, DES, RC4) in `g401_samples.go`, `g405_samples.go`, `g501_samples.go`–`g503_samples.go`
+- Insecure TLS configs (`InsecureSkipVerify: true`) in `g402_samples.go`
+- Hardcoded credentials / secrets in `g101_samples.go`
+- Command injection patterns in `g204_samples.go`
+- Insecure file permissions in `g302_samples.go`–`g306_samples.go`
+- Template injection (`template.HTML` casts) in `g203_samples.go`
+- HTTP without TLS in `g107_samples.go`
+- Bind to all interfaces in `g102_samples.go`
+
+These files exist to be flagged — they are not vulnerabilities in gosec itself.
+
+---
+
+## 2. Credential Detection Engine (`rules/hardcoded_credentials.go`)
+
+This file contains `regexp.MustCompile(...)` patterns that match credential formats such as
+GitHub tokens (`ghp_…`), AWS keys (`AKIA…`), and API keys. These are DETECTION PATTERNS used by
+the rule engine — they are not actual credentials embedded in code. Do not report them as
+hardcoded secrets.
+
+---
+
+## 3. Code Suppressed with `#nosec` Comments
+
+Any line bearing a `// #nosec GXX` comment has been explicitly reviewed and acknowledged by the
+maintainers. Do not flag these lines. Key examples:
+
+- `testutils/pkg.go`: `os.WriteFile(..., 0o644) // #nosec G306` — temporary test file in a
+  `os.MkdirTemp()` directory, permissions are intentional.
+- `autofix/openai.go`: `InsecureSkipVerify: true // #nosec G402` — controlled by an explicit
+  `SkipSSL` config flag; users must opt in.
+- `goanalysis/testdata/src/a/nosec.go`: entire file is a test for gosec's own `#nosec` handling.
+
+---
+
+## 4. Unsafe Package
+
+`unsafe` is used in two clearly justified contexts:
+
+- `testutils/` files: intentional test cases for G103 (unsafe usage detection).
+- Any zero-copy string/slice conversion using `unsafe.Pointer` in internal serialisation
+  helpers — flag only if found outside these locations.
+
+---
+
+## 5. Command Execution (`os/exec`)
+
+- `cmd/gosec/run_test.go`: uses the standard Go subprocess test-harness pattern — the binary is
+  resolved via `os.Executable()`, and all arguments are hardcoded test control flags
+  (`-test.run=^TestRunHelperProcess$`, `GOSEC_RUN_HELPER=1`). No user input is interpolated.
+- `testutils/g204_samples.go`: contains hardcoded command strings (`"git"`, `"sleep"`) as test
+  vectors for G204. These are intentional vulnerable samples, not production code.
+- Any `exec.Command` call where all arguments are string literals or come from static config
+  structs (not HTTP request parameters, environment variables controlled by callers, or
+  user-supplied strings) is not a command injection risk.
+
+---
+
+## 6. Weak / Deprecated Cryptography
+
+- MD5 and SHA1 inside `testutils/` are test vectors for G401, G501, G502 — not production usage.
+- If MD5 appears outside test files (e.g., for cache-key or checksum purposes, not password
+  hashing or HMAC), verify it is not used in a security-sensitive context before flagging.
+- DES and RC4 in `testutils/` are test vectors for G405, G502, G503.
+
+---
+
+## 7. TLS Configuration
+
+- `InsecureSkipVerify: true` in any `testutils/` file is an intentional test case for G402.
+- `InsecureSkipVerify: true` in `autofix/openai.go` is gated behind an explicit `SkipSSL` boolean
+  config flag and annotated `#nosec G402` — users must explicitly enable it.
+- Only flag `InsecureSkipVerify` if it appears in production code paths without a guard and
+  without a `#nosec` annotation.
+
+---
+
+## 8. SQL Construction
+
+All SQL string concatenation or `fmt.Sprintf`-built queries inside `testutils/` are intentional
+vulnerable samples used to verify taint analysis (G201, G202, G701). Do not report them.
+Only report SQL issues in non-test, non-fixture code where user-controlled input reaches a query.
+
+---
+
+## 9. File Permissions
+
+- `0755` / `0644` on files or directories created under `os.MkdirTemp()` or clearly labelled
+  `cache/`/`tmp/` paths are intentional for ephemeral artefacts.
+- `testutils/pkg.go` writes test sources to a temp directory with `0644` and suppresses with
+  `#nosec G306` — not a finding.
+- Only flag world-writable permissions (`0777`, `0666`) on files storing sensitive data outside
+  temp directories.
+
+---
+
+## 10. HTML / Text Templates
+
+- `report/html/writer.go` uses `//go:embed template.html` to load a static, developer-controlled
+  template. This is safe — there is no user input in the template source.
+- `template.HTML(...)` casts inside `testutils/g203_samples.go` are intentional test cases for G203.
+- Only flag `text/template` or `template.HTML`/`template.JS`/`template.URL` casts where the
+  value originates from untrusted external input at runtime.
+
+---
+
+## 11. HTTP Clients and URLs
+
+- HTTP calls in `testutils/` are test vectors for rules like G107 (SSRF) and G120 (security headers).
+- URLs constructed from typed, validated config structs (e.g., `config.ServerURL`) are safe;
+  flag only URLs derived from HTTP request parameters, query strings, or unvalidated user input.
+- `autofix/openai.go` communicates with the OpenAI API using a well-known base URL from config —
+  not user-controlled.
+
+---
+
+## 12. `interface{}` / `any` and `reflect`
+
+- `config.go` uses `map[string]interface{}` for flexible rule configuration. All accesses include
+  explicit `ok`-checked type assertions — this is the standard safe Go pattern for dynamic config.
+- Do not flag `interface{}` usage that is immediately followed by a type assertion with an `ok`
+  guard; flag only cases where the asserted value flows into a security-sensitive operation without
+  validation.
+
+---
+
+## 13. Concurrency and Goroutines
+
+- `analyzer.go` uses `errgroup.Group` (from `golang.org/x/sync`) for bounded, structured
+  concurrency. Each goroutine receives its own isolated rule instance. There is no shared mutable
+  state accessed without synchronisation. Do not flag this pattern.
+- Only flag goroutine launches where shared mutable state is accessed without locks and the
+  race could have a security consequence (e.g., TOCTOU on file paths, credential state corruption).
+
+---
+
+## 14. Go Package Loading (`go/packages`, `go/build`)
+
+- `analyzer.go` calls `packages.Load()` with a comprehensive `LoadMode` bitmask. This is the
+  standard Go analysis API — it does not execute arbitrary code, it only parses and type-checks
+  Go source. Do not flag it as arbitrary code execution.
+- Package import paths passed to `packages.Load()` should be validated only if they are derived
+  from unvalidated user input (e.g., raw CLI arguments without sanitisation).
+
+---
+
+## 15. Environment Variables in Test Subprocess Harness
+
+- `cmd/gosec/run_test.go` appends `GOSEC_RUN_HELPER=1` and `GOSEC_RUN_SCENARIO=<literal>`
+  to the subprocess environment. These are hardcoded test control flags following the standard
+  Go test helper process pattern. Do not flag as environment variable injection.
+
+---
+
+## 16. Credentials and Tokens in Configuration
+
+- Variables or struct fields named `token`, `secret`, `apiKey`, or `password` that hold
+  *references to config keys* (e.g., `cfg.APIKey`) are not hardcoded secrets.
+- Test fixtures that contain placeholder strings such as `"my_secret"`, `"test-token"`,
+  `"CHANGEME"` are not real credentials — they exist solely to trigger the hardcoded
+  credential detection rules.
+- Only report a credential finding when a high-entropy literal string matching a known secret
+  format (e.g., `ghp_…`, `AKIA…`) appears in non-test production code.
+
+---
+
+## 17. `#nosec` Rule Suppression Logic in Source
+
+- `rules/nosec.go` and related files implement gosec's own suppression mechanism. Code that
+  parses, matches, or manipulates `//nosec` comment strings is part of the security tool itself —
+  do not flag it as a bypass or tampering attempt.
+
+---
+
+## 18. Deferred `Close()` Error Handling
+
+Ignoring the return value of `defer f.Close()` is the accepted Go convention for read-only files
+and cleanup paths where the error cannot be meaningfully acted upon. Do not report unchecked
+errors on deferred `Close()` calls unless the file was opened for writing and data integrity
+depends on the close succeeding.

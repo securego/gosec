@@ -63,6 +63,19 @@ jobs:
             ${{ runner.os }}-go-
       - name: Check taint benchmark regression
         run: bash tools/check_taint_benchmark.sh
+  barry:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v6
+      - name: Run Barry Security Review
+        uses: ccojocar/barry@main
+        with:
+          google-api-key: ${{ secrets.GOOGLE_API_KEY }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          false-positive-filtering-instructions: .github/barry/custom-gosec-false-positive-filter
+          custom-security-scan-instructions: .github/barry/custom-gosec-security-scan-instructions
   coverage:
     needs: [test, taint-perf-guard]
     runs-on: ubuntu-latest
