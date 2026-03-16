@@ -79,6 +79,8 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           false-positive-filtering-instructions: .github/barry/custom-gosec-false-positive-filter
           custom-security-scan-instructions: .github/barry/custom-gosec-security-scan-instructions
+          validator-model: gemini-3-flash
+          autofix-model: gemini-3-flash
           output-format: sarif
       - name: Upload SARIF to GitHub Security Center
         uses: github/codeql-action/upload-sarif@v3
