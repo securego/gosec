@@ -10,15 +10,15 @@ require (
 	github.com/mozilla/tls-observatory v0.0.0-20250923143331-eef96233227e
 	github.com/onsi/ginkgo/v2 v2.28.1
 	github.com/onsi/gomega v1.39.1
-	github.com/openai/openai-go/v3 v3.26.0
+	github.com/openai/openai-go/v3 v3.28.0
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2
 	github.com/stretchr/testify v1.11.1
 	go.yaml.in/yaml/v3 v3.0.4
-	golang.org/x/crypto v0.48.0
+	golang.org/x/crypto v0.49.0
 	golang.org/x/sync v0.20.0
-	golang.org/x/text v0.34.0
-	golang.org/x/tools v0.42.0
-	google.golang.org/genai v1.49.0
+	golang.org/x/text v0.35.0
+	golang.org/x/tools v0.43.0
+	google.golang.org/genai v1.50.0
 )
 
 require (
@@ -49,9 +49,9 @@ require (
 	go.opentelemetry.io/otel v1.37.0 // indirect
 	go.opentelemetry.io/otel/metric v1.37.0 // indirect
 	go.opentelemetry.io/otel/trace v1.37.0 // indirect
-	golang.org/x/mod v0.33.0 // indirect
-	golang.org/x/net v0.51.0 // indirect
-	golang.org/x/sys v0.41.0 // indirect
+	golang.org/x/mod v0.34.0 // indirect
+	golang.org/x/net v0.52.0 // indirect
+	golang.org/x/sys v0.42.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250818200422-3122310a409c // indirect
 	google.golang.org/grpc v1.75.0 // indirect
 	google.golang.org/protobuf v1.36.8 // indirect
