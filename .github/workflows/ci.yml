@@ -86,7 +86,7 @@ jobs:
         uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
-          sarif_file: ${{ github.workspace }}/barry-results.sarif
+          sarif_file: ${{ steps.barry.outputs.results-file }}
   coverage:
     needs: [test, taint-perf-guard]
     runs-on: ubuntu-latest
