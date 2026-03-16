@@ -83,10 +83,10 @@ jobs:
           autofix-model: gemini-3-flash-preview
           output-format: sarif
       - name: Upload SARIF to GitHub Security Center
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
-          sarif_file: ${{ steps.barry.outputs.results-file }}
+          sarif_file: ${{ github.workspace }}/barry-results.sarif
   coverage:
     needs: [test, taint-perf-guard]
     runs-on: ubuntu-latest
