@@ -6,8 +6,12 @@ on:
   pull_request:
     branches:
       - master
+  pull_request_target:
+    branches:
+      - master
 jobs:
   test:
+    if: github.event_name != 'pull_request_target'
     strategy:
       matrix:
         version:
@@ -44,6 +48,7 @@ jobs:
       - name: Perf Diff
         run: make perf-diff
   taint-perf-guard:
+    if: github.event_name != 'pull_request_target'
     runs-on: ubuntu-latest
     env:
       GO111MODULE: on
@@ -64,7 +69,7 @@ jobs:
       - name: Check taint benchmark regression
         run: bash tools/check_taint_benchmark.sh
   barry-ai-security-review:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' || github.event_name == 'pull_request_target'
     runs-on: ubuntu-latest
     permissions:
       security-events: write
@@ -72,6 +77,8 @@ jobs:
     steps:
       - name: Checkout Source
         uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
       - name: Run Barry AI Security Review
         id: barry
         uses: ccojocar/barry@main
@@ -86,10 +93,11 @@ jobs:
           output-format: sarif
       - name: Upload SARIF to GitHub Security Center
         uses: github/codeql-action/upload-sarif@v4
-        if: always()
+        if: steps.barry.outcome == 'success'
         with:
           sarif_file: ${{ github.workspace }}/barry-results.sarif
   coverage:
+    if: github.event_name != 'pull_request_target'
     needs: [test, taint-perf-guard]
     runs-on: ubuntu-latest
     env:
