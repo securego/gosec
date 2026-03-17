@@ -628,6 +628,220 @@ func main() {
 }
 `}, 0, gosec.NewConfig()},
 
+	// Negative (issue #1614): marshal inside MarshalJSON with masked value
+	{[]string{`
+package main
+
+import "encoding/json"
+
+type Credentials struct {
+	Username string
+	Password string ` + "`json:\"-\"`" + `
+}
+
+func (c Credentials) MarshalJSON() ([]byte, error) {
+	type Aux struct {
+		Username string
+		Password string
+	}
+	return json.Marshal(Aux{
+		Username: c.Username,
+		Password: mask(c.Password),
+	})
+}
+
+func mask(input string) string {
+	return "****"
+}
+`}, 0, gosec.NewConfig()},
+
+	// Negative (issue #1614): json.Marshal inside MarshalYAML custom marshaler
+	{[]string{`
+package main
+
+import "encoding/json"
+
+type Secret struct {
+	Token string
+}
+
+func (s Secret) MarshalYAML() (interface{}, error) {
+	type safe struct {
+		Token string
+	}
+	b, err := json.Marshal(safe{Token: redact(s.Token)})
+	if err != nil {
+		return nil, err
+	}
+	return string(b), nil
+}
+
+func redact(s string) string { return "***" }
+`}, 0, gosec.NewConfig()},
+
+	// Positive: marshal of sensitive field NOT inside a custom marshaler
+	{[]string{`
+package main
+
+import "encoding/json"
+
+type Credentials struct {
+	Username string
+	Password string
+}
+
+func (c Credentials) String() string {
+	b, _ := json.Marshal(c)
+	return string(b)
+}
+`}, 1, gosec.NewConfig()},
+
+	// Negative: type implements MarshalJSON — custom marshaler controls output
+	{[]string{`
+package main
+
+import "encoding/json"
+
+type Credentials struct {
+	Username string
+	Password string
+}
+
+func (c Credentials) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct{ Username string }{Username: c.Username})
+}
+
+func main() {
+	_, _ = json.Marshal(Credentials{})
+}
+`}, 0, gosec.NewConfig()},
+
+	// Negative: pointer to type implementing MarshalJSON
+	{[]string{`
+package main
+
+import "encoding/json"
+
+type Credentials struct {
+	Username string
+	Password string
+}
+
+func (c *Credentials) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct{ Username string }{Username: c.Username})
+}
+
+func main() {
+	_, _ = json.Marshal(&Credentials{})
+}
+`}, 0, gosec.NewConfig()},
+
+	// Negative: slice of type implementing MarshalJSON
+	{[]string{`
+package main
+
+import "encoding/json"
+
+type Credentials struct {
+	Username string
+	Password string
+}
+
+func (c Credentials) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct{ Username string }{Username: c.Username})
+}
+
+func main() {
+	_, _ = json.Marshal([]Credentials{{}})
+}
+`}, 0, gosec.NewConfig()},
+
+	// Negative: composite literal with sensitive field wrapped in function call
+	{[]string{`
+package main
+
+import "encoding/json"
+
+type LogEntry struct {
+	User     string
+	Password string
+}
+
+func mask(s string) string { return "****" }
+
+func main() {
+	_, _ = json.Marshal(LogEntry{
+		User:     "admin",
+		Password: mask("secret123"),
+	})
+}
+`}, 0, gosec.NewConfig()},
+
+	// Negative: composite literal with & and function call on sensitive field
+	{[]string{`
+package main
+
+import "encoding/json"
+
+type LogEntry struct {
+	User     string
+	Password string
+}
+
+func mask(s string) string { return "****" }
+
+func main() {
+	_, _ = json.Marshal(&LogEntry{
+		User:     "admin",
+		Password: mask("secret123"),
+	})
+}
+`}, 0, gosec.NewConfig()},
+
+	// Positive: composite literal with direct value (no transformation)
+	{[]string{`
+package main
+
+import "encoding/json"
+
+type LogEntry struct {
+	User     string
+	Password string
+}
+
+func main() {
+	pw := "secret123"
+	_, _ = json.Marshal(LogEntry{
+		User:     "admin",
+		Password: pw,
+	})
+}
+`}, 1, gosec.NewConfig()},
+
+	// Positive: composite literal with sensitive field set to another struct field
+	{[]string{`
+package main
+
+import "encoding/json"
+
+type Credentials struct {
+	Username string
+	Password string
+}
+
+type LogEntry struct {
+	User     string
+	Password string
+}
+
+func logCreds(c Credentials) {
+	_, _ = json.Marshal(LogEntry{
+		User:     c.Username,
+		Password: c.Password,
+	})
+}
+`}, 1, gosec.NewConfig()},
+
 	// Negative: non-JSON function named Marshal
 	{[]string{`
 package main

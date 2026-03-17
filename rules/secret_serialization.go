@@ -21,10 +21,11 @@ type secretSerialization struct {
 }
 
 type formatSpec struct {
-	name          string
-	tagKey        string
-	functionSinks []functionSink
-	methodSinks   []methodSink
+	name            string
+	tagKey          string
+	marshalerMethod string // e.g. "MarshalJSON"; empty if no standard interface exists
+	functionSinks   []functionSink
+	methodSinks     []methodSink
 }
 
 type functionSink struct {
@@ -44,15 +45,16 @@ type typeAnalysisCacheKey struct {
 }
 
 type sensitiveFieldMatch struct {
-	fieldName string
-	jsonKey   string
-	found     bool
+	fieldName     string
+	serializedKey string
+	found         bool
 }
 
 var g117Formats = []formatSpec{
 	{
-		name:   "json",
-		tagKey: "json",
+		name:            "JSON",
+		tagKey:          "json",
+		marshalerMethod: "MarshalJSON",
 		functionSinks: []functionSink{
 			{pkgPath: "encoding/json", names: []string{"Marshal", "MarshalIndent"}},
 		},
@@ -61,8 +63,9 @@ var g117Formats = []formatSpec{
 		},
 	},
 	{
-		name:   "yaml",
-		tagKey: "yaml",
+		name:            "YAML",
+		tagKey:          "yaml",
+		marshalerMethod: "MarshalYAML",
 		functionSinks: []functionSink{
 			{pkgPath: "go.yaml.in/yaml/v3", names: []string{"Marshal"}},
 			{pkgPath: "gopkg.in/yaml.v3", names: []string{"Marshal"}},
@@ -76,8 +79,9 @@ var g117Formats = []formatSpec{
 		},
 	},
 	{
-		name:   "xml",
-		tagKey: "xml",
+		name:            "XML",
+		tagKey:          "xml",
+		marshalerMethod: "MarshalXML",
 		functionSinks: []functionSink{
 			{pkgPath: "encoding/xml", names: []string{"Marshal", "MarshalIndent"}},
 		},
@@ -86,7 +90,7 @@ var g117Formats = []formatSpec{
 		},
 	},
 	{
-		name:   "toml",
+		name:   "TOML",
 		tagKey: "toml",
 		functionSinks: []functionSink{
 			{pkgPath: "github.com/pelletier/go-toml", names: []string{"Marshal"}},
@@ -111,17 +115,146 @@ func (r *secretSerialization) Match(n ast.Node, ctx *gosec.Context) (*issue.Issu
 		return nil, nil
 	}
 
+	if isInsideCustomMarshaler(callExpr, ctx) {
+		return nil, nil
+	}
+
 	typ := ctx.Info.TypeOf(serializedArg)
 	if typ == nil {
 		return nil, nil
 	}
 
-	if match := r.findSensitiveFieldForType(typ, format.tagKey); match.found {
-		msg := fmt.Sprintf("Marshaled struct field %q (JSON key %q) matches secret pattern", match.fieldName, match.jsonKey)
-		return ctx.NewIssue(callExpr, r.ID(), msg, r.Severity, r.Confidence), nil
+	if typeImplementsMarshaler(typ, format.marshalerMethod) {
+		return nil, nil
 	}
 
-	return nil, nil
+	match := r.findSensitiveFieldForType(typ, format.tagKey)
+	if !match.found {
+		return nil, nil
+	}
+
+	if compositeLitFieldIsTransformed(serializedArg, match.fieldName) {
+		return nil, nil
+	}
+
+	msg := fmt.Sprintf("Marshaled struct field %q (%s key %q) matches secret pattern", match.fieldName, format.name, match.serializedKey)
+	return ctx.NewIssue(callExpr, r.ID(), msg, r.Severity, r.Confidence), nil
+}
+
+// customMarshalerMethods lists method names that indicate a custom marshaler
+// implementation. When a marshal call occurs inside one of these methods, the
+// developer is explicitly controlling serialization, so G117 should not flag it.
+var customMarshalerMethods = map[string]bool{
+	"MarshalJSON": true,
+	"MarshalYAML": true,
+	"MarshalXML":  true,
+	"MarshalText": true,
+	"MarshalTOML": true,
+	"MarshalBSON": true,
+}
+
+// isInsideCustomMarshaler reports whether callExpr is located inside a method
+// whose name matches a known custom marshaler (e.g. MarshalJSON).
+func isInsideCustomMarshaler(callExpr *ast.CallExpr, ctx *gosec.Context) bool {
+	if ctx.Root == nil {
+		return false
+	}
+
+	pos := callExpr.Pos()
+	var found bool
+
+	ast.Inspect(ctx.Root, func(n ast.Node) bool {
+		if found {
+			return false
+		}
+		funcDecl, ok := n.(*ast.FuncDecl)
+		if !ok || funcDecl.Body == nil {
+			return true
+		}
+		// Check if the call is inside this function body.
+		if pos < funcDecl.Body.Pos() || pos >= funcDecl.Body.End() {
+			return true
+		}
+		// Must be a method (has a receiver) with a recognized marshaler name.
+		if funcDecl.Recv != nil && funcDecl.Recv.NumFields() > 0 {
+			if customMarshalerMethods[funcDecl.Name.Name] {
+				found = true
+			}
+		}
+		return false
+	})
+
+	return found
+}
+
+// typeImplementsMarshaler reports whether typ (or its element type for
+// containers) has a method with the given name, indicating it implements a
+// custom marshaler interface (e.g. json.Marshaler). When a type has a custom
+// marshaler, the serialization library calls that method instead of serializing
+// fields directly, making struct field analysis irrelevant.
+func typeImplementsMarshaler(typ types.Type, methodName string) bool {
+	if methodName == "" {
+		return false
+	}
+	named := elementNamedType(typ)
+	if named == nil {
+		return false
+	}
+	// Check both value and pointer receiver methods via the pointer method set,
+	// which is a superset of the value method set.
+	mset := types.NewMethodSet(types.NewPointer(named))
+	for i := 0; i < mset.Len(); i++ {
+		if mset.At(i).Obj().Name() == methodName {
+			return true
+		}
+	}
+	return false
+}
+
+// elementNamedType unwraps pointers, slices, arrays, and maps to find the
+// innermost Named type. Returns nil if no Named type is found.
+func elementNamedType(typ types.Type) *types.Named {
+	switch t := typ.(type) {
+	case *types.Named:
+		return t
+	case *types.Pointer:
+		return elementNamedType(t.Elem())
+	case *types.Slice:
+		return elementNamedType(t.Elem())
+	case *types.Array:
+		return elementNamedType(t.Elem())
+	case *types.Map:
+		return elementNamedType(t.Elem())
+	}
+	return nil
+}
+
+// compositeLitFieldIsTransformed checks whether expr is a composite literal
+// in which the given field name is assigned a function call result. A function
+// call indicates the value is being transformed (e.g. masked or redacted)
+// before serialization.
+func compositeLitFieldIsTransformed(expr ast.Expr, fieldName string) bool {
+	// Unwrap address-of operator: &Struct{...}
+	if unary, ok := expr.(*ast.UnaryExpr); ok {
+		expr = unary.X
+	}
+	lit, ok := expr.(*ast.CompositeLit)
+	if !ok {
+		return false
+	}
+	for _, elt := range lit.Elts {
+		kv, ok := elt.(*ast.KeyValueExpr)
+		if !ok {
+			continue
+		}
+		ident, ok := kv.Key.(*ast.Ident)
+		if !ok || ident.Name != fieldName {
+			continue
+		}
+		_, isCall := kv.Value.(*ast.CallExpr)
+		return isCall
+	}
+	return false
 }
 
 func isNamedTypeInPackage(typ types.Type, pkgPath, typeName string) bool {
@@ -382,7 +515,7 @@ func (r *secretSerialization) findSensitiveSerializedField(st *types.Struct, tag
 		}
 
 		if gosec.RegexMatchWithCache(r.pattern, field.Name()) || gosec.RegexMatchWithCache(r.pattern, effectiveKey) {
-			return sensitiveFieldMatch{fieldName: field.Name(), jsonKey: effectiveKey, found: true}
+			return sensitiveFieldMatch{fieldName: field.Name(), serializedKey: effectiveKey, found: true}
 		}
 	}
 
