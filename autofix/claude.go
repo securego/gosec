@@ -64,8 +64,6 @@ func (c *claudeWrapper) GenerateSolution(ctx context.Context, prompt string) (st
 
 func parseAnthropicModel(model string) anthropic.Model {
 	switch model {
-	case "claude-sonnet-3-7":
-		return anthropic.ModelClaude3_7SonnetLatest
 	case "claude-opus", "claude-opus-4-0":
 		return anthropic.ModelClaudeOpus4_0
 	case "claude-opus-4-1":
@@ -74,6 +72,10 @@ func parseAnthropicModel(model string) anthropic.Model {
 		return anthropic.ModelClaudeSonnet4_5_20250929
 	case "claude-haiku-4-5", "claude-haiku-4-5-20251001":
 		return anthropic.ModelClaudeHaiku4_5_20251001
+	case "claude-sonnet-4-6":
+		return anthropic.ModelClaudeSonnet4_6
+	case "claude-opus-4-6":
+		return anthropic.ModelClaudeOpus4_6
 	}
 
 	return anthropic.ModelClaudeSonnet4_0

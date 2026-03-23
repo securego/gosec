@@ -15,11 +15,6 @@ func TestParseAnthropicModel_AllModels(t *testing.T) {
 		expected anthropic.Model
 	}{
 		{
-			name:     "claude-sonnet-3-7",
-			input:    "claude-sonnet-3-7",
-			expected: anthropic.ModelClaude3_7SonnetLatest,
-		},
-		{
 			name:     "claude-opus",
 			input:    "claude-opus",
 			expected: anthropic.ModelClaudeOpus4_0,
@@ -53,6 +48,16 @@ func TestParseAnthropicModel_AllModels(t *testing.T) {
 			name:     "claude-haiku-4-5-20251001",
 			input:    "claude-haiku-4-5-20251001",
 			expected: anthropic.ModelClaudeHaiku4_5_20251001,
+		},
+		{
+			name:     "claude-sonnet-4-6",
+			input:    "claude-sonnet-4-6",
+			expected: anthropic.ModelClaudeSonnet4_6,
+		},
+		{
+			name:     "claude-opus-4-6",
+			input:    "claude-opus-4-6",
+			expected: anthropic.ModelClaudeOpus4_6,
 		},
 		{
 			name:     "default to claude-sonnet-4-0",
@@ -126,7 +131,6 @@ func TestNewClaudeClient_ModelMapping(t *testing.T) {
 		modelInput    string
 		expectedModel anthropic.Model
 	}{
-		{"claude-sonnet-3-7", anthropic.ModelClaude3_7SonnetLatest},
 		{"claude-opus", anthropic.ModelClaudeOpus4_0},
 		{"claude-opus-4-0", anthropic.ModelClaudeOpus4_0},
 		{"claude-opus-4-1", anthropic.ModelClaudeOpus4_1_20250805},
@@ -134,6 +138,8 @@ func TestNewClaudeClient_ModelMapping(t *testing.T) {
 		{"claude-sonnet-4-5-20250929", anthropic.ModelClaudeSonnet4_5_20250929},
 		{"claude-haiku-4-5", anthropic.ModelClaudeHaiku4_5_20251001},
 		{"claude-haiku-4-5-20251001", anthropic.ModelClaudeHaiku4_5_20251001},
+		{"claude-sonnet-4-6", anthropic.ModelClaudeSonnet4_6},
+		{"claude-opus-4-6", anthropic.ModelClaudeOpus4_6},
 		{"unknown-model", anthropic.ModelClaudeSonnet4_0}, // Default
 	}
 
@@ -187,7 +193,6 @@ func TestNewClaudeClient_WithEmptyAPIKey(t *testing.T) {
 
 func TestNewClaudeClient_AllSupportedModels(t *testing.T) {
 	models := []string{
-		"claude-sonnet-3-7",
 		"claude-opus",
 		"claude-opus-4-0",
 		"claude-opus-4-1",
@@ -196,6 +201,8 @@ func TestNewClaudeClient_AllSupportedModels(t *testing.T) {
 		"claude-sonnet-4-5-20250929",
 		"claude-haiku-4-5",
 		"claude-haiku-4-5-20251001",
+		"claude-sonnet-4-6",
+		"claude-opus-4-6",
 	}
 
 	for _, model := range models {
