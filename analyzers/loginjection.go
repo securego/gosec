@@ -46,10 +46,19 @@ func LogInjection() taint.Config {
 			{Package: "log", Method: "Panic"},
 			{Package: "log", Method: "Panicf"},
 			{Package: "log", Method: "Panicln"},
-			{Package: "log/slog", Method: "Info"},
-			{Package: "log/slog", Method: "Warn"},
-			{Package: "log/slog", Method: "Error"},
-			{Package: "log/slog", Method: "Debug"},
+			// log/slog structured logging functions have the signature:
+			//   func Warn(msg string, args ...any)
+			// The variadic `args` are key-value attribute pairs whose values are
+			// automatically escaped by both TextHandler (JSON-quoted) and JSONHandler
+			// (JSON-encoded), making them safe against log injection.
+			// Only the `msg` argument (args[0]) is a real injection vector because
+			// TextHandler writes it verbatim without quoting.
+			// CheckArgs: []int{0} scopes the taint check to the message only,
+			// preventing false positives on: slog.Warn("msg", "key", taintedVal)
+			{Package: "log/slog", Method: "Info", CheckArgs: []int{0}},
+			{Package: "log/slog", Method: "Warn", CheckArgs: []int{0}},
+			{Package: "log/slog", Method: "Error", CheckArgs: []int{0}},
+			{Package: "log/slog", Method: "Debug", CheckArgs: []int{0}},
 		},
 		Sanitizers: []taint.Sanitizer{
 			// strings.ReplaceAll can strip newlines/CRLF for log injection
