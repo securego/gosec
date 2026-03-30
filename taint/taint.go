@@ -1057,6 +1057,10 @@ func (a *Analyzer) isFieldTaintedOnValue(v ssa.Value, fieldIdx int, fn *ssa.Func
 	case *ssa.Alloc:
 		return a.isFieldOfAllocTainted(val, fieldIdx, fn, visited, depth)
 	case *ssa.Phi:
+		if visited[v] {
+			return false
+		}
+		visited[v] = true
 		for _, edge := range val.Edges {
 			if a.isFieldTaintedOnValue(edge, fieldIdx, fn, visited, depth+1) {
 				return true
