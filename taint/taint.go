@@ -858,67 +858,67 @@ func (a *Analyzer) isParameterTainted(param *ssa.Parameter, fn *ssa.Function, vi
 		}
 	}
 
-	// Check if parameter type is a source type.
-	// This is the ONLY place where type-based source matching should trigger
-	// automatic taint — because parameters represent data flowing IN from
-	// external callers we don't control.
-	if a.isSourceType(param.Type()) {
-		if paramIdx >= 0 && a.paramTaintCache != nil {
-			a.paramTaintCache[paramKey{fn: fn, paramIdx: paramIdx}] = true
-		}
-		return true
-	}
+	// ── Step 1: Call-graph check (most precise) ──────────────────────────
+	// If we can see ALL callers and none pass tainted data, the parameter
+	// is safe — even if its type is a source type (e.g. *http.Request in a
+	// wrapper that only receives requests built from hardcoded URLs).
+	callGraphDefinitive := false
 
-	// Use call graph to find callers and check their arguments
-	if a.callGraph == nil {
-		return false
-	}
+	if a.callGraph != nil && paramIdx >= 0 {
+		node := a.callGraph.Nodes[fn]
+		if node != nil && len(node.In) > 0 {
+			hasReceiver := fn.Signature.Recv() != nil
 
-	node := a.callGraph.Nodes[fn]
-	if node == nil {
-		return false
-	}
-
-	if paramIdx < 0 {
-		return false
-	}
-
-	// Compute the adjusted index ONCE outside the loop.
-	adjustedIdx := paramIdx
-	if fn.Signature.Recv() != nil {
-		// In SSA, method parameters include the receiver at index 0.
-		// fn.Params already includes the receiver, so paramIdx is correct
-		// relative to fn.Params. But call site Args also include the receiver
-		// at index 0 for bound methods. So we don't need to adjust—the
-		// indices are already aligned.
-		// However, for interface method invocations (IsInvoke), the receiver
-		// is in Call.Value, not Args. We handle that separately below.
-		adjustedIdx = paramIdx
-	}
-
-	// Check each caller, capping at maxCallerEdges to avoid combinatorial
-	// explosion from CHA over-approximation of interface method calls.
-	edgesChecked := 0
-	for _, inEdge := range node.In {
-		if edgesChecked >= maxCallerEdges {
-			break
-		}
-
-		site := inEdge.Site
-		if site == nil {
-			continue
-		}
-
-		callArgs := site.Common().Args
-
-		if adjustedIdx < len(callArgs) {
-			edgesChecked++
-			if a.isTainted(callArgs[adjustedIdx], inEdge.Caller.Func, visited, depth+1) {
-				if a.paramTaintCache != nil {
-					a.paramTaintCache[paramKey{fn: fn, paramIdx: paramIdx}] = true
+			edgesChecked := 0
+			capped := false
+			for _, inEdge := range node.In {
+				if edgesChecked >= maxCallerEdges {
+					capped = true
+					break
 				}
-				return true
+
+				site := inEdge.Site
+				if site == nil {
+					continue
+				}
+
+				// For interface invocations (IsInvoke) the receiver is in
+				// Call.Value, not in Args, so argument indices are shifted
+				// by -1 compared to static method calls.
+				idx := paramIdx
+				if hasReceiver && site.Common().IsInvoke() {
+					idx = paramIdx - 1
+				}
+
+				callArgs := site.Common().Args
+				if idx >= 0 && idx < len(callArgs) {
+					edgesChecked++
+					if a.isTainted(callArgs[idx], inEdge.Caller.Func, visited, depth+1) {
+						if a.paramTaintCache != nil {
+							a.paramTaintCache[paramKey{fn: fn, paramIdx: paramIdx}] = true
+						}
+						return true
+					}
+				}
 			}
+
+			// If we inspected every valid edge without hitting the cap,
+			// the call graph gives a definitive answer — skip type fallback.
+			callGraphDefinitive = !capped && edgesChecked > 0
+		}
+	}
+
+	// ── Step 2: Type-based fallback ──────────────────────────────────────
+	// Only apply when the call graph could NOT give a definitive answer:
+	//  - No call graph / no node / no incoming edges (framework-registered
+	//    handlers like http.HandleFunc have no visible callers)
+	//  - We hit the maxCallerEdges cap (incomplete picture)
+	if !callGraphDefinitive {
+		if a.isSourceType(param.Type()) {
+			if paramIdx >= 0 && a.paramTaintCache != nil {
+				a.paramTaintCache[paramKey{fn: fn, paramIdx: paramIdx}] = true
+			}
+			return true
 		}
 	}
 

@@ -101,4 +101,74 @@ func handler(r *http.Request) {
 	http.Get(target) //nolint:errcheck
 }
 `}, 1, gosec.NewConfig()},
+	// Wrapper method with hardcoded URL must NOT trigger G704.
+	// The *http.Request parameter in the wrapper is safe because
+	// all callers pass a request built from a constant URL.
+	{[]string{`
+package main
+
+import (
+	"context"
+	"fmt"
+	"net/http"
+)
+
+type HTTPDoer interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
+type NamedClient struct {
+	HTTPClient *http.Client
+}
+
+func (c *NamedClient) Do(req *http.Request) (*http.Response, error) {
+	req.Header.Set("User-Agent", "test-agent")
+	return c.HTTPClient.Do(req)
+}
+
+func doImport(httpDoer HTTPDoer) error {
+	ctx := context.Background()
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/import", http.NoBody)
+	if err != nil {
+		return fmt.Errorf("creating import POST: %w", err)
+	}
+	resp, err := httpDoer.Do(req)
+	if err != nil {
+		return fmt.Errorf("performing import POST: %w", err)
+	}
+	defer resp.Body.Close()
+	return nil
+}
+
+func main() {
+	client := &NamedClient{HTTPClient: http.DefaultClient}
+	_ = doImport(client)
+}
+`}, 0, gosec.NewConfig()},
+	// Wrapper method with tainted URL MUST trigger G704.
+	// Two sinks fire: NewRequest (tainted URL arg) and the inner Client.Do
+	// (tainted request flows through the call graph to the wrapper's parameter).
+	{[]string{`
+package main
+
+import (
+	"net/http"
+	"os"
+)
+
+type APIClient struct {
+	HTTPClient *http.Client
+}
+
+func (c *APIClient) Do(req *http.Request) (*http.Response, error) {
+	return c.HTTPClient.Do(req)
+}
+
+func main() {
+	client := &APIClient{HTTPClient: http.DefaultClient}
+	url := os.Getenv("TARGET_URL")
+	req, _ := http.NewRequest(http.MethodGet, url, nil)
+	client.Do(req)
+}
+`}, 2, gosec.NewConfig()},
 }

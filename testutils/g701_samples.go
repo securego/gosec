@@ -1873,8 +1873,8 @@ execute:
 }
 `}, 1, gosec.NewConfig()},
 
-	// Interprocedural with interface implementation
-	// NOTE: Interface method taint tracking not yet fully supported - documented limitation
+	// Interprocedural with interface implementation: taint flows through
+	// interface method call to the concrete implementation's sink.
 	{[]string{`
 package main
 
@@ -1900,7 +1900,7 @@ func handler(db *sql.DB, r *http.Request) {
 	var executor QueryExecutor = &SimpleExecutor{}
 	executor.Execute(db, query)
 }
-`}, 0, gosec.NewConfig()},
+`}, 1, gosec.NewConfig()},
 
 	// Multiple Phi nodes with complex control flow
 	{[]string{`
