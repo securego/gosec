@@ -599,3 +599,345 @@ func f() W                               { return &B{} }
 	}
 	t.Fatal("no MakeInterface instruction found in function f")
 }
+
+// ── isHTTPHandlerSignature ──────────────────────────────────────────────────
+
+// makeHTTPTypes builds synthetic net/http.ResponseWriter (interface) and
+// net/http.Request (struct) types, matching the real package path "net/http".
+// This avoids depending on go/importer which may not resolve stdlib in CI.
+func makeHTTPTypes() (httpPkg *types.Package, responseWriter *types.Named, request *types.Named) {
+	httpPkg = types.NewPackage("net/http", "http")
+
+	// ResponseWriter — named interface with a minimal method set.
+	rwIface := types.NewInterfaceType(nil, nil)
+	rwIface.Complete()
+	rwObj := types.NewTypeName(token.NoPos, httpPkg, "ResponseWriter", nil)
+	responseWriter = types.NewNamed(rwObj, rwIface, nil)
+	httpPkg.Scope().Insert(rwObj)
+
+	// Request — named struct.
+	reqObj := types.NewTypeName(token.NoPos, httpPkg, "Request", nil)
+	request = types.NewNamed(reqObj, types.NewStruct(nil, nil), nil)
+	httpPkg.Scope().Insert(reqObj)
+
+	httpPkg.MarkComplete()
+	return
+}
+
+// makeFuncSSA creates an ssa.Function with the given signature and optional
+// receiver, attached to a trivial SSA program.  The function has no body.
+func makeFuncSSA(t *testing.T, name string, sig *types.Signature) *ssa.Function {
+	t.Helper()
+	fset := token.NewFileSet()
+	prog := ssa.NewProgram(fset, 0)
+	pkg := types.NewPackage("p", "p")
+	pkg.MarkComplete()
+	ssaPkg := prog.CreatePackage(pkg, nil, nil, false)
+
+	fn := ssaPkg.Prog.NewFunction(name, sig, "test")
+	return fn
+}
+
+func TestIsHTTPHandlerSignature(t *testing.T) {
+	t.Parallel()
+
+	_, rw, req := makeHTTPTypes()
+	ptrReq := types.NewPointer(req)
+
+	cases := []struct {
+		name string
+		sig  *types.Signature
+		want bool
+	}{
+		{
+			name: "Handler",
+			sig: types.NewSignatureType(nil, nil, nil,
+				types.NewTuple(
+					types.NewVar(token.NoPos, nil, "w", rw),
+					types.NewVar(token.NoPos, nil, "r", ptrReq),
+				), nil, false),
+			want: true,
+		},
+		{
+			name: "OneParam",
+			sig: types.NewSignatureType(nil, nil, nil,
+				types.NewTuple(
+					types.NewVar(token.NoPos, nil, "r", ptrReq),
+				), nil, false),
+			want: false,
+		},
+		{
+			name: "WrongFirstParam",
+			sig: types.NewSignatureType(nil, nil, nil,
+				types.NewTuple(
+					types.NewVar(token.NoPos, nil, "n", types.Typ[types.Int]),
+					types.NewVar(token.NoPos, nil, "r", ptrReq),
+				), nil, false),
+			want: false,
+		},
+		{
+			name: "WrongSecondParam",
+			sig: types.NewSignatureType(nil, nil, nil,
+				types.NewTuple(
+					types.NewVar(token.NoPos, nil, "w", rw),
+					types.NewVar(token.NoPos, nil, "s", types.Typ[types.String]),
+				), nil, false),
+			want: false,
+		},
+		{
+			name: "ThreeParams",
+			sig: types.NewSignatureType(nil, nil, nil,
+				types.NewTuple(
+					types.NewVar(token.NoPos, nil, "w", rw),
+					types.NewVar(token.NoPos, nil, "r", ptrReq),
+					types.NewVar(token.NoPos, nil, "x", types.Typ[types.Int]),
+				), nil, false),
+			want: false,
+		},
+		{
+			name: "NonPointerRequest",
+			sig: types.NewSignatureType(nil, nil, nil,
+				types.NewTuple(
+					types.NewVar(token.NoPos, nil, "w", rw),
+					types.NewVar(token.NoPos, nil, "r", req), // non-pointer
+				), nil, false),
+			want: false,
+		},
+		{
+			name: "WrongPackageRequest",
+			sig: func() *types.Signature {
+				otherPkg := types.NewPackage("mypkg/http", "http")
+				otherObj := types.NewTypeName(token.NoPos, otherPkg, "Request", nil)
+				otherReq := types.NewNamed(otherObj, types.NewStruct(nil, nil), nil)
+				return types.NewSignatureType(nil, nil, nil,
+					types.NewTuple(
+						types.NewVar(token.NoPos, nil, "w", rw),
+						types.NewVar(token.NoPos, nil, "r", types.NewPointer(otherReq)),
+					), nil, false)
+			}(),
+			want: false,
+		},
+		{
+			name: "WrongPackageResponseWriter",
+			sig: func() *types.Signature {
+				otherPkg := types.NewPackage("mypkg/http", "http")
+				otherIface := types.NewInterfaceType(nil, nil)
+				otherIface.Complete()
+				otherObj := types.NewTypeName(token.NoPos, otherPkg, "ResponseWriter", nil)
+				otherRW := types.NewNamed(otherObj, otherIface, nil)
+				return types.NewSignatureType(nil, nil, nil,
+					types.NewTuple(
+						types.NewVar(token.NoPos, nil, "w", otherRW),
+						types.NewVar(token.NoPos, nil, "r", ptrReq),
+					), nil, false)
+			}(),
+			want: false,
+		},
+	}
+
+	for _, tc := range cases {
+		fn := makeFuncSSA(t, tc.name, tc.sig)
+		got := isHTTPHandlerSignature(fn)
+		if got != tc.want {
+			t.Errorf("isHTTPHandlerSignature(%s) = %v, want %v", tc.name, got, tc.want)
+		}
+	}
+}
+
+func TestIsHTTPHandlerSignatureMethodReturnsFalse(t *testing.T) {
+	t.Parallel()
+
+	// A method (sig.Recv() != nil) with handler params must still return false.
+	_, rw, req := makeHTTPTypes()
+	structType := types.NewStruct(nil, nil)
+	recvVar := types.NewVar(token.NoPos, nil, "s", types.NewPointer(structType))
+	sig := types.NewSignatureType(recvVar, nil, nil,
+		types.NewTuple(
+			types.NewVar(token.NoPos, nil, "w", rw),
+			types.NewVar(token.NoPos, nil, "r", types.NewPointer(req)),
+		), nil, false)
+
+	fn := makeFuncSSA(t, "ServeHTTP", sig)
+	if isHTTPHandlerSignature(fn) {
+		t.Error("expected false for method with receiver")
+	}
+}
+
+func TestIsHTTPHandlerSignatureNilSignature(t *testing.T) {
+	t.Parallel()
+	fn := &ssa.Function{}
+	if isHTTPHandlerSignature(fn) {
+		t.Fatal("expected false for nil Signature")
+	}
+}
+
+// ── isParameterTainted entry-point logic ────────────────────────────────────
+
+func TestIsParameterTaintedHandlerWithCallersStillTainted(t *testing.T) {
+	t.Parallel()
+
+	// Build a minimal package where "handler" has the HTTP handler signature
+	// and "caller" invokes it with locally-built args. We use synthetic
+	// net/http types embedded via a fake importer.
+	httpPkg, _, _ := makeHTTPTypes()
+
+	src := `package p
+
+import "net/http"
+
+func handler(w http.ResponseWriter, r *http.Request) {}
+
+func caller() {
+	handler(nil, nil)
+}
+`
+	fset := token.NewFileSet()
+	parsed, err := parser.ParseFile(fset, "p.go", src, 0)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+
+	fakeImporter := fakeImporterFunc(func(path string) (*types.Package, error) {
+		if path == "net/http" {
+			return httpPkg, nil
+		}
+		return nil, fmt.Errorf("unknown import %q", path)
+	})
+
+	info := &types.Info{
+		Types:      make(map[ast.Expr]types.TypeAndValue),
+		Defs:       make(map[*ast.Ident]types.Object),
+		Uses:       make(map[*ast.Ident]types.Object),
+		Implicits:  make(map[ast.Node]types.Object),
+		Scopes:     make(map[ast.Node]*types.Scope),
+		Selections: make(map[*ast.SelectorExpr]*types.Selection),
+	}
+	pkg, err := (&types.Config{Importer: fakeImporter}).Check("p", fset, []*ast.File{parsed}, info)
+	if err != nil {
+		t.Fatalf("type-check: %v", err)
+	}
+
+	prog := ssa.NewProgram(fset, 0)
+	prog.CreatePackage(httpPkg, nil, nil, false) // register net/http in SSA
+	ssaPkg := prog.CreatePackage(pkg, []*ast.File{parsed}, info, true)
+	prog.Build()
+
+	handlerFn := ssaPkg.Func("handler")
+	if handlerFn == nil {
+		t.Fatal("handler not found")
+	}
+	if len(handlerFn.Params) < 2 {
+		t.Fatal("expected handler to have 2 params")
+	}
+
+	analyzer := New(&Config{
+		Sources: []Source{{Package: "net/http", Name: "Request", Pointer: true}},
+	})
+
+	var srcFuncs []*ssa.Function
+	for _, m := range ssaPkg.Members {
+		if fn, ok := m.(*ssa.Function); ok {
+			srcFuncs = append(srcFuncs, fn)
+		}
+	}
+	_ = analyzer.Analyze(prog, srcFuncs)
+
+	// handler has callers (caller() calls it).
+	node := analyzer.callGraph.Nodes[handlerFn]
+	if node == nil || len(node.In) == 0 {
+		t.Fatal("expected handler to have callers in the call graph")
+	}
+
+	// Despite callers, isParameterTainted must return true because the
+	// function matches the HTTP handler signature.
+	visited := make(map[ssa.Value]bool)
+	tainted := analyzer.isParameterTainted(handlerFn.Params[1], handlerFn, visited, 0)
+	if !tainted {
+		t.Fatal("expected *http.Request param of HTTP handler to be auto-tainted even with internal callers")
+	}
+}
+
+func TestIsParameterTaintedNonHandlerWithCallersNotAutoTainted(t *testing.T) {
+	t.Parallel()
+
+	// Non-handler function accepting *http.Request with a safe internal caller
+	// must NOT be auto-tainted.
+	httpPkg, _, _ := makeHTTPTypes()
+
+	src := `package p
+
+import "net/http"
+
+func wrapper(r *http.Request) {}
+
+func caller() {
+	wrapper(nil)
+}
+`
+	fset := token.NewFileSet()
+	parsed, err := parser.ParseFile(fset, "p.go", src, 0)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+
+	fakeImporter := fakeImporterFunc(func(path string) (*types.Package, error) {
+		if path == "net/http" {
+			return httpPkg, nil
+		}
+		return nil, fmt.Errorf("unknown import %q", path)
+	})
+
+	info := &types.Info{
+		Types:      make(map[ast.Expr]types.TypeAndValue),
+		Defs:       make(map[*ast.Ident]types.Object),
+		Uses:       make(map[*ast.Ident]types.Object),
+		Implicits:  make(map[ast.Node]types.Object),
+		Scopes:     make(map[ast.Node]*types.Scope),
+		Selections: make(map[*ast.SelectorExpr]*types.Selection),
+	}
+	pkg, err := (&types.Config{Importer: fakeImporter}).Check("p", fset, []*ast.File{parsed}, info)
+	if err != nil {
+		t.Fatalf("type-check: %v", err)
+	}
+
+	prog := ssa.NewProgram(fset, 0)
+	prog.CreatePackage(httpPkg, nil, nil, false) // register net/http in SSA
+	ssaPkg := prog.CreatePackage(pkg, []*ast.File{parsed}, info, true)
+	prog.Build()
+
+	wrapperFn := ssaPkg.Func("wrapper")
+	if wrapperFn == nil {
+		t.Fatal("wrapper not found")
+	}
+	if len(wrapperFn.Params) < 1 {
+		t.Fatal("expected wrapper to have at least 1 param")
+	}
+
+	analyzer := New(&Config{
+		Sources: []Source{{Package: "net/http", Name: "Request", Pointer: true}},
+	})
+
+	var srcFuncs []*ssa.Function
+	for _, m := range ssaPkg.Members {
+		if fn, ok := m.(*ssa.Function); ok {
+			srcFuncs = append(srcFuncs, fn)
+		}
+	}
+	_ = analyzer.Analyze(prog, srcFuncs)
+
+	node := analyzer.callGraph.Nodes[wrapperFn]
+	if node == nil || len(node.In) == 0 {
+		t.Fatal("expected wrapper to have callers in the call graph")
+	}
+
+	visited := make(map[ssa.Value]bool)
+	tainted := analyzer.isParameterTainted(wrapperFn.Params[0], wrapperFn, visited, 0)
+	if tainted {
+		t.Fatal("expected *http.Request param of non-handler wrapper to NOT be auto-tainted when caller is safe")
+	}
+}
+
+// fakeImporterFunc adapts a function to the types.Importer interface.
+type fakeImporterFunc func(path string) (*types.Package, error)
+
+func (f fakeImporterFunc) Import(path string) (*types.Package, error) { return f(path) }

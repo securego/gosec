@@ -811,6 +811,46 @@ func (a *Analyzer) isSourceType(t types.Type) bool {
 	return false
 }
 
+// isHTTPHandlerSignature returns true when fn has the standard net/http
+// handler signature: func(http.ResponseWriter, *http.Request).
+// These functions are entry points whose caller (net/http framework) may
+// not appear in the call graph. Auto-tainting their *http.Request parameter
+// must not be suppressed by the presence of internal callers with safe args.
+func isHTTPHandlerSignature(fn *ssa.Function) bool {
+	sig := fn.Signature
+	if sig == nil || sig.Recv() != nil {
+		// Methods implementing http.Handler.ServeHTTP are already handled
+		// correctly through interface dispatch in CHA; only check bare funcs.
+		return false
+	}
+	params := sig.Params()
+	if params.Len() != 2 {
+		return false
+	}
+
+	// Second param must be *net/http.Request
+	p1 := params.At(1).Type()
+	ptr, ok := p1.(*types.Pointer)
+	if !ok {
+		return false
+	}
+	named, ok := ptr.Elem().(*types.Named)
+	if !ok || named.Obj() == nil || named.Obj().Pkg() == nil {
+		return false
+	}
+	if named.Obj().Pkg().Path() != "net/http" || named.Obj().Name() != "Request" {
+		return false
+	}
+
+	// First param must be net/http.ResponseWriter (interface)
+	p0 := params.At(0).Type()
+	p0Named, ok := p0.(*types.Named)
+	if !ok || p0Named.Obj() == nil || p0Named.Obj().Pkg() == nil {
+		return false
+	}
+	return p0Named.Obj().Pkg().Path() == "net/http" && p0Named.Obj().Name() == "ResponseWriter"
+}
+
 // isSourceFuncCall checks if a call invokes a known source function
 // (a function explicitly configured as producing tainted data, e.g., os.Getenv).
 func (a *Analyzer) isSourceFuncCall(call *ssa.Call) bool {
@@ -875,28 +915,28 @@ func (a *Analyzer) isParameterTainted(param *ssa.Parameter, fn *ssa.Function, vi
 
 	// Check if parameter type is a configured source type (e.g., *http.Request).
 	//
-	// Rationale: a parameter of type *http.Request is tainted only when it
-	// actually originates from an untrusted HTTP request. In practice that
-	// means the function is an entry point whose caller lives outside the
-	// package (e.g., an HTTP handler registered with net/http). When the
-	// function DOES have known callers inside the package we verify taint
-	// through those callers instead. This eliminates false positives for
-	// wrapper types like:
+	// For wrapper methods like NamedClient.Do(req *http.Request) called only
+	// with constant URLs, we want to verify taint through callers instead of
+	// unconditionally auto-tainting. But for HTTP handlers (signature
+	// func(http.ResponseWriter, *http.Request)), the framework dispatch may
+	// not be visible in the call graph even when CHA is used, and an internal
+	// caller with safe args could suppress real external-entry-point taint.
 	//
-	//   func (c *NamedClient) Do(req *http.Request) (*http.Response, error) {
-	//       return c.HTTPClient.Do(req)   // was wrongly flagged
-	//   }
-	//
-	// called only with requests whose URLs are compile-time constants.
+	// Strategy:
+	//   1. No callers in call graph → definite entry point → auto-taint.
+	//   2. Matches HTTP handler signature → always auto-taint, because the
+	//      framework caller (net/http) may be invisible in the call graph.
+	//   3. Has callers, not a handler → fall through to caller-based check.
 	if a.isSourceType(param.Type()) {
 		isEntryPoint := (node == nil || len(node.In) == 0)
-		if isEntryPoint {
+		if isEntryPoint || isHTTPHandlerSignature(fn) {
 			if paramIdx >= 0 && a.paramTaintCache != nil {
 				a.paramTaintCache[paramKey{fn: fn, paramIdx: paramIdx}] = true
 			}
 			return true
 		}
-		// Has known callers — fall through to verify taint via those callers.
+		// Has known callers and is not a handler — fall through to verify
+		// taint via those callers.
 	}
 
 	if node == nil {
