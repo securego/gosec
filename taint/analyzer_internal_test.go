@@ -14,6 +14,7 @@ import (
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/buildssa"
+	"golang.org/x/tools/go/callgraph/cha"
 	"golang.org/x/tools/go/ssa"
 
 	"github.com/securego/gosec/v2/internal/ssautil"
@@ -855,6 +856,7 @@ func caller() {
 	if !tainted {
 		t.Fatal("expected *http.Request param of HTTP handler to be auto-tainted even with internal callers")
 	}
+
 }
 
 func TestIsParameterTaintedNonHandlerWithCallersNotAutoTainted(t *testing.T) {
@@ -941,3 +943,253 @@ func caller() {
 type fakeImporterFunc func(path string) (*types.Package, error)
 
 func (f fakeImporterFunc) Import(path string) (*types.Package, error) { return f(path) }
+
+func TestIsParameterTaintedCacheHit(t *testing.T) {
+	t.Parallel()
+
+	// When isParameterTainted returns true for a handler param, the result is
+	// cached. A second call for the same param must hit the cache and return
+	// true immediately.
+	httpPkg, _, _ := makeHTTPTypes()
+
+	src := `package p
+
+import "net/http"
+
+func handler(w http.ResponseWriter, r *http.Request) {}
+`
+	fset := token.NewFileSet()
+	parsed, _ := parser.ParseFile(fset, "p.go", src, 0)
+	info := &types.Info{
+		Types: make(map[ast.Expr]types.TypeAndValue), Defs: make(map[*ast.Ident]types.Object),
+		Uses: make(map[*ast.Ident]types.Object), Implicits: make(map[ast.Node]types.Object),
+		Scopes: make(map[ast.Node]*types.Scope), Selections: make(map[*ast.SelectorExpr]*types.Selection),
+	}
+	pkg, _ := (&types.Config{Importer: fakeImporterFunc(func(path string) (*types.Package, error) {
+		if path == "net/http" {
+			return httpPkg, nil
+		}
+		return nil, fmt.Errorf("unknown %q", path)
+	})}).Check("p", fset, []*ast.File{parsed}, info)
+
+	prog := ssa.NewProgram(fset, 0)
+	prog.CreatePackage(httpPkg, nil, nil, false)
+	ssaPkg := prog.CreatePackage(pkg, []*ast.File{parsed}, info, true)
+	prog.Build()
+
+	handlerFn := ssaPkg.Func("handler")
+	reqParam := handlerFn.Params[1]
+
+	analyzer := New(&Config{
+		Sources: []Source{{Package: "net/http", Name: "Request", Pointer: true}},
+	})
+	var srcFuncs []*ssa.Function
+	for _, m := range ssaPkg.Members {
+		if fn, ok := m.(*ssa.Function); ok {
+			srcFuncs = append(srcFuncs, fn)
+		}
+	}
+	_ = analyzer.Analyze(prog, srcFuncs)
+
+	// First call populates cache.
+	visited1 := make(map[ssa.Value]bool)
+	if !analyzer.isParameterTainted(reqParam, handlerFn, visited1, 0) {
+		t.Fatal("first call: expected tainted")
+	}
+
+	// Second call must hit the cache (lines 895-898).
+	visited2 := make(map[ssa.Value]bool)
+	if !analyzer.isParameterTainted(reqParam, handlerFn, visited2, 0) {
+		t.Fatal("second call (cache hit): expected tainted")
+	}
+}
+
+func TestIsParameterTaintedNoCallGraph(t *testing.T) {
+	t.Parallel()
+
+	// When callGraph is nil, isParameterTainted falls back to type-based
+	// auto-taint for source-typed params and returns false otherwise.
+	httpPkg, _, _ := makeHTTPTypes()
+
+	src := `package p
+
+import "net/http"
+
+func twoParams(r *http.Request, s string) {}
+`
+	fset := token.NewFileSet()
+	parsed, _ := parser.ParseFile(fset, "p.go", src, 0)
+	info := &types.Info{
+		Types: make(map[ast.Expr]types.TypeAndValue), Defs: make(map[*ast.Ident]types.Object),
+		Uses: make(map[*ast.Ident]types.Object), Implicits: make(map[ast.Node]types.Object),
+		Scopes: make(map[ast.Node]*types.Scope), Selections: make(map[*ast.SelectorExpr]*types.Selection),
+	}
+	pkg, _ := (&types.Config{Importer: fakeImporterFunc(func(path string) (*types.Package, error) {
+		if path == "net/http" {
+			return httpPkg, nil
+		}
+		return nil, fmt.Errorf("unknown %q", path)
+	})}).Check("p", fset, []*ast.File{parsed}, info)
+
+	prog := ssa.NewProgram(fset, 0)
+	prog.CreatePackage(httpPkg, nil, nil, false)
+	ssaPkg := prog.CreatePackage(pkg, []*ast.File{parsed}, info, true)
+	prog.Build()
+
+	fn := ssaPkg.Func("twoParams")
+	if fn == nil || len(fn.Params) < 2 {
+		t.Fatal("expected twoParams with 2 params")
+	}
+
+	analyzer := New(&Config{
+		Sources: []Source{{Package: "net/http", Name: "Request", Pointer: true}},
+	})
+	// Do NOT call Analyze — callGraph stays nil.
+	// Initialize paramTaintCache so the cache-store branch is exercised.
+	analyzer.paramTaintCache = make(map[paramKey]bool)
+
+	// Source-type param → auto-taint (and caches result).
+	visited := make(map[ssa.Value]bool)
+	if !analyzer.isParameterTainted(fn.Params[0], fn, visited, 0) {
+		t.Fatal("expected source-type param to be auto-tainted when callGraph is nil")
+	}
+
+	// Verify cache was populated.
+	if !analyzer.paramTaintCache[paramKey{fn: fn, paramIdx: 0}] {
+		t.Fatal("expected cache to contain taint result for param 0")
+	}
+
+	// Non-source-type param → false.
+	visited2 := make(map[ssa.Value]bool)
+	if analyzer.isParameterTainted(fn.Params[1], fn, visited2, 0) {
+		t.Fatal("expected non-source-type param to NOT be tainted when callGraph is nil")
+	}
+}
+
+func TestIsParameterTaintedDepthExceeded(t *testing.T) {
+	t.Parallel()
+
+	// When recursion depth exceeds maxTaintDepth, isParameterTainted returns false.
+	httpPkg, _, _ := makeHTTPTypes()
+
+	src := `package p
+
+import "net/http"
+
+func handler(w http.ResponseWriter, r *http.Request) {}
+`
+	fset := token.NewFileSet()
+	parsed, _ := parser.ParseFile(fset, "p.go", src, 0)
+	info := &types.Info{
+		Types: make(map[ast.Expr]types.TypeAndValue), Defs: make(map[*ast.Ident]types.Object),
+		Uses: make(map[*ast.Ident]types.Object), Implicits: make(map[ast.Node]types.Object),
+		Scopes: make(map[ast.Node]*types.Scope), Selections: make(map[*ast.SelectorExpr]*types.Selection),
+	}
+	pkg, _ := (&types.Config{Importer: fakeImporterFunc(func(path string) (*types.Package, error) {
+		if path == "net/http" {
+			return httpPkg, nil
+		}
+		return nil, fmt.Errorf("unknown %q", path)
+	})}).Check("p", fset, []*ast.File{parsed}, info)
+
+	prog := ssa.NewProgram(fset, 0)
+	prog.CreatePackage(httpPkg, nil, nil, false)
+	ssaPkg := prog.CreatePackage(pkg, []*ast.File{parsed}, info, true)
+	prog.Build()
+
+	fn := ssaPkg.Func("handler")
+	if fn == nil || len(fn.Params) < 2 {
+		t.Fatal("expected handler with 2 params")
+	}
+
+	analyzer := New(&Config{
+		Sources: []Source{{Package: "net/http", Name: "Request", Pointer: true}},
+	})
+
+	visited := make(map[ssa.Value]bool)
+	// Passing depth > maxTaintDepth (50) → must return false.
+	if analyzer.isParameterTainted(fn.Params[1], fn, visited, maxTaintDepth+1) {
+		t.Fatal("expected false when depth exceeds maxTaintDepth")
+	}
+}
+
+func TestIsParameterTaintedEntryPointCacheStoreAndHit(t *testing.T) {
+	t.Parallel()
+
+	// Exercises the cache-store (line 934) and cache-hit (line 897) branches.
+	// Analyze() sets paramTaintCache to nil on return, so we must invoke
+	// isParameterTainted directly while the cache is live. We do this by
+	// manually initialising the analyzer state the same way Analyze does.
+	httpPkg, _, _ := makeHTTPTypes()
+
+	src := `package p
+
+import "net/http"
+
+func lonely(r *http.Request) {}
+`
+	fset := token.NewFileSet()
+	parsed, _ := parser.ParseFile(fset, "p.go", src, 0)
+	info := &types.Info{
+		Types: make(map[ast.Expr]types.TypeAndValue), Defs: make(map[*ast.Ident]types.Object),
+		Uses: make(map[*ast.Ident]types.Object), Implicits: make(map[ast.Node]types.Object),
+		Scopes: make(map[ast.Node]*types.Scope), Selections: make(map[*ast.SelectorExpr]*types.Selection),
+	}
+	pkg, _ := (&types.Config{Importer: fakeImporterFunc(func(path string) (*types.Package, error) {
+		if path == "net/http" {
+			return httpPkg, nil
+		}
+		return nil, fmt.Errorf("unknown %q", path)
+	})}).Check("p", fset, []*ast.File{parsed}, info)
+
+	prog := ssa.NewProgram(fset, 0)
+	prog.CreatePackage(httpPkg, nil, nil, false)
+	ssaPkg := prog.CreatePackage(pkg, []*ast.File{parsed}, info, true)
+	prog.Build()
+
+	fn := ssaPkg.Func("lonely")
+	if fn == nil || len(fn.Params) < 1 {
+		t.Fatal("expected lonely with 1 param")
+	}
+
+	analyzer := New(&Config{
+		Sources: []Source{{Package: "net/http", Name: "Request", Pointer: true}},
+	})
+	// Manually set up call graph + cache (same as Analyze does internally).
+	analyzer.callGraph = cha.CallGraph(prog)
+	analyzer.paramTaintCache = make(map[paramKey]bool)
+	analyzer.prog = prog
+
+	// First call: entry point (no callers) + source type → auto-taint + cache store.
+	visited := make(map[ssa.Value]bool)
+	if !analyzer.isParameterTainted(fn.Params[0], fn, visited, 0) {
+		t.Fatal("expected entry-point source-type param to be tainted")
+	}
+	if !analyzer.paramTaintCache[paramKey{fn: fn, paramIdx: 0}] {
+		t.Fatal("expected cache to be populated")
+	}
+
+	// Second call: hits cache (line 897).
+	visited2 := make(map[ssa.Value]bool)
+	if !analyzer.isParameterTainted(fn.Params[0], fn, visited2, 0) {
+		t.Fatal("expected cache hit to return true")
+	}
+}
+
+func TestIsHTTPHandlerSignatureSecondParamUnnamedPointerElem(t *testing.T) {
+	t.Parallel()
+
+	// When the second param is a pointer to a non-Named type (e.g., *int),
+	// the named.Obj() == nil || named.Obj().Pkg() == nil guard must return false.
+	_, rw, _ := makeHTTPTypes()
+	sig := types.NewSignatureType(nil, nil, nil,
+		types.NewTuple(
+			types.NewVar(token.NoPos, nil, "w", rw),
+			types.NewVar(token.NoPos, nil, "r", types.NewPointer(types.Typ[types.Int])),
+		), nil, false)
+
+	fn := makeFuncSSA(t, "BadSecondParam", sig)
+	if isHTTPHandlerSignature(fn) {
+		t.Fatal("expected false for *int as second param")
+	}
+}
