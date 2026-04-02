@@ -101,4 +101,79 @@ func handler(r *http.Request) {
 	http.Get(target) //nolint:errcheck
 }
 `}, 1, gosec.NewConfig()},
+	// Issue #1629: NamedClient wrapper delegates to http.Client.Do.
+	// Request built with constant URL — must NOT trigger G704.
+	{[]string{`
+package main
+
+import (
+	"context"
+	"fmt"
+	"net/http"
+)
+
+type HTTPDoer interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
+type NamedClient struct {
+	HTTPClient *http.Client
+}
+
+func (c *NamedClient) Do(req *http.Request) (*http.Response, error) {
+	req.Header.Set("User-Agent", "test-agent")
+	return c.HTTPClient.Do(req)
+}
+
+func doImport(httpDoer HTTPDoer) error {
+	ctx := context.Background()
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/import", http.NoBody)
+	if err != nil {
+		return fmt.Errorf("creating import POST: %w", err)
+	}
+	resp, err := httpDoer.Do(req)
+	if err != nil {
+		return fmt.Errorf("performing import POST: %w", err)
+	}
+	defer resp.Body.Close()
+	return nil
+}
+`}, 0, gosec.NewConfig()},
+	// Issue #1629 counterpart: URL from os.Getenv through wrapper MUST still fire.
+	{[]string{`
+package main
+
+import (
+	"context"
+	"net/http"
+	"os"
+)
+
+type HTTPDoer interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
+type NamedClient struct {
+	HTTPClient *http.Client
+}
+
+func (c *NamedClient) Do(req *http.Request) (*http.Response, error) {
+	return c.HTTPClient.Do(req)
+}
+
+func doImport(httpDoer HTTPDoer) error {
+	target := os.Getenv("IMPORT_URL")
+	ctx := context.Background()
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, target, http.NoBody)
+	if err != nil {
+		return err
+	}
+	resp, err := httpDoer.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	return nil
+}
+`}, 1, gosec.NewConfig()},
 }

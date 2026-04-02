@@ -858,23 +858,47 @@ func (a *Analyzer) isParameterTainted(param *ssa.Parameter, fn *ssa.Function, vi
 		}
 	}
 
-	// Check if parameter type is a source type.
-	// This is the ONLY place where type-based source matching should trigger
-	// automatic taint — because parameters represent data flowing IN from
-	// external callers we don't control.
-	if a.isSourceType(param.Type()) {
-		if paramIdx >= 0 && a.paramTaintCache != nil {
-			a.paramTaintCache[paramKey{fn: fn, paramIdx: paramIdx}] = true
-		}
-		return true
-	}
-
 	// Use call graph to find callers and check their arguments
 	if a.callGraph == nil {
+		// No call graph: fall back to type-based auto-taint for source-typed params
+		// (conservative — may produce false positives, but we have no callee info).
+		if a.isSourceType(param.Type()) {
+			if paramIdx >= 0 && a.paramTaintCache != nil {
+				a.paramTaintCache[paramKey{fn: fn, paramIdx: paramIdx}] = true
+			}
+			return true
+		}
 		return false
 	}
 
 	node := a.callGraph.Nodes[fn]
+
+	// Check if parameter type is a configured source type (e.g., *http.Request).
+	//
+	// Rationale: a parameter of type *http.Request is tainted only when it
+	// actually originates from an untrusted HTTP request. In practice that
+	// means the function is an entry point whose caller lives outside the
+	// package (e.g., an HTTP handler registered with net/http). When the
+	// function DOES have known callers inside the package we verify taint
+	// through those callers instead. This eliminates false positives for
+	// wrapper types like:
+	//
+	//   func (c *NamedClient) Do(req *http.Request) (*http.Response, error) {
+	//       return c.HTTPClient.Do(req)   // was wrongly flagged
+	//   }
+	//
+	// called only with requests whose URLs are compile-time constants.
+	if a.isSourceType(param.Type()) {
+		isEntryPoint := (node == nil || len(node.In) == 0)
+		if isEntryPoint {
+			if paramIdx >= 0 && a.paramTaintCache != nil {
+				a.paramTaintCache[paramKey{fn: fn, paramIdx: paramIdx}] = true
+			}
+			return true
+		}
+		// Has known callers — fall through to verify taint via those callers.
+	}
+
 	if node == nil {
 		return false
 	}
