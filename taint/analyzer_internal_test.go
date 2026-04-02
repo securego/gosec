@@ -856,7 +856,6 @@ func caller() {
 	if !tainted {
 		t.Fatal("expected *http.Request param of HTTP handler to be auto-tainted even with internal callers")
 	}
-
 }
 
 func TestIsParameterTaintedNonHandlerWithCallersNotAutoTainted(t *testing.T) {
