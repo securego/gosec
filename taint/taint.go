@@ -811,6 +811,33 @@ func (a *Analyzer) isSourceType(t types.Type) bool {
 	return false
 }
 
+// mayHaveExternalCallers reports whether fn could be invoked by code outside
+// the analyzed package — code that is invisible to the call graph.
+//
+// Exported bare functions (non-methods) are the primary case: frameworks
+// register them via dynamic dispatch that CHA cannot resolve, so the call
+// graph may lack edges even though the function IS called at runtime.
+//
+// Methods with a receiver are excluded because CHA resolves interface dispatch
+// to concrete methods, so their callers are generally visible in the graph.
+// Unexported functions are only callable within the package, and the call graph
+// covers intra-package calls comprehensively.
+func mayHaveExternalCallers(fn *ssa.Function) bool {
+	if fn.Signature == nil {
+		return false
+	}
+	// Methods — CHA handles interface dispatch; callers are visible.
+	if fn.Signature.Recv() != nil {
+		return false
+	}
+	// Closures / anonymous functions are never exported.
+	if fn.Parent() != nil {
+		return false
+	}
+	// Exported bare function — may be called by external frameworks.
+	return token.IsExported(fn.Name())
+}
+
 // isSourceFuncCall checks if a call invokes a known source function
 // (a function explicitly configured as producing tainted data, e.g., os.Getenv).
 func (a *Analyzer) isSourceFuncCall(call *ssa.Call) bool {
@@ -858,23 +885,46 @@ func (a *Analyzer) isParameterTainted(param *ssa.Parameter, fn *ssa.Function, vi
 		}
 	}
 
-	// Check if parameter type is a source type.
-	// This is the ONLY place where type-based source matching should trigger
-	// automatic taint — because parameters represent data flowing IN from
-	// external callers we don't control.
-	if a.isSourceType(param.Type()) {
-		if paramIdx >= 0 && a.paramTaintCache != nil {
-			a.paramTaintCache[paramKey{fn: fn, paramIdx: paramIdx}] = true
-		}
-		return true
-	}
-
 	// Use call graph to find callers and check their arguments
 	if a.callGraph == nil {
+		// No call graph: fall back to type-based auto-taint for source-typed params
+		// (conservative — may produce false positives, but we have no callee info).
+		if a.isSourceType(param.Type()) {
+			if paramIdx >= 0 && a.paramTaintCache != nil {
+				a.paramTaintCache[paramKey{fn: fn, paramIdx: paramIdx}] = true
+			}
+			return true
+		}
 		return false
 	}
 
 	node := a.callGraph.Nodes[fn]
+
+	// Check if parameter type is a configured source type.
+	//
+	// Strategy:
+	//   1. No callers in call graph → definite entry point → auto-taint.
+	//   2. Exported bare function → may have invisible external callers
+	//      (framework dispatch) → auto-taint to avoid false negatives.
+	//   3. Has callers, not exported bare func → fall through to caller check.
+	//
+	// Case 2 addresses a class of false negatives where an internal caller
+	// with safe args suppresses taint for an exported entry point that is
+	// also called externally by a framework (issue #1629 + Barry review).
+	// Methods are excluded because CHA resolves interface dispatch, making
+	// their callers visible in the call graph.
+	if a.isSourceType(param.Type()) {
+		isEntryPoint := (node == nil || len(node.In) == 0)
+		if isEntryPoint || mayHaveExternalCallers(fn) {
+			if paramIdx >= 0 && a.paramTaintCache != nil {
+				a.paramTaintCache[paramKey{fn: fn, paramIdx: paramIdx}] = true
+			}
+			return true
+		}
+		// Has known callers and is not a handler — fall through to verify
+		// taint via those callers.
+	}
+
 	if node == nil {
 		return false
 	}
