@@ -601,7 +601,7 @@ func f() W                               { return &B{} }
 	t.Fatal("no MakeInterface instruction found in function f")
 }
 
-// ── isHTTPHandlerSignature ──────────────────────────────────────────────────
+// ── mayHaveExternalCallers ──────────────────────────────────────────────────
 
 // makeHTTPTypes builds synthetic net/http.ResponseWriter (interface) and
 // net/http.Request (struct) types, matching the real package path "net/http".
@@ -639,157 +639,118 @@ func makeFuncSSA(t *testing.T, name string, sig *types.Signature) *ssa.Function 
 	return fn
 }
 
-func TestIsHTTPHandlerSignature(t *testing.T) {
+func TestMayHaveExternalCallers(t *testing.T) {
 	t.Parallel()
 
-	_, rw, req := makeHTTPTypes()
-	ptrReq := types.NewPointer(req)
+	simpleSig := types.NewSignatureType(nil, nil, nil,
+		types.NewTuple(types.NewVar(token.NoPos, nil, "x", types.Typ[types.Int])),
+		nil, false)
 
 	cases := []struct {
 		name string
-		sig  *types.Signature
+		fn   func() *ssa.Function
 		want bool
 	}{
 		{
-			name: "Handler",
-			sig: types.NewSignatureType(nil, nil, nil,
-				types.NewTuple(
-					types.NewVar(token.NoPos, nil, "w", rw),
-					types.NewVar(token.NoPos, nil, "r", ptrReq),
-				), nil, false),
+			name: "ExportedBareFunc",
+			fn: func() *ssa.Function {
+				return makeFuncSSA(t, "Handler", simpleSig)
+			},
 			want: true,
 		},
 		{
-			name: "OneParam",
-			sig: types.NewSignatureType(nil, nil, nil,
-				types.NewTuple(
-					types.NewVar(token.NoPos, nil, "r", ptrReq),
-				), nil, false),
+			name: "UnexportedBareFunc",
+			fn: func() *ssa.Function {
+				return makeFuncSSA(t, "handler", simpleSig)
+			},
 			want: false,
 		},
 		{
-			name: "WrongFirstParam",
-			sig: types.NewSignatureType(nil, nil, nil,
-				types.NewTuple(
-					types.NewVar(token.NoPos, nil, "n", types.Typ[types.Int]),
-					types.NewVar(token.NoPos, nil, "r", ptrReq),
-				), nil, false),
+			name: "MethodWithReceiver",
+			fn: func() *ssa.Function {
+				recv := types.NewVar(token.NoPos, nil, "s", types.NewPointer(types.NewStruct(nil, nil)))
+				methodSig := types.NewSignatureType(recv, nil, nil,
+					types.NewTuple(types.NewVar(token.NoPos, nil, "x", types.Typ[types.Int])),
+					nil, false)
+				return makeFuncSSA(t, "Do", methodSig)
+			},
 			want: false,
 		},
 		{
-			name: "WrongSecondParam",
-			sig: types.NewSignatureType(nil, nil, nil,
-				types.NewTuple(
-					types.NewVar(token.NoPos, nil, "w", rw),
-					types.NewVar(token.NoPos, nil, "s", types.Typ[types.String]),
-				), nil, false),
-			want: false,
-		},
-		{
-			name: "ThreeParams",
-			sig: types.NewSignatureType(nil, nil, nil,
-				types.NewTuple(
-					types.NewVar(token.NoPos, nil, "w", rw),
-					types.NewVar(token.NoPos, nil, "r", ptrReq),
-					types.NewVar(token.NoPos, nil, "x", types.Typ[types.Int]),
-				), nil, false),
-			want: false,
-		},
-		{
-			name: "NonPointerRequest",
-			sig: types.NewSignatureType(nil, nil, nil,
-				types.NewTuple(
-					types.NewVar(token.NoPos, nil, "w", rw),
-					types.NewVar(token.NoPos, nil, "r", req), // non-pointer
-				), nil, false),
-			want: false,
-		},
-		{
-			name: "WrongPackageRequest",
-			sig: func() *types.Signature {
-				otherPkg := types.NewPackage("mypkg/http", "http")
-				otherObj := types.NewTypeName(token.NoPos, otherPkg, "Request", nil)
-				otherReq := types.NewNamed(otherObj, types.NewStruct(nil, nil), nil)
-				return types.NewSignatureType(nil, nil, nil,
-					types.NewTuple(
-						types.NewVar(token.NoPos, nil, "w", rw),
-						types.NewVar(token.NoPos, nil, "r", types.NewPointer(otherReq)),
-					), nil, false)
-			}(),
-			want: false,
-		},
-		{
-			name: "WrongPackageResponseWriter",
-			sig: func() *types.Signature {
-				otherPkg := types.NewPackage("mypkg/http", "http")
-				otherIface := types.NewInterfaceType(nil, nil)
-				otherIface.Complete()
-				otherObj := types.NewTypeName(token.NoPos, otherPkg, "ResponseWriter", nil)
-				otherRW := types.NewNamed(otherObj, otherIface, nil)
-				return types.NewSignatureType(nil, nil, nil,
-					types.NewTuple(
-						types.NewVar(token.NoPos, nil, "w", otherRW),
-						types.NewVar(token.NoPos, nil, "r", ptrReq),
-					), nil, false)
-			}(),
+			name: "NilSignature",
+			fn: func() *ssa.Function {
+				return &ssa.Function{}
+			},
 			want: false,
 		},
 	}
 
 	for _, tc := range cases {
-		fn := makeFuncSSA(t, tc.name, tc.sig)
-		got := isHTTPHandlerSignature(fn)
+		fn := tc.fn()
+		got := mayHaveExternalCallers(fn)
 		if got != tc.want {
-			t.Errorf("isHTTPHandlerSignature(%s) = %v, want %v", tc.name, got, tc.want)
+			t.Errorf("mayHaveExternalCallers(%s) = %v, want %v", tc.name, got, tc.want)
 		}
 	}
 }
 
-func TestIsHTTPHandlerSignatureMethodReturnsFalse(t *testing.T) {
+func TestMayHaveExternalCallersClosureReturnsFalse(t *testing.T) {
 	t.Parallel()
 
-	// A method (sig.Recv() != nil) with handler params must still return false.
-	_, rw, req := makeHTTPTypes()
-	structType := types.NewStruct(nil, nil)
-	recvVar := types.NewVar(token.NoPos, nil, "s", types.NewPointer(structType))
-	sig := types.NewSignatureType(recvVar, nil, nil,
-		types.NewTuple(
-			types.NewVar(token.NoPos, nil, "w", rw),
-			types.NewVar(token.NoPos, nil, "r", types.NewPointer(req)),
-		), nil, false)
+	// A closure (fn.Parent() != nil) is never exported, even if its
+	// synthesized name starts with an uppercase letter.
+	src := `package p
 
-	fn := makeFuncSSA(t, "ServeHTTP", sig)
-	if isHTTPHandlerSignature(fn) {
-		t.Error("expected false for method with receiver")
-	}
+func Outer() {
+	fn := func(x int) { _ = x }
+	fn(1)
 }
+`
+	fset := token.NewFileSet()
+	parsed, err := parser.ParseFile(fset, "p.go", src, 0)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	info := &types.Info{
+		Types: make(map[ast.Expr]types.TypeAndValue), Defs: make(map[*ast.Ident]types.Object),
+		Uses: make(map[*ast.Ident]types.Object), Implicits: make(map[ast.Node]types.Object),
+		Scopes: make(map[ast.Node]*types.Scope), Selections: make(map[*ast.SelectorExpr]*types.Selection),
+	}
+	pkg, _ := (&types.Config{}).Check("p", fset, []*ast.File{parsed}, info)
+	prog := ssa.NewProgram(fset, 0)
+	ssaPkg := prog.CreatePackage(pkg, []*ast.File{parsed}, info, true)
+	prog.Build()
 
-func TestIsHTTPHandlerSignatureNilSignature(t *testing.T) {
-	t.Parallel()
-	fn := &ssa.Function{}
-	if isHTTPHandlerSignature(fn) {
-		t.Fatal("expected false for nil Signature")
+	outer := ssaPkg.Func("Outer")
+	if outer == nil {
+		t.Fatal("Outer not found")
+	}
+	// Find the anonymous closure inside Outer.
+	for _, anon := range outer.AnonFuncs {
+		if mayHaveExternalCallers(anon) {
+			t.Errorf("mayHaveExternalCallers(closure %s) = true, want false", anon.Name())
+		}
 	}
 }
 
 // ── isParameterTainted entry-point logic ────────────────────────────────────
 
-func TestIsParameterTaintedHandlerWithCallersStillTainted(t *testing.T) {
+func TestIsParameterTaintedExportedFuncWithCallersStillTainted(t *testing.T) {
 	t.Parallel()
 
-	// Build a minimal package where "handler" has the HTTP handler signature
-	// and "caller" invokes it with locally-built args. We use synthetic
-	// net/http types embedded via a fake importer.
+	// An exported bare function with a source-type param must be auto-tainted
+	// even when it has internal callers with safe args — because external
+	// callers (framework dispatch) may be invisible to the call graph.
 	httpPkg, _, _ := makeHTTPTypes()
 
 	src := `package p
 
 import "net/http"
 
-func handler(w http.ResponseWriter, r *http.Request) {}
+func Handler(w http.ResponseWriter, r *http.Request) {}
 
 func caller() {
-	handler(nil, nil)
+	Handler(nil, nil)
 }
 `
 	fset := token.NewFileSet()
@@ -823,12 +784,12 @@ func caller() {
 	ssaPkg := prog.CreatePackage(pkg, []*ast.File{parsed}, info, true)
 	prog.Build()
 
-	handlerFn := ssaPkg.Func("handler")
+	handlerFn := ssaPkg.Func("Handler")
 	if handlerFn == nil {
-		t.Fatal("handler not found")
+		t.Fatal("Handler not found")
 	}
 	if len(handlerFn.Params) < 2 {
-		t.Fatal("expected handler to have 2 params")
+		t.Fatal("expected Handler to have 2 params")
 	}
 
 	analyzer := New(&Config{
@@ -843,14 +804,14 @@ func caller() {
 	}
 	_ = analyzer.Analyze(prog, srcFuncs)
 
-	// handler has callers (caller() calls it).
+	// Handler has callers (caller() calls it).
 	node := analyzer.callGraph.Nodes[handlerFn]
 	if node == nil || len(node.In) == 0 {
-		t.Fatal("expected handler to have callers in the call graph")
+		t.Fatal("expected Handler to have callers in the call graph")
 	}
 
 	// Despite callers, isParameterTainted must return true because the
-	// function matches the HTTP handler signature.
+	// function is an exported bare function (mayHaveExternalCallers).
 	visited := make(map[ssa.Value]bool)
 	tainted := analyzer.isParameterTainted(handlerFn.Params[1], handlerFn, visited, 0)
 	if !tainted {
@@ -1172,23 +1133,5 @@ func lonely(r *http.Request) {}
 	visited2 := make(map[ssa.Value]bool)
 	if !analyzer.isParameterTainted(fn.Params[0], fn, visited2, 0) {
 		t.Fatal("expected cache hit to return true")
-	}
-}
-
-func TestIsHTTPHandlerSignatureSecondParamUnnamedPointerElem(t *testing.T) {
-	t.Parallel()
-
-	// When the second param is a pointer to a non-Named type (e.g., *int),
-	// the named.Obj() == nil || named.Obj().Pkg() == nil guard must return false.
-	_, rw, _ := makeHTTPTypes()
-	sig := types.NewSignatureType(nil, nil, nil,
-		types.NewTuple(
-			types.NewVar(token.NoPos, nil, "w", rw),
-			types.NewVar(token.NoPos, nil, "r", types.NewPointer(types.Typ[types.Int])),
-		), nil, false)
-
-	fn := makeFuncSSA(t, "BadSecondParam", sig)
-	if isHTTPHandlerSignature(fn) {
-		t.Fatal("expected false for *int as second param")
 	}
 }

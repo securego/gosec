@@ -811,44 +811,31 @@ func (a *Analyzer) isSourceType(t types.Type) bool {
 	return false
 }
 
-// isHTTPHandlerSignature returns true when fn has the standard net/http
-// handler signature: func(http.ResponseWriter, *http.Request).
-// These functions are entry points whose caller (net/http framework) may
-// not appear in the call graph. Auto-tainting their *http.Request parameter
-// must not be suppressed by the presence of internal callers with safe args.
-func isHTTPHandlerSignature(fn *ssa.Function) bool {
-	sig := fn.Signature
-	if sig == nil || sig.Recv() != nil {
-		// Methods implementing http.Handler.ServeHTTP are already handled
-		// correctly through interface dispatch in CHA; only check bare funcs.
+// mayHaveExternalCallers reports whether fn could be invoked by code outside
+// the analyzed package — code that is invisible to the call graph.
+//
+// Exported bare functions (non-methods) are the primary case: frameworks
+// register them via dynamic dispatch that CHA cannot resolve, so the call
+// graph may lack edges even though the function IS called at runtime.
+//
+// Methods with a receiver are excluded because CHA resolves interface dispatch
+// to concrete methods, so their callers are generally visible in the graph.
+// Unexported functions are only callable within the package, and the call graph
+// covers intra-package calls comprehensively.
+func mayHaveExternalCallers(fn *ssa.Function) bool {
+	if fn.Signature == nil {
 		return false
 	}
-	params := sig.Params()
-	if params.Len() != 2 {
+	// Methods — CHA handles interface dispatch; callers are visible.
+	if fn.Signature.Recv() != nil {
 		return false
 	}
-
-	// Second param must be *net/http.Request
-	p1 := params.At(1).Type()
-	ptr, ok := p1.(*types.Pointer)
-	if !ok {
+	// Closures / anonymous functions are never exported.
+	if fn.Parent() != nil {
 		return false
 	}
-	named, ok := ptr.Elem().(*types.Named)
-	if !ok || named.Obj() == nil || named.Obj().Pkg() == nil {
-		return false
-	}
-	if named.Obj().Pkg().Path() != "net/http" || named.Obj().Name() != "Request" {
-		return false
-	}
-
-	// First param must be net/http.ResponseWriter (interface)
-	p0 := params.At(0).Type()
-	p0Named, ok := p0.(*types.Named)
-	if !ok || p0Named.Obj() == nil || p0Named.Obj().Pkg() == nil {
-		return false
-	}
-	return p0Named.Obj().Pkg().Path() == "net/http" && p0Named.Obj().Name() == "ResponseWriter"
+	// Exported bare function — may be called by external frameworks.
+	return token.IsExported(fn.Name())
 }
 
 // isSourceFuncCall checks if a call invokes a known source function
@@ -913,23 +900,22 @@ func (a *Analyzer) isParameterTainted(param *ssa.Parameter, fn *ssa.Function, vi
 
 	node := a.callGraph.Nodes[fn]
 
-	// Check if parameter type is a configured source type (e.g., *http.Request).
-	//
-	// For wrapper methods like NamedClient.Do(req *http.Request) called only
-	// with constant URLs, we want to verify taint through callers instead of
-	// unconditionally auto-tainting. But for HTTP handlers (signature
-	// func(http.ResponseWriter, *http.Request)), the framework dispatch may
-	// not be visible in the call graph even when CHA is used, and an internal
-	// caller with safe args could suppress real external-entry-point taint.
+	// Check if parameter type is a configured source type.
 	//
 	// Strategy:
 	//   1. No callers in call graph → definite entry point → auto-taint.
-	//   2. Matches HTTP handler signature → always auto-taint, because the
-	//      framework caller (net/http) may be invisible in the call graph.
-	//   3. Has callers, not a handler → fall through to caller-based check.
+	//   2. Exported bare function → may have invisible external callers
+	//      (framework dispatch) → auto-taint to avoid false negatives.
+	//   3. Has callers, not exported bare func → fall through to caller check.
+	//
+	// Case 2 addresses a class of false negatives where an internal caller
+	// with safe args suppresses taint for an exported entry point that is
+	// also called externally by a framework (issue #1629 + Barry review).
+	// Methods are excluded because CHA resolves interface dispatch, making
+	// their callers visible in the call graph.
 	if a.isSourceType(param.Type()) {
 		isEntryPoint := (node == nil || len(node.In) == 0)
-		if isEntryPoint || isHTTPHandlerSignature(fn) {
+		if isEntryPoint || mayHaveExternalCallers(fn) {
 			if paramIdx >= 0 && a.paramTaintCache != nil {
 				a.paramTaintCache[paramKey{fn: fn, paramIdx: paramIdx}] = true
 			}
