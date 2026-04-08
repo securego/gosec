@@ -603,26 +603,26 @@ func f() W                               { return &B{} }
 
 // ── mayHaveExternalCallers ──────────────────────────────────────────────────
 
-// makeHTTPTypes builds synthetic net/http.ResponseWriter (interface) and
-// net/http.Request (struct) types, matching the real package path "net/http".
+// makeHTTPPkg builds a synthetic net/http package with ResponseWriter and
+// Request types, matching the real package path "net/http".
 // This avoids depending on go/importer which may not resolve stdlib in CI.
-func makeHTTPTypes() (httpPkg *types.Package, responseWriter *types.Named, request *types.Named) {
-	httpPkg = types.NewPackage("net/http", "http")
+func makeHTTPPkg() *types.Package {
+	httpPkg := types.NewPackage("net/http", "http")
 
-	// ResponseWriter — named interface with a minimal method set.
+	// ResponseWriter — named interface.
 	rwIface := types.NewInterfaceType(nil, nil)
 	rwIface.Complete()
 	rwObj := types.NewTypeName(token.NoPos, httpPkg, "ResponseWriter", nil)
-	responseWriter = types.NewNamed(rwObj, rwIface, nil)
+	types.NewNamed(rwObj, rwIface, nil)
 	httpPkg.Scope().Insert(rwObj)
 
 	// Request — named struct.
 	reqObj := types.NewTypeName(token.NoPos, httpPkg, "Request", nil)
-	request = types.NewNamed(reqObj, types.NewStruct(nil, nil), nil)
+	types.NewNamed(reqObj, types.NewStruct(nil, nil), nil)
 	httpPkg.Scope().Insert(reqObj)
 
 	httpPkg.MarkComplete()
-	return
+	return httpPkg
 }
 
 // makeFuncSSA creates an ssa.Function with the given signature and optional
@@ -741,7 +741,7 @@ func TestIsParameterTaintedExportedFuncWithCallersStillTainted(t *testing.T) {
 	// An exported bare function with a source-type param must be auto-tainted
 	// even when it has internal callers with safe args — because external
 	// callers (framework dispatch) may be invisible to the call graph.
-	httpPkg, _, _ := makeHTTPTypes()
+	httpPkg := makeHTTPPkg()
 
 	src := `package p
 
@@ -824,7 +824,7 @@ func TestIsParameterTaintedNonHandlerWithCallersNotAutoTainted(t *testing.T) {
 
 	// Non-handler function accepting *http.Request with a safe internal caller
 	// must NOT be auto-tainted.
-	httpPkg, _, _ := makeHTTPTypes()
+	httpPkg := makeHTTPPkg()
 
 	src := `package p
 
@@ -910,7 +910,7 @@ func TestIsParameterTaintedCacheHit(t *testing.T) {
 	// When isParameterTainted returns true for a handler param, the result is
 	// cached. A second call for the same param must hit the cache and return
 	// true immediately.
-	httpPkg, _, _ := makeHTTPTypes()
+	httpPkg := makeHTTPPkg()
 
 	src := `package p
 
@@ -969,7 +969,7 @@ func TestIsParameterTaintedNoCallGraph(t *testing.T) {
 
 	// When callGraph is nil, isParameterTainted falls back to type-based
 	// auto-taint for source-typed params and returns false otherwise.
-	httpPkg, _, _ := makeHTTPTypes()
+	httpPkg := makeHTTPPkg()
 
 	src := `package p
 
@@ -1030,7 +1030,7 @@ func TestIsParameterTaintedDepthExceeded(t *testing.T) {
 	t.Parallel()
 
 	// When recursion depth exceeds maxTaintDepth, isParameterTainted returns false.
-	httpPkg, _, _ := makeHTTPTypes()
+	httpPkg := makeHTTPPkg()
 
 	src := `package p
 
@@ -1080,7 +1080,7 @@ func TestIsParameterTaintedEntryPointCacheStoreAndHit(t *testing.T) {
 	// Analyze() sets paramTaintCache to nil on return, so we must invoke
 	// isParameterTainted directly while the cache is live. We do this by
 	// manually initialising the analyzer state the same way Analyze does.
-	httpPkg, _, _ := makeHTTPTypes()
+	httpPkg := makeHTTPPkg()
 
 	src := `package p
 
