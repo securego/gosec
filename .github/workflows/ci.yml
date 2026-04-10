@@ -15,7 +15,7 @@ jobs:
     strategy:
       matrix:
         version:
-          - go-version: "1.25.8"
+          - go-version: "1.25.9"
             golangci: "latest"
           - go-version: "1.26.1"
             golangci: "latest"
