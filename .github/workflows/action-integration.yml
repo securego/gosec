@@ -52,7 +52,7 @@ jobs:
 
       - name: Verify Code Scanning processed SARIF
         if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         env:
           TOOL_NAME: gosec
         with:
