@@ -2004,4 +2004,38 @@ func uintptrToUint(v uintptr) uint {
 	return uint(v)
 }
 	`}, 0, gosec.NewConfig()},
+	// Issue #1636: rune from []rune(string) with upper-bound guard
+	{[]string{`
+package main
+
+const maxByte = 255
+
+func sanitize(malformed string) []byte {
+	asRunes := []rune(malformed)
+	final := make([]byte, len(asRunes))
+	for i, r := range asRunes {
+		if r > maxByte {
+			continue
+		}
+		final[i] = byte(r)
+	}
+	return final
+}
+	`}, 0, gosec.NewConfig()},
+	// Negative: []rune parameter (not from string) with only
+	// upper-bound guard is still unsafe.
+	{[]string{`
+package main
+
+func process(runes []rune) []byte {
+	out := make([]byte, 0, len(runes))
+	for _, r := range runes {
+		if r > 255 {
+			continue
+		}
+		out = append(out, byte(r))
+	}
+	return out
+}
+	`}, 1, gosec.NewConfig()},
 }
