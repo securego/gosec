@@ -79,6 +79,13 @@ func runConversionOverflow(pass *analysis.Pass) (any, error) {
 						continue
 					}
 
+					// Skip conversions between platform-word-sized
+					// types (e.g. uintptr -> int) since they never
+					// truncate bits.
+					if isSameWidthPlatformConversion(instr.X.Type(), instr.Type()) {
+						continue
+					}
+
 					if hasOverflow(srcInfo, dstInfo) {
 						if state.isSafeConversion(instr, dstInfo) {
 							continue
@@ -138,6 +145,28 @@ func (s *overflowState) isSafeConversion(instr *ssa.Convert, dstInt IntTypeInfo)
 
 func hasOverflow(srcInfo, dstInfo IntTypeInfo) bool {
 	return srcInfo.Min < dstInfo.Min || srcInfo.Max > dstInfo.Max
+}
+
+// isSameWidthPlatformConversion returns true when both the source
+// and destination are platform-word-sized integer types (e.g.
+// uintptr -> int). These conversions never truncate bits because
+// Go guarantees both types have the same width on every platform.
+func isSameWidthPlatformConversion(src, dst types.Type) bool {
+	srcBasic, _ := src.Underlying().(*types.Basic)
+	dstBasic, _ := dst.Underlying().(*types.Basic)
+	if srcBasic == nil || dstBasic == nil {
+		return false
+	}
+	return isPlatformWordType(srcBasic.Kind()) &&
+		isPlatformWordType(dstBasic.Kind())
+}
+
+func isPlatformWordType(k types.BasicKind) bool {
+	switch k {
+	case types.Int, types.Uint, types.Uintptr:
+		return true
+	}
+	return false
 }
 
 // hasRangeCheck determines if there is a valid range check for the given value that ensures safety.
