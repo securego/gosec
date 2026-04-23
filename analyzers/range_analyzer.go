@@ -494,6 +494,12 @@ func (ra *RangeAnalyzer) isNonNegativeRecursive(v ssa.Value) bool {
 		return true
 	}
 
+	// Elements loaded from a []rune slice created by converting a
+	// string are valid Unicode code points, guaranteed non-negative.
+	if isElementOfStringRuneSlice(v) {
+		return true
+	}
+
 	v, info := getRealValueFromOperation(v)
 	if info.op == "neg" || info.op == "-" {
 		return false
@@ -563,6 +569,44 @@ func (ra *RangeAnalyzer) isNonNegativeRecursive(v ssa.Value) bool {
 		}
 	}
 	return false
+}
+
+// isElementOfStringRuneSlice checks whether v is a value loaded
+// from a []rune slice that was created by converting a string.
+// Go guarantees that string-to-[]rune conversions produce valid
+// Unicode code points (>= 0), so every element is non-negative.
+func isElementOfStringRuneSlice(v ssa.Value) bool {
+	unOp, ok := v.(*ssa.UnOp)
+	if !ok || unOp.Op != token.MUL {
+		return false
+	}
+	idx, ok := unOp.X.(*ssa.IndexAddr)
+	if !ok {
+		return false
+	}
+	return isStringToRuneConversion(idx.X)
+}
+
+// isStringToRuneConversion returns true when v is a Convert from
+// string to []int32 (i.e. []rune).
+func isStringToRuneConversion(v ssa.Value) bool {
+	conv, ok := v.(*ssa.Convert)
+	if !ok {
+		return false
+	}
+	srcBasic, ok := conv.X.Type().Underlying().(*types.Basic)
+	if !ok || srcBasic.Kind() != types.String {
+		return false
+	}
+	dstSlice, ok := conv.Type().Underlying().(*types.Slice)
+	if !ok {
+		return false
+	}
+	elemBasic, ok := dstSlice.Elem().Underlying().(*types.Basic)
+	if !ok {
+		return false
+	}
+	return elemBasic.Kind() == types.Int32
 }
 
 func (ra *RangeAnalyzer) ComputeRange(v ssa.Value, block *ssa.BasicBlock) *rangeResult {
