@@ -115,6 +115,21 @@ func handler(r *http.Request) {
 	os.Open(safe)
 }
 `}, 0, gosec.NewConfig()},
+	// Safe: filepath.Abs sanitizer (calls Clean internally)
+	{[]string{`
+package main
+
+import (
+	"os"
+	"path/filepath"
+)
+
+func main() {
+	filename := os.Getenv("FILE")
+	filename, _ = filepath.Abs(filename)
+	os.ReadFile(filename)
+}
+`}, 0, gosec.NewConfig()},
 	// Test: strconv sanitizer
 	{[]string{`
 package main
