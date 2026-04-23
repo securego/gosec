@@ -65,6 +65,8 @@ func PathTraversal() taint.Config {
 		Sanitizers: []taint.Sanitizer{
 			// filepath.Clean normalizes and removes traversal components
 			{Package: "path/filepath", Method: "Clean"},
+			// filepath.Abs calls Clean internally (per Go docs)
+			{Package: "path/filepath", Method: "Abs"},
 			// filepath.Base extracts just the filename, removing directory traversal
 			{Package: "path/filepath", Method: "Base"},
 			// filepath.Rel computes a relative path safely
