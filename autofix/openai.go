@@ -12,9 +12,9 @@ import (
 )
 
 const (
-	ModelGPT5_4     = openai.ChatModelGPT5_4
-	ModelGPT5_4Mini = openai.ChatModelGPT5_4Mini
-	ModelGPT5_4Nano = openai.ChatModelGPT5_4Nano
+	ModelGPT5_4          = openai.ChatModelGPT5_4
+	ModelGPT5_4Mini      = openai.ChatModelGPT5_4Mini
+	ModelGPT5_4Nano      = openai.ChatModelGPT5_4Nano
 	DefaultOpenAIBaseURL = "https://api.openai.com/v1"
 )
 
