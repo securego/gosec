@@ -15,6 +15,12 @@ func TestParseGeminiModel_AllModels(t *testing.T) {
 		expectErr bool
 	}{
 		{
+			name:      "gemini-3-pro-preview",
+			input:     "gemini-3-pro-preview",
+			expected:  ModelGeminiPro3,
+			expectErr: false,
+		},
+		{
 			name:      "gemini-2.5-pro",
 			input:     "gemini-2.5-pro",
 			expected:  ModelGeminiPro2_5,
@@ -33,27 +39,9 @@ func TestParseGeminiModel_AllModels(t *testing.T) {
 			expectErr: false,
 		},
 		{
-			name:      "gemini-2.0-flash",
-			input:     "gemini-2.0-flash",
-			expected:  ModelGeminiFlash2_0,
-			expectErr: false,
-		},
-		{
-			name:      "gemini-2.0-flash-lite",
-			input:     "gemini-2.0-flash-lite",
-			expected:  ModelGeminiFlash2_0Lite,
-			expectErr: false,
-		},
-		{
 			name:      "gemini default",
 			input:     "gemini",
-			expected:  ModelGeminiFlash2_0Lite,
-			expectErr: false,
-		},
-		{
-			name:      "gemini-1.5-flash (deprecated)",
-			input:     "gemini-1.5-flash",
-			expected:  ModelGeminiFlash1_5,
+			expected:  ModelGeminiPro3,
 			expectErr: false,
 		},
 		{
@@ -106,7 +94,7 @@ func TestNewGeminiClient_WithModel(t *testing.T) {
 		},
 		{
 			name:      "valid model gemini-2.0-flash",
-			model:     "gemini-2.0-flash",
+			model:     "gemini-2.5-flash",
 			apiKey:    "test-api-key",
 			expectErr: false,
 		},
@@ -124,7 +112,7 @@ func TestNewGeminiClient_WithModel(t *testing.T) {
 		},
 		{
 			name:      "empty API key",
-			model:     "gemini-2.0-flash",
+			model:     "gemini-2.5-flash",
 			apiKey:    "",
 			expectErr: true, // Gemini requires API key at client creation
 		},
@@ -154,13 +142,11 @@ func TestNewGeminiClient_ModelMapping(t *testing.T) {
 		modelInput    string
 		expectedModel GenAIModel
 	}{
+		{"gemini-3-pro-preview", ModelGeminiPro3},
 		{"gemini-2.5-pro", ModelGeminiPro2_5},
 		{"gemini-2.5-flash", ModelGeminiFlash2_5},
 		{"gemini-2.5-flash-lite", ModelGeminiFlash2_5Lite},
-		{"gemini-2.0-flash", ModelGeminiFlash2_0},
-		{"gemini-2.0-flash-lite", ModelGeminiFlash2_0Lite},
-		{"gemini", ModelGeminiFlash2_0Lite}, // Default
-		{"gemini-1.5-flash", ModelGeminiFlash1_5},
+		{"gemini", ModelGeminiPro3}, // Default
 	}
 
 	for _, tt := range tests {
@@ -175,7 +161,7 @@ func TestNewGeminiClient_ModelMapping(t *testing.T) {
 }
 
 func TestGeminiWrapper_ClientProperties(t *testing.T) {
-	client, err := NewGeminiClient("gemini-2.0-flash", "test-api-key")
+	client, err := NewGeminiClient("gemini-2.5-flash", "test-api-key")
 	require.NoError(t, err)
 	require.NotNil(t, client)
 
@@ -184,15 +170,13 @@ func TestGeminiWrapper_ClientProperties(t *testing.T) {
 
 	// Verify client was initialized
 	assert.NotNil(t, wrapper.client)
-	assert.Equal(t, ModelGeminiFlash2_0, wrapper.model)
+	assert.Equal(t, ModelGeminiFlash2_5, wrapper.model)
 }
 
 func TestGeminiModel_Constants(t *testing.T) {
 	// Verify model constants are properly defined
+	assert.Equal(t, ModelGeminiPro3, GenAIModel("gemini-3-pro-preview"))
 	assert.Equal(t, ModelGeminiPro2_5, GenAIModel("gemini-2.5-pro"))
 	assert.Equal(t, ModelGeminiFlash2_5, GenAIModel("gemini-2.5-flash"))
 	assert.Equal(t, ModelGeminiFlash2_5Lite, GenAIModel("gemini-2.5-flash-lite"))
-	assert.Equal(t, ModelGeminiFlash2_0, GenAIModel("gemini-2.0-flash"))
-	assert.Equal(t, ModelGeminiFlash2_0Lite, GenAIModel("gemini-2.0-flash-lite"))
-	assert.Equal(t, ModelGeminiFlash1_5, GenAIModel("gemini-1.5-flash"))
 }

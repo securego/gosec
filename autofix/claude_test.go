@@ -15,19 +15,29 @@ func TestParseAnthropicModel_AllModels(t *testing.T) {
 		expected anthropic.Model
 	}{
 		{
+			name:     "claude-opus-4-7",
+			input:    "claude-opus-4-7",
+			expected: anthropic.ModelClaudeOpus4_7,
+		},
+		{
+			name:     "claude-sonnet-4-6",
+			input:    "claude-sonnet-4-6",
+			expected: anthropic.ModelClaudeSonnet4_6,
+		},
+		{
+			name:     "claude-sonnet",
+			input:    "claude-sonnet",
+			expected: anthropic.ModelClaudeSonnet4_6,
+		},
+		{
+			name:     "claude-opus-4-6",
+			input:    "claude-opus-4-6",
+			expected: anthropic.ModelClaudeOpus4_6,
+		},
+		{
 			name:     "claude-opus",
 			input:    "claude-opus",
-			expected: anthropic.ModelClaudeOpus4_0,
-		},
-		{
-			name:     "claude-opus-4-0",
-			input:    "claude-opus-4-0",
-			expected: anthropic.ModelClaudeOpus4_0,
-		},
-		{
-			name:     "claude-opus-4-1",
-			input:    "claude-opus-4-1",
-			expected: anthropic.ModelClaudeOpus4_1_20250805,
+			expected: anthropic.ModelClaudeOpus4_6,
 		},
 		{
 			name:     "claude-sonnet-4-5",
@@ -40,6 +50,16 @@ func TestParseAnthropicModel_AllModels(t *testing.T) {
 			expected: anthropic.ModelClaudeSonnet4_5_20250929,
 		},
 		{
+			name:     "claude-opus-4-5",
+			input:    "claude-opus-4-5",
+			expected: anthropic.ModelClaudeOpus4_5_20251101,
+		},
+		{
+			name:     "claude-opus-4-5-20251101",
+			input:    "claude-opus-4-5-20251101",
+			expected: anthropic.ModelClaudeOpus4_5_20251101,
+		},
+		{
 			name:     "claude-haiku-4-5",
 			input:    "claude-haiku-4-5",
 			expected: anthropic.ModelClaudeHaiku4_5_20251001,
@@ -50,24 +70,14 @@ func TestParseAnthropicModel_AllModels(t *testing.T) {
 			expected: anthropic.ModelClaudeHaiku4_5_20251001,
 		},
 		{
-			name:     "claude-sonnet-4-6",
-			input:    "claude-sonnet-4-6",
+			name:     "default to claude-sonnet-4-6",
+			input:    "unknown-model",
 			expected: anthropic.ModelClaudeSonnet4_6,
 		},
 		{
-			name:     "claude-opus-4-6",
-			input:    "claude-opus-4-6",
-			expected: anthropic.ModelClaudeOpus4_6,
-		},
-		{
-			name:     "default to claude-sonnet-4-0",
-			input:    "unknown-model",
-			expected: anthropic.ModelClaudeSonnet4_0,
-		},
-		{
-			name:     "empty string defaults to claude-sonnet-4-0",
+			name:     "empty string defaults to claude-sonnet-4-6",
 			input:    "",
-			expected: anthropic.ModelClaudeSonnet4_0,
+			expected: anthropic.ModelClaudeSonnet4_6,
 		},
 	}
 
@@ -86,13 +96,13 @@ func TestNewClaudeClient_WithModel(t *testing.T) {
 		apiKey string
 	}{
 		{
-			name:   "claude-sonnet-4-0 with API key",
-			model:  "claude-sonnet-4-0",
+			name:   "claude-sonnet-4-6 with API key",
+			model:  "claude-sonnet-4-6",
 			apiKey: "test-api-key",
 		},
 		{
-			name:   "claude-opus-4-0 with API key",
-			model:  "claude-opus-4-0",
+			name:   "claude-opus-4-6 with API key",
+			model:  "claude-opus-4-6",
 			apiKey: "test-api-key",
 		},
 		{
@@ -102,7 +112,7 @@ func TestNewClaudeClient_WithModel(t *testing.T) {
 		},
 		{
 			name:   "empty API key",
-			model:  "claude-sonnet-4-0",
+			model:  "claude-sonnet-4-6",
 			apiKey: "",
 		},
 		{
@@ -131,16 +141,18 @@ func TestNewClaudeClient_ModelMapping(t *testing.T) {
 		modelInput    string
 		expectedModel anthropic.Model
 	}{
-		{"claude-opus", anthropic.ModelClaudeOpus4_0},
-		{"claude-opus-4-0", anthropic.ModelClaudeOpus4_0},
-		{"claude-opus-4-1", anthropic.ModelClaudeOpus4_1_20250805},
+		{"claude-opus-4-7", anthropic.ModelClaudeOpus4_7},
+		{"claude-sonnet-4-6", anthropic.ModelClaudeSonnet4_6},
+		{"claude-sonnet", anthropic.ModelClaudeSonnet4_6},
+		{"claude-opus-4-6", anthropic.ModelClaudeOpus4_6},
+		{"claude-opus", anthropic.ModelClaudeOpus4_6},
 		{"claude-sonnet-4-5", anthropic.ModelClaudeSonnet4_5_20250929},
 		{"claude-sonnet-4-5-20250929", anthropic.ModelClaudeSonnet4_5_20250929},
+		{"claude-opus-4-5", anthropic.ModelClaudeOpus4_5_20251101},
+		{"claude-opus-4-5-20251101", anthropic.ModelClaudeOpus4_5_20251101},
 		{"claude-haiku-4-5", anthropic.ModelClaudeHaiku4_5_20251001},
 		{"claude-haiku-4-5-20251001", anthropic.ModelClaudeHaiku4_5_20251001},
-		{"claude-sonnet-4-6", anthropic.ModelClaudeSonnet4_6},
-		{"claude-opus-4-6", anthropic.ModelClaudeOpus4_6},
-		{"unknown-model", anthropic.ModelClaudeSonnet4_0}, // Default
+		{"unknown-model", anthropic.ModelClaudeSonnet4_6}, // Default
 	}
 
 	for _, tt := range tests {
@@ -155,7 +167,7 @@ func TestNewClaudeClient_ModelMapping(t *testing.T) {
 }
 
 func TestClaudeWrapper_ClientProperties(t *testing.T) {
-	client, err := NewClaudeClient("claude-sonnet-4-0", "test-api-key")
+	client, err := NewClaudeClient("claude-sonnet-4-6", "test-api-key")
 	require.NoError(t, err)
 	require.NotNil(t, client)
 
@@ -164,14 +176,15 @@ func TestClaudeWrapper_ClientProperties(t *testing.T) {
 
 	// Verify client was initialized
 	assert.NotNil(t, wrapper.client)
-	assert.Equal(t, anthropic.ModelClaudeSonnet4_0, wrapper.model)
+	assert.Equal(t, anthropic.ModelClaudeSonnet4_6, wrapper.model)
 }
 
 func TestClaudeModel_Constants(t *testing.T) {
 	// Verify model constants are properly defined
-	assert.Equal(t, anthropic.ModelClaudeOpus4_0, ModelClaudeOpus4_0)
-	assert.Equal(t, anthropic.ModelClaudeOpus4_1_20250805, ModelClaudeOpus4_1)
-	assert.Equal(t, anthropic.ModelClaudeSonnet4_0, ModelClaudeSonnet4_0)
+	assert.Equal(t, anthropic.ModelClaudeOpus4_7, ModelClaudeOpus4_7)
+	assert.Equal(t, anthropic.ModelClaudeOpus4_6, ModelClaudeOpus4_6)
+	assert.Equal(t, anthropic.ModelClaudeSonnet4_6, ModelClaudeSonnet4_6)
+	assert.Equal(t, anthropic.ModelClaudeOpus4_5_20251101, ModelClaudeOpus4_5)
 	assert.Equal(t, anthropic.ModelClaudeSonnet4_5_20250929, ModelClaudeSonnet4_5)
 	assert.Equal(t, anthropic.ModelClaudeHaiku4_5_20251001, ModelClaudeHaiku4_5)
 }
@@ -183,7 +196,7 @@ func TestClaudeWrapper_ImplementsInterface(t *testing.T) {
 func TestNewClaudeClient_WithEmptyAPIKey(t *testing.T) {
 	// Test that client creation succeeds even with empty API key
 	// (authentication will fail at API call time)
-	client, err := NewClaudeClient("claude-sonnet-4-0", "")
+	client, err := NewClaudeClient("claude-sonnet-4-6", "")
 	require.NoError(t, err)
 	assert.NotNil(t, client)
 
@@ -193,16 +206,17 @@ func TestNewClaudeClient_WithEmptyAPIKey(t *testing.T) {
 
 func TestNewClaudeClient_AllSupportedModels(t *testing.T) {
 	models := []string{
+		"claude-sonnet",
 		"claude-opus",
-		"claude-opus-4-0",
-		"claude-opus-4-1",
-		"claude-sonnet-4-0",
-		"claude-sonnet-4-5",
-		"claude-sonnet-4-5-20250929",
-		"claude-haiku-4-5",
-		"claude-haiku-4-5-20251001",
+		"claude-opus-4-7",
 		"claude-sonnet-4-6",
 		"claude-opus-4-6",
+		"claude-sonnet-4-5",
+		"claude-sonnet-4-5-20250929",
+		"claude-opus-4-5",
+		"claude-opus-4-5-20251101",
+		"claude-haiku-4-5",
+		"claude-haiku-4-5-20251001",
 	}
 
 	for _, model := range models {
