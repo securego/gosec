@@ -1,0 +1,64 @@
+// (c) Copyright 2016 Hewlett Packard Enterprise Development LP
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package rules
+
+import (
+	"fmt"
+	"go/ast"
+	"go/constant"
+
+	"github.com/securego/gosec/v2"
+	"github.com/securego/gosec/v2/issue"
+)
+
+type weakBcryptCost struct {
+	callListRule
+	minCost int
+}
+
+// Match overrides the base to check the cost argument of bcrypt.GenerateFromPassword
+func (w *weakBcryptCost) Match(n ast.Node, c *gosec.Context) (*issue.Issue, error) {
+	callExpr := w.calls.ContainsPkgCallExpr(n, c, false)
+	if callExpr == nil || len(callExpr.Args) < 2 {
+		return nil, nil
+	}
+	costArg := callExpr.Args[1]
+
+	if cost, err := gosec.GetInt(costArg); err == nil {
+		if cost < int64(w.minCost) {
+			return c.NewIssue(n, w.ID(), w.What, w.Severity, w.Confidence), nil
+		}
+		return nil, nil
+	}
+
+	// fallback for named constants like bcrypt.MinCost
+	if tv, ok := c.Info.Types[costArg]; ok && tv.Value != nil && tv.Value.Kind() == constant.Int {
+		if cost, exact := constant.Int64Val(tv.Value); exact && cost < int64(w.minCost) {
+			return c.NewIssue(n, w.ID(), w.What, w.Severity, w.Confidence), nil
+		}
+	}
+	return nil, nil
+}
+
+// NewWeakBcryptCost detects bcrypt.GenerateFromPassword with cost below bcrypt.DefaultCost
+func NewWeakBcryptCost(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
+	const minCost = 10 // bcrypt.DefaultCost
+	rule := &weakBcryptCost{
+		callListRule: newCallListRule(id, fmt.Sprintf("bcrypt cost should be at least %d", minCost), issue.Medium, issue.High),
+		minCost:      minCost,
+	}
+	rule.Add("golang.org/x/crypto/bcrypt", "GenerateFromPassword")
+	return rule, []ast.Node{(*ast.CallExpr)(nil)}
+}
