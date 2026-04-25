@@ -12,8 +12,9 @@ import (
 )
 
 const (
-	ModelGPT4o           = openai.ChatModelGPT4o
-	ModelGPT4oMini       = openai.ChatModelGPT4oMini
+	ModelGPT5_4     = openai.ChatModelGPT5_4
+	ModelGPT5_4Mini = openai.ChatModelGPT5_4Mini
+	ModelGPT5_4Nano = openai.ChatModelGPT5_4Nano
 	DefaultOpenAIBaseURL = "https://api.openai.com/v1"
 )
 
@@ -110,10 +111,12 @@ func (o *openaiWrapper) GenerateSolution(ctx context.Context, prompt string) (st
 
 func parseOpenAIModel(model string) openai.ChatModel {
 	switch model {
-	case "gpt-4o":
-		return openai.ChatModelGPT4o
-	case "gpt-4o-mini":
-		return openai.ChatModelGPT4oMini
+	case "gpt-5.4":
+		return openai.ChatModelGPT5_4
+	case "gpt-5.4-mini":
+		return openai.ChatModelGPT5_4Mini
+	case "gpt-5.4-nano":
+		return openai.ChatModelGPT5_4Nano
 	default:
 		return model
 	}

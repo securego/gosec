@@ -15,14 +15,19 @@ func TestParseOpenAIModel_AllModels(t *testing.T) {
 		expected openai.ChatModel
 	}{
 		{
-			name:     "gpt-4o",
-			input:    "gpt-4o",
-			expected: openai.ChatModelGPT4o,
+			name:     "gpt-5.4",
+			input:    "gpt-5.4",
+			expected: openai.ChatModelGPT5_4,
 		},
 		{
-			name:     "gpt-4o-mini",
-			input:    "gpt-4o-mini",
-			expected: openai.ChatModelGPT4oMini,
+			name:     "gpt-5.4-mini",
+			input:    "gpt-5.4-mini",
+			expected: openai.ChatModelGPT5_4Mini,
+		},
+		{
+			name:     "gpt-5.4-nano",
+			input:    "gpt-5.4-nano",
+			expected: openai.ChatModelGPT5_4Nano,
 		},
 		{
 			name:     "custom model returns as-is",
@@ -55,16 +60,16 @@ func TestNewOpenAIClient_WithBasicConfig(t *testing.T) {
 		config OpenAIConfig
 	}{
 		{
-			name: "gpt-4o with API key",
+			name: "gpt-4.1 with API key",
 			config: OpenAIConfig{
-				Model:  "gpt-4o",
+				Model:  "gpt-4.1",
 				APIKey: "test-api-key",
 			},
 		},
 		{
-			name: "gpt-4o-mini with API key",
+			name: "gpt-4.1-mini with API key",
 			config: OpenAIConfig{
-				Model:  "gpt-4o-mini",
+				Model:  "gpt-4.1-mini",
 				APIKey: "test-api-key",
 			},
 		},
@@ -78,7 +83,7 @@ func TestNewOpenAIClient_WithBasicConfig(t *testing.T) {
 		{
 			name: "empty API key",
 			config: OpenAIConfig{
-				Model:  "gpt-4o",
+				Model:  "gpt-4.1",
 				APIKey: "",
 			},
 		},
@@ -120,7 +125,7 @@ func TestNewOpenAIClient_WithCustomBaseURL(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			config := OpenAIConfig{
-				Model:   "gpt-4o",
+				Model:   "gpt-5.4",
 				APIKey:  "test-key",
 				BaseURL: tt.baseURL,
 			}
@@ -150,7 +155,7 @@ func TestNewOpenAIClient_WithSkipSSL(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			config := OpenAIConfig{
-				Model:   "gpt-4o",
+				Model:   "gpt-5.4",
 				APIKey:  "test-key",
 				SkipSSL: tt.skipSSL,
 			}
@@ -196,7 +201,7 @@ func TestNewOpenAIClient_WithTokensAndTemperature(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			config := OpenAIConfig{
-				Model:       "gpt-4o",
+				Model:       "gpt-5.4",
 				APIKey:      "test-key",
 				MaxTokens:   tt.maxTokens,
 				Temperature: tt.temperature,
@@ -218,8 +223,9 @@ func TestNewOpenAIClient_ModelMapping(t *testing.T) {
 		modelInput    string
 		expectedModel openai.ChatModel
 	}{
-		{"gpt-4o", openai.ChatModelGPT4o},
-		{"gpt-4o-mini", openai.ChatModelGPT4oMini},
+		{"gpt-5.4", openai.ChatModelGPT5_4},
+		{"gpt-5.4-mini", openai.ChatModelGPT5_4Mini},
+		{"gpt-5.4-nano", openai.ChatModelGPT5_4Nano},
 		{"custom-model", "custom-model"},
 		{"llama3:latest", "llama3:latest"},
 	}
@@ -242,7 +248,7 @@ func TestNewOpenAIClient_ModelMapping(t *testing.T) {
 
 func TestOpenAIWrapper_ClientProperties(t *testing.T) {
 	config := OpenAIConfig{
-		Model:       "gpt-4o",
+		Model:       "gpt-5.4",
 		APIKey:      "test-api-key",
 		BaseURL:     "https://api.openai.com/v1",
 		MaxTokens:   2048,
@@ -259,15 +265,16 @@ func TestOpenAIWrapper_ClientProperties(t *testing.T) {
 
 	// Verify all properties were set correctly
 	assert.NotNil(t, wrapper.client)
-	assert.Equal(t, openai.ChatModelGPT4o, wrapper.model)
+	assert.Equal(t, openai.ChatModelGPT5_4, wrapper.model)
 	assert.Equal(t, 2048, wrapper.maxTokens)
 	assert.InEpsilon(t, 0.8, wrapper.temperature, 0.001)
 }
 
 func TestOpenAIModel_Constants(t *testing.T) {
 	// Verify model constants are properly defined
-	assert.Equal(t, openai.ChatModelGPT4o, ModelGPT4o)
-	assert.Equal(t, openai.ChatModelGPT4oMini, ModelGPT4oMini)
+	assert.Equal(t, openai.ChatModelGPT5_4, ModelGPT5_4)
+	assert.Equal(t, openai.ChatModelGPT5_4Mini, ModelGPT5_4Mini)
+	assert.Equal(t, openai.ChatModelGPT5_4Nano, ModelGPT5_4Nano)
 	assert.Equal(t, "https://api.openai.com/v1", DefaultOpenAIBaseURL)
 }
 
@@ -297,8 +304,9 @@ func TestNewOpenAIClient_CompleteConfig(t *testing.T) {
 
 func TestNewOpenAIClient_AllSupportedModels(t *testing.T) {
 	models := []string{
-		"gpt-4o",
-		"gpt-4o-mini",
+		"gpt-5.4",
+		"gpt-5.4-mini",
+		"gpt-5.4-nano",
 	}
 
 	for _, model := range models {
@@ -333,7 +341,7 @@ func TestNewOpenAIClient_OllamaCompatibility(t *testing.T) {
 
 func TestNewOpenAIClient_DefaultValues(t *testing.T) {
 	config := OpenAIConfig{
-		Model:  "gpt-4o",
+		Model:  "gpt-5.4",
 		APIKey: "test-key",
 	}
 

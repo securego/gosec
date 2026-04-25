@@ -10,9 +10,10 @@ import (
 )
 
 const (
-	ModelClaudeOpus4_0   = anthropic.ModelClaudeOpus4_0
-	ModelClaudeOpus4_1   = anthropic.ModelClaudeOpus4_1_20250805
-	ModelClaudeSonnet4_0 = anthropic.ModelClaudeSonnet4_0
+	ModelClaudeOpus4_7   = anthropic.ModelClaudeOpus4_7
+	ModelClaudeOpus4_6   = anthropic.ModelClaudeOpus4_6
+	ModelClaudeSonnet4_6 = anthropic.ModelClaudeSonnet4_6
+	ModelClaudeOpus4_5   = anthropic.ModelClaudeOpus4_5_20251101
 	ModelClaudeSonnet4_5 = anthropic.ModelClaudeSonnet4_5_20250929
 	ModelClaudeHaiku4_5  = anthropic.ModelClaudeHaiku4_5_20251001
 )
@@ -64,19 +65,19 @@ func (c *claudeWrapper) GenerateSolution(ctx context.Context, prompt string) (st
 
 func parseAnthropicModel(model string) anthropic.Model {
 	switch model {
-	case "claude-opus", "claude-opus-4-0":
-		return anthropic.ModelClaudeOpus4_0
-	case "claude-opus-4-1":
-		return anthropic.ModelClaudeOpus4_1_20250805
+	case "claude-opus-4-7":
+		return anthropic.ModelClaudeOpus4_7
+	case "claude-sonnet-4-6", "claude-sonnet": // Default
+		return anthropic.ModelClaudeSonnet4_6
+	case "claude-opus-4-6", "claude-opus":
+		return anthropic.ModelClaudeOpus4_6
 	case "claude-sonnet-4-5", "claude-sonnet-4-5-20250929":
 		return anthropic.ModelClaudeSonnet4_5_20250929
+	case "claude-opus-4-5", "claude-opus-4-5-20251101":
+		return anthropic.ModelClaudeOpus4_5_20251101
 	case "claude-haiku-4-5", "claude-haiku-4-5-20251001":
 		return anthropic.ModelClaudeHaiku4_5_20251001
-	case "claude-sonnet-4-6":
-		return anthropic.ModelClaudeSonnet4_6
-	case "claude-opus-4-6":
-		return anthropic.ModelClaudeOpus4_6
 	}
 
-	return anthropic.ModelClaudeSonnet4_0
+	return anthropic.ModelClaudeSonnet4_6
 }

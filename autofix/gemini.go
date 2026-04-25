@@ -12,13 +12,10 @@ import (
 type GenAIModel string
 
 const (
+	ModelGeminiPro3         GenAIModel = "gemini-3-pro-preview"
 	ModelGeminiPro2_5       GenAIModel = "gemini-2.5-pro"
 	ModelGeminiFlash2_5     GenAIModel = "gemini-2.5-flash"
 	ModelGeminiFlash2_5Lite GenAIModel = "gemini-2.5-flash-lite"
-	ModelGeminiFlash2_0     GenAIModel = "gemini-2.0-flash"
-	ModelGeminiFlash2_0Lite GenAIModel = "gemini-2.0-flash-lite"
-	// Deprecated: Use Gemini 2.x models.
-	ModelGeminiFlash1_5 GenAIModel = "gemini-1.5-flash"
 )
 
 var _ GenAIClient = (*geminiWrapper)(nil)
@@ -73,18 +70,14 @@ func (g *geminiWrapper) GenerateSolution(ctx context.Context, prompt string) (st
 
 func parseGeminiModel(model string) (GenAIModel, error) {
 	switch model {
+	case "gemini-3-pro-preview", "gemini": // Default
+		return ModelGeminiPro3, nil
 	case "gemini-2.5-pro":
 		return ModelGeminiPro2_5, nil
 	case "gemini-2.5-flash":
 		return ModelGeminiFlash2_5, nil
 	case "gemini-2.5-flash-lite":
 		return ModelGeminiFlash2_5Lite, nil
-	case "gemini-2.0-flash":
-		return ModelGeminiFlash2_0, nil
-	case "gemini-2.0-flash-lite", "gemini": // Default
-		return ModelGeminiFlash2_0Lite, nil
-	case "gemini-1.5-flash":
-		return ModelGeminiFlash1_5, nil
 	}
 
 	return "", fmt.Errorf("unsupported gemini model: %s", model)

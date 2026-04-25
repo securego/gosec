@@ -397,13 +397,15 @@ line arguments:
 
 - `ai-api-provider`: the name of the AI API provider.
   Supported providers:
-  - **Gemini**: `gemini-2.5-pro`, `gemini-2.5-flash`,
-    `gemini-2.5-flash-lite`, `gemini-2.0-flash`,
-    `gemini-2.0-flash-lite` (default)
-  - **Claude**: `claude-sonnet-4-0` (default),
-    `claude-opus-4-0`, `claude-opus-4-1`,
-    `claude-sonnet-3-7`
-  - **OpenAI**: `gpt-4o` (default), `gpt-4o-mini`
+  - **Gemini**: `gemini-3-pro-preview` (default),
+    `gemini-2.5-pro`, `gemini-2.5-flash`,
+    `gemini-2.5-flash-lite`
+  - **Claude**: `claude-sonnet-4-6` (default),
+    `claude-opus-4-7`, `claude-opus-4-6`,
+    `claude-sonnet-4-5`, `claude-opus-4-5`,
+    `claude-haiku-4-5`
+  - **OpenAI**: `gpt-5.4` (default), `gpt-5.4-mini`,
+    `gpt-5.4-nano`
   - **Custom OpenAI-compatible**: Any custom model name
     (requires `ai-base-url`)
 - `ai-api-key` or set the environment variable
@@ -424,19 +426,19 @@ line arguments:
 
 ```bash
 # Using Gemini
-gosec -ai-api-provider="gemini-2.0-flash" \
+gosec -ai-api-provider="gemini-3-pro-preview" \
   -ai-api-key="your_key" ./...
 
 # Using Claude
-gosec -ai-api-provider="claude-sonnet-4-0" \
+gosec -ai-api-provider="claude-sonnet-4-6" \
   -ai-api-key="your_key" ./...
 
 # Using OpenAI
-gosec -ai-api-provider="gpt-4o" \
+gosec -ai-api-provider="gpt-5.4" \
   -ai-api-key="your_key" ./...
 
 # Using Azure OpenAI
-gosec -ai-api-provider="gpt-4o" \
+gosec -ai-api-provider="gpt-5.4" \
   -ai-api-key="your_azure_key" \
   -ai-base-url="https://your-resource.openai.azure.com/openai/deployments/your-deployment" \
   ./...
