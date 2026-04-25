@@ -17,6 +17,7 @@ package rules
 import (
 	"fmt"
 	"go/ast"
+	"go/constant"
 
 	"github.com/securego/gosec/v2"
 	"github.com/securego/gosec/v2/issue"
@@ -33,8 +34,20 @@ func (w *weakBcryptCost) Match(n ast.Node, c *gosec.Context) (*issue.Issue, erro
 	if callExpr == nil || len(callExpr.Args) < 2 {
 		return nil, nil
 	}
-	if cost, err := gosec.GetInt(callExpr.Args[1]); err == nil && cost < int64(w.minCost) {
-		return c.NewIssue(n, w.ID(), w.What, w.Severity, w.Confidence), nil
+	costArg := callExpr.Args[1]
+
+	if cost, err := gosec.GetInt(costArg); err == nil {
+		if cost < int64(w.minCost) {
+			return c.NewIssue(n, w.ID(), w.What, w.Severity, w.Confidence), nil
+		}
+		return nil, nil
+	}
+
+	// fallback for named constants like bcrypt.MinCost
+	if tv, ok := c.Info.Types[costArg]; ok && tv.Value != nil && tv.Value.Kind() == constant.Int {
+		if cost, exact := constant.Int64Val(tv.Value); exact && cost < int64(w.minCost) {
+			return c.NewIssue(n, w.ID(), w.What, w.Severity, w.Confidence), nil
+		}
 	}
 	return nil, nil
 }
