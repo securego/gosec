@@ -163,6 +163,11 @@ var idWeaknesses = map[string]*Weakness{
 		Description: "The software contains hard-coded credentials, such as a password or cryptographic key, which it uses for its own inbound authentication, outbound communication to external components, or encryption of internal data.",
 		Name:        "Use of Hard-coded Credentials",
 	},
+	"916": {
+		ID:          "916",
+		Description: "The product generates a hash for a password, but it uses a scheme that does not provide a sufficient level of computational effort that would make password cracking attacks infeasible or expensive.",
+		Name:        "Use of Password Hash With Insufficient Computational Effort",
+	},
 	"1204": {
 		ID:          "1204",
 		Description: "The product uses a cryptographic primitive that uses an Initialization Vector (IV), but the product does not generate IVs that are sufficiently unpredictable or unique according to the expected cryptographic requirements for that primitive.",
