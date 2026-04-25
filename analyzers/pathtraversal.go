@@ -61,6 +61,9 @@ func PathTraversal() taint.Config {
 			{Package: "io/ioutil", Method: "ReadDir"},
 			{Package: "path/filepath", Method: "Walk"},
 			{Package: "path/filepath", Method: "WalkDir"},
+			// HTTP file-serving functions: user-controlled path = arbitrary file read
+			{Package: "net/http", Method: "ServeFile", CheckArgs: []int{2}},
+			{Package: "net/http", Method: "ServeFileFS", CheckArgs: []int{3}},
 		},
 		Sanitizers: []taint.Sanitizer{
 			// filepath.Clean normalizes and removes traversal components
