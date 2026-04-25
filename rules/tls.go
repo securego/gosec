@@ -236,22 +236,28 @@ func (t *insecureConfigTLS) findDefinition(obj types.Object, c *gosec.Context) a
 	return initializer
 }
 
+func (t *insecureConfigTLS) isSafeDefault() bool {
+	major, minor, _ := gosec.GoVersion()
+	return major > 1 || (major == 1 && minor >= 18)
+}
+
 func (t *insecureConfigTLS) checkVersion(n ast.Node, c *gosec.Context) *issue.Issue {
-	// Flag explicitly low MinVersion (including explicit 0)
+	// Flag explicitly low MinVersion.
+	// Since Go 1.18+, MinVersion 0 means "use default" which is
+	// TLS 1.2 — safe and not worth flagging.
 	if t.minVersionSet && t.actualMinVersion < t.MinVersion {
+		if t.actualMinVersion == 0 && t.isSafeDefault() {
+			return nil
+		}
 		return c.NewIssue(n, t.ID(), "TLS MinVersion too low.", issue.High, issue.High)
 	}
 
-	// Handle MaxVersion
+	// Handle MaxVersion.
+	// MaxVersion 0 means "use latest" which is always safe.
 	if t.maxVersionSet {
-		// Special case for explicit MaxVersion: 0 (default latest) - suppress warning if MinVersion is securely set
 		if t.actualMaxVersion == 0 {
-			if t.minVersionSet && t.actualMinVersion >= t.MinVersion {
-				return nil
-			}
-			// Otherwise treat explicit 0 as potentially insecure (fall through to flag)
+			return nil
 		}
-		// Flag if explicitly capped too low (non-zero low values always flagged)
 		if t.actualMaxVersion < t.MaxVersion {
 			return c.NewIssue(n, t.ID(), "TLS MaxVersion too low.", issue.High, issue.High)
 		}
@@ -271,6 +277,7 @@ func (t *insecureConfigTLS) Match(n ast.Node, c *gosec.Context) (*issue.Issue, e
 	if complit, ok := n.(*ast.CompositeLit); ok && complit.Type != nil {
 		actualType := c.Info.TypeOf(complit.Type)
 		if actualType != nil && actualType.String() == t.requiredType {
+			defer t.resetVersion()
 			for _, elt := range complit.Elts {
 				if issue := t.processTLSConf(elt, c); issue != nil {
 					return issue, nil
@@ -279,7 +286,6 @@ func (t *insecureConfigTLS) Match(n ast.Node, c *gosec.Context) (*issue.Issue, e
 			if issue := t.checkVersion(complit, c); issue != nil {
 				return issue, nil
 			}
-			t.resetVersion()
 			return nil, nil
 		}
 	}

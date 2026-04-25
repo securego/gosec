@@ -40,7 +40,7 @@ func main() {
 }
 `}, 1, gosec.NewConfig()},
 	{[]string{`
-// Insecure minimum version
+// MinVersion 0 is safe on Go 1.18+ (defaults to TLS 1.2)
 package main
 
 import (
@@ -59,7 +59,7 @@ func main() {
 		fmt.Println(err)
 	}
 }
-`}, 1, gosec.NewConfig()},
+`}, 0, gosec.NewConfig()},
 	{[]string{`
 // Insecure minimum version
 package main
@@ -103,14 +103,14 @@ func main() {
 }
 `}, 0, gosec.NewConfig()},
 	{[]string{`
-// Insecure minimum version
+// MinVersion 0 is safe on Go 1.18+ (defaults to TLS 1.2)
 package main
 import (
 	"crypto/tls"
 	"fmt"
 )
 
-func CaseError() *tls.Config {
+func CaseNotError() *tls.Config {
 	var v = &tls.Config{
 		MinVersion: 0,
 	}
@@ -118,12 +118,12 @@ func CaseError() *tls.Config {
 }
 
 func main() {
-    a := CaseError()
+    a := CaseNotError()
 	fmt.Printf("Debug: %v\n", a.MinVersion)
 }
-`}, 1, gosec.NewConfig()},
+`}, 0, gosec.NewConfig()},
 	{[]string{`
-// Insecure minimum version
+// Unresolvable MinVersion from function call — safe on Go 1.18+
 package main
 
 import (
@@ -131,7 +131,7 @@ import (
 	"fmt"
 )
 
-func CaseError() *tls.Config {
+func CaseNotError() *tls.Config {
 	var v = &tls.Config{
 		MinVersion: getVersion(),
 	}
@@ -143,10 +143,10 @@ func getVersion() uint16 {
 }
 
 func main() {
-    a := CaseError()
+    a := CaseNotError()
 	fmt.Printf("Debug: %v\n", a.MinVersion)
 }
-`}, 1, gosec.NewConfig()},
+`}, 0, gosec.NewConfig()},
 	{[]string{`
 // Insecure minimum version
 package main
@@ -171,7 +171,7 @@ func main() {
 }
 `}, 0, gosec.NewConfig()},
 	{[]string{`
-// Insecure max version
+// MaxVersion 0 means "use latest" which is safe
 package main
 
 import (
@@ -190,7 +190,7 @@ func main() {
 		fmt.Println(err)
 	}
 }
-`}, 1, gosec.NewConfig()},
+`}, 0, gosec.NewConfig()},
 	{[]string{`
 // Insecure ciphersuite selection
 package main
@@ -258,7 +258,7 @@ import "crypto/tls"
 func TlsConfig1() *tls.Config {
    return &tls.Config{MinVersion: 0x0304}
 }
-`}, 1, gosec.NewConfig()},
+`}, 0, gosec.NewConfig()},
 	{[]string{`
 package main
 
@@ -379,4 +379,27 @@ func main() {
 	_ = &tls.Config{PreferServerCipherSuites: prefer}
 }
 `}, 1, gosec.NewConfig()},
+	{[]string{`
+// Explicitly insecure MinVersion (TLS 1.0) must still be flagged
+package main
+
+import "crypto/tls"
+
+func main() {
+	_ = &tls.Config{MinVersion: tls.VersionTLS10}
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+// MaxVersion 0 without MinVersion is safe (use latest)
+package main
+
+import "crypto/tls"
+
+func main() {
+	_ = &tls.Config{
+		MaxVersion: 0,
+		ServerName: "example.com",
+	}
+}
+`}, 0, gosec.NewConfig()},
 }
