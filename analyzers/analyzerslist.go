@@ -96,6 +96,13 @@ var (
 		CWE:         "CWE-502",
 	}
 
+	OpenRedirectRule = taint.RuleInfo{
+		ID:          "G710",
+		Description: "Open redirect: user-controlled URL flows into http.Redirect",
+		Severity:    "MEDIUM",
+		CWE:         "CWE-601",
+	}
+
 	FormParsingLimitRule = taint.RuleInfo{
 		ID:          "G120",
 		Description: "Unbounded multipart form parsing can cause memory exhaustion",
@@ -162,6 +169,7 @@ var defaultAnalyzers = []AnalyzerDefinition{
 	{"G707", "SMTP command/header injection via taint analysis", newSMTPInjectionAnalyzer},
 	{"G708", "Server-side template injection via taint analysis", newSSTIAnalyzer},
 	{"G709", "Unsafe deserialization of untrusted data via taint analysis", newUnsafeDeserializationAnalyzer},
+	{"G710", "Open redirect via taint analysis", newOpenRedirectAnalyzer},
 }
 
 // Generate the list of analyzers to use
@@ -199,6 +207,7 @@ func DefaultTaintAnalyzers() []*analysis.Analyzer {
 	sstiConfig := SSTI()
 	deserConfig := UnsafeDeserialization()
 	formConfig := FormParsingLimits()
+	openRedirectConfig := OpenRedirect()
 
 	return []*analysis.Analyzer{
 		taint.NewGosecAnalyzer(&SQLInjectionRule, &sqlConfig),
@@ -211,5 +220,6 @@ func DefaultTaintAnalyzers() []*analysis.Analyzer {
 		taint.NewGosecAnalyzer(&SSTIRule, &sstiConfig),
 		taint.NewGosecAnalyzer(&UnsafeDeserializationRule, &deserConfig),
 		taint.NewGosecAnalyzer(&FormParsingLimitRule, &formConfig),
+		taint.NewGosecAnalyzer(&OpenRedirectRule, &openRedirectConfig),
 	}
 }

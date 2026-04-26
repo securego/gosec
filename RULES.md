@@ -101,6 +101,7 @@
 - G707 — SMTP command/header injection via taint analysis (**Taint**)
 - G708 — Server-side template injection via `text/template` (**Taint**)
 - G709 — Unsafe deserialization of untrusted data (**Taint**)
+- G710 — Open redirect via taint analysis (**Taint**)
 
 _Note: Implementation types used in this document:_
 - **AST**: rule implemented in `rules/` and evaluated on AST patterns

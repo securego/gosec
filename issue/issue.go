@@ -112,6 +112,7 @@ var ruleToCWE = map[string]string{
 	"G704": "918",
 	"G705": "79",
 	"G706": "117",
+	"G710": "601",
 }
 
 // Issue is returned by a gosec rule if it discovers an issue with the scanned code.

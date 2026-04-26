@@ -134,5 +134,9 @@ var _ = Describe("gosec analyzers", func() {
 		It("should detect unsafe deserialization via taint analysis", func() {
 			runner("G709", testutils.SampleCodeG709)
 		})
+
+		It("should detect open redirect via taint analysis", func() {
+			runner("G710", testutils.SampleCodeG710)
+		})
 	})
 })
