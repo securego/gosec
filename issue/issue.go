@@ -52,7 +52,9 @@ func GetCweByRule(id string) *cwe.Weakness {
 	return nil
 }
 
-// ruleToCWE maps gosec rules to CWEs
+// ruleToCWE maps gosec rules to CWEs. The key is the rule ID
+// and the value is the CWE ID. If a rule does not have a CWE,
+// it will not be included in this map.
 var ruleToCWE = map[string]string{
 	"G101": "798",
 	"G102": "200",
@@ -65,6 +67,7 @@ var ruleToCWE = map[string]string{
 	"G110": "409",
 	"G111": "22",
 	"G112": "400",
+	"G113": "444",
 	"G707": "93",
 	"G708": "94",
 	"G709": "502",
@@ -89,6 +92,7 @@ var ruleToCWE = map[string]string{
 	"G304": "22",
 	"G305": "22",
 	"G306": "276",
+	"G307": "276",
 	"G401": "328",
 	"G402": "295",
 	"G403": "310",

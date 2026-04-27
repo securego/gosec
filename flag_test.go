@@ -16,7 +16,7 @@ var _ = Describe("Cli", func() {
 			os.Args = []string{"gosec", "-flag1=-incorrect"}
 			f := vflag.ValidatedFlag{}
 			flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
-			flag.Var(&f, "falg1", "")
+			flag.Var(&f, "flag1", "")
 			flag.CommandLine.Init("flag1", flag.ContinueOnError)
 			flag.Parse()
 			Expect(flag.Parsed()).Should(BeTrue())
