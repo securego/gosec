@@ -23,7 +23,8 @@ and SSA code representation.
   and crypto issues
 - **Taint analysis** for tracking data flow from user input to
   dangerous functions (SQL injection, command injection, path
-  traversal, SSRF, XSS, log injection)
+  traversal, SSRF, XSS, log injection, SMTP injection, SSTI,
+  unsafe deserialization, open redirect)
 
 ## License
 
@@ -226,7 +227,7 @@ gosec includes rules across these categories:
   range aliasing and slice bounds)
 - `G7xx`: taint analysis rules (SQL injection, command
   injection, path traversal, SSRF, XSS, log, SMTP injection,
-  SSTI and unsafe deserialization)
+  SSTI, unsafe deserialization, and open redirect)
 
 For the full list, rule descriptions, and per-rule
 configuration, see [RULES.md](RULES.md).

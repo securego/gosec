@@ -97,7 +97,7 @@ func runMyAnalyzer(pass *analysis.Pass) (interface{}, error) {
 ### Creating taint analysis rules
 
 gosec taint analyzers track data flow from untrusted sources to dangerous sinks.
-Current taint rules include SQL injection, command injection, path traversal, SSRF, XSS, log injection, and SMTP injection.
+Current taint rules include SQL injection, command injection, path traversal, SSRF, XSS, log injection, SMTP injection, server-side template injection, unsafe deserialization, and open redirect.
 
 #### Steps
 
