@@ -191,6 +191,10 @@ var _ = Describe("gosec rules", func() {
 			runner("G406", testutils.SampleCodeG406b)
 		})
 
+		It("should detect weak bcrypt cost", func() {
+			runner("G409", testutils.SampleCodeG409)
+		})
+
 		It("should detect blocklisted imports - MD5", func() {
 			runner("G501", testutils.SampleCodeG501)
 		})

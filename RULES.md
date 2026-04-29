@@ -74,6 +74,7 @@
 - G406 — Detect the usage of deprecated MD4 or RIPEMD160 (**AST**)
 - G407 — Use of hardcoded IV/nonce for encryption (**SSA**)
 - G408 — Stateful misuse of `ssh.PublicKeyCallback` leading to auth bypass (**SSA**)
+- G409 — Ensure minimum bcrypt cost of 10 (**AST**)
 
 ### G5xx: Import Blocklist
 
