@@ -10,31 +10,31 @@ import (
 	"github.com/securego/gosec/v2/issue"
 )
 
-var _ = Describe("PathExclusionFilter", func() {
-	Describe("NewPathExclusionFilter", func() {
+var _ = Describe("ExclusionFilter", func() {
+	Describe("NewExclusionFilter", func() {
 		Context("with valid rules", func() {
 			It("should create a filter with single rule", func() {
-				rules := []gosec.PathExcludeRule{
+				rules := []gosec.ExcludeRule{
 					{Path: "cmd/.*", Rules: []string{"G204", "G304"}},
 				}
-				filter, err := gosec.NewPathExclusionFilter(rules)
+				filter, err := gosec.NewExclusionFilter(rules)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(filter).NotTo(BeNil())
 			})
 
 			It("should create a filter with multiple rules", func() {
-				rules := []gosec.PathExcludeRule{
+				rules := []gosec.ExcludeRule{
 					{Path: "cmd/.*", Rules: []string{"G204"}},
 					{Path: "test/.*", Rules: []string{"G101"}},
 					{Path: "scripts/.*", Rules: []string{"*"}},
 				}
-				filter, err := gosec.NewPathExclusionFilter(rules)
+				filter, err := gosec.NewExclusionFilter(rules)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(filter).NotTo(BeNil())
 			})
 
 			It("should handle empty rules slice", func() {
-				filter, err := gosec.NewPathExclusionFilter(nil)
+				filter, err := gosec.NewExclusionFilter(nil)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(filter).NotTo(BeNil())
 			})
@@ -42,19 +42,19 @@ var _ = Describe("PathExclusionFilter", func() {
 
 		Context("with invalid rules", func() {
 			It("should reject empty path", func() {
-				rules := []gosec.PathExcludeRule{
+				rules := []gosec.ExcludeRule{
 					{Path: "", Rules: []string{"G204"}},
 				}
-				_, err := gosec.NewPathExclusionFilter(rules)
+				_, err := gosec.NewExclusionFilter(rules)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("path cannot be empty"))
 			})
 
 			It("should reject invalid regex", func() {
-				rules := []gosec.PathExcludeRule{
+				rules := []gosec.ExcludeRule{
 					{Path: "[invalid(regex", Rules: []string{"G204"}},
 				}
-				_, err := gosec.NewPathExclusionFilter(rules)
+				_, err := gosec.NewExclusionFilter(rules)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("invalid path regex"))
 			})
@@ -62,16 +62,16 @@ var _ = Describe("PathExclusionFilter", func() {
 	})
 
 	Describe("ShouldExclude", func() {
-		var filter *gosec.PathExclusionFilter
+		var filter *gosec.ExclusionFilter
 
 		Context("with specific rule exclusions", func() {
 			BeforeEach(func() {
-				rules := []gosec.PathExcludeRule{
+				rules := []gosec.ExcludeRule{
 					{Path: "cmd/.*", Rules: []string{"G204", "G304"}},
 					{Path: "internal/testutil/.*", Rules: []string{"G101"}},
 				}
 				var err error
-				filter, err = gosec.NewPathExclusionFilter(rules)
+				filter, err = gosec.NewExclusionFilter(rules)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -99,12 +99,12 @@ var _ = Describe("PathExclusionFilter", func() {
 
 		Context("with wildcard rule exclusion", func() {
 			BeforeEach(func() {
-				rules := []gosec.PathExcludeRule{
+				rules := []gosec.ExcludeRule{
 					{Path: "scripts/.*", Rules: []string{"*"}},
 					{Path: "vendor/.*", Rules: []string{"*"}},
 				}
 				var err error
-				filter, err = gosec.NewPathExclusionFilter(rules)
+				filter, err = gosec.NewExclusionFilter(rules)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -122,11 +122,11 @@ var _ = Describe("PathExclusionFilter", func() {
 
 		Context("with Windows-style paths", func() {
 			BeforeEach(func() {
-				rules := []gosec.PathExcludeRule{
+				rules := []gosec.ExcludeRule{
 					{Path: "cmd/.*", Rules: []string{"G204"}},
 				}
 				var err error
-				filter, err = gosec.NewPathExclusionFilter(rules)
+				filter, err = gosec.NewExclusionFilter(rules)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -138,25 +138,25 @@ var _ = Describe("PathExclusionFilter", func() {
 
 		Context("with nil or empty filter", func() {
 			It("should not exclude anything with nil filter", func() {
-				var nilFilter *gosec.PathExclusionFilter
+				var nilFilter *gosec.ExclusionFilter
 				Expect(nilFilter.ShouldExclude("any/path.go", "G101")).To(BeFalse())
 			})
 
 			It("should not exclude anything with empty rules", func() {
-				filter, _ := gosec.NewPathExclusionFilter(nil)
+				filter, _ := gosec.NewExclusionFilter(nil)
 				Expect(filter.ShouldExclude("any/path.go", "G101")).To(BeFalse())
 			})
 		})
 
 		Context("with complex regex patterns", func() {
 			BeforeEach(func() {
-				rules := []gosec.PathExcludeRule{
+				rules := []gosec.ExcludeRule{
 					{Path: `.*_test\.go$`, Rules: []string{"G101"}},
 					{Path: `^(cmd|tools)/`, Rules: []string{"G204"}},
 					{Path: `internal/(mock|fake|stub)s?/`, Rules: []string{"*"}},
 				}
 				var err error
-				filter, err = gosec.NewPathExclusionFilter(rules)
+				filter, err = gosec.NewExclusionFilter(rules)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -183,15 +183,15 @@ var _ = Describe("PathExclusionFilter", func() {
 	})
 
 	Describe("FilterIssues", func() {
-		var filter *gosec.PathExclusionFilter
+		var filter *gosec.ExclusionFilter
 
 		BeforeEach(func() {
-			rules := []gosec.PathExcludeRule{
+			rules := []gosec.ExcludeRule{
 				{Path: "cmd/.*", Rules: []string{"G204", "G304"}},
 				{Path: "test/.*", Rules: []string{"*"}},
 			}
 			var err error
-			filter, err = gosec.NewPathExclusionFilter(rules)
+			filter, err = gosec.NewExclusionFilter(rules)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -296,10 +296,10 @@ var _ = Describe("PathExclusionFilter", func() {
 
 	Describe("MergeExcludeRules", func() {
 		It("should merge CLI and config rules with CLI first", func() {
-			cliRules := []gosec.PathExcludeRule{
+			cliRules := []gosec.ExcludeRule{
 				{Path: "cli/.*", Rules: []string{"G204"}},
 			}
-			configRules := []gosec.PathExcludeRule{
+			configRules := []gosec.ExcludeRule{
 				{Path: "config/.*", Rules: []string{"G304"}},
 			}
 
@@ -310,7 +310,7 @@ var _ = Describe("PathExclusionFilter", func() {
 		})
 
 		It("should handle empty CLI rules", func() {
-			configRules := []gosec.PathExcludeRule{
+			configRules := []gosec.ExcludeRule{
 				{Path: "config/.*", Rules: []string{"G304"}},
 			}
 
@@ -319,7 +319,7 @@ var _ = Describe("PathExclusionFilter", func() {
 		})
 
 		It("should handle empty config rules", func() {
-			cliRules := []gosec.PathExcludeRule{
+			cliRules := []gosec.ExcludeRule{
 				{Path: "cli/.*", Rules: []string{"G204"}},
 			}
 
@@ -333,14 +333,14 @@ var _ = Describe("PathExclusionFilter", func() {
 func TestShouldExclude(t *testing.T) {
 	tests := []struct {
 		name     string
-		rules    []gosec.PathExcludeRule
+		rules    []gosec.ExcludeRule
 		filePath string
 		ruleID   string
 		want     bool
 	}{
 		{
 			name: "exact match",
-			rules: []gosec.PathExcludeRule{
+			rules: []gosec.ExcludeRule{
 				{Path: "cmd/.*", Rules: []string{"G204"}},
 			},
 			filePath: "cmd/main.go",
@@ -349,7 +349,7 @@ func TestShouldExclude(t *testing.T) {
 		},
 		{
 			name: "no match - wrong rule",
-			rules: []gosec.PathExcludeRule{
+			rules: []gosec.ExcludeRule{
 				{Path: "cmd/.*", Rules: []string{"G204"}},
 			},
 			filePath: "cmd/main.go",
@@ -358,7 +358,7 @@ func TestShouldExclude(t *testing.T) {
 		},
 		{
 			name: "no match - wrong path",
-			rules: []gosec.PathExcludeRule{
+			rules: []gosec.ExcludeRule{
 				{Path: "cmd/.*", Rules: []string{"G204"}},
 			},
 			filePath: "pkg/main.go",
@@ -367,7 +367,7 @@ func TestShouldExclude(t *testing.T) {
 		},
 		{
 			name: "wildcard excludes all rules",
-			rules: []gosec.PathExcludeRule{
+			rules: []gosec.ExcludeRule{
 				{Path: "scripts/.*", Rules: []string{"*"}},
 			},
 			filePath: "scripts/build.go",
@@ -376,7 +376,7 @@ func TestShouldExclude(t *testing.T) {
 		},
 		{
 			name: "multiple rules in single exclusion",
-			rules: []gosec.PathExcludeRule{
+			rules: []gosec.ExcludeRule{
 				{Path: "cmd/.*", Rules: []string{"G204", "G304", "G404"}},
 			},
 			filePath: "cmd/tool/main.go",
@@ -387,9 +387,9 @@ func TestShouldExclude(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			filter, err := gosec.NewPathExclusionFilter(tt.rules)
+			filter, err := gosec.NewExclusionFilter(tt.rules)
 			if err != nil {
-				t.Fatalf("NewPathExclusionFilter() error = %v", err)
+				t.Fatalf("NewExclusionFilter() error = %v", err)
 			}
 
 			got := filter.ShouldExclude(tt.filePath, tt.ruleID)

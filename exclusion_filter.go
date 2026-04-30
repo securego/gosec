@@ -8,33 +8,33 @@ import (
 	"github.com/securego/gosec/v2/issue"
 )
 
-// PathExcludeRule defines rules to exclude for specific file paths
-type PathExcludeRule struct {
+// ExcludeRule defines rules to exclude for specific file paths
+type ExcludeRule struct {
 	Path  string   `json:"path"`  // Regex pattern for matching file paths
 	Rules []string `json:"rules"` // Rule IDs to exclude. Use "*" to exclude all rules
 }
 
-// compiledPathRule is a pre-compiled version of PathExcludeRule for efficient matching
-type compiledPathRule struct {
+// compiledExcludeRule is a pre-compiled version of PathExcludeRule for efficient matching
+type compiledExcludeRule struct {
 	pathRegex  *regexp.Regexp
 	ruleSet    map[string]bool // Set of rule IDs to exclude
 	excludeAll bool            // True if "*" was specified in rules
-	original   PathExcludeRule // Keep original for error messages
+	original   ExcludeRule     // Keep original for error messages
 }
 
-// PathExclusionFilter handles filtering of issues based on path and rule combinations
-type PathExclusionFilter struct {
-	rules []compiledPathRule
+// ExclusionFilter handles filtering of issues based on path and rule combinations
+type ExclusionFilter struct {
+	rules []compiledExcludeRule
 }
 
-// NewPathExclusionFilter creates a new filter from the provided exclusion rules.
+// NewExclusionFilter creates a new filter from the provided exclusion rules.
 // Returns an error if any path regex is invalid.
-func NewPathExclusionFilter(rules []PathExcludeRule) (*PathExclusionFilter, error) {
+func NewExclusionFilter(rules []ExcludeRule) (*ExclusionFilter, error) {
 	if len(rules) == 0 {
-		return &PathExclusionFilter{rules: nil}, nil
+		return &ExclusionFilter{rules: nil}, nil
 	}
 
-	compiled := make([]compiledPathRule, 0, len(rules))
+	compiled := make([]compiledExcludeRule, 0, len(rules))
 
 	for i, rule := range rules {
 		if rule.Path == "" {
@@ -58,7 +58,7 @@ func NewPathExclusionFilter(rules []PathExcludeRule) (*PathExclusionFilter, erro
 			}
 		}
 
-		compiled = append(compiled, compiledPathRule{
+		compiled = append(compiled, compiledExcludeRule{
 			pathRegex:  regex,
 			ruleSet:    ruleSet,
 			excludeAll: excludeAll,
@@ -66,12 +66,12 @@ func NewPathExclusionFilter(rules []PathExcludeRule) (*PathExclusionFilter, erro
 		})
 	}
 
-	return &PathExclusionFilter{rules: compiled}, nil
+	return &ExclusionFilter{rules: compiled}, nil
 }
 
 // ShouldExclude returns true if the given issue should be excluded based on
 // its file path and rule ID
-func (f *PathExclusionFilter) ShouldExclude(filePath, ruleID string) bool {
+func (f *ExclusionFilter) ShouldExclude(filePath, ruleID string) bool {
 	if f == nil || len(f.rules) == 0 {
 		return false
 	}
@@ -95,7 +95,7 @@ func (f *PathExclusionFilter) ShouldExclude(filePath, ruleID string) bool {
 
 // FilterIssues applies path-based exclusions to a slice of issues.
 // Returns the filtered issues and the count of excluded issues.
-func (f *PathExclusionFilter) FilterIssues(issues []*issue.Issue) ([]*issue.Issue, int) {
+func (f *ExclusionFilter) FilterIssues(issues []*issue.Issue) ([]*issue.Issue, int) {
 	if f == nil || len(f.rules) == 0 || len(issues) == 0 {
 		return issues, 0
 	}
@@ -117,12 +117,12 @@ func (f *PathExclusionFilter) FilterIssues(issues []*issue.Issue) ([]*issue.Issu
 // ParseCLIExcludeRules parses the CLI format for exclude-rules.
 // Format: "path:rule1,rule2;path2:rule3,rule4"
 // Example: "cmd/.*:G204,G304;test/.*:G101"
-func ParseCLIExcludeRules(input string) ([]PathExcludeRule, error) {
+func ParseCLIExcludeRules(input string) ([]ExcludeRule, error) {
 	if input == "" {
 		return nil, nil
 	}
 
-	var rules []PathExcludeRule
+	var rules []ExcludeRule
 
 	// Split by semicolon for multiple rules
 	parts := strings.Split(input, ";")
@@ -164,7 +164,7 @@ func ParseCLIExcludeRules(input string) ([]PathExcludeRule, error) {
 			return nil, fmt.Errorf("exclude-rules part %d: no valid rules specified", i+1)
 		}
 
-		rules = append(rules, PathExcludeRule{
+		rules = append(rules, ExcludeRule{
 			Path:  pathPattern,
 			Rules: cleanedRules,
 		})
@@ -175,7 +175,7 @@ func ParseCLIExcludeRules(input string) ([]PathExcludeRule, error) {
 
 // MergeExcludeRules combines exclude rules from multiple sources (config file + CLI).
 // CLI rules take precedence and are processed first.
-func MergeExcludeRules(configRules, cliRules []PathExcludeRule) []PathExcludeRule {
+func MergeExcludeRules(configRules, cliRules []ExcludeRule) []ExcludeRule {
 	if len(cliRules) == 0 {
 		return configRules
 	}
@@ -184,16 +184,16 @@ func MergeExcludeRules(configRules, cliRules []PathExcludeRule) []PathExcludeRul
 	}
 
 	// CLI rules first, then config rules
-	merged := make([]PathExcludeRule, 0, len(cliRules)+len(configRules))
+	merged := make([]ExcludeRule, 0, len(cliRules)+len(configRules))
 	merged = append(merged, cliRules...)
 	merged = append(merged, configRules...)
 	return merged
 }
 
 // String returns a human-readable representation of the filter
-func (f *PathExclusionFilter) String() string {
+func (f *ExclusionFilter) String() string {
 	if f == nil || len(f.rules) == 0 {
-		return "PathExclusionFilter{empty}"
+		return "ExclusionFilter{empty}"
 	}
 
 	var parts []string
@@ -209,5 +209,5 @@ func (f *PathExclusionFilter) String() string {
 		}
 	}
 
-	return fmt.Sprintf("PathExclusionFilter{%s}", strings.Join(parts, "; "))
+	return fmt.Sprintf("ExclusionFilter{%s}", strings.Join(parts, "; "))
 }
