@@ -465,7 +465,7 @@ has been manually verified as being safe, it is possible to
 annotate the code with a comment that starts with `#nosec`.
 
 The `#nosec` comment should have the format
-`#nosec [RuleList] [- Justification]`.
+`#nosec [RuleList] [-- Justification]`.
 
 The `#nosec` comment needs to be placed on the line where the
 warning is reported.
