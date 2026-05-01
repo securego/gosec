@@ -32,6 +32,11 @@ type ExclusionFilter struct {
 	rules []compiledExcludeRule
 }
 
+type (
+	Keyer  interface{ Key() string }
+	Valuer interface{ Value() string }
+)
+
 // CompileRegexes returns a slice of compiled regular expressions.
 // Returns nil if an empty patterns slice is provided.
 // Returns an error if any pattern is empty or failed to compile.
@@ -118,8 +123,8 @@ func NewExclusionFilter(rules []ExcludeRule) (*ExclusionFilter, error) {
 }
 
 // ShouldExclude returns true if the given issue should be excluded based on
-// its file path and rule ID
-func (f *ExclusionFilter) ShouldExclude(filePath, ruleID string) bool {
+// its file path, rule ID, and addenda
+func (f *ExclusionFilter) ShouldExclude(filePath, ruleID string, addenda any) bool {
 	if f == nil || len(f.rules) == 0 {
 		return false
 	}
@@ -152,7 +157,7 @@ func (f *ExclusionFilter) FilterIssues(issues []*issue.Issue) ([]*issue.Issue, i
 	excluded := 0
 
 	for _, iss := range issues {
-		if f.ShouldExclude(iss.File, iss.RuleID) {
+		if f.ShouldExclude(iss.File, iss.RuleID, iss.Addenda) {
 			excluded++
 			continue
 		}
