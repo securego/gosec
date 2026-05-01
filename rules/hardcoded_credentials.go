@@ -239,31 +239,52 @@ func (r *credentials) Match(n ast.Node, ctx *gosec.Context) (*issue.Issue, error
 	return nil, nil
 }
 
+func (r *credentials) issueForMatchedKey(n ast.Node, lhs string, rhs ast.Expr, ctx *gosec.Context) *issue.Issue {
+	val, err := gosec.GetString(rhs)
+	if err != nil {
+		return nil
+	}
+	if r.ignoreEntropy || r.isHighEntropyString(val) {
+		iss := ctx.NewIssue(n, r.ID(), r.What, r.Severity, r.Confidence)
+		return iss
+	}
+	return nil
+}
+
+func (r *credentials) issueIfValueInSecretFormat(n ast.Node, lhs string, rhs ast.Expr, ctx *gosec.Context) *issue.Issue {
+	val, err := gosec.GetString(rhs)
+	if err != nil {
+		return nil
+	}
+
+	if r.ignoreEntropy || r.isHighEntropyString(val) {
+		if ok, patternName := r.isSecretPattern(val); ok {
+			what := fmt.Sprintf("%s: %s", r.What, patternName)
+			iss := ctx.NewIssue(n, r.ID(), what, r.Severity, r.Confidence)
+			return iss
+		}
+	}
+	return nil
+}
+
 func (r *credentials) matchAssign(assign *ast.AssignStmt, ctx *gosec.Context) (*issue.Issue, error) {
 	for _, i := range assign.Lhs {
 		if ident, ok := i.(*ast.Ident); ok {
 			// First check LHS to find anything being assigned to variables whose name appears to be a cred
 			if gosec.RegexMatchWithCache(r.pattern, ident.Name) {
 				for _, e := range assign.Rhs {
-					if val, err := gosec.GetString(e); err == nil {
-						if r.ignoreEntropy || (!r.ignoreEntropy && r.isHighEntropyString(val)) {
-							return ctx.NewIssue(assign, r.ID(), r.What, r.Severity, r.Confidence), nil
-						}
+					iss := r.issueForMatchedKey(assign, ident.Name, e, ctx)
+					if iss != nil {
+						return iss, nil
 					}
 				}
 			}
 
 			// Now that no names were matched, match the RHS to see if the actual values being assigned are creds
 			for _, e := range assign.Rhs {
-				val, err := gosec.GetString(e)
-				if err != nil {
-					continue
-				}
-
-				if r.ignoreEntropy || r.isHighEntropyString(val) {
-					if ok, patternName := r.isSecretPattern(val); ok {
-						return ctx.NewIssue(assign, r.ID(), fmt.Sprintf("%s: %s", r.What, patternName), r.Severity, r.Confidence), nil
-					}
+				iss := r.issueIfValueInSecretFormat(assign, ident.Name, e, ctx)
+				if iss != nil {
+					return iss, nil
 				}
 			}
 		}
@@ -280,99 +301,93 @@ func (r *credentials) matchValueSpec(valueSpec *ast.ValueSpec, ctx *gosec.Contex
 			if len(valueSpec.Values) <= index {
 				index = len(valueSpec.Values) - 1
 			}
-			if val, err := gosec.GetString(valueSpec.Values[index]); err == nil {
-				if r.ignoreEntropy || (!r.ignoreEntropy && r.isHighEntropyString(val)) {
-					return ctx.NewIssue(valueSpec, r.ID(), r.What, r.Severity, r.Confidence), nil
-				}
+			iss := r.issueForMatchedKey(valueSpec, ident.Name, valueSpec.Values[index], ctx)
+			if iss != nil {
+				return iss, nil
 			}
 		}
 	}
 
 	// Now that no variable names have been matched, match the actual values to find any creds
-	for _, ident := range valueSpec.Values {
-		if val, err := gosec.GetString(ident); err == nil {
-			if r.ignoreEntropy || r.isHighEntropyString(val) {
-				if ok, patternName := r.isSecretPattern(val); ok {
-					return ctx.NewIssue(valueSpec, r.ID(), fmt.Sprintf("%s: %s", r.What, patternName), r.Severity, r.Confidence), nil
-				}
-			}
+	for index, value := range valueSpec.Values {
+		identName := valueSpec.Names[index].Name
+		iss := r.issueIfValueInSecretFormat(valueSpec, identName, value, ctx)
+		if iss != nil {
+			return iss, nil
 		}
 	}
 
 	return nil, nil
 }
 
+func decomposeBinaryExpr(bin *ast.BinaryExpr) (key string, valueExpr ast.Expr, ok bool) {
+	if bin.Op != token.EQL && bin.Op != token.NEQ {
+		return "", nil, false
+	}
+	ident, ok := bin.X.(*ast.Ident)
+	if ok {
+		return ident.Name, bin.Y, true
+	}
+	ident, ok = bin.Y.(*ast.Ident)
+	if ok {
+		return ident.Name, bin.X, true
+	}
+	return "", nil, false
+}
+
 func (r *credentials) matchEqualityCheck(binaryExpr *ast.BinaryExpr, ctx *gosec.Context) (*issue.Issue, error) {
-	if binaryExpr.Op == token.EQL || binaryExpr.Op == token.NEQ {
-		ident, ok := binaryExpr.X.(*ast.Ident)
-		if !ok {
-			ident, _ = binaryExpr.Y.(*ast.Ident)
-		}
-
-		if ident != nil && gosec.RegexMatchWithCache(r.pattern, ident.Name) {
-			valueNode := binaryExpr.Y
-			if !ok {
-				valueNode = binaryExpr.X
-			}
-			if val, err := gosec.GetString(valueNode); err == nil {
-				if r.ignoreEntropy || (!r.ignoreEntropy && r.isHighEntropyString(val)) {
-					return ctx.NewIssue(binaryExpr, r.ID(), r.What, r.Severity, r.Confidence), nil
-				}
-			}
-		}
-
-		// Now that the variable names have been checked, and no matches were found, make sure that
-		// either the left or right operands is a string literal so we can match the value.
-		identStrConst, ok := binaryExpr.X.(*ast.BasicLit)
-		if !ok {
-			identStrConst, ok = binaryExpr.Y.(*ast.BasicLit)
-		}
-
-		if ok && identStrConst.Kind == token.STRING {
-			s, _ := gosec.GetString(identStrConst)
-			if r.ignoreEntropy || r.isHighEntropyString(s) {
-				if ok, patternName := r.isSecretPattern(s); ok {
-					return ctx.NewIssue(binaryExpr, r.ID(), fmt.Sprintf("%s: %s", r.What, patternName), r.Severity, r.Confidence), nil
-				}
-			}
+	key, valueExpr, ok := decomposeBinaryExpr(binaryExpr)
+	if !ok {
+		return nil, nil
+	}
+	if gosec.RegexMatchWithCache(r.pattern, key) {
+		iss := r.issueForMatchedKey(binaryExpr, key, valueExpr, ctx)
+		if iss != nil {
+			return iss, nil
 		}
 	}
+
+	// Now that the variable names have been checked, and no matches were found, make sure that
+	// either the left or right operands is a string literal so we can match the value.
+	iss := r.issueIfValueInSecretFormat(binaryExpr, key, valueExpr, ctx)
+	if iss != nil {
+		return iss, nil
+	}
 	return nil, nil
+}
+
+func decomposeKeyValueExpr(e ast.Expr) (key string, valueExpr ast.Expr, ok bool) {
+	kv, ok := e.(*ast.KeyValueExpr)
+	if !ok {
+		return "", nil, false
+	}
+	if ident, ok := kv.Key.(*ast.Ident); ok {
+		return ident.Name, kv.Value, true
+	} else if keyStr, err := gosec.GetString(kv.Key); err == nil {
+		return keyStr, kv.Value, true
+	}
+	return "", nil, false
 }
 
 func (r *credentials) matchCompositeLit(lit *ast.CompositeLit, ctx *gosec.Context) (*issue.Issue, error) {
 	for _, elt := range lit.Elts {
-		if kv, ok := elt.(*ast.KeyValueExpr); ok {
-			// Check if the key matches the credential pattern (struct field name or map string literal key)
-			matchedKey := false
-			if ident, ok := kv.Key.(*ast.Ident); ok {
-				if gosec.RegexMatchWithCache(r.pattern, ident.Name) {
-					matchedKey = true
-				}
-			}
-			if keyStr, err := gosec.GetString(kv.Key); err == nil {
-				if gosec.RegexMatchWithCache(r.pattern, keyStr) {
-					matchedKey = true
-				}
-			}
+		key, valueExpr, ok := decomposeKeyValueExpr(elt)
+		if !ok {
+			continue
+		}
 
-			// If key matches, check value for high entropy (generic credential warning)
-			if matchedKey {
-				if val, err := gosec.GetString(kv.Value); err == nil {
-					if r.ignoreEntropy || r.isHighEntropyString(val) {
-						return ctx.NewIssue(lit, r.ID(), r.What, r.Severity, r.Confidence), nil
-					}
-				}
+		// If key matches, check value for high entropy (generic credential warning)
+		if gosec.RegexMatchWithCache(r.pattern, key) {
+			iss := r.issueForMatchedKey(lit, key, valueExpr, ctx)
+			if iss != nil {
+				return iss, nil
 			}
+		}
 
-			// Separately check value for specific secret patterns (regardless of key)
-			if val, err := gosec.GetString(kv.Value); err == nil {
-				if r.ignoreEntropy || r.isHighEntropyString(val) {
-					if ok, patternName := r.isSecretPattern(val); ok {
-						return ctx.NewIssue(lit, r.ID(), fmt.Sprintf("%s: %s", r.What, patternName), r.Severity, r.Confidence), nil
-					}
-				}
-			}
+		// Separately check value for specific secret patterns (regardless of key)
+		iss := r.issueIfValueInSecretFormat(lit, key, valueExpr, ctx)
+		if iss != nil {
+			return iss, nil
 		}
 	}
 	return nil, nil
