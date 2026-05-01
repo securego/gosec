@@ -12,6 +12,7 @@ import (
 // ExcludeRule defines rules to exclude for specific file paths
 type ExcludeRule struct {
 	Path   string   `json:"path"`   // Regex pattern for matching file paths
+	Keys   []string `json:"keys"`   // Regex patterns for matching keys
 	Values []string `json:"values"` // Regex patterns for matching values
 	Rules  []string `json:"rules"`  // Rule IDs to exclude. Use "*" to exclude all rules
 }
@@ -19,6 +20,7 @@ type ExcludeRule struct {
 // compiledExcludeRule is a pre-compiled version of PathExcludeRule for efficient matching
 type compiledExcludeRule struct {
 	pathRegex    *regexp.Regexp
+	keyRegexes   []*regexp.Regexp
 	valueRegexes []*regexp.Regexp
 	ruleSet      map[string]bool // Set of rule IDs to exclude
 	excludeAll   bool            // True if "*" was specified in rules
@@ -80,6 +82,11 @@ func NewExclusionFilter(rules []ExcludeRule) (*ExclusionFilter, error) {
 			return nil, fmt.Errorf("exclude-rules[%d]: invalid path regex %q: %w", i, rule.Path, err)
 		}
 
+		keyRegexes, err := CompileRegexes(rule.Keys)
+		if err != nil {
+			return nil, fmt.Errorf("exclude-rules[%d].keys: %w", i, err)
+		}
+
 		valueRegexes, err := CompileRegexes(rule.Values)
 		if err != nil {
 			return nil, fmt.Errorf("exclude-rules[%d].values: %w", i, err)
@@ -99,6 +106,7 @@ func NewExclusionFilter(rules []ExcludeRule) (*ExclusionFilter, error) {
 
 		compiled = append(compiled, compiledExcludeRule{
 			pathRegex:    regex,
+			keyRegexes:   keyRegexes,
 			valueRegexes: valueRegexes,
 			ruleSet:      ruleSet,
 			excludeAll:   excludeAll,
