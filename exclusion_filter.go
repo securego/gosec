@@ -19,12 +19,13 @@ type ExcludeRule struct {
 
 // compiledExcludeRule is a pre-compiled version of PathExcludeRule for efficient matching
 type compiledExcludeRule struct {
-	pathRegex    *regexp.Regexp
-	keyRegexes   []*regexp.Regexp
-	valueRegexes []*regexp.Regexp
-	ruleSet      map[string]bool // Set of rule IDs to exclude
-	excludeAll   bool            // True if "*" was specified in rules
-	original     ExcludeRule     // Keep original for error messages
+	pathRegex         *regexp.Regexp
+	keyRegexes        []*regexp.Regexp
+	valueRegexes      []*regexp.Regexp
+	ruleSet           map[string]bool // Set of rule IDs to exclude
+	excludeAll        bool            // True if "*" was specified in rules
+	noAddendaExcludes bool            // True if no keyRegexes or valueRegexes
+	original          ExcludeRule     // Keep original for error messages
 }
 
 // ExclusionFilter handles filtering of issues based on path and rule combinations
@@ -97,12 +98,14 @@ func NewExclusionFilter(rules []ExcludeRule) (*ExclusionFilter, error) {
 			return nil, fmt.Errorf("exclude-rules[%d].values: %w", i, err)
 		}
 
+		noAddendaExcludes := len(keyRegexes) == 0 && len(valueRegexes) == 0
+
 		ruleSet := make(map[string]bool)
 		excludeAll := false
 
 		for _, ruleID := range rule.Rules {
 			ruleID = strings.TrimSpace(ruleID)
-			if ruleID == "*" {
+			if ruleID == "*" && noAddendaExcludes {
 				excludeAll = true
 			} else if ruleID != "" {
 				ruleSet[ruleID] = true
@@ -110,20 +113,59 @@ func NewExclusionFilter(rules []ExcludeRule) (*ExclusionFilter, error) {
 		}
 
 		compiled = append(compiled, compiledExcludeRule{
-			pathRegex:    regex,
-			keyRegexes:   keyRegexes,
-			valueRegexes: valueRegexes,
-			ruleSet:      ruleSet,
-			excludeAll:   excludeAll,
-			original:     rule,
+			pathRegex:         regex,
+			keyRegexes:        keyRegexes,
+			valueRegexes:      valueRegexes,
+			ruleSet:           ruleSet,
+			excludeAll:        excludeAll,
+			noAddendaExcludes: noAddendaExcludes,
+			original:          rule,
 		})
 	}
 
 	return &ExclusionFilter{rules: compiled}, nil
 }
 
+// ExcludesAddenda returns whether an issue containing addenda
+// should be excluded from the results, assuming all of the following:
+// - The issue's path matches the exclude rule.
+// - The issue's ruleID matches the exclude rule.
+//
+// In other words, this method will further limit the exlude rule's scope,
+// if the issue has addenda matching either keys or values
+// which were specified in the rule.
+func (r *compiledExcludeRule) ExcludesAddenda(addenda any) bool {
+	if addenda == nil {
+		return false
+	}
+
+	if len(r.keyRegexes) > 0 {
+		if keyer, ok := addenda.(Keyer); ok {
+			key := keyer.Key()
+			for _, regex := range r.keyRegexes {
+				if RegexMatchWithCache(regex, key) {
+					return true
+				}
+			}
+		}
+	}
+
+	if len(r.valueRegexes) > 0 {
+		if valuer, ok := addenda.(Valuer); ok {
+			value := valuer.Value()
+			for _, regex := range r.valueRegexes {
+				if RegexMatchWithCache(regex, value) {
+					return true
+				}
+			}
+		}
+	}
+
+	return false
+}
+
 // ShouldExclude returns true if the given issue should be excluded based on
-// its file path, rule ID, and addenda
+// its file path, rule ID, and addenda.
 func (f *ExclusionFilter) ShouldExclude(filePath, ruleID string, addenda any) bool {
 	if f == nil || len(f.rules) == 0 {
 		return false
@@ -138,7 +180,7 @@ func (f *ExclusionFilter) ShouldExclude(filePath, ruleID string, addenda any) bo
 				return true
 			}
 			if rule.ruleSet[ruleID] {
-				return true
+				return rule.noAddendaExcludes || rule.ExcludesAddenda(addenda)
 			}
 		}
 	}
