@@ -1,5 +1,5 @@
 name: CI
-on:
+on: # zizmor: ignore[dangerous-triggers]
   push:
     branches:
       - master
@@ -9,6 +9,10 @@ on:
   pull_request_target:
     branches:
       - master
+
+permissions:
+  contents: read
+
 jobs:
   test:
     if: github.event_name != 'pull_request_target'
@@ -20,27 +24,31 @@ jobs:
           - go-version: "1.26.2"
             golangci: "latest"
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     env:
       GO111MODULE: on
     steps:
       - name: Setup go ${{ matrix.version.go-version }}
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
         with:
           go-version: ${{ matrix.version.go-version }}
       - name: Checkout Source
-        uses: actions/checkout@v6
-      - uses: actions/cache@v5
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
       - name: lint
-        uses: golangci/golangci-lint-action@v9
+        uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9
         with:
           version: ${{ matrix.version.golangci }}
       - name: Run Gosec Security Scanner
-        uses: securego/gosec@master
+        uses: securego/gosec@master # zizmor: ignore[unpinned-uses]
         with:
           args: '-exclude-dir=testdata ./...'
       - name: Run Tests
@@ -50,17 +58,21 @@ jobs:
   taint-perf-guard:
     if: github.event_name != 'pull_request_target'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     env:
       GO111MODULE: on
       BENCH_COUNT: "5"
     steps:
       - name: Setup go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
         with:
           go-version: "1.26.2"
       - name: Checkout Source
-        uses: actions/checkout@v6
-      - uses: actions/cache@v5
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -73,16 +85,18 @@ jobs:
     runs-on: ubuntu-latest
     environment: security-review
     permissions:
+      contents: read
       security-events: write
       pull-requests: write
     steps:
       - name: Checkout Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
       - name: Run Barry AI Security Review
         id: barry
-        uses: ccojocar/barry@main
+        uses: ccojocar/barry@main # zizmor: ignore[unpinned-uses]
         continue-on-error: true
         with:
           google-api-key: ${{ secrets.GOOGLE_API_KEY }}
@@ -93,7 +107,7 @@ jobs:
           autofix-model: gemini-3-flash-preview
           output-format: sarif
       - name: Upload SARIF to GitHub Security Center
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@e46ed2cbd01164d986452f91f178727624ae40d7 # v4
         if: steps.barry.outcome == 'success'
         with:
           sarif_file: ${{ github.workspace }}/barry-results.sarif
@@ -101,16 +115,20 @@ jobs:
     if: github.event_name != 'pull_request_target'
     needs: [test, taint-perf-guard]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     env:
       GO111MODULE: on
     steps:
       - name: Setup go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
         with:
           go-version: "1.26.2"
       - name: Checkout Source
-        uses: actions/checkout@v6
-      - uses: actions/cache@v5
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -119,7 +137,7 @@ jobs:
       - name: Create Test Coverage
         run: make test-coverage
       - name: Upload Test Coverage
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true

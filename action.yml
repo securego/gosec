@@ -10,7 +10,7 @@ inputs:
 
 runs:
   using: "docker"
-  image: "docker://ghcr.io/securego/gosec:2.26.1"
+  image: "docker://ghcr.io/securego/gosec@sha256:fc67681613e14384a6cd35498f6df3e566ef099777246c53a4deb0178e98e1a2" # 2.26.1
   args:
     - ${{ inputs.args }}
 
