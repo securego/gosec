@@ -27,31 +27,6 @@ import (
 	"github.com/securego/gosec/v2/issue"
 )
 
-// HardcodedCredentialAddenda holds info about a
-// G101 "Possible hardcoded value" Issue,
-// which is needed to apply value regex-based exclude rules.
-type HardcodedCredentialAddenda struct {
-	key, value string
-}
-
-func (a HardcodedCredentialAddenda) Format(f fmt.State, verb rune) {
-	if verb == 'v' && f.Flag('#') {
-		fmt.Fprintf(f, `rules.HardcodedCredentialAddenda{Key: %q, Value: %q}`,
-			a.key, a.value,
-		)
-		return
-	}
-
-	var not string
-	if a.value != "" {
-		not = "!"
-	}
-	fmt.Fprintf(f, `HardcodedCredentialAddenda[Key:%q Value %s== ""]`, a.key, not)
-}
-
-func (a HardcodedCredentialAddenda) Key() string   { return a.key }
-func (a HardcodedCredentialAddenda) Value() string { return a.value }
-
 type secretPattern struct {
 	name   string
 	regexp *regexp.Regexp
@@ -271,7 +246,6 @@ func (r *credentials) issueForMatchedKey(n ast.Node, lhs string, rhs ast.Expr, c
 	}
 	if r.ignoreEntropy || r.isHighEntropyString(val) {
 		iss := ctx.NewIssue(n, r.ID(), r.What, r.Severity, r.Confidence)
-		iss.Addenda = HardcodedCredentialAddenda{key: lhs, value: val}
 		return iss
 	}
 	return nil
@@ -287,7 +261,6 @@ func (r *credentials) issueIfValueInSecretFormat(n ast.Node, lhs string, rhs ast
 		if ok, patternName := r.isSecretPattern(val); ok {
 			what := fmt.Sprintf("%s: %s", r.What, patternName)
 			iss := ctx.NewIssue(n, r.ID(), what, r.Severity, r.Confidence)
-			iss.Addenda = HardcodedCredentialAddenda{key: lhs, value: val}
 			return iss
 		}
 	}

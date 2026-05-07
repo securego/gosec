@@ -133,7 +133,6 @@ type Issue struct {
 	NoSec        bool              `json:"nosec"`             // true if the issue is nosec
 	Suppressions []SuppressionInfo `json:"suppressions"`      // Suppression info of the issue
 	Autofix      string            `json:"autofix,omitempty"` // Proposed auto fix the issue
-	Addenda      any               `json:"addenda,omitempty"` // Violation-specific info
 }
 
 // SuppressionInfo object is to record the kind and the justification that used
@@ -260,7 +259,6 @@ func New(fobj *token.File, node ast.Node, ruleID, desc string, severity, confide
 		Severity:   severity,
 		Code:       code,
 		Cwe:        GetCweByRule(ruleID),
-		Addenda:    nil,
 	}
 }
 

@@ -336,7 +336,6 @@ func TestShouldExclude(t *testing.T) {
 		rules    []gosec.PathExcludeRule
 		filePath string
 		ruleID   string
-		addenda  any
 		want     bool
 	}{
 		{
@@ -395,8 +394,8 @@ func TestShouldExclude(t *testing.T) {
 
 			got := filter.ShouldExclude(tt.filePath, tt.ruleID)
 			if got != tt.want {
-				t.Errorf("ShouldExclude(%q, %q, %#v) = %v, want %v",
-					tt.filePath, tt.ruleID, tt.addenda, got, tt.want)
+				t.Errorf("ShouldExclude(%q, %q) = %v, want %v",
+					tt.filePath, tt.ruleID, got, tt.want)
 			}
 		})
 	}
