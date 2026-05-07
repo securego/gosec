@@ -369,8 +369,8 @@ func computeExitCode(issues []*issue.Issue, errors map[string][]gosec.Error, noF
 	return exitSuccess
 }
 
-// buildExclusionFilter creates an ExclusionFilter from config and CLI flags
-func buildExclusionFilter(config gosec.Config, cliFlag string) (*gosec.ExclusionFilter, error) {
+// buildPathExclusionFilter creates a PathExclusionFilter from config and CLI flags
+func buildPathExclusionFilter(config gosec.Config, cliFlag string) (*gosec.PathExclusionFilter, error) {
 	// Parse CLI exclude-rules
 	cliRules, err := gosec.ParseCLIExcludeRules(cliFlag)
 	if err != nil {
@@ -387,7 +387,7 @@ func buildExclusionFilter(config gosec.Config, cliFlag string) (*gosec.Exclusion
 	allRules := gosec.MergeExcludeRules(configRules, cliRules)
 
 	// Create and return filter
-	return gosec.NewExclusionFilter(allRules)
+	return gosec.NewPathExclusionFilter(allRules)
 }
 
 func main() {
@@ -496,10 +496,10 @@ func run() int {
 		return exitFailure
 	}
 
-	// Build exclusion filter
-	filter, err := buildExclusionFilter(config, *flagExcludeRules)
+	// Build path exclusion filter
+	pathFilter, err := buildPathExclusionFilter(config, *flagExcludeRules)
 	if err != nil {
-		logger.Printf("Exclusion filter error: %v", err)
+		logger.Printf("Path exclusion filter error: %v", err)
 		return exitFailure
 	}
 
@@ -542,11 +542,11 @@ func run() int {
 	// Collect the results
 	issues, metrics, errors := analyzer.Report()
 
-	// Apply exclusions first
-	var excludedCount int
-	issues, excludedCount = filter.FilterIssues(issues)
-	if excludedCount > 0 {
-		logger.Printf("Exclude rules suppressed %d issues", excludedCount)
+	// Apply path-based exclusions first
+	var pathExcludedCount int
+	issues, pathExcludedCount = pathFilter.FilterIssues(issues)
+	if pathExcludedCount > 0 {
+		logger.Printf("Excluded %d issues by path-based rules", pathExcludedCount)
 	}
 
 	// Sort the issue by severity

@@ -140,7 +140,7 @@ func (c Config) IsGlobalEnabled(option GlobalOption) (bool, error) {
 
 // GetExcludeRules retrieves the path-based exclusion rules from the configuration.
 // Returns nil if no exclusion rules are configured.
-func (c Config) GetExcludeRules() ([]ExcludeRule, error) {
+func (c Config) GetExcludeRules() ([]PathExcludeRule, error) {
 	if c == nil {
 		return nil, nil
 	}
@@ -157,7 +157,7 @@ func (c Config) GetExcludeRules() ([]ExcludeRule, error) {
 		return nil, fmt.Errorf("failed to marshal exclude-rules: %w", err)
 	}
 
-	var rules []ExcludeRule
+	var rules []PathExcludeRule
 	if err := json.Unmarshal(rulesJSON, &rules); err != nil {
 		return nil, fmt.Errorf("failed to parse exclude-rules: %w", err)
 	}
@@ -166,7 +166,7 @@ func (c Config) GetExcludeRules() ([]ExcludeRule, error) {
 }
 
 // SetExcludeRules sets the path-based exclusion rules in the configuration.
-func (c Config) SetExcludeRules(rules []ExcludeRule) {
+func (c Config) SetExcludeRules(rules []PathExcludeRule) {
 	if c == nil {
 		return
 	}

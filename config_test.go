@@ -138,7 +138,7 @@ var _ = Describe("Configuration", func() {
 
 	Context("when managing exclude rules", func() {
 		It("should set and get exclude rules", func() {
-			rules := []gosec.ExcludeRule{
+			rules := []gosec.PathExcludeRule{
 				{Path: ".*test\\.go$", Rules: []string{"G101", "G102"}},
 				{Path: ".*_gen\\.go$", Rules: []string{"*"}},
 			}
@@ -154,7 +154,7 @@ var _ = Describe("Configuration", func() {
 		})
 
 		It("should handle empty exclude rules", func() {
-			configuration.SetExcludeRules([]gosec.ExcludeRule{})
+			configuration.SetExcludeRules([]gosec.PathExcludeRule{})
 
 			excludedRules, err := configuration.GetExcludeRules()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -162,11 +162,11 @@ var _ = Describe("Configuration", func() {
 		})
 
 		It("should overwrite previous exclude rules", func() {
-			configuration.SetExcludeRules([]gosec.ExcludeRule{
+			configuration.SetExcludeRules([]gosec.PathExcludeRule{
 				{Path: ".*old\\.go$", Rules: []string{"G101"}},
 			})
 
-			configuration.SetExcludeRules([]gosec.ExcludeRule{
+			configuration.SetExcludeRules([]gosec.PathExcludeRule{
 				{Path: ".*new\\.go$", Rules: []string{"G201"}},
 			})
 
@@ -177,7 +177,7 @@ var _ = Describe("Configuration", func() {
 		})
 
 		It("should persist exclude rules in configuration", func() {
-			rules := []gosec.ExcludeRule{
+			rules := []gosec.PathExcludeRule{
 				{Path: ".*vendor/.*", Rules: []string{"G301", "G302"}},
 			}
 			configuration.SetExcludeRules(rules)
@@ -199,7 +199,7 @@ var _ = Describe("Configuration", func() {
 
 		It("should handle nil configuration gracefully", func() {
 			var nilConfig gosec.Config
-			nilConfig.SetExcludeRules([]gosec.ExcludeRule{{Path: ".*", Rules: []string{"*"}}})
+			nilConfig.SetExcludeRules([]gosec.PathExcludeRule{{Path: ".*", Rules: []string{"*"}}})
 
 			rules, err := nilConfig.GetExcludeRules()
 			Expect(err).ShouldNot(HaveOccurred())

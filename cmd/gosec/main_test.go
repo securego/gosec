@@ -504,24 +504,24 @@ var _ = Describe("computeExitCode", func() {
 	})
 })
 
-var _ = Describe("buildExclusionFilter", func() {
+var _ = Describe("buildPathExclusionFilter", func() {
 	It("should create filter with empty CLI flag", func() {
 		config := gosec.NewConfig()
-		filter, err := buildExclusionFilter(config, "")
+		filter, err := buildPathExclusionFilter(config, "")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(filter).NotTo(BeNil())
 	})
 
 	It("should create filter with valid CLI rule", func() {
 		config := gosec.NewConfig()
-		filter, err := buildExclusionFilter(config, "G101:/api/.*")
+		filter, err := buildPathExclusionFilter(config, "G101:/api/.*")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(filter).NotTo(BeNil())
 	})
 
 	It("should return error for invalid CLI rule format", func() {
 		config := gosec.NewConfig()
-		_, err := buildExclusionFilter(config, "invalid_format")
+		_, err := buildPathExclusionFilter(config, "invalid_format")
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("invalid --exclude-rules flag"))
 	})
@@ -529,7 +529,7 @@ var _ = Describe("buildExclusionFilter", func() {
 	It("should handle config file rules", func() {
 		config := gosec.NewConfig()
 		config.SetGlobal("exclude-rules", `[{"path": "/test/.*", "rules": ["G101"]}]`)
-		filter, err := buildExclusionFilter(config, "")
+		filter, err := buildPathExclusionFilter(config, "")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(filter).NotTo(BeNil())
 	})
@@ -537,7 +537,7 @@ var _ = Describe("buildExclusionFilter", func() {
 	It("should merge CLI and config rules", func() {
 		config := gosec.NewConfig()
 		config.SetGlobal("exclude-rules", `[{"path": "/test/.*", "rules": ["G101"]}]`)
-		filter, err := buildExclusionFilter(config, "G102:/api/.*")
+		filter, err := buildPathExclusionFilter(config, "G102:/api/.*")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(filter).NotTo(BeNil())
 	})
