@@ -87,13 +87,22 @@ func (f *PathExclusionFilter) ShouldExclude(iss *issue.Issue) bool {
 	normalizedPath := strings.ReplaceAll(iss.File, "\\", "/")
 
 	for _, rule := range f.rules {
-		if rule.pathRegex.MatchString(normalizedPath) {
-			if rule.excludeAll {
-				return true
-			}
-			if rule.ruleSet[iss.RuleID] {
-				return true
-			}
+		if !RegexMatchWithCache(rule.pathRegex, normalizedPath) {
+			continue
+		}
+		if rule.excludeAll {
+			return true
+		}
+		if rule.ruleSet[iss.RuleID] {
+			return true
+		}
+		if iss.HardcodedCredentialAddenda != nil &&
+			rule.hardcodedCredentialsExcluder != nil &&
+			rule.hardcodedCredentialsExcluder.ShouldExcludeKV(
+				iss.HardcodedCredentialAddenda.Key,
+				iss.HardcodedCredentialAddenda.Value,
+			) {
+			return true
 		}
 	}
 
