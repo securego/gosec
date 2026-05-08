@@ -242,6 +242,9 @@ func (r *credentials) Match(n ast.Node, ctx *gosec.Context) (*issue.Issue, error
 func (r *credentials) issueForMatchedKey(n ast.Node, lhs string, rhs ast.Expr, ctx *gosec.Context) *issue.Issue {
 	val, err := gosec.GetString(rhs)
 	if err != nil {
+		// There is no string value to be retrieved from rhs.
+		// This means the rhs is not a string (maybe a var, an expr, etc.).
+		// So, it isn't hardcoded and the node should be skipped silently.
 		return nil
 	}
 	if r.ignoreEntropy || r.isHighEntropyString(val) {
@@ -258,6 +261,9 @@ func (r *credentials) issueForMatchedKey(n ast.Node, lhs string, rhs ast.Expr, c
 func (r *credentials) issueIfValueInSecretFormat(n ast.Node, lhs string, rhs ast.Expr, ctx *gosec.Context) *issue.Issue {
 	val, err := gosec.GetString(rhs)
 	if err != nil {
+		// There is no string value to be retrieved from rhs.
+		// This means the rhs is not a string (maybe a var, an expr, etc.).
+		// So, it isn't hardcoded and the node should be skipped silently.
 		return nil
 	}
 
