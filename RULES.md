@@ -138,6 +138,23 @@ Configurable rules (alphabetical): [G101](#g101), [G104](#g104), [G111](#g111), 
 }
 ```
 
+Additionally, path-based exclusions may be configured.
+This excludes matching "keys" (map keys, vars, consts, and struct field names)
+and matching string "values" from the results,
+if they are found in matching files.
+
+```json
+{
+  "exclude-rules": [{
+    "path": "_test\\.go$",
+    "G101": {
+      "keys": ["(?i)^test", "(?i)^fake"],
+      "values": ["(?i)^test", "(?i)^fake", "\\*{4}"]
+    }
+  }]
+}
+```
+
 ### G104
 
 `G104` (unchecked errors) can be configured with function allowlists:

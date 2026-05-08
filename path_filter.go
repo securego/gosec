@@ -10,16 +10,18 @@ import (
 
 // PathExcludeRule defines rules to exclude for specific file paths
 type PathExcludeRule struct {
-	Path  string   `json:"path"`  // Regex pattern for matching file paths
-	Rules []string `json:"rules"` // Rule IDs to exclude. Use "*" to exclude all rules
+	Path  string                            `json:"path"`  // Regex pattern for matching file paths
+	Rules []string                          `json:"rules"` // Rule IDs to exclude. Use "*" to exclude all rules
+	G101  HardcodedCredentialExcludeOptions `json:"G101"`  // Per-path G101 options
 }
 
 // compiledPathRule is a pre-compiled version of PathExcludeRule for efficient matching
 type compiledPathRule struct {
-	pathRegex  *regexp.Regexp
-	ruleSet    map[string]bool // Set of rule IDs to exclude
-	excludeAll bool            // True if "*" was specified in rules
-	original   PathExcludeRule // Keep original for error messages
+	pathRegex                    *regexp.Regexp
+	ruleSet                      map[string]bool // Set of rule IDs to exclude
+	hardcodedCredentialsExcluder *CompiledHardcodedCredentialsRule
+	excludeAll                   bool            // True if "*" was specified in rules
+	original                     PathExcludeRule // Keep original for error messages
 }
 
 // PathExclusionFilter handles filtering of issues based on path and rule combinations
@@ -58,35 +60,49 @@ func NewPathExclusionFilter(rules []PathExcludeRule) (*PathExclusionFilter, erro
 			}
 		}
 
+		hardcodedCredentialsExcluder, err := rule.G101.Compile()
+		if err != nil {
+			return nil, fmt.Errorf("exclude-rules[%d].G101: %w", i, err)
+		}
+
 		compiled = append(compiled, compiledPathRule{
-			pathRegex:  regex,
-			ruleSet:    ruleSet,
-			excludeAll: excludeAll,
-			original:   rule,
+			pathRegex:                    regex,
+			ruleSet:                      ruleSet,
+			excludeAll:                   excludeAll,
+			hardcodedCredentialsExcluder: hardcodedCredentialsExcluder,
+			original:                     rule,
 		})
 	}
 
 	return &PathExclusionFilter{rules: compiled}, nil
 }
 
-// ShouldExclude returns true if the given issue should be excluded based on
-// its file path and rule ID
-func (f *PathExclusionFilter) ShouldExclude(filePath, ruleID string) bool {
+// ShouldExclude returns true if the given issue should be excluded.
+func (f *PathExclusionFilter) ShouldExclude(iss *issue.Issue) bool {
 	if f == nil || len(f.rules) == 0 {
 		return false
 	}
 
 	// Normalize path separators for consistent matching
-	normalizedPath := strings.ReplaceAll(filePath, "\\", "/")
+	normalizedPath := strings.ReplaceAll(iss.File, "\\", "/")
 
 	for _, rule := range f.rules {
-		if rule.pathRegex.MatchString(normalizedPath) {
-			if rule.excludeAll {
-				return true
-			}
-			if rule.ruleSet[ruleID] {
-				return true
-			}
+		if !RegexMatchWithCache(rule.pathRegex, normalizedPath) {
+			continue
+		}
+		if rule.excludeAll {
+			return true
+		}
+		if rule.ruleSet[iss.RuleID] {
+			return true
+		}
+		if iss.HardcodedCredentialAddenda != nil &&
+			rule.hardcodedCredentialsExcluder != nil &&
+			rule.hardcodedCredentialsExcluder.ShouldExcludeKV(
+				iss.HardcodedCredentialAddenda.Key,
+				iss.HardcodedCredentialAddenda.Value,
+			) {
+			return true
 		}
 	}
 
@@ -104,7 +120,7 @@ func (f *PathExclusionFilter) FilterIssues(issues []*issue.Issue) ([]*issue.Issu
 	excluded := 0
 
 	for _, iss := range issues {
-		if f.ShouldExclude(iss.File, iss.RuleID) {
+		if f.ShouldExclude(iss) {
 			excluded++
 			continue
 		}

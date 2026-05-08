@@ -26,7 +26,11 @@
     },
     {
       "path": ".*_test\\.go$",
-      "rules": ["G101", "G304"]
+      "rules": ["G304"],
+      "G101": {
+        "keys": ["(?i)^fake", "(?i)^test"],
+        "values": ["(?i)^fake", "(?i)^test", "\\*{4,}"]
+      }
     },
     {
       "path": "internal/(mock|fake|stub)s?/.*",
