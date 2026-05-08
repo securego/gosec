@@ -69,6 +69,10 @@ var _ = Describe("PathExclusionFilter", func() {
 				rules := []gosec.PathExcludeRule{
 					{Path: "cmd/.*", Rules: []string{"G204", "G304"}},
 					{Path: "internal/testutil/.*", Rules: []string{"G101"}},
+					{Path: "_test.go$", G101: gosec.HardcodedCredentialExcludeOptions{
+						Keys:   []string{"(?i)^fake", "(?i)^test"},
+						Values: []string{"(?i)^fake", "(?i)^test"},
+					}},
 				}
 				var err error
 				filter, err = gosec.NewPathExclusionFilter(rules)
@@ -84,6 +88,22 @@ var _ = Describe("PathExclusionFilter", func() {
 					File:   "cmd/another/file.go",
 					RuleID: "G304",
 				})).To(BeTrue())
+				Expect(filter.ShouldExclude(&issue.Issue{
+					File:   "cmd/another/file_test.go",
+					RuleID: "G101",
+					HardcodedCredentialAddenda: &issue.HardcodedCredentialAddenda{
+						Key:   "FakeToken",
+						Value: "l0ok5-l1K3_(rEd3nt|als",
+					},
+				})).To(BeTrue())
+				Expect(filter.ShouldExclude(&issue.Issue{
+					File:   "cmd/another/file_test.go",
+					RuleID: "G101",
+					HardcodedCredentialAddenda: &issue.HardcodedCredentialAddenda{
+						Key:   "Token",
+						Value: "test credentials",
+					},
+				})).To(BeTrue())
 			})
 
 			It("should not exclude matching path with non-matching rule", func() {
@@ -94,6 +114,22 @@ var _ = Describe("PathExclusionFilter", func() {
 				Expect(filter.ShouldExclude(&issue.Issue{
 					File:   "cmd/mytool/main.go",
 					RuleID: "G401",
+				})).To(BeFalse())
+				Expect(filter.ShouldExclude(&issue.Issue{
+					File:   "cmd/another/file_test.go",
+					RuleID: "G101",
+					HardcodedCredentialAddenda: &issue.HardcodedCredentialAddenda{
+						Key:   "MyVar",
+						Value: "l0ok5-l1K3_(rEd3nt|als",
+					},
+				})).To(BeFalse())
+				Expect(filter.ShouldExclude(&issue.Issue{
+					File:   "cmd/another/file_test.go",
+					RuleID: "G101",
+					HardcodedCredentialAddenda: &issue.HardcodedCredentialAddenda{
+						Key:   "Token",
+						Value: "could be anything",
+					},
 				})).To(BeFalse())
 			})
 
