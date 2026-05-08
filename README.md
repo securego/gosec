@@ -305,6 +305,13 @@ suppress specific rules for specific paths.
     {
       "path": "scripts/.*",
       "rules": ["*"]
+    },
+    {
+      "path": "_test\\.go$"",
+      "G101": {
+        "keys": ["(?i)^test", "(?i)^fake"],
+        "values": ["(?i)^test", "(?i)^fake", "\\*{4}"]
+      }
     }
   ]
 }
