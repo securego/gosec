@@ -566,5 +566,41 @@ func main() {
 	}
 }
 `}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+func main() {
+	_ = map[string]string{
+		"test_github_token": "ghp_iR54dhCYg9Tfmoywi9xLmmKZrrnAw438BYh3",
+	}
+}
+`}, 0, func() gosec.Config {
+			cfg := gosec.NewConfig()
+			cfg[gosec.ExcludeRulesKey] = []any{map[string]any{
+				"path": ".*", // match any path
+				"G101": map[string]any{
+					"keys": []string{"(?i)^test"},
+				},
+			}}
+			return cfg
+		}()},
+		{[]string{`
+package main
+
+func main() {
+	_ = map[string]string{
+		"github_token": "ghp_******",
+	}
+}
+`}, 0, func() gosec.Config {
+			cfg := gosec.NewConfig()
+			cfg[gosec.ExcludeRulesKey] = []any{map[string]any{
+				"path": ".*", // match any path
+				"G101": map[string]any{
+					"values": []string{"\\*{4}"},
+				},
+			}}
+			return cfg
+		}()},
 	}
 )
