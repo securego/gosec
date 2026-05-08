@@ -77,22 +77,21 @@ func NewPathExclusionFilter(rules []PathExcludeRule) (*PathExclusionFilter, erro
 	return &PathExclusionFilter{rules: compiled}, nil
 }
 
-// ShouldExclude returns true if the given issue should be excluded based on
-// its file path and rule ID
-func (f *PathExclusionFilter) ShouldExclude(filePath, ruleID string) bool {
+// ShouldExclude returns true if the given issue should be excluded.
+func (f *PathExclusionFilter) ShouldExclude(iss *issue.Issue) bool {
 	if f == nil || len(f.rules) == 0 {
 		return false
 	}
 
 	// Normalize path separators for consistent matching
-	normalizedPath := strings.ReplaceAll(filePath, "\\", "/")
+	normalizedPath := strings.ReplaceAll(iss.File, "\\", "/")
 
 	for _, rule := range f.rules {
 		if rule.pathRegex.MatchString(normalizedPath) {
 			if rule.excludeAll {
 				return true
 			}
-			if rule.ruleSet[ruleID] {
+			if rule.ruleSet[iss.RuleID] {
 				return true
 			}
 		}
@@ -112,7 +111,7 @@ func (f *PathExclusionFilter) FilterIssues(issues []*issue.Issue) ([]*issue.Issu
 	excluded := 0
 
 	for _, iss := range issues {
-		if f.ShouldExclude(iss.File, iss.RuleID) {
+		if f.ShouldExclude(iss) {
 			excluded++
 			continue
 		}

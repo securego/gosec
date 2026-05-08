@@ -76,24 +76,51 @@ var _ = Describe("PathExclusionFilter", func() {
 			})
 
 			It("should exclude matching path and rule", func() {
-				Expect(filter.ShouldExclude("cmd/mytool/main.go", "G204")).To(BeTrue())
-				Expect(filter.ShouldExclude("cmd/another/file.go", "G304")).To(BeTrue())
+				Expect(filter.ShouldExclude(&issue.Issue{
+					File:   "cmd/mytool/main.go",
+					RuleID: "G204",
+				})).To(BeTrue())
+				Expect(filter.ShouldExclude(&issue.Issue{
+					File:   "cmd/another/file.go",
+					RuleID: "G304",
+				})).To(BeTrue())
 			})
 
 			It("should not exclude matching path with non-matching rule", func() {
-				Expect(filter.ShouldExclude("cmd/mytool/main.go", "G101")).To(BeFalse())
-				Expect(filter.ShouldExclude("cmd/mytool/main.go", "G401")).To(BeFalse())
+				Expect(filter.ShouldExclude(&issue.Issue{
+					File:   "cmd/mytool/main.go",
+					RuleID: "G101",
+				})).To(BeFalse())
+				Expect(filter.ShouldExclude(&issue.Issue{
+					File:   "cmd/mytool/main.go",
+					RuleID: "G401",
+				})).To(BeFalse())
 			})
 
 			It("should not exclude non-matching path", func() {
-				Expect(filter.ShouldExclude("pkg/server/main.go", "G204")).To(BeFalse())
-				Expect(filter.ShouldExclude("internal/api/handler.go", "G304")).To(BeFalse())
+				Expect(filter.ShouldExclude(&issue.Issue{
+					File:   "pkg/server/main.go",
+					RuleID: "G204",
+				})).To(BeFalse())
+				Expect(filter.ShouldExclude(&issue.Issue{
+					File:   "internal/api/handler.go",
+					RuleID: "G304",
+				})).To(BeFalse())
 			})
 
 			It("should handle nested paths correctly", func() {
-				Expect(filter.ShouldExclude("internal/testutil/helper.go", "G101")).To(BeTrue())
-				Expect(filter.ShouldExclude("internal/testutil/sub/file.go", "G101")).To(BeTrue())
-				Expect(filter.ShouldExclude("internal/other/file.go", "G101")).To(BeFalse())
+				Expect(filter.ShouldExclude(&issue.Issue{
+					File:   "internal/testutil/helper.go",
+					RuleID: "G101",
+				})).To(BeTrue())
+				Expect(filter.ShouldExclude(&issue.Issue{
+					File:   "internal/testutil/sub/file.go",
+					RuleID: "G101",
+				})).To(BeTrue())
+				Expect(filter.ShouldExclude(&issue.Issue{
+					File:   "internal/other/file.go",
+					RuleID: "G101",
+				})).To(BeFalse())
 			})
 		})
 
@@ -109,14 +136,29 @@ var _ = Describe("PathExclusionFilter", func() {
 			})
 
 			It("should exclude any rule for matching path", func() {
-				Expect(filter.ShouldExclude("scripts/build.go", "G101")).To(BeTrue())
-				Expect(filter.ShouldExclude("scripts/build.go", "G204")).To(BeTrue())
-				Expect(filter.ShouldExclude("scripts/build.go", "G304")).To(BeTrue())
-				Expect(filter.ShouldExclude("vendor/lib/file.go", "G401")).To(BeTrue())
+				Expect(filter.ShouldExclude(&issue.Issue{
+					File:   "scripts/build.go",
+					RuleID: "G101",
+				})).To(BeTrue())
+				Expect(filter.ShouldExclude(&issue.Issue{
+					File:   "scripts/build.go",
+					RuleID: "G204",
+				})).To(BeTrue())
+				Expect(filter.ShouldExclude(&issue.Issue{
+					File:   "scripts/build.go",
+					RuleID: "G304",
+				})).To(BeTrue())
+				Expect(filter.ShouldExclude(&issue.Issue{
+					File:   "vendor/lib/file.go",
+					RuleID: "G401",
+				})).To(BeTrue())
 			})
 
 			It("should not exclude non-matching paths", func() {
-				Expect(filter.ShouldExclude("cmd/main.go", "G101")).To(BeFalse())
+				Expect(filter.ShouldExclude(&issue.Issue{
+					File:   "cmd/main.go",
+					RuleID: "G101",
+				})).To(BeFalse())
 			})
 		})
 
@@ -131,20 +173,32 @@ var _ = Describe("PathExclusionFilter", func() {
 			})
 
 			It("should normalize backslashes to forward slashes", func() {
-				Expect(filter.ShouldExclude("cmd\\mytool\\main.go", "G204")).To(BeTrue())
-				Expect(filter.ShouldExclude("cmd\\nested\\deep\\file.go", "G204")).To(BeTrue())
+				Expect(filter.ShouldExclude(&issue.Issue{
+					File:   "cmd\\mytool\\main.go",
+					RuleID: "G204",
+				})).To(BeTrue())
+				Expect(filter.ShouldExclude(&issue.Issue{
+					File:   "cmd\\nested\\deep\\file.go",
+					RuleID: "G204",
+				})).To(BeTrue())
 			})
 		})
 
 		Context("with nil or empty filter", func() {
 			It("should not exclude anything with nil filter", func() {
 				var nilFilter *gosec.PathExclusionFilter
-				Expect(nilFilter.ShouldExclude("any/path.go", "G101")).To(BeFalse())
+				Expect(nilFilter.ShouldExclude(&issue.Issue{
+					File:   "any/path.go",
+					RuleID: "G101",
+				})).To(BeFalse())
 			})
 
 			It("should not exclude anything with empty rules", func() {
 				filter, _ := gosec.NewPathExclusionFilter(nil)
-				Expect(filter.ShouldExclude("any/path.go", "G101")).To(BeFalse())
+				Expect(filter.ShouldExclude(&issue.Issue{
+					File:   "any/path.go",
+					RuleID: "G101",
+				})).To(BeFalse())
 			})
 		})
 
@@ -161,23 +215,56 @@ var _ = Describe("PathExclusionFilter", func() {
 			})
 
 			It("should match test files", func() {
-				Expect(filter.ShouldExclude("pkg/auth/auth_test.go", "G101")).To(BeTrue())
-				Expect(filter.ShouldExclude("internal/handler_test.go", "G101")).To(BeTrue())
-				Expect(filter.ShouldExclude("pkg/auth/auth.go", "G101")).To(BeFalse())
+				Expect(filter.ShouldExclude(&issue.Issue{
+					File:   "pkg/auth/auth_test.go",
+					RuleID: "G101",
+				})).To(BeTrue())
+				Expect(filter.ShouldExclude(&issue.Issue{
+					File:   "internal/handler_test.go",
+					RuleID: "G101",
+				})).To(BeTrue())
+				Expect(filter.ShouldExclude(&issue.Issue{
+					File:   "pkg/auth/auth.go",
+					RuleID: "G101",
+				})).To(BeFalse())
 			})
 
 			It("should match cmd or tools prefix", func() {
-				Expect(filter.ShouldExclude("cmd/server/main.go", "G204")).To(BeTrue())
-				Expect(filter.ShouldExclude("tools/generator/gen.go", "G204")).To(BeTrue())
-				Expect(filter.ShouldExclude("pkg/cmd/helper.go", "G204")).To(BeFalse())
+				Expect(filter.ShouldExclude(&issue.Issue{
+					File:   "cmd/server/main.go",
+					RuleID: "G204",
+				})).To(BeTrue())
+				Expect(filter.ShouldExclude(&issue.Issue{
+					File:   "tools/generator/gen.go",
+					RuleID: "G204",
+				})).To(BeTrue())
+				Expect(filter.ShouldExclude(&issue.Issue{
+					File:   "pkg/cmd/helper.go",
+					RuleID: "G204",
+				})).To(BeFalse())
 			})
 
 			It("should match mock/fake/stub directories", func() {
-				Expect(filter.ShouldExclude("internal/mocks/service.go", "G401")).To(BeTrue())
-				Expect(filter.ShouldExclude("internal/mock/client.go", "G304")).To(BeTrue())
-				Expect(filter.ShouldExclude("internal/fakes/repo.go", "G101")).To(BeTrue())
-				Expect(filter.ShouldExclude("internal/stub/handler.go", "G204")).To(BeTrue())
-				Expect(filter.ShouldExclude("internal/real/service.go", "G401")).To(BeFalse())
+				Expect(filter.ShouldExclude(&issue.Issue{
+					File:   "internal/mocks/service.go",
+					RuleID: "G401",
+				})).To(BeTrue())
+				Expect(filter.ShouldExclude(&issue.Issue{
+					File:   "internal/mock/client.go",
+					RuleID: "G304",
+				})).To(BeTrue())
+				Expect(filter.ShouldExclude(&issue.Issue{
+					File:   "internal/fakes/repo.go",
+					RuleID: "G101",
+				})).To(BeTrue())
+				Expect(filter.ShouldExclude(&issue.Issue{
+					File:   "internal/stub/handler.go",
+					RuleID: "G204",
+				})).To(BeTrue())
+				Expect(filter.ShouldExclude(&issue.Issue{
+					File:   "internal/real/service.go",
+					RuleID: "G401",
+				})).To(BeFalse())
 			})
 		})
 	})
@@ -392,7 +479,10 @@ func TestShouldExclude(t *testing.T) {
 				t.Fatalf("NewPathExclusionFilter() error = %v", err)
 			}
 
-			got := filter.ShouldExclude(tt.filePath, tt.ruleID)
+			got := filter.ShouldExclude(&issue.Issue{
+				File:   tt.filePath,
+				RuleID: tt.ruleID,
+			})
 			if got != tt.want {
 				t.Errorf("ShouldExclude(%q, %q) = %v, want %v",
 					tt.filePath, tt.ruleID, got, tt.want)
