@@ -111,7 +111,7 @@ func (o HardcodedCredentialExcludeOptions) Compile() (*CompiledHardcodedCredenti
 
 // AnyExcludes returns whether any exclude keys or values have been configured.
 func (r *CompiledHardcodedCredentialsRule) AnyExcludes() bool {
-	return r == nil || r.anyExcludes
+	return r != nil && r.anyExcludes
 }
 
 // ShouldExcludeKV returns whether key or value should be excluded
