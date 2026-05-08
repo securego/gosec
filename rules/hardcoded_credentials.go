@@ -246,6 +246,10 @@ func (r *credentials) issueForMatchedKey(n ast.Node, lhs string, rhs ast.Expr, c
 	}
 	if r.ignoreEntropy || r.isHighEntropyString(val) {
 		iss := ctx.NewIssue(n, r.ID(), r.What, r.Severity, r.Confidence)
+		iss.HardcodedCredentialAddenda = &issue.HardcodedCredentialAddenda{
+			Key:   lhs,
+			Value: val,
+		}
 		return iss
 	}
 	return nil
@@ -258,11 +262,17 @@ func (r *credentials) issueIfValueInSecretFormat(n ast.Node, lhs string, rhs ast
 	}
 
 	if r.ignoreEntropy || r.isHighEntropyString(val) {
-		if ok, patternName := r.isSecretPattern(val); ok {
-			what := fmt.Sprintf("%s: %s", r.What, patternName)
-			iss := ctx.NewIssue(n, r.ID(), what, r.Severity, r.Confidence)
-			return iss
+		ok, patternName := r.isSecretPattern(val)
+		if !ok {
+			return nil
 		}
+		what := fmt.Sprintf("%s: %s", r.What, patternName)
+		iss := ctx.NewIssue(n, r.ID(), what, r.Severity, r.Confidence)
+		iss.HardcodedCredentialAddenda = &issue.HardcodedCredentialAddenda{
+			Key:   lhs,
+			Value: val,
+		}
+		return iss
 	}
 	return nil
 }
