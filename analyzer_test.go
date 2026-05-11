@@ -28,6 +28,7 @@ import (
 
 	"github.com/securego/gosec/v2"
 	"github.com/securego/gosec/v2/analyzers"
+	"github.com/securego/gosec/v2/issue"
 	"github.com/securego/gosec/v2/rules"
 	"github.com/securego/gosec/v2/testutils"
 )
@@ -2580,6 +2581,103 @@ func main() {
 
 			// Should not panic with no analyzers
 			analyzer.CheckAnalyzers(pkgs[0])
+		})
+	})
+
+	Context("when requiring rule IDs and justifications in nosec directives", func() {
+		// runAnalyzer builds a package whose md5 line carries the given
+		// directive comment and runs gosec with the supplied global options.
+		runAnalyzer := func(directive string, opts map[gosec.GlobalOption]string) ([]*issue.Issue, map[string][]gosec.Error) {
+			sample := testutils.SampleCodeG401[0]
+			source := sample.Code[0]
+
+			cfg := gosec.NewConfig()
+			for k, v := range opts {
+				cfg.SetGlobal(k, v)
+			}
+			customAnalyzer := gosec.NewAnalyzer(cfg, tests, false, false, 1, logger)
+			customAnalyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G401")).RulesInfo())
+
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			src := strings.Replace(source, "h := md5.New()", "h := md5.New() "+directive, 1)
+			pkg.AddFile("md5.go", src)
+			Expect(pkg.Build()).Should(Succeed())
+			Expect(customAnalyzer.Process(buildTags, pkg.Path)).Should(Succeed())
+			issues, _, errs := customAnalyzer.Report()
+			return issues, errs
+		}
+
+		// errCount totals errors across all files.
+		errCount := func(errs map[string][]gosec.Error) int {
+			n := 0
+			for _, e := range errs {
+				n += len(e)
+			}
+			return n
+		}
+
+		It("suppresses naked nosec when require-rules is disabled (default)", func() {
+			issues, errs := runAnalyzer("//#nosec", nil)
+			Expect(issues).Should(BeEmpty())
+			Expect(errCount(errs)).To(Equal(0))
+		})
+
+		It("does not suppress naked nosec when require-rules is enabled, and reports an error", func() {
+			issues, errs := runAnalyzer("//#nosec", map[gosec.GlobalOption]string{
+				gosec.NoSecRequireRules: "true",
+			})
+			Expect(issues).ShouldNot(BeEmpty())
+			Expect(errCount(errs)).To(Equal(1))
+		})
+
+		It("does not suppress legacy `block` directive when require-rules is enabled", func() {
+			issues, errs := runAnalyzer("//#nosec block", map[gosec.GlobalOption]string{
+				gosec.NoSecRequireRules: "true",
+			})
+			Expect(issues).ShouldNot(BeEmpty())
+			Expect(errCount(errs)).To(Equal(1))
+		})
+
+		It("suppresses directive with rule ID when require-rules is enabled", func() {
+			issues, errs := runAnalyzer("//#nosec G401", map[gosec.GlobalOption]string{
+				gosec.NoSecRequireRules: "true",
+			})
+			Expect(issues).Should(BeEmpty())
+			Expect(errCount(errs)).To(Equal(0))
+		})
+
+		It("does not suppress directive without justification when require-justification is enabled", func() {
+			issues, errs := runAnalyzer("//#nosec G401", map[gosec.GlobalOption]string{
+				gosec.NoSecRequireJustification: "true",
+			})
+			Expect(issues).ShouldNot(BeEmpty())
+			Expect(errCount(errs)).To(Equal(1))
+		})
+
+		It("does not suppress directive with empty justification when require-justification is enabled", func() {
+			issues, errs := runAnalyzer("//#nosec G401 --", map[gosec.GlobalOption]string{
+				gosec.NoSecRequireJustification: "true",
+			})
+			Expect(issues).ShouldNot(BeEmpty())
+			Expect(errCount(errs)).To(Equal(1))
+		})
+
+		It("suppresses directive with rule ID and justification when both options are enabled", func() {
+			issues, errs := runAnalyzer("//#nosec G401 -- false positive in test", map[gosec.GlobalOption]string{
+				gosec.NoSecRequireRules:         "true",
+				gosec.NoSecRequireJustification: "true",
+			})
+			Expect(issues).Should(BeEmpty())
+			Expect(errCount(errs)).To(Equal(0))
+		})
+
+		It("enforces the same rules for the //gosec:disable form", func() {
+			issues, errs := runAnalyzer("//gosec:disable", map[gosec.GlobalOption]string{
+				gosec.NoSecRequireRules: "true",
+			})
+			Expect(issues).ShouldNot(BeEmpty())
+			Expect(errCount(errs)).To(Equal(1))
 		})
 	})
 })

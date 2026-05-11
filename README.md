@@ -514,6 +514,37 @@ the following:
 gosec -nosec=true ./...
 ```
 
+#### Requiring rule IDs and justifications
+
+To prevent annotations from inadvertently suppressing unrelated
+rules, or from being added without explanation, gosec accepts
+two opt-in flags. Both default to `false`, so existing
+codebases keep working unchanged.
+
+- `-nosec-require-rules` rejects naked `#nosec` /
+  `//gosec:disable` directives that do not list any rule ID.
+- `-nosec-require-justification` rejects directives that do
+  not carry a `-- justification` after the rule list.
+
+When enabled, a directive that fails the check no longer
+suppresses any finding and is reported as an error in the
+output, alongside any underlying issue on the line.
+
+```bash
+gosec -nosec-require-rules -nosec-require-justification ./...
+```
+
+The same options can be set via the global config block:
+
+```json
+{
+    "global": {
+        "nosec-require-rules": "enabled",
+        "nosec-require-justification": "enabled"
+    }
+}
+```
+
 ### Tracking suppressions
 
 As described above, we could suppress violations externally

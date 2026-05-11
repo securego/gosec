@@ -800,6 +800,13 @@ func (gosec *Analyzer) AppendError(file string, err error) {
 	gosec.errors[file] = errors
 }
 
+// appendErrorAt appends an error tied to a specific source location.
+func (gosec *Analyzer) appendErrorAt(file string, line, column int, err error) {
+	errs := gosec.errors[file]
+	errs = append(errs, *NewError(line, column, err.Error()))
+	gosec.errors[file] = errs
+}
+
 // findNoSecDirective checks if the comment group contains `#nosec` or `//gosec:disable` directive.
 // If found, it returns true and the directive's arguments.
 func findNoSecDirective(group *ast.CommentGroup, noSecDefaultTag, noSecAlternativeTag string) (bool, string) {
@@ -963,6 +970,9 @@ func (v *astVisitor) ignore(n ast.Node) (map[string]issue.SuppressionInfo, *ast.
 		noSecAlternativeTag = NoSecTag(noSecAlternativeTag)
 	}
 
+	requireRules, _ := v.gosec.config.IsGlobalEnabled(NoSecRequireRules)
+	requireJustification, _ := v.gosec.config.IsGlobalEnabled(NoSecRequireJustification)
+
 	for _, group := range groups {
 		found, args := findNoSecDirective(group, noSecDefaultTag, noSecAlternativeTag)
 		if !found {
@@ -971,54 +981,74 @@ func (v *astVisitor) ignore(n ast.Node) (map[string]issue.SuppressionInfo, *ast.
 		v.stats.NumNosec++
 
 		justification := ""
+		hasJustificationDelim := false
 		if idx := strings.Index(args, "--"); idx > -1 {
+			hasJustificationDelim = true
 			justification = strings.TrimSpace(strings.TrimLeft(args[idx+2:], "-"))
 			args = args[:idx]
 		}
 
 		directive := strings.TrimSpace(args)
-		// If the directive is empty or contains "block" (legacy), ignore all rules
-		if len(directive) == 0 || directive == "block" {
-			return map[string]issue.SuppressionInfo{
-				aliasOfAllRules: {
-					Kind:          "inSource",
-					Justification: justification,
-				},
-			}, group
-		}
-
 		ignores := make(map[string]issue.SuppressionInfo)
 		suppression := issue.SuppressionInfo{
 			Kind:          "inSource",
 			Justification: justification,
 		}
 
-		// Manually parse identifiers starting with 'G' followed by 3 digits
-		for i := 0; i < len(directive); {
-			if directive[i] == 'G' && i+4 <= len(directive) {
-				ruleID := directive[i : i+4]
-				valid := true
-				for j := 1; j < 4; j++ {
-					if directive[i+j] < '0' || directive[i+j] > '9' {
-						valid = false
-						break
+		// Manually parse identifiers starting with 'G' followed by 3 digits.
+		// A directive that is empty or equals the legacy "block" keyword
+		// suppresses all rules.
+		if len(directive) != 0 && directive != "block" {
+			for i := 0; i < len(directive); {
+				if directive[i] == 'G' && i+4 <= len(directive) {
+					ruleID := directive[i : i+4]
+					valid := true
+					for j := 1; j < 4; j++ {
+						if directive[i+j] < '0' || directive[i+j] > '9' {
+							valid = false
+							break
+						}
+					}
+					if valid {
+						ignores[ruleID] = suppression
+						i += 4
+						continue
 					}
 				}
-				if valid {
-					ignores[ruleID] = suppression
-					i += 4
-					continue
-				}
+				i++
 			}
-			i++
 		}
 
-		if len(ignores) == 0 {
+		naked := len(ignores) == 0
+		justificationMissing := !hasJustificationDelim || justification == ""
+
+		if requireRules && naked {
+			v.reportInvalidDirective(group, "missing rule ID (e.g. G401); naked #nosec / //gosec:disable is disallowed by -nosec-require-rules")
+			continue
+		}
+		if requireJustification && justificationMissing {
+			v.reportInvalidDirective(group, "missing justification (expected `-- <reason>`); required by -nosec-require-justification")
+			continue
+		}
+
+		if naked {
 			ignores[aliasOfAllRules] = suppression
 		}
 		return ignores, group
 	}
 	return nil, nil
+}
+
+// reportInvalidDirective records an error for a malformed nosec directive so
+// it surfaces in reports without suppressing any findings.
+func (v *astVisitor) reportInvalidDirective(group *ast.CommentGroup, reason string) {
+	tokFile := v.context.FileSet.File(group.Pos())
+	if tokFile == nil {
+		return
+	}
+	pos := tokFile.Position(group.Pos())
+	v.gosec.appendErrorAt(tokFile.Name(), pos.Line, pos.Column,
+		fmt.Errorf("invalid nosec directive: %s", reason))
 }
 
 // updateIssues updates the issues list with the given issue, handling suppressions.

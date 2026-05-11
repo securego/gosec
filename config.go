@@ -33,6 +33,15 @@ const (
 	IncludeRules GlobalOption = "include"
 	// SSA global option to enable go analysis framework with SSA support
 	SSA GlobalOption = "ssa"
+	// NoSecRequireRules global option requires at least one rule ID in every
+	// #nosec / //gosec:disable annotation. When enabled, naked directives no
+	// longer suppress any findings and an error is reported instead.
+	NoSecRequireRules GlobalOption = "nosec-require-rules"
+	// NoSecRequireJustification global option requires a `-- justification`
+	// in every #nosec / //gosec:disable annotation. When enabled, directives
+	// without a justification no longer suppress any findings and an error is
+	// reported instead.
+	NoSecRequireJustification GlobalOption = "nosec-require-justification"
 )
 
 // NoSecTag returns the tag used to disable gosec for a line of code.

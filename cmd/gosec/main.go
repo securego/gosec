@@ -103,6 +103,12 @@ Use "*" to exclude all rules for a path: "scripts/.*:*"`)
 	// #nosec alternative tag
 	flagAlternativeNoSec = flag.String("nosec-tag", "", "Set an alternative string for #nosec. Some examples: #dontanalyze, #falsepositive")
 
+	// require rule IDs in #nosec annotations
+	flagNoSecRequireRules = flag.Bool("nosec-require-rules", false, "Require at least one rule ID (e.g. G401) in every #nosec / //gosec:disable annotation")
+
+	// require justification in #nosec annotations
+	flagNoSecRequireJustification = flag.Bool("nosec-require-justification", false, "Require a `-- justification` in every #nosec / //gosec:disable annotation")
+
 	// flagEnableAudit enables audit mode
 	flagEnableAudit = flag.Bool("enable-audit", false, "Enable audit mode")
 
@@ -238,6 +244,12 @@ func loadConfig(configFile string) (gosec.Config, error) {
 	}
 	if *flagAlternativeNoSec != "" {
 		config.SetGlobal(gosec.NoSecAlternative, *flagAlternativeNoSec)
+	}
+	if *flagNoSecRequireRules {
+		config.SetGlobal(gosec.NoSecRequireRules, "true")
+	}
+	if *flagNoSecRequireJustification {
+		config.SetGlobal(gosec.NoSecRequireJustification, "true")
 	}
 	if *flagEnableAudit {
 		config.SetGlobal(gosec.Audit, "true")
