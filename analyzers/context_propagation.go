@@ -728,7 +728,22 @@ func isCancelCalled(cancelValue ssa.Value, allFuncs []*ssa.Function) bool {
 						return true
 					}
 				}
+				// Cancel stored into a slice/array element (e.g.
+				// `defers = append(defers, cancel)`, which lowers to a Store
+				// into the variadic array). The cancel escapes into a
+				// collection whose iteration sites are not reliably traceable
+				// in SSA — treat as a transfer of responsibility, mirroring
+				// the global/returned-field handling above.
+				if _, ok := r.Addr.(*ssa.IndexAddr); ok {
+					return true
+				}
 				queue = append(queue, r.Addr)
+			case *ssa.MapUpdate:
+				// Cancel stored as a map value (e.g.
+				// `cleanups[key] = cancel`). Same reasoning as IndexAddr.
+				if r.Value == current {
+					return true
+				}
 			case *ssa.UnOp:
 				if r.Op == token.MUL && r.X == current {
 					queue = append(queue, r)

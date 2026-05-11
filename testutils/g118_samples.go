@@ -1872,4 +1872,69 @@ func setup() {
 	}()
 }
 `}, 0, gosec.NewConfig()},
+
+	// Safe: cancel appended to a cleanup slice that is iterated by a
+	// deferred closure (issue #1668)
+	{[]string{`
+package main
+
+import (
+	"context"
+	"time"
+)
+
+func main() {
+	defers := make([]func(), 0, 1)
+	defer func() {
+		for _, fn := range defers {
+			fn()
+		}
+	}()
+
+	_, cancel := context.WithTimeout(context.Background(), time.Second)
+	defers = append(defers, cancel)
+}
+`}, 0, gosec.NewConfig()},
+
+	// Safe: cancel appended to a slice that is returned to the caller
+	{[]string{`
+package main
+
+import "context"
+
+func cleanups(ctx context.Context) []func() {
+	var fns []func()
+	_, cancel := context.WithCancel(ctx)
+	fns = append(fns, cancel)
+	return fns
+}
+`}, 0, gosec.NewConfig()},
+
+	// Safe: cancel stored as a map value (tests MapUpdate handling)
+	{[]string{`
+package main
+
+import "context"
+
+func register(ctx context.Context, key string) map[string]context.CancelFunc {
+	m := make(map[string]context.CancelFunc)
+	_, cancel := context.WithCancel(ctx)
+	m[key] = cancel
+	return m
+}
+`}, 0, gosec.NewConfig()},
+
+	// Safe: cancel placed into a fixed-size array element
+	{[]string{`
+package main
+
+import "context"
+
+func arrayStore(ctx context.Context) [1]context.CancelFunc {
+	var arr [1]context.CancelFunc
+	_, cancel := context.WithCancel(ctx)
+	arr[0] = cancel
+	return arr
+}
+`}, 0, gosec.NewConfig()},
 }
