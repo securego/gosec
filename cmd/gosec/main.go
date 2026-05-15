@@ -66,7 +66,9 @@ USAGE:
 	$ gosec --exclude-rules="scripts/.*:*" ./...
 `
 	// Environment variable for AI API key.
-	aiAPIKeyEnv = "GOSEC_AI_API_KEY" // #nosec G101
+	aiAPIKeyEnv      = "GOSEC_AI_API_KEY" // #nosec G101
+	atlasAPIKeyEnv   = "ATLASCLOUD_API_KEY"
+	atlasProviderEnv = "atlas"
 
 	// Exit codes
 	exitSuccess = 0
@@ -181,7 +183,7 @@ Use "*" to exclude all rules for a path: "scripts/.*:*"`)
 	flagAiAPIKey = flag.String("ai-api-key", "", "Key to access the AI API")
 
 	// base URL for AI API (optional, for OpenAI-compatible APIs)
-	flagAiBaseURL = flag.String("ai-base-url", "", "Base URL for AI API (e.g., for OpenAI-compatible services)")
+	flagAiBaseURL = flag.String("ai-base-url", "", "Base URL for AI API (e.g., for Atlas Cloud or other OpenAI-compatible services)")
 
 	// skip SSL verification for AI API
 	flagAiSkipSSL = flag.Bool("ai-skip-ssl", false, "Skip SSL certificate verification for AI API")
@@ -589,6 +591,9 @@ func run() int {
 
 	// Call AI request to solve the issues
 	aiAPIKey := os.Getenv(aiAPIKeyEnv)
+	if aiAPIKey == "" && strings.HasPrefix(*flagAiAPIProvider, atlasProviderEnv) {
+		aiAPIKey = os.Getenv(atlasAPIKeyEnv)
+	}
 	if aiAPIKey == "" {
 		aiAPIKey = *flagAiAPIKey
 	}

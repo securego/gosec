@@ -53,7 +53,7 @@ func TestGenerateSolutionByGemini_NoCandidates(t *testing.T) {
 	err := generateSolution(mockClient, issues)
 
 	// Assert
-	require.EqualError(t, err, "no autofix returned by gemini")
+	require.EqualError(t, err, "no autofix returned by AI provider")
 	mock.AssertExpectationsForObjects(t, mockClient)
 }
 
@@ -70,7 +70,7 @@ func TestGenerateSolutionByGemini_APIError(t *testing.T) {
 	err := generateSolution(mockClient, issues)
 
 	// Assert
-	require.EqualError(t, err, "generating autofix with gemini: API error")
+	require.EqualError(t, err, "generating autofix with AI provider: API error")
 	mock.AssertExpectationsForObjects(t, mockClient)
 }
 

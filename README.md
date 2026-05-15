@@ -398,6 +398,14 @@ line arguments:
 
 - `ai-api-provider`: the name of the AI API provider.
   Supported providers:
+  - **Atlas Cloud**: `atlas` (default model
+    `deepseek-ai/deepseek-v4-flash`),
+    `atlas-deepseek-v4-flash`,
+    `atlas-qwen3-coder-next`, `atlas-kimi-k2.6`, or
+    `atlas/<model-id>` / `atlas:<model-id>` for any Atlas Cloud
+    hosted chat model.
+    Atlas Cloud is an OpenAI-compatible provider available at
+    [atlascloud.ai](https://www.atlascloud.ai/?utm_source=github&utm_medium=link&utm_campaign=gosec)
   - **Gemini**: `gemini-3-pro-preview` (default),
     `gemini-2.5-pro`, `gemini-2.5-flash`,
     `gemini-2.5-flash-lite`
@@ -411,6 +419,8 @@ line arguments:
     (requires `ai-base-url`)
 - `ai-api-key` or set the environment variable
   `GOSEC_AI_API_KEY`: the key to access the AI API
+  - For Atlas Cloud, you can also set `ATLASCLOUD_API_KEY`
+    and use the default base URL `https://api.atlascloud.ai/v1`
   - For Gemini, you can create an API key following
     [these instructions](https://ai.google.dev/gemini-api/docs/api-key)
   - For Claude, get your API key from
@@ -420,12 +430,23 @@ line arguments:
 - `ai-base-url`: (optional) custom base URL for
   OpenAI-compatible APIs (e.g., Azure OpenAI, LocalAI,
   Ollama)
+  - Atlas Cloud uses `https://api.atlascloud.ai/v1` by default,
+    so `ai-base-url` is optional for the built-in `atlas`
+    provider
 - `ai-skip-ssl`: (optional) skip SSL certificate verification
   for AI API (useful for self-signed certificates)
 
 **Examples:**
 
 ```bash
+# Using Atlas Cloud with the default DeepSeek V4 Flash model
+export ATLASCLOUD_API_KEY="your_key"
+gosec -ai-api-provider="atlas" ./...
+
+# Using Atlas Cloud with an explicit hosted model
+gosec -ai-api-provider="atlas:qwen/qwen3-coder-next" \
+  -ai-api-key="your_key" ./...
+
 # Using Gemini
 gosec -ai-api-provider="gemini-3-pro-preview" \
   -ai-api-key="your_key" ./...
