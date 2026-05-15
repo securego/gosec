@@ -1803,6 +1803,26 @@ func main() {
 			Expect(err).Should(HaveOccurred())
 		})
 
+		It("should properly parse the errors with colons in path", func() {
+			pkg := &packages.Package{
+				Errors: []packages.Error{
+					{
+						Pos: "C:\\file:1:2",
+						Msg: "build error",
+					},
+				},
+			}
+			errors, err := gosec.ParseErrors(pkg)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(errors).To(HaveLen(1))
+			for _, ferr := range errors {
+				Expect(ferr).To(HaveLen(1))
+				Expect(ferr[0].Line).To(Equal(1))
+				Expect(ferr[0].Column).To(Equal(2))
+				Expect(ferr[0].Err).Should(MatchRegexp(`build error`))
+			}
+		})
+
 		It("should append  error to the same file", func() {
 			pkg := &packages.Package{
 				Errors: []packages.Error{
