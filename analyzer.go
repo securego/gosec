@@ -762,7 +762,7 @@ func ParseErrors(pkg *packages.Package) (map[string][]Error, error) {
 		return nil, nil
 	}
 	errs := make(map[string][]Error)
-	var posRegexp = regexp.MustCompile(`^(.*?)(?::(\w+))?(?::(\w+))?$`)
+	posRegexp := regexp.MustCompile(`^(.*?)(?::(\w+))?(?::(\w+))?$`)
 	for _, pkgErr := range pkg.Errors {
 		matches := posRegexp.FindStringSubmatch(pkgErr.Pos)
 		file := pkgErr.Pos
