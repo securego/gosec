@@ -771,12 +771,12 @@ func ParseErrors(pkg *packages.Package) (map[string][]Error, error) {
 		if len(matches) > 0 {
 			file = matches[1]
 			file = strings.TrimSuffix(file, ":")
-			if matches[2] != "" {
+			if len(matches) > 2 && matches[2] != "" {
 				if line, err = strconv.Atoi(matches[2]); err != nil {
 					return nil, fmt.Errorf("parsing line: %w", err)
 				}
 			}
-			if matches[3] != "" {
+			if len(matches) > 3 && matches[3] != "" {
 				if column, err = strconv.Atoi(matches[3]); err != nil {
 					return nil, fmt.Errorf("parsing column: %w", err)
 				}
