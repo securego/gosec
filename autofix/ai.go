@@ -12,7 +12,7 @@ import (
 
 const (
 	AIProviderFlagHelp = `AI API provider to generate auto fixes to issues. Valid options are:
-	- atlas (Atlas Cloud default), atlas-deepseek-v4-flash, atlas-qwen3-coder-next, atlas-kimi-k2.6, atlas/<model-id>, atlas:<model-id>;
+	- atlas (Atlas Cloud default), atlas-deepseek-v4-flash, atlas-qwen3-coder-next, atlas-kimi-k2.6, atlas:<model-id>;
 - gemini-3-pro-preview (gemini, default), gemini-2.5-pro, gemini-2.5-flash, gemini-2.5-flash-lite;
 - claude-sonnet-4-6 (claude, default), claude-opus-4-7, claude-opus-4-6, claude-sonnet-4-5, claude-opus-4-5, claude-haiku-4-5;
 - gpt-5.4 (openai, default), gpt-5.4-mini, gpt-5.4-nano`
@@ -34,13 +34,13 @@ func GenerateSolution(model, aiAPIKey, baseURL string, skipSSL bool, issues []*i
 
 	switch {
 	case model == "atlas" || strings.HasPrefix(model, "atlas-") || strings.HasPrefix(model, "atlas/") || strings.HasPrefix(model, "atlas:"):
-		config := AtlasConfig{
+		config := atlasConfig{
 			Model:   model,
 			APIKey:  aiAPIKey,
 			BaseURL: baseURL,
 			SkipSSL: skipSSL,
 		}
-		client, err = NewAtlasClient(config)
+		client, err = newAtlasClient(config)
 	case strings.HasPrefix(model, "claude"):
 		client, err = NewClaudeClient(model, aiAPIKey)
 	case strings.HasPrefix(model, "gemini"):
