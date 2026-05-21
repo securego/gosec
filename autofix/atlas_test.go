@@ -16,22 +16,22 @@ func TestParseAtlasModel(t *testing.T) {
 		{
 			name:     "atlas defaults to deepseek v3",
 			input:    "atlas",
-			expected: ModelAtlasDefault,
+			expected: modelAtlasDefault,
 		},
 		{
 			name:     "atlas deepseek alias",
 			input:    "atlas-deepseek-v4-flash",
-			expected: ModelAtlasDeepSeekV4Flash,
+			expected: modelAtlasDeepSeekV4Flash,
 		},
 		{
 			name:     "atlas qwen alias",
 			input:    "atlas-qwen3-coder-next",
-			expected: ModelAtlasQwenCoderNext,
+			expected: modelAtlasQwenCoderNext,
 		},
 		{
 			name:     "atlas kimi alias",
 			input:    "atlas-kimi-k2.6",
-			expected: ModelAtlasKimiK26,
+			expected: modelAtlasKimiK26,
 		},
 		{
 			name:     "atlas slash syntax",
@@ -58,7 +58,7 @@ func TestParseAtlasModel(t *testing.T) {
 }
 
 func TestNewAtlasClient_Defaults(t *testing.T) {
-	client, err := NewAtlasClient(AtlasConfig{
+	client, err := newAtlasClient(atlasConfig{
 		Model:  "atlas",
 		APIKey: "test-key",
 	})
@@ -67,16 +67,16 @@ func TestNewAtlasClient_Defaults(t *testing.T) {
 
 	wrapper, ok := client.(*openaiWrapper)
 	require.True(t, ok)
-	assert.Equal(t, ModelAtlasDefault, string(wrapper.model))
+	assert.Equal(t, modelAtlasDefault, string(wrapper.model))
 	assert.Equal(t, 1024, wrapper.maxTokens)
 	assert.InEpsilon(t, 0.7, wrapper.temperature, 0.001)
 }
 
 func TestNewAtlasClient_CustomModelSyntax(t *testing.T) {
-	client, err := NewAtlasClient(AtlasConfig{
+	client, err := newAtlasClient(atlasConfig{
 		Model:   "atlas/moonshot-v1-8k",
 		APIKey:  "test-key",
-		BaseURL: DefaultAtlasBaseURL,
+		BaseURL: defaultAtlasBaseURL,
 	})
 	require.NoError(t, err)
 
