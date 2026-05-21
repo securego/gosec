@@ -66,9 +66,9 @@ USAGE:
 	$ gosec --exclude-rules="scripts/.*:*" ./...
 `
 	// Environment variable for AI API key.
-	aiAPIKeyEnv      = "GOSEC_AI_API_KEY" // #nosec G101
-	atlasAPIKeyEnv   = "ATLASCLOUD_API_KEY"
-	atlasProviderEnv = "atlas"
+	aiAPIKeyEnv   = "GOSEC_AI_API_KEY" // #nosec G101
+	aiProviderEnv = "GOSEC_AI_PROVIDER"
+	aiBaseURLEnv  = "GOSEC_AI_BASE_URL"
 
 	// Exit codes
 	exitSuccess = 0
@@ -183,7 +183,7 @@ Use "*" to exclude all rules for a path: "scripts/.*:*"`)
 	flagAiAPIKey = flag.String("ai-api-key", "", "Key to access the AI API")
 
 	// base URL for AI API (optional, for OpenAI-compatible APIs)
-	flagAiBaseURL = flag.String("ai-base-url", "", "Base URL for AI API (e.g., for Atlas Cloud or other OpenAI-compatible services)")
+	flagAiBaseURL = flag.String("ai-base-url", "", "Base URL for AI API (e.g., for OpenAI-compatible services)")
 
 	// skip SSL verification for AI API
 	flagAiSkipSSL = flag.Bool("ai-skip-ssl", false, "Skip SSL certificate verification for AI API")
@@ -590,18 +590,25 @@ func run() int {
 	reportInfo := gosec.NewReportInfo(issues, metrics, errors).WithVersion(Version)
 
 	// Call AI request to solve the issues
-	aiAPIKey := os.Getenv(aiAPIKeyEnv)
-	if aiAPIKey == "" && strings.HasPrefix(*flagAiAPIProvider, atlasProviderEnv) {
-		aiAPIKey = os.Getenv(atlasAPIKeyEnv)
+	aiProvider := *flagAiAPIProvider
+	if aiProvider == "" {
+		aiProvider = os.Getenv(aiProviderEnv)
 	}
+
+	aiAPIKey := os.Getenv(aiAPIKeyEnv)
 	if aiAPIKey == "" {
 		aiAPIKey = *flagAiAPIKey
 	}
 
-	aiEnabled := *flagAiAPIProvider != ""
+	aiBaseURL := *flagAiBaseURL
+	if aiBaseURL == "" {
+		aiBaseURL = os.Getenv(aiBaseURLEnv)
+	}
+
+	aiEnabled := aiProvider != ""
 
 	if len(issues) > 0 && aiEnabled {
-		err := autofix.GenerateSolution(*flagAiAPIProvider, aiAPIKey, *flagAiBaseURL, *flagAiSkipSSL, issues)
+		err := autofix.GenerateSolution(aiProvider, aiAPIKey, aiBaseURL, *flagAiSkipSSL, issues)
 		if err != nil {
 			logger.Print(err)
 		}
