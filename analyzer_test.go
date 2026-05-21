@@ -85,12 +85,17 @@ var _ = Describe("Analyzer", func() {
 				func bar(){
 					println("package has two files!")
 				}`)
+			pkg.AddFile("foo:bar.go", `
+				package main
+				func fooBar(){
+					println("package has another file!")
+				}`)
 			err := pkg.Build()
 			Expect(err).ShouldNot(HaveOccurred())
 			err = analyzer.Process(buildTags, pkg.Path)
 			Expect(err).ShouldNot(HaveOccurred())
 			_, metrics, _ := analyzer.Report()
-			Expect(metrics.NumFiles).To(Equal(2))
+			Expect(metrics.NumFiles).To(Equal(3))
 		})
 
 		It("should be able to analyze multiple Go files concurrently", func() {
@@ -1801,6 +1806,30 @@ func main() {
 			}
 			_, err := gosec.ParseErrors(pkg)
 			Expect(err).Should(HaveOccurred())
+		})
+
+		It("should properly parse the errors with colons in path", func() {
+			pkg := &packages.Package{
+				Errors: []packages.Error{
+					{
+						Pos: "C:\\file:1:2",
+						Msg: "build error",
+					},
+					{
+						Pos: "file:100:1:2",
+						Msg: "build error",
+					},
+				},
+			}
+			errors, err := gosec.ParseErrors(pkg)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(errors).To(HaveLen(2))
+			for _, ferr := range errors {
+				Expect(ferr).To(HaveLen(1))
+				Expect(ferr[0].Line).To(Equal(1))
+				Expect(ferr[0].Column).To(Equal(2))
+				Expect(ferr[0].Err).Should(MatchRegexp(`build error`))
+			}
 		})
 
 		It("should append  error to the same file", func() {

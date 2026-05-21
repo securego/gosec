@@ -29,6 +29,7 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -761,20 +762,24 @@ func ParseErrors(pkg *packages.Package) (map[string][]Error, error) {
 		return nil, nil
 	}
 	errs := make(map[string][]Error)
+	posRegexp := regexp.MustCompile(`^(.*?)(?::(\w+))?(?::(\w+))?$`)
 	for _, pkgErr := range pkg.Errors {
-		parts := strings.Split(pkgErr.Pos, ":")
-		file := parts[0]
+		matches := posRegexp.FindStringSubmatch(pkgErr.Pos)
+		file := pkgErr.Pos
 		var err error
-		var line int
-		if len(parts) > 1 {
-			if line, err = strconv.Atoi(parts[1]); err != nil {
-				return nil, fmt.Errorf("parsing line: %w", err)
+		var line, column int
+		if len(matches) > 0 {
+			file = matches[1]
+			file = strings.TrimSuffix(file, ":")
+			if len(matches) > 2 && matches[2] != "" {
+				if line, err = strconv.Atoi(matches[2]); err != nil {
+					return nil, fmt.Errorf("parsing line: %w", err)
+				}
 			}
-		}
-		var column int
-		if len(parts) > 2 {
-			if column, err = strconv.Atoi(parts[2]); err != nil {
-				return nil, fmt.Errorf("parsing column: %w", err)
+			if len(matches) > 3 && matches[3] != "" {
+				if column, err = strconv.Atoi(matches[3]); err != nil {
+					return nil, fmt.Errorf("parsing column: %w", err)
+				}
 			}
 		}
 		msg := strings.TrimSpace(pkgErr.Msg)
