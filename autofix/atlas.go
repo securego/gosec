@@ -3,15 +3,15 @@ package autofix
 import "strings"
 
 const (
-	ModelAtlasDefault         = "deepseek-ai/deepseek-v4-flash"
-	ModelAtlasDeepSeekV4Flash = "deepseek-ai/deepseek-v4-flash"
-	ModelAtlasQwenCoderNext   = "qwen/qwen3-coder-next"
-	ModelAtlasKimiK26         = "moonshotai/kimi-k2.6"
+	modelAtlasDefault         = "deepseek-ai/deepseek-v4-flash"
+	modelAtlasDeepSeekV4Flash = "deepseek-ai/deepseek-v4-flash"
+	modelAtlasQwenCoderNext   = "qwen/qwen3-coder-next"
+	modelAtlasKimiK26         = "moonshotai/kimi-k2.6"
 
-	DefaultAtlasBaseURL = "https://api.atlascloud.ai/v1"
+	defaultAtlasBaseURL = "https://api.atlascloud.ai/v1"
 )
 
-type AtlasConfig struct {
+type atlasConfig struct {
 	Model       string
 	APIKey      string `json:"-"`
 	BaseURL     string
@@ -20,10 +20,10 @@ type AtlasConfig struct {
 	SkipSSL     bool
 }
 
-func NewAtlasClient(config AtlasConfig) (GenAIClient, error) {
+func newAtlasClient(config atlasConfig) (GenAIClient, error) {
 	baseURL := config.BaseURL
 	if baseURL == "" {
-		baseURL = DefaultAtlasBaseURL
+		baseURL = defaultAtlasBaseURL
 	}
 
 	return NewOpenAIClient(OpenAIConfig{
@@ -39,11 +39,11 @@ func NewAtlasClient(config AtlasConfig) (GenAIClient, error) {
 func parseAtlasModel(model string) string {
 	switch model {
 	case "", "atlas", "atlas-deepseek-v4-flash":
-		return ModelAtlasDefault
+		return modelAtlasDefault
 	case "atlas-qwen3-coder-next", "atlas-qwen-turbo":
-		return ModelAtlasQwenCoderNext
+		return modelAtlasQwenCoderNext
 	case "atlas-kimi-k2.6", "atlas-kimi-k2":
-		return ModelAtlasKimiK26
+		return modelAtlasKimiK26
 	}
 
 	for _, prefix := range []string{"atlas/", "atlas:"} {
@@ -52,7 +52,7 @@ func parseAtlasModel(model string) string {
 			if trimmed != "" {
 				return trimmed
 			}
-			return ModelAtlasDefault
+			return modelAtlasDefault
 		}
 	}
 
@@ -61,7 +61,7 @@ func parseAtlasModel(model string) string {
 		if trimmed != "" {
 			return trimmed
 		}
-		return ModelAtlasDefault
+		return modelAtlasDefault
 	}
 
 	return model
