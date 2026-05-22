@@ -67,7 +67,7 @@ func TestNewAtlasClient_Defaults(t *testing.T) {
 
 	wrapper, ok := client.(*openaiWrapper)
 	require.True(t, ok)
-	assert.Equal(t, modelAtlasDefault, string(wrapper.model))
+	assert.Equal(t, modelAtlasDefault, wrapper.model)
 	assert.Equal(t, 1024, wrapper.maxTokens)
 	assert.InEpsilon(t, 0.7, wrapper.temperature, 0.001)
 }
@@ -81,5 +81,5 @@ func TestNewAtlasClient_CustomModelSyntax(t *testing.T) {
 	require.NoError(t, err)
 
 	wrapper := client.(*openaiWrapper)
-	assert.Equal(t, "moonshot-v1-8k", string(wrapper.model))
+	assert.Equal(t, "moonshot-v1-8k", wrapper.model)
 }
