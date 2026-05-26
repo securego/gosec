@@ -21,6 +21,12 @@
       "description": "Run pin updates immediately, outside of weekly schedule",
       "matchUpdateTypes": ["pin"],
       "schedule": ["at any time"]
+    },
+    {
+      "description": "Skip digest pinning for bare branch refs - these cannot be pinned reliably",
+      "matchPackageNames": ["ccojocar/barry", "securego/gosec"],
+      "matchManagers": ["github-actions"],
+      "pinDigests": false
     }
   ],
   "lockFileMaintenance": {
