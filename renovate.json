@@ -1,4 +1,5 @@
 {
+  "branchPrefix": "renovate-updates/",
   "dependencyDashboard": true,
   "dependencyDashboardTitle" : "Renovate(bot) : dependency dashboard",
   "vulnerabilityAlerts": {
