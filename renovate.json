@@ -12,9 +12,11 @@
   ],
   "packageRules": [
     {
-      "matchPackagePatterns": ["*"],
       "groupName": "all dependencies",
-      "groupSlug": "fresh-updates"
+      "groupSlug": "fresh-updates",
+      "matchPackageNames": [
+        "*"
+      ]
     }
   ],
   "lockFileMaintenance": {
