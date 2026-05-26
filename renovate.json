@@ -1,43 +1,52 @@
 {
-  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "dependencyDashboard": true,
-  "dependencyDashboardTitle": "Renovate(bot) : dependency dashboard",
-  "vulnerabilityAlerts": {
-    "enabled": true
-  },
-  "extends": [
-    "config:best-practices",
-    "helpers:pinGitHubActionDigests",
-    "schedule:weekly"
-  ],
-  "recreateWhen": "always",
-  "packageRules": [
-    {
-      "matchPackageNames": ["*"],
-      "groupName": "all dependencies",
-      "groupSlug": "all"
+    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+    "dependencyDashboard": true,
+    "dependencyDashboardTitle": "Renovate(bot) : dependency dashboard",
+    "vulnerabilityAlerts": {
+        "enabled": true
     },
-    {
-      "description": "Run pin updates immediately, outside of weekly schedule",
-      "matchUpdateTypes": ["pin"],
-      "schedule": ["at any time"]
+    "extends": [
+        "config:best-practices",
+        "helpers:pinGitHubActionDigests",
+        "schedule:weekly"
+    ],
+    "recreateWhen": "always",
+    "packageRules": [
+        {
+            "matchPackageNames": ["*"],
+            "groupName": "all dependencies",
+            "groupSlug": "all"
+        },
+        {
+            "description": "Run pin updates immediately, outside of weekly schedule",
+            "matchUpdateTypes": ["pin"],
+            "schedule": ["at any time"]
+        },
+        {
+            "description": "Skip digest pinning for bare branch refs - these cannot be pinned reliably",
+            "matchPackageNames": ["ccojocar/barry", "securego/gosec"],
+            "matchManagers": ["github-actions"],
+            "pinDigests": false
+        },
+        {
+            "description": "Enable vulnerability alerts for indirect Go dependencies",
+            "matchDepTypes": ["indirect"],
+            "matchManagers": ["gomod"],
+            "enabled": true,
+            "vulnerabilityAlerts": {
+                "enabled": true
+            }
+        }
+    ],
+    "lockFileMaintenance": {
+        "commitMessageAction": "Update",
+        "enabled": true,
+        "schedule": ["before 3am on monday"],
+        "branchPrefix": "renovate/"
     },
-    {
-      "description": "Skip digest pinning for bare branch refs - these cannot be pinned reliably",
-      "matchPackageNames": ["ccojocar/barry", "securego/gosec"],
-      "matchManagers": ["github-actions"],
-      "pinDigests": false
-    }
-  ],
-  "lockFileMaintenance": {
-    "commitMessageAction": "Update",
-    "enabled": true,
-    "schedule": ["before 3am on monday"],
-    "branchPrefix": "renovate/"
-  },
-  "postUpdateOptions": [
-    "gomodTidy",
-    "gomodUpdateImportPaths"
-  ],
-  "separateMajorMinor": false
+    "postUpdateOptions": [
+        "gomodTidy",
+        "gomodUpdateImportPaths"
+    ],
+    "separateMajorMinor": false
 }
