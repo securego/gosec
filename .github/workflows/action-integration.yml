@@ -20,7 +20,7 @@ jobs:
       SARIF_CATEGORY: action-integration-action-yml
     steps:
       - name: Checkout Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Run action against gosec source
         uses: ./
@@ -38,21 +38,21 @@ jobs:
           PY
 
       - name: Upload SARIF artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: action-integration-sarif
           path: ${{ env.SARIF_FILE }}
 
       - name: Upload SARIF to Code Scanning
         if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@7211b7c8077ea37d8641b6271f6a365a22a5fbfa # v4
         with:
           sarif_file: ${{ env.SARIF_FILE }}
           category: ${{ env.SARIF_CATEGORY }}
 
       - name: Verify Code Scanning processed SARIF
         if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         env:
           TOOL_NAME: gosec
         with:
