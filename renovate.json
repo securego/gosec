@@ -1,5 +1,4 @@
 {
-  "branchPrefix": "renovate-updates/",
   "dependencyDashboard": true,
   "dependencyDashboardTitle" : "Renovate(bot) : dependency dashboard",
   "vulnerabilityAlerts": {
@@ -11,13 +10,20 @@
     "group:all",
     "schedule:weekly"
   ],
+  "packageRules": [
+    {
+      "matchPackagePatterns": ["*"],
+      "groupName": "all dependencies",
+      "groupSlug": "fresh-updates"
+    }
+  ],
   "lockFileMaintenance": {
     "commitMessageAction": "Update",
     "enabled": true,
     "extends": [
-      "group:all",
       "schedule:weekly"
-    ]
+    ],
+    "branchName": "renovate/all"
   },
   "postUpdateOptions": [
     "gomodTidy",
