@@ -25,7 +25,7 @@
     "extends": [
       "schedule:weekly"
     ],
-    "brenchPrefix": "renovate/"
+    "branchPrefix": "renovate/"
   },
   "postUpdateOptions": [
     "gomodTidy",
