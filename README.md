@@ -398,6 +398,13 @@ line arguments:
 
 - `ai-api-provider`: the name of the AI API provider.
   Supported providers:
+  - **Atlas Cloud**: `atlas` (default model
+    `deepseek-ai/deepseek-v4-flash`),
+    `atlas-deepseek-v4-flash`,
+    `atlas-qwen3-coder-next`, `atlas-kimi-k2.6`, or
+    `atlas:<model-id>` for any Atlas Cloud hosted chat model.
+    Atlas Cloud is an OpenAI-compatible provider available at
+    [atlascloud.ai](https://www.atlascloud.ai/?utm_source=github&utm_medium=link&utm_campaign=gosec)
   - **Gemini**: `gemini-3-pro-preview` (default),
     `gemini-2.5-pro`, `gemini-2.5-flash`,
     `gemini-2.5-flash-lite`
@@ -420,12 +427,32 @@ line arguments:
 - `ai-base-url`: (optional) custom base URL for
   OpenAI-compatible APIs (e.g., Azure OpenAI, LocalAI,
   Ollama)
+  - Atlas Cloud uses `https://api.atlascloud.ai/v1` by default,
+    so `ai-base-url` is optional for the built-in `atlas`
+    provider
+- `GOSEC_AI_PROVIDER`: (optional) environment variable
+  alternative to `ai-api-provider`
+- `GOSEC_AI_BASE_URL`: (optional) environment variable
+  alternative to `ai-base-url`
 - `ai-skip-ssl`: (optional) skip SSL certificate verification
   for AI API (useful for self-signed certificates)
+
+> 🎁 **[Atlas Cloud](https://www.atlascloud.ai/?utm_source=github&utm_medium=link&utm_campaign=gosec)** is a full-modal AI inference platform that gives developers a single AI API to access video generation, image generation, and LLM APIs. Instead of managing multiple vendor integrations, you connect once and get unified access to 300+ curated models across all modalities.
+>
+> Check out Atlas Cloud's new coding plan promotion for more budget-friendly API access: [https://www.atlascloud.ai/console/coding-plan](https://www.atlascloud.ai/console/coding-plan)
 
 **Examples:**
 
 ```bash
+# Using Atlas Cloud with the default DeepSeek V4 Flash model
+export GOSEC_AI_API_KEY="your_key"
+export GOSEC_AI_PROVIDER="atlas"
+gosec ./...
+
+# Using Atlas Cloud with an explicit hosted model
+GOSEC_AI_API_KEY="your_key" \
+  gosec -ai-api-provider="atlas:qwen/qwen3-coder-next" ./...
+
 # Using Gemini
 gosec -ai-api-provider="gemini-3-pro-preview" \
   -ai-api-key="your_key" ./...

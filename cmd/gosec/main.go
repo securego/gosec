@@ -66,7 +66,9 @@ USAGE:
 	$ gosec --exclude-rules="scripts/.*:*" ./...
 `
 	// Environment variable for AI API key.
-	aiAPIKeyEnv = "GOSEC_AI_API_KEY" // #nosec G101
+	aiAPIKeyEnv   = "GOSEC_AI_API_KEY" // #nosec G101
+	aiProviderEnv = "GOSEC_AI_PROVIDER"
+	aiBaseURLEnv  = "GOSEC_AI_BASE_URL"
 
 	// Exit codes
 	exitSuccess = 0
@@ -588,15 +590,25 @@ func run() int {
 	reportInfo := gosec.NewReportInfo(issues, metrics, errors).WithVersion(Version)
 
 	// Call AI request to solve the issues
+	aiProvider := *flagAiAPIProvider
+	if aiProvider == "" {
+		aiProvider = os.Getenv(aiProviderEnv)
+	}
+
 	aiAPIKey := os.Getenv(aiAPIKeyEnv)
 	if aiAPIKey == "" {
 		aiAPIKey = *flagAiAPIKey
 	}
 
-	aiEnabled := *flagAiAPIProvider != ""
+	aiBaseURL := *flagAiBaseURL
+	if aiBaseURL == "" {
+		aiBaseURL = os.Getenv(aiBaseURLEnv)
+	}
+
+	aiEnabled := aiProvider != ""
 
 	if len(issues) > 0 && aiEnabled {
-		err := autofix.GenerateSolution(*flagAiAPIProvider, aiAPIKey, *flagAiBaseURL, *flagAiSkipSSL, issues)
+		err := autofix.GenerateSolution(aiProvider, aiAPIKey, aiBaseURL, *flagAiSkipSSL, issues)
 		if err != nil {
 			logger.Print(err)
 		}
