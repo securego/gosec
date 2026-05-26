@@ -6,6 +6,7 @@
   },
   "extends": [
     "config:best-practices",
+    "helpers:pinGitHubActionDigests",
     "group:all",
     "schedule:weekly"
   ],
