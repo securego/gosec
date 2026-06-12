@@ -184,4 +184,40 @@ func main() {
 	_ = rand3.IntN(2)  // bad
 }
 `}, 3, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "math/rand"
+
+func main() {
+	p := rand.Perm(10) // bad
+	println(len(p))
+	f := rand.ExpFloat64() // bad
+	println(f)
+	nums := []int{1, 2, 3}
+	rand.Shuffle(len(nums), func(i, j int) { // bad
+		nums[i], nums[j] = nums[j], nums[i]
+	})
+	println(nums[0])
+}
+`}, 3, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "math/rand/v2"
+
+func main() {
+	u := rand.Uint() // bad
+	println(u)
+	p := rand.Perm(10) // bad
+	println(len(p))
+	f := rand.ExpFloat64() // bad
+	println(f)
+	nums := []int{1, 2, 3}
+	rand.Shuffle(len(nums), func(i, j int) { // bad
+		nums[i], nums[j] = nums[j], nums[i]
+	})
+	println(nums[0])
+}
+`}, 4, gosec.NewConfig()},
 }

@@ -30,10 +30,10 @@ func NewWeakRandCheck(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	rule := &weakRand{newCallListRule(id,
 		"Use of weak random number generator (math/rand or math/rand/v2 instead of crypto/rand)",
 		issue.High, issue.Medium)}
-	rule.AddAll("math/rand", "New", "Read", "Float32", "Float64", "Int", "Int31", "Int31n",
-		"Int63", "Int63n", "Intn", "NormFloat64", "Uint32", "Uint64")
-	rule.AddAll("math/rand/v2", "New", "Float32", "Float64", "Int", "Int32", "Int32N",
-		"Int64", "Int64N", "IntN", "N", "NormFloat64", "Uint32", "Uint32N", "Uint64", "Uint64N", "UintN")
+	rule.AddAll("math/rand", "New", "Read", "ExpFloat64", "Float32", "Float64", "Int", "Int31", "Int31n",
+		"Int63", "Int63n", "Intn", "NormFloat64", "Perm", "Shuffle", "Uint32", "Uint64")
+	rule.AddAll("math/rand/v2", "New", "ExpFloat64", "Float32", "Float64", "Int", "Int32", "Int32N",
+		"Int64", "Int64N", "IntN", "N", "NormFloat64", "Perm", "Shuffle", "Uint", "Uint32", "Uint32N", "Uint64", "Uint64N", "UintN")
 
 	return rule, []ast.Node{(*ast.CallExpr)(nil)}
 }
