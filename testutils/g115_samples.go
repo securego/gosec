@@ -1940,6 +1940,36 @@ func loopMissingLower(data []int) uint8 {
 	{[]string{`
 package main
 
+import (
+	"math"
+)
+
+func minMaxChecked(data []int) uint8 {
+	var out uint8
+	for i := 0; i < len(data); i++ {
+		out = uint8(max(0, min(math.MaxUint8, data[i])))
+	}
+	return out
+}
+	`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import (
+	"math"
+)
+
+func maxMinChecked(data []int) uint8 {
+	var out uint8
+	for i := 0; i < len(data); i++ {
+		out = uint8(min(math.MaxUint8, max(0, data[i])))
+	}
+	return out
+}
+	`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
 func issue1577RangeChecked(v int64) byte {
 	if v < -128 || v > 255 {
 		return 0
