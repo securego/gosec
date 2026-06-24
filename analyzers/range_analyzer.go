@@ -1009,7 +1009,7 @@ func (ra *RangeAnalyzer) ComputeRange(v ssa.Value, block *ssa.BasicBlock) *range
 							res.minValue = minBounds(res.minValue, res.minValueSet, argRes.minValue, argRes.minValueSet, isSrcUnsigned)
 							res.minValueSet = res.minValueSet && argRes.minValueSet
 							res.maxValue = minBounds(res.maxValue, res.maxValueSet, argRes.maxValue, argRes.maxValueSet, isSrcUnsigned)
-							res.maxValueSet = res.maxValueSet && argRes.maxValueSet
+							res.maxValueSet = res.maxValueSet || argRes.maxValueSet
 						}
 						ra.releaseResult(argRes)
 					}
@@ -1023,7 +1023,7 @@ func (ra *RangeAnalyzer) ComputeRange(v ssa.Value, block *ssa.BasicBlock) *range
 							res.CopyFrom(argRes)
 						} else {
 							res.minValue = maxBounds(res.minValue, res.minValueSet, argRes.minValue, argRes.minValueSet, isSrcUnsigned)
-							res.minValueSet = res.minValueSet && argRes.minValueSet
+							res.minValueSet = res.minValueSet || argRes.minValueSet
 							res.maxValue = maxBounds(res.maxValue, res.maxValueSet, argRes.maxValue, argRes.maxValueSet, isSrcUnsigned)
 							res.maxValueSet = res.maxValueSet && argRes.maxValueSet
 						}
