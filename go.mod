@@ -2,14 +2,14 @@ module github.com/securego/gosec/v2
 
 require (
 	github.com/BurntSushi/toml v1.6.0
-	github.com/anthropics/anthropic-sdk-go v1.51.0
+	github.com/anthropics/anthropic-sdk-go v1.52.0
 	github.com/ccojocar/zxcvbn-go v1.0.4
 	github.com/google/uuid v1.6.0
 	github.com/gookit/color v1.6.1
 	github.com/lib/pq v1.12.3
 	github.com/mozilla/tls-observatory v0.0.0-20250923143331-eef96233227e
-	github.com/onsi/ginkgo/v2 v2.31.0
-	github.com/onsi/gomega v1.42.0
+	github.com/onsi/ginkgo/v2 v2.32.0
+	github.com/onsi/gomega v1.42.1
 	github.com/openai/openai-go/v3 v3.41.0
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2
 	github.com/stretchr/testify v1.11.1
@@ -17,8 +17,8 @@ require (
 	golang.org/x/crypto v0.53.0
 	golang.org/x/sync v0.21.0
 	golang.org/x/text v0.38.0
-	golang.org/x/tools v0.46.0
-	google.golang.org/genai v1.61.0
+	golang.org/x/tools v0.47.0
+	google.golang.org/genai v1.62.0
 )
 
 require (
@@ -37,7 +37,7 @@ require (
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/pprof v0.0.0-20260604005048-7023385849c0 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
-	github.com/googleapis/enterprise-certificate-proxy v0.3.16 // indirect
+	github.com/googleapis/enterprise-certificate-proxy v0.3.17 // indirect
 	github.com/googleapis/gax-go/v2 v2.22.0 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/invopop/jsonschema v0.14.0 // indirect
@@ -59,8 +59,8 @@ require (
 	golang.org/x/mod v0.37.0 // indirect
 	golang.org/x/net v0.56.0 // indirect
 	golang.org/x/sys v0.46.0 // indirect
-	google.golang.org/api v0.285.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260618152121-87f3d3e198d3 // indirect
+	google.golang.org/api v0.286.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260622175928-b703f567277d // indirect
 	google.golang.org/grpc v1.81.1 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
