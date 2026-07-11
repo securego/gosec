@@ -64,6 +64,10 @@ var secretsPatterns = [...]secretPattern{
 		regexp: regexp.MustCompile(`AKIA[0-9A-Z]{16}`),
 	},
 	{
+		name:   "AWS Temporary Access Key",
+		regexp: regexp.MustCompile(`ASIA[0-9A-Z]{16}`),
+	},
+	{
 		name:   "Amazon MWS Auth Token",
 		regexp: regexp.MustCompile(`amzn\.mws\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`),
 	},
@@ -162,6 +166,19 @@ var secretsPatterns = [...]secretPattern{
 	{
 		name:   "Twitter OAuth",
 		regexp: regexp.MustCompile(`[tT][wW][iI][tT][tT][eE][rR].*[''|"][0-9a-zA-Z]{35,44}[''|"]`),
+	},
+
+	{
+		name:   "GitHub personal access token",
+		regexp: regexp.MustCompile(`ghp_[a-zA-Z0-9]{36}`),
+	},
+	{
+		name:   "GitHub fine-grained access token",
+		regexp: regexp.MustCompile(`github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59}`),
+	},
+	{
+		name:   "GitHub action temporary token",
+		regexp: regexp.MustCompile(`ghs_[a-zA-Z0-9]{36}`),
 	},
 }
 
