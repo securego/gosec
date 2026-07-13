@@ -542,6 +542,35 @@ package main
 import "fmt"
 
 func main() {
+	awsTemporaryAccessKeyID := "ASIAI44QH8DHBEXAMPLE"
+	fmt.Println(awsTemporaryAccessKeyID)
+}
+`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	awsTemporaryAccessKeyID := "ASIAI44QH8DHBEXAMPLE"
+	fmt.Println(awsTemporaryAccessKeyID)
+}
+`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+func main() {
+	_ = map[string]string{
+		"aws_access_key": "ASIAI44QH8DHBEXAMPLE",
+	}
+}
+`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
 	compareGoogleAPI := "test"
 	if compareGoogleAPI == "AIzajtGS_aJGkoiAmSbXzu9I-1eytAi9Lrlh-vT" {
 		fmt.Println(compareGoogleAPI)
