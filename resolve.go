@@ -14,7 +14,11 @@
 
 package gosec
 
-import "go/ast"
+import (
+	"go/ast"
+	"go/token"
+	"go/types"
+)
 
 func resolveIdent(n *ast.Ident, c *Context) bool {
 	if n.Obj == nil || n.Obj.Kind != ast.Var {
@@ -66,9 +70,152 @@ func resolveBinExpr(n *ast.BinaryExpr, c *Context) bool {
 	return (TryResolve(n.X, c) && TryResolve(n.Y, c))
 }
 
-func resolveCallExpr(_ *ast.CallExpr, _ *Context) bool {
+func resolveCallExpr(node *ast.CallExpr, c *Context) bool {
+	// A strings.Builder / bytes.Buffer .String() call resolves to a constant when
+	// every value written to the receiver is itself a constant. This keeps rules
+	// such as G202 consistent with their lenient handling of constant string
+	// concatenation (e.g. building a value with +=) and avoids false positives
+	// when a builder is used purely to assemble a constant string.
+	if obj, ok := builderStringReceiver(node, c); ok {
+		return builderWritesAreConst(obj, node, c)
+	}
 	// TODO(tkelsey): next step, full function resolution
 	return false
+}
+
+// builderStringReceiver returns the receiver's object when node is a call to
+// String() on a strings.Builder or bytes.Buffer value.
+func builderStringReceiver(node *ast.CallExpr, c *Context) (types.Object, bool) {
+	sel, ok := node.Fun.(*ast.SelectorExpr)
+	if !ok || sel.Sel.Name != "String" || len(node.Args) != 0 {
+		return nil, false
+	}
+	ident, ok := sel.X.(*ast.Ident)
+	if !ok || !isStringBuilderType(c.Info.TypeOf(ident)) {
+		return nil, false
+	}
+	obj := c.Info.ObjectOf(ident)
+	if obj == nil {
+		return nil, false
+	}
+	// Only reason about local builders; a package-level one may be written to
+	// in files we do not inspect here.
+	if c.Pkg != nil && obj.Parent() == c.Pkg.Scope() {
+		return nil, false
+	}
+	return obj, true
+}
+
+// isStringBuilderType reports whether t is strings.Builder or bytes.Buffer
+// (or a pointer to either).
+func isStringBuilderType(t types.Type) bool {
+	if ptr, ok := t.(*types.Pointer); ok {
+		t = ptr.Elem()
+	}
+	named, ok := t.(*types.Named)
+	if !ok {
+		return false
+	}
+	obj := named.Obj()
+	if obj == nil || obj.Pkg() == nil {
+		return false
+	}
+	switch obj.Pkg().Path() + "." + obj.Name() {
+	case "strings.Builder", "bytes.Buffer":
+		return true
+	}
+	return false
+}
+
+// builderWritesAreConst reports whether every value written to the builder
+// referenced by obj is a constant. It is conservative: any usage of the builder
+// that cannot be reasoned about (e.g. its address escaping to a function) makes
+// it return false.
+func builderWritesAreConst(obj types.Object, strCall *ast.CallExpr, c *Context) bool {
+	file := ContainingFile(strCall, c)
+	if file == nil {
+		return false
+	}
+
+	allRefs := map[*ast.Ident]bool{}
+	accounted := map[*ast.Ident]bool{}
+	safe := true
+
+	ast.Inspect(file, func(n ast.Node) bool {
+		switch node := n.(type) {
+		case *ast.Ident:
+			if c.Info.ObjectOf(node) == obj {
+				allRefs[node] = true
+			}
+		case *ast.ValueSpec: // var b strings.Builder
+			for _, name := range node.Names {
+				if c.Info.ObjectOf(name) == obj {
+					accounted[name] = true
+				}
+			}
+		case *ast.AssignStmt:
+			if node.Tok != token.DEFINE {
+				return true
+			}
+			for i, lhs := range node.Lhs {
+				id, ok := lhs.(*ast.Ident)
+				if !ok || c.Info.ObjectOf(id) != obj {
+					continue
+				}
+				accounted[id] = true
+				// Only an empty composite literal (strings.Builder{}) is a
+				// known-empty starting point; anything else is opaque.
+				if len(node.Rhs) != len(node.Lhs) || !isEmptyCompositeLit(node.Rhs[i]) {
+					safe = false
+				}
+			}
+		case *ast.CallExpr: // b.WriteString(...), b.String(), ...
+			sel, ok := node.Fun.(*ast.SelectorExpr)
+			if !ok {
+				return true
+			}
+			recv, ok := sel.X.(*ast.Ident)
+			if !ok || c.Info.ObjectOf(recv) != obj {
+				return true
+			}
+			accounted[recv] = true
+			switch sel.Sel.Name {
+			case "WriteString", "WriteByte", "WriteRune", "Write":
+				for _, arg := range node.Args {
+					if !TryResolve(arg, c) {
+						safe = false
+					}
+				}
+			case "String", "Len", "Cap", "Reset", "Grow":
+				// read-only or adds no content
+			default:
+				safe = false
+			}
+		}
+		return true
+	})
+
+	if !safe {
+		return false
+	}
+	// Any reference we could not account for (e.g. &b passed to a function)
+	// means the builder's contents are unknown.
+	for id := range allRefs {
+		if !accounted[id] {
+			return false
+		}
+	}
+	return true
+}
+
+// isEmptyCompositeLit reports whether e is an empty composite literal, optionally
+// address-taken (e.g. strings.Builder{} or &strings.Builder{}).
+func isEmptyCompositeLit(e ast.Expr) bool {
+	if u, ok := e.(*ast.UnaryExpr); ok && u.Op == token.AND {
+		e = u.X
+	}
+	cl, ok := e.(*ast.CompositeLit)
+	return ok && len(cl.Elts) == 0
 }
 
 // TryResolve will attempt, given a subtree starting at some AST node, to resolve

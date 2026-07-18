@@ -494,4 +494,62 @@ func main() {
 	_, _ = db.Query(query)
 }
 `}, 1, gosec.NewConfig()},
+	{[]string{`
+// strings.Builder assembling a constant SQL fragment - should NOT flag
+package main
+
+import (
+	"database/sql"
+	"strings"
+)
+
+func main() {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	ids := []int{1, 2, 3}
+	var ph strings.Builder
+	for i := range ids {
+		if i > 0 {
+			ph.WriteString(",")
+		}
+		ph.WriteString("?")
+	}
+	placeholders := ph.String()
+	q := "SELECT col1 FROM table1 WHERE id IN (" + placeholders + ")"
+	rows, err := db.Query(q)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+// strings.Builder fed with tainted input - should flag
+package main
+
+import (
+	"database/sql"
+	"os"
+	"strings"
+)
+
+func main() {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	var ph strings.Builder
+	for _, a := range os.Args {
+		ph.WriteString(a)
+	}
+	q := "SELECT col1 FROM table1 WHERE id IN (" + ph.String() + ")"
+	rows, err := db.Query(q)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}
+`}, 1, gosec.NewConfig()},
 }
