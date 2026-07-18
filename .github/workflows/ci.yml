@@ -94,6 +94,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
+          allow-unsafe-pr-checkout: true
       - name: Run Barry AI Security Review
         id: barry
         uses: ccojocar/barry@main # zizmor: ignore[unpinned-uses]
