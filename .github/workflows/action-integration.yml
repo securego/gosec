@@ -45,7 +45,7 @@ jobs:
 
       - name: Upload SARIF to Code Scanning
         if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
-        uses: github/codeql-action/upload-sarif@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4
+        uses: github/codeql-action/upload-sarif@5595ccaf912efad79be6eef63a5619ff05969be3 # v4
         with:
           sarif_file: ${{ env.SARIF_FILE }}
           category: ${{ env.SARIF_CATEGORY }}
