@@ -29,5 +29,5 @@ type Testcase struct {
 type Failure struct {
 	XMLName xml.Name `xml:"failure"`
 	Message string   `xml:"message,attr"`
-	Text    string   `xml:",innerxml"`
+	Text    string   `xml:",chardata"`
 }

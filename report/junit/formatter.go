@@ -1,7 +1,6 @@
 package junit
 
 import (
-	"html"
 	"strconv"
 
 	"github.com/securego/gosec/v2"
@@ -17,7 +16,7 @@ func generatePlaintext(issue *issue.Issue) string {
 		"[" + issue.File + ":" + issue.Line + "] - " +
 		issue.What + " (Confidence: " + strconv.Itoa(int(issue.Confidence)) +
 		", Severity: " + strconv.Itoa(int(issue.Severity)) +
-		", CWE: " + cweID + ")\n" + "> " + html.EscapeString(issue.Code) +
+		", CWE: " + cweID + ")\n" + "> " + issue.Code +
 		"\n Autofix: " + issue.Autofix
 }
 
