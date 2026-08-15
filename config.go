@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 )
 
 const (
@@ -45,8 +46,10 @@ const (
 )
 
 // NoSecTag returns the tag used to disable gosec for a line of code.
+// A single leading '#' is tolerated, so that both "dontanalyze" and
+// "#dontanalyze" produce the same "#dontanalyze" tag.
 func NoSecTag(tag string) string {
-	return fmt.Sprintf("%s%s", "#", tag)
+	return fmt.Sprintf("%s%s", "#", strings.TrimPrefix(tag, "#"))
 }
 
 // Config is used to provide configuration and customization to each of the rules.
