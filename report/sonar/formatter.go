@@ -66,9 +66,14 @@ func GenerateReport(rootPaths []string, data *gosec.ReportInfo) (*Report, error)
 
 func parseFilePath(issue *issue.Issue, rootPaths []string) string {
 	var sonarFilePath string
+	// Select the most specific root path which actually contains the file, so that the
+	// emitted path does not depend on the order the root paths were given on the command line.
+	longest := -1
 	for _, rootPath := range rootPaths {
-		if strings.HasPrefix(issue.File, rootPath) {
-			sonarFilePath = strings.Replace(issue.File, rootPath+"/", "", 1)
+		root := strings.TrimSuffix(rootPath, "/")
+		if len(root) > longest && strings.HasPrefix(issue.File, root+"/") {
+			longest = len(root)
+			sonarFilePath = issue.File[len(root)+1:]
 		}
 	}
 	return sonarFilePath

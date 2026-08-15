@@ -319,5 +319,37 @@ var _ = Describe("Sarif Formatter", func() {
 			Expect(resultRuleIndexes).Should(Equal(driverRuleIndexes))
 			Expect(validateSarifSchema(sarifReport)).To(Succeed())
 		})
+
+		It("sarif formatted report should not depend on the order of the root paths", func() {
+			buildReportInfo := func(file string) *gosec.ReportInfo {
+				return gosec.NewReportInfo([]*issue.Issue{
+					{
+						Severity:   2,
+						Confidence: 0,
+						RuleID:     "G101",
+						What:       "test",
+						File:       file,
+						Code:       "1: testcode",
+						Line:       "1",
+						Col:        "1",
+					},
+				}, &gosec.Metrics{}, map[string][]gosec.Error{}).WithVersion("v2.7.0")
+			}
+			artifactURI := func(file string, rootPaths []string) string {
+				sarifReport, err := sarif.GenerateReport(rootPaths, buildReportInfo(file))
+				Expect(err).ShouldNot(HaveOccurred())
+				return sarifReport.Runs[0].Results[0].Locations[0].PhysicalLocation.ArtifactLocation.URI
+			}
+
+			// Nested root paths: the most specific one must win, whatever the order.
+			nested := "/home/src/project/sub/test.go"
+			Expect(artifactURI(nested, []string{"/home/src/project", "/home/src/project/sub"})).To(Equal("test.go"))
+			Expect(artifactURI(nested, []string{"/home/src/project/sub", "/home/src/project"})).To(Equal("test.go"))
+
+			// Sibling root paths sharing a textual prefix must not match each other.
+			sibling := "/home/src/project2/test.go"
+			Expect(artifactURI(sibling, []string{"/home/src/project", "/home/src/project2"})).To(Equal("test.go"))
+			Expect(artifactURI(sibling, []string{"/home/src/project2", "/home/src/project"})).To(Equal("test.go"))
+		})
 	})
 })
