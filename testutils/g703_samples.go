@@ -84,6 +84,8 @@ func openFromArgs() {
 	}
 }
 `}, 1, gosec.NewConfig()},
+	// True positive: filepath.Clean only normalizes, it does not confine the
+	// path, so ".." in the user input still traverses out of any prefix.
 	{[]string{`
 package main
 
@@ -93,12 +95,46 @@ import (
 	"path/filepath"
 )
 
-func safeHandler(r *http.Request) {
+func cleanHandler(r *http.Request) {
 	raw := r.URL.Query().Get("file")
 	cleaned := filepath.Clean(raw)
 	os.Open(cleaned)
 }
-`}, 0, gosec.NewConfig()},
+`}, 1, gosec.NewConfig()},
+	// True positive: path.Clean has the same normalize-only semantics as
+	// filepath.Clean and is likewise not a sanitizer.
+	{[]string{`
+package main
+
+import (
+	"net/http"
+	"os"
+	"path"
+)
+
+func pathCleanHandler(r *http.Request) {
+	raw := r.URL.Query().Get("file")
+	cleaned := path.Clean(raw)
+	os.Open(cleaned)
+}
+`}, 1, gosec.NewConfig()},
+	// True positive: url.PathEscape can be reversed by url.PathUnescape, which
+	// restores any traversal components, so it does not sanitize the path.
+	{[]string{`
+package main
+
+import (
+	"net/http"
+	"net/url"
+	"os"
+)
+
+func escapeHandler(r *http.Request) {
+	raw := r.URL.Query().Get("file")
+	restored, _ := url.PathUnescape(url.PathEscape(raw))
+	os.Open(restored)
+}
+`}, 1, gosec.NewConfig()},
 	// Test: path.Base sanitizer
 	{[]string{`
 package main
@@ -115,7 +151,8 @@ func handler(r *http.Request) {
 	os.Open(safe)
 }
 `}, 0, gosec.NewConfig()},
-	// Safe: filepath.Abs sanitizer (calls Clean internally)
+	// True positive: filepath.Abs calls Clean internally, so it inherits the
+	// same normalize-only behavior and does not confine the path.
 	{[]string{`
 package main
 
@@ -129,7 +166,7 @@ func main() {
 	filename, _ = filepath.Abs(filename)
 	os.ReadFile(filename)
 }
-`}, 0, gosec.NewConfig()},
+`}, 1, gosec.NewConfig()},
 	// Test: strconv sanitizer
 	{[]string{`
 package main
