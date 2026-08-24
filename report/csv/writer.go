@@ -10,7 +10,6 @@ import (
 // WriteReport write a report in csv format to the output writer
 func WriteReport(w io.Writer, data *gosec.ReportInfo) error {
 	out := csv.NewWriter(w)
-	defer out.Flush()
 	for _, issue := range data.Issues {
 		err := out.Write([]string{
 			issue.File,
@@ -25,5 +24,7 @@ func WriteReport(w io.Writer, data *gosec.ReportInfo) error {
 			return err
 		}
 	}
-	return nil
+	// csv.Writer buffers its output, so write errors only surface on flush.
+	out.Flush()
+	return out.Error()
 }

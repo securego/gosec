@@ -2,6 +2,7 @@ package csv_test
 
 import (
 	"bytes"
+	"errors"
 	"strings"
 	"testing"
 
@@ -12,6 +13,13 @@ import (
 	"github.com/securego/gosec/v2/issue"
 	"github.com/securego/gosec/v2/report/csv"
 )
+
+// failingWriter always fails, to check that write errors are reported.
+type failingWriter struct{}
+
+func (failingWriter) Write(p []byte) (int, error) {
+	return 0, errors.New("disk full")
+}
 
 func TestCSV(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -104,6 +112,30 @@ var _ = Describe("CSV Writer", func() {
 			Expect(lines).To(HaveLen(2))
 			Expect(result).To(ContainSubstring("/test1.go"))
 			Expect(result).To(ContainSubstring("/test2.go"))
+		})
+
+		It("should report an error when the writer fails", func() {
+			data := &gosec.ReportInfo{
+				Errors: map[string][]gosec.Error{},
+				Issues: []*issue.Issue{
+					{
+						File:       "/test.go",
+						Line:       "1",
+						Col:        "1",
+						RuleID:     "G101",
+						What:       "Hardcoded credentials",
+						Confidence: issue.High,
+						Severity:   issue.Medium,
+						Code:       "password := \"secret\"",
+						Cwe:        issue.GetCweByRule("G101"),
+					},
+				},
+				Stats: &gosec.Metrics{},
+			}
+
+			err := csv.WriteReport(failingWriter{}, data)
+			Expect(err).Should(HaveOccurred())
+			Expect(err).To(MatchError(ContainSubstring("disk full")))
 		})
 	})
 })
