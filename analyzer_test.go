@@ -1470,6 +1470,29 @@ func main() {
 			Expect(nosecIssues).Should(BeEmpty())
 		})
 
+		It("should be possible to use an alternative nosec tag which already starts with a hash", func() {
+			// Rule for MD5 weak crypto usage
+			sample := testutils.SampleCodeG401[0]
+			source := sample.Code[0]
+
+			// overwrite nosec option, using the documented '#'-prefixed form
+			nosecIgnoreConfig := gosec.NewConfig()
+			nosecIgnoreConfig.SetGlobal(gosec.NoSecAlternative, "#falsePositive")
+			customAnalyzer := gosec.NewAnalyzer(nosecIgnoreConfig, tests, false, false, 1, logger)
+			customAnalyzer.LoadRules(rules.Generate(false, rules.NewRuleFilter(false, "G401")).RulesInfo())
+
+			nosecPackage := testutils.NewTestPackage()
+			defer nosecPackage.Close()
+			nosecSource := strings.Replace(source, "h := md5.New()", "h := md5.New() // #falsePositive", 1)
+			nosecPackage.AddFile("md5.go", nosecSource)
+			err := nosecPackage.Build()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = customAnalyzer.Process(buildTags, nosecPackage.Path)
+			Expect(err).ShouldNot(HaveOccurred())
+			nosecIssues, _, _ := customAnalyzer.Report()
+			Expect(nosecIssues).Should(BeEmpty())
+		})
+
 		It("should be possible to use an alternative nosec tag", func() {
 			// Rule for DES weak crypto usage
 			sample := testutils.SampleCodeG405[0]

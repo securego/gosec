@@ -206,4 +206,22 @@ var _ = Describe("Configuration", func() {
 			Expect(rules).Should(BeNil())
 		})
 	})
+
+	Context("when building the nosec tag", func() {
+		It("should prepend a hash to a bare tag", func() {
+			Expect(gosec.NoSecTag("dontanalyze")).Should(Equal("#dontanalyze"))
+		})
+
+		It("should not double the hash of an already prefixed tag", func() {
+			Expect(gosec.NoSecTag("#dontanalyze")).Should(Equal("#dontanalyze"))
+		})
+
+		It("should only trim a single leading hash", func() {
+			Expect(gosec.NoSecTag("##dontanalyze")).Should(Equal("##dontanalyze"))
+		})
+
+		It("should keep hashes which are not leading", func() {
+			Expect(gosec.NoSecTag("dont#analyze")).Should(Equal("#dont#analyze"))
+		})
+	})
 })
