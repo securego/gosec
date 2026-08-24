@@ -301,5 +301,41 @@ var _ = Describe("Sonar Formatter", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(*issues).To(Equal(*want))
 		})
+
+		It("it should not depend on the order of the root paths", func() {
+			buildData := func(file string) *gosec.ReportInfo {
+				return &gosec.ReportInfo{
+					Errors: map[string][]gosec.Error{},
+					Issues: []*issue.Issue{
+						{
+							Severity:   2,
+							Confidence: 0,
+							RuleID:     "test",
+							What:       "test",
+							File:       file,
+							Code:       "",
+							Line:       "1-2",
+						},
+					},
+					Stats: &gosec.Metrics{},
+				}
+			}
+			filePath := func(file string, rootPaths []string) string {
+				report, err := sonar.GenerateReport(rootPaths, buildData(file))
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(report.Issues).To(HaveLen(1))
+				return report.Issues[0].PrimaryLocation.FilePath
+			}
+
+			// Nested root paths: the most specific one must win, whatever the order.
+			nested := "/home/src/project/sub/test.go"
+			Expect(filePath(nested, []string{"/home/src/project", "/home/src/project/sub"})).To(Equal("test.go"))
+			Expect(filePath(nested, []string{"/home/src/project/sub", "/home/src/project"})).To(Equal("test.go"))
+
+			// Sibling root paths sharing a textual prefix must not match each other.
+			sibling := "/home/src/project2/test.go"
+			Expect(filePath(sibling, []string{"/home/src/project", "/home/src/project2"})).To(Equal("test.go"))
+			Expect(filePath(sibling, []string{"/home/src/project2", "/home/src/project"})).To(Equal("test.go"))
+		})
 	})
 })

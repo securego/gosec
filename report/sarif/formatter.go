@@ -186,9 +186,14 @@ func parseSarifLocation(i *issue.Issue, rootPaths []string) (*Location, error) {
 
 func parseSarifArtifactLocation(i *issue.Issue, rootPaths []string) *ArtifactLocation {
 	var filePath string
+	// Select the most specific root path which actually contains the file, so that the
+	// emitted path does not depend on the order the root paths were given on the command line.
+	longest := -1
 	for _, rootPath := range rootPaths {
-		if strings.HasPrefix(i.File, rootPath) {
-			filePath = strings.Replace(i.File, rootPath+"/", "", 1)
+		root := strings.TrimSuffix(rootPath, "/")
+		if len(root) > longest && strings.HasPrefix(i.File, root+"/") {
+			longest = len(root)
+			filePath = i.File[len(root)+1:]
 		}
 	}
 	return NewArtifactLocation(filePath)
