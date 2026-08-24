@@ -209,7 +209,7 @@ func CodeSnippet(file *os.File, start int64, end int64) (string, error) {
 }
 
 func codeSnippetStartLine(node ast.Node, fobj *token.File) int64 {
-	s := (int64)(fobj.Line(node.Pos()))
+	s := int64(fobj.Line(node.Pos()))
 	if s-SnippetOffset > 0 {
 		return s - SnippetOffset
 	}
@@ -217,7 +217,7 @@ func codeSnippetStartLine(node ast.Node, fobj *token.File) int64 {
 }
 
 func codeSnippetEndLine(node ast.Node, fobj *token.File) int64 {
-	e := (int64)(fobj.Line(node.End()))
+	e := int64(fobj.Line(node.End()))
 	return e + SnippetOffset
 }
 

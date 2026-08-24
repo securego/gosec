@@ -223,11 +223,11 @@ func newIssue(analyzerID string, desc string, fileSet *token.FileSet,
 func issueCodeSnippet(fileSet *token.FileSet, pos token.Pos) string {
 	file := fileSet.File(pos)
 
-	start := (int64)(file.Line(pos))
+	start := int64(file.Line(pos))
 	if start-issue.SnippetOffset > 0 {
 		start = start - issue.SnippetOffset
 	}
-	end := (int64)(file.Line(pos))
+	end := int64(file.Line(pos))
 	end = end + issue.SnippetOffset
 
 	var code string

@@ -30,7 +30,7 @@ type weakKeyStrength struct {
 // Match overrides the base to check the bits argument of rsa.GenerateKey
 func (w *weakKeyStrength) Match(n ast.Node, c *gosec.Context) (*issue.Issue, error) {
 	if callExpr := w.calls.ContainsPkgCallExpr(n, c, false); callExpr != nil {
-		if bits, err := gosec.GetInt(callExpr.Args[1]); err == nil && bits < (int64)(w.bits) {
+		if bits, err := gosec.GetInt(callExpr.Args[1]); err == nil && bits < int64(w.bits) {
 			return c.NewIssue(n, w.ID(), w.What, w.Severity, w.Confidence), nil
 		}
 	}
