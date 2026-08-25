@@ -66,22 +66,25 @@ func PathTraversal() taint.Config {
 			{Package: "net/http", Method: "ServeFileFS", CheckArgs: []int{3}},
 		},
 		Sanitizers: []taint.Sanitizer{
-			// filepath.Clean normalizes and removes traversal components
-			{Package: "path/filepath", Method: "Clean"},
-			// filepath.Abs calls Clean internally (per Go docs)
-			{Package: "path/filepath", Method: "Abs"},
 			// filepath.Base extracts just the filename, removing directory traversal
 			{Package: "path/filepath", Method: "Base"},
 			// filepath.Rel computes a relative path safely
 			{Package: "path/filepath", Method: "Rel"},
-			// url.PathEscape escapes path components
-			{Package: "net/url", Method: "PathEscape"},
 
-			// path.Base and path.Clean provide identical traversal-stripping
-			// semantics as their filepath counterparts (the only difference is
-			// separator handling, which is irrelevant for security).
+			// path.Base provides identical traversal-stripping semantics as its
+			// filepath counterpart (the only difference is separator handling,
+			// which is irrelevant for security).
 			{Package: "path", Method: "Base"},
-			{Package: "path", Method: "Clean"},
+
+			// NOTE: Clean/filepath.Clean, filepath.Abs and url.PathEscape are
+			// deliberately NOT sanitizers. Clean only lexically normalizes a
+			// path: it evaluates ".." elements instead of rejecting them, so
+			// Clean("/prefix/../../etc/passwd") yields "/etc/passwd" — the
+			// traversal succeeds. filepath.Abs calls Clean internally and
+			// inherits the same behavior, and url.PathUnescape reverses
+			// url.PathEscape, restoring any ".." that was escaped. Confining a
+			// path to a directory requires os.Root or an explicit prefix check,
+			// not Clean. See https://github.com/securego/gosec/issues/1721.
 
 			// Integer conversions eliminate path traversal vectors entirely —
 			// the result can never contain "/" or ".." characters.
