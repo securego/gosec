@@ -36,7 +36,8 @@ func CommandInjection() taint.Config {
 		Sinks: []taint.Sink{
 			// Detect at command creation, not execution (avoids double detection)
 			{Package: "os/exec", Method: "Command"},
-			{Package: "os/exec", Method: "CommandContext"},
+			// CommandContext takes ctx first: name is arg 1, argv slice is arg 2.
+			{Package: "os/exec", Method: "CommandContext", CheckArgs: []int{1, 2}},
 			{Package: "os", Method: "StartProcess"},
 			{Package: "syscall", Method: "Exec"},
 			{Package: "syscall", Method: "ForkExec"},
