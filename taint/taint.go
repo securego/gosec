@@ -13,6 +13,7 @@ package taint
 import (
 	"go/token"
 	"go/types"
+	"sort"
 	"strings"
 
 	"golang.org/x/tools/go/callgraph"
@@ -26,8 +27,9 @@ const maxTaintDepth = 50
 // maxCallerEdges caps the number of incoming call graph edges examined per function
 // in isParameterTainted. CHA over-approximates call graphs (every interface method
 // call fans out to ALL implementations), so a function can have thousands of callers.
-// Real taint flows come from direct/nearby callers, not the 33rd+ CHA-generated edge.
-const maxCallerEdges = 32
+// Incoming edges are sorted before this cap is applied so that any truncation is
+// deterministic, while the higher limit covers ordinary functions with many direct callers.
+const maxCallerEdges = 4096
 
 // isContextType checks if a type is context.Context.
 // context.Context is a control-flow mechanism (deadlines, cancellation, request-scoped values)
@@ -946,10 +948,36 @@ func (a *Analyzer) isParameterTainted(param *ssa.Parameter, fn *ssa.Function, vi
 		adjustedIdx = paramIdx
 	}
 
+	// Sort incoming edges before capping so the result does not depend on the
+	// iteration order used while CHA builds its graph.
+	inEdges := append([]*callgraph.Edge(nil), node.In...)
+	sort.SliceStable(inEdges, func(i, j int) bool {
+		left, right := inEdges[i], inEdges[j]
+		leftName, rightName := "", ""
+		if left.Caller != nil && left.Caller.Func != nil {
+			leftName = left.Caller.Func.String()
+		}
+		if right.Caller != nil && right.Caller.Func != nil {
+			rightName = right.Caller.Func.String()
+		}
+		if leftName != rightName {
+			return leftName < rightName
+		}
+
+		leftPos, rightPos := token.NoPos, token.NoPos
+		if left.Site != nil {
+			leftPos = left.Site.Pos()
+		}
+		if right.Site != nil {
+			rightPos = right.Site.Pos()
+		}
+		return leftPos < rightPos
+	})
+
 	// Check each caller, capping at maxCallerEdges to avoid combinatorial
 	// explosion from CHA over-approximation of interface method calls.
 	edgesChecked := 0
-	for _, inEdge := range node.In {
+	for _, inEdge := range inEdges {
 		if edgesChecked >= maxCallerEdges {
 			break
 		}
