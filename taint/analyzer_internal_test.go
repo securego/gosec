@@ -1135,3 +1135,97 @@ func lonely(r *http.Request) {}
 		t.Fatal("expected cache hit to return true")
 	}
 }
+
+func TestIssueTextNamesTheSink(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		sink Sink
+		want string
+	}{
+		"package function": {
+			sink: Sink{Package: "os/exec", Method: "CommandContext"},
+			want: "Command injection via taint analysis: os/exec.CommandContext",
+		},
+		"pointer method": {
+			sink: Sink{Package: "database/sql", Receiver: "DB", Method: "Query", Pointer: true},
+			want: "Command injection via taint analysis: (*database/sql.DB).Query",
+		},
+		"value method": {
+			sink: Sink{Package: "net/http", Receiver: "ResponseWriter", Method: "Write"},
+			want: "Command injection via taint analysis: (net/http.ResponseWriter).Write",
+		},
+	}
+
+	const description = "Command injection via taint analysis"
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			if got := issueText(description, tt.sink); got != tt.want {
+				t.Errorf("issueText(%q, %+v) = %q, want %q", description, tt.sink, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestIssueTextDistinguishesSinksOfOneRule pins the property the sink name
+// exists for: one rule reporting at several sinks must not produce one repeated
+// string. It asserts distinctness rather than wording, so the message can be
+// reworded without touching this test, while a regression to a description-only
+// message fails it.
+func TestIssueTextDistinguishesSinksOfOneRule(t *testing.T) {
+	t.Parallel()
+
+	sinks := []Sink{
+		{Package: "os", Method: "Open"},
+		{Package: "os", Method: "Stat"},
+		{Package: "os", Method: "Remove"},
+		{Package: "os", Method: "Mkdir"},
+		{Package: "os", Method: "ReadFile"},
+	}
+
+	seen := make(map[string]Sink, len(sinks))
+	for _, sink := range sinks {
+		got := issueText("Path traversal via taint analysis", sink)
+		if prior, dup := seen[got]; dup {
+			t.Errorf("issueText produced %q for both %+v and %+v; findings at distinct sinks must not share a message", got, prior, sink)
+		}
+		seen[got] = sink
+	}
+
+	if len(seen) != len(sinks) {
+		t.Errorf("got %d distinct messages for %d sinks, want one each", len(seen), len(sinks))
+	}
+}
+
+// TestSinkIDMatchesIssueText pins the memo's correctness condition: the runner
+// caches one message per sinkID, so two sinks may share a sinkID only if they
+// also share a message. Sinks differing in any one identity field must differ in
+// both.
+func TestSinkIDMatchesIssueText(t *testing.T) {
+	t.Parallel()
+
+	sinks := []Sink{
+		{Package: "os", Method: "Open"},
+		{Package: "os", Method: "Stat"},
+		{Package: "io/ioutil", Method: "Open"},
+		{Package: "database/sql", Receiver: "DB", Method: "Query"},
+		{Package: "database/sql", Receiver: "DB", Method: "Query", Pointer: true},
+		{Package: "database/sql", Receiver: "Tx", Method: "Query", Pointer: true},
+		{Package: "database/sql", Receiver: "DB", Method: "Exec", Pointer: true},
+		// CheckArgs and ArgTypes are outside the sink's identity: two entries
+		// differing only there name the same function and share a message.
+		{Package: "os", Method: "Open", CheckArgs: []int{1}},
+	}
+
+	const description = "Path traversal via taint analysis"
+	for i, a := range sinks {
+		for _, b := range sinks[i+1:] {
+			sameID := newSinkID(a) == newSinkID(b)
+			sameText := issueText(description, a) == issueText(description, b)
+			if sameID != sameText {
+				t.Errorf("newSinkID equality %v disagrees with issueText equality %v for %+v and %+v", sameID, sameText, a, b)
+			}
+		}
+	}
+}
