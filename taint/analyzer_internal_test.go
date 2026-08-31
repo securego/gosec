@@ -506,7 +506,8 @@ func caller%d(w W, data []byte) { w.Write(data) }
 const wideCallerCount = 600
 
 // buildWideCallerTaintFixture creates a sink helper with a wide set of incoming
-// callers, optionally including one caller that passes a source-typed field.
+// callers and multiple call sites, optionally including one caller that passes a
+// source-typed field.
 func buildWideCallerTaintFixture(tb testing.TB, fillerCount int, includeTainted bool) (*ssa.Program, *ssa.Function) {
 	tb.Helper()
 
@@ -522,7 +523,7 @@ func logIt(message string) { sink(message) }
 		src += "\nfunc tainted(r *Request) { logIt(r.Path) }\n"
 	}
 	for i := 0; i < fillerCount; i++ {
-		src += fmt.Sprintf("func filler%d() { logIt(\"static %d\") }\n", i, i)
+		src += fmt.Sprintf("func filler%d() { logIt(\"static %d\"); logIt(\"static duplicate %d\") }\n", i, i, i)
 	}
 
 	fset := token.NewFileSet()
