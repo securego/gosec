@@ -43,4 +43,45 @@ func safeCommand() {
 	exec.Command("ls", "-la").Run()
 }
 `}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import (
+	"net/http"
+	"os/exec"
+)
+
+func contextOnly(r *http.Request) {
+	// Safe - ctx carries no argv; command and args are constants
+	exec.CommandContext(r.Context(), "git", "rev-parse", "--show-toplevel").Run()
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import (
+	"net/http"
+	"os/exec"
+)
+
+func contextAndTaintedArg(r *http.Request) {
+	// Unsafe - user-controlled argument
+	ref := r.URL.Query().Get("ref")
+	exec.CommandContext(r.Context(), "git", "checkout", ref).Run()
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import (
+	"net/http"
+	"os/exec"
+)
+
+func contextAndTaintedName(r *http.Request) {
+	// Unsafe - user-controlled command name
+	bin := r.URL.Query().Get("bin")
+	exec.CommandContext(r.Context(), bin, "--version").Run()
+}
+`}, 1, gosec.NewConfig()},
 }
