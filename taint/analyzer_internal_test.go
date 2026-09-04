@@ -503,6 +503,157 @@ func caller%d(w W, data []byte) { w.Write(data) }
 	return prog, srcFuncs
 }
 
+// The issue reproducer has roughly 600 incoming call sites. Keep a focused
+// fixture at that scale to cover the reported false-negative case.
+const wideCallerCount = 600
+
+// buildWideCallerTaintFixture creates a sink helper with a wide set of incoming
+// callers and multiple call sites, optionally including one caller that passes a
+// source-typed field.
+func buildWideCallerTaintFixture(tb testing.TB, fillerCount int, includeTainted bool) (*ssa.Program, *ssa.Function) {
+	tb.Helper()
+
+	src := `package p
+
+type Request struct{ Path string }
+
+func sink(message string) {}
+
+func logIt(message string) { sink(message) }
+`
+	if includeTainted {
+		src += "\nfunc aTainted(r *Request) { logIt(r.Path) }\n"
+	}
+	for i := 0; i < fillerCount; i++ {
+		if i == 0 {
+			src += fmt.Sprintf("func filler%d() { logIt(\"static %d\"); logIt(\"static duplicate %d\") }\n", i, i, i)
+			continue
+		}
+		src += fmt.Sprintf("func filler%d() { logIt(\"static %d\") }\n", i, i)
+	}
+
+	fset := token.NewFileSet()
+	parsed, err := parser.ParseFile(fset, "p.go", src, 0)
+	if err != nil {
+		tb.Fatalf("parse: %v", err)
+	}
+	info := &types.Info{
+		Types:      make(map[ast.Expr]types.TypeAndValue),
+		Defs:       make(map[*ast.Ident]types.Object),
+		Uses:       make(map[*ast.Ident]types.Object),
+		Implicits:  make(map[ast.Node]types.Object),
+		Scopes:     make(map[ast.Node]*types.Scope),
+		Selections: make(map[*ast.SelectorExpr]*types.Selection),
+	}
+	pkg, err := (&types.Config{}).Check("p", fset, []*ast.File{parsed}, info)
+	if err != nil {
+		tb.Fatalf("type-check: %v", err)
+	}
+	prog := ssa.NewProgram(fset, ssa.BuilderMode(0))
+	ssaPkg := prog.CreatePackage(pkg, []*ast.File{parsed}, info, true)
+	prog.Build()
+
+	logFn := ssaPkg.Func("logIt")
+	if logFn == nil {
+		tb.Fatal("SSA function logIt not found")
+	}
+	return prog, logFn
+}
+
+func TestTaintAnalysisFindsTaintedCallerBeyondPreviousEdgeLimit(t *testing.T) {
+	t.Parallel()
+
+	prog, logFn := buildWideCallerTaintFixture(t, wideCallerCount, true)
+	callGraph := cha.CallGraph(prog)
+	node := callGraph.Nodes[logFn]
+	const previousMaxCallerEdges = 32
+	if node == nil || len(node.In) <= previousMaxCallerEdges {
+		t.Fatalf("expected logIt to have more than %d incoming edges, got %d", previousMaxCallerEdges, len(node.In))
+	}
+
+	// Put the tainted caller after the previous retained prefix. This models an
+	// otherwise valid CHA edge order in which the old cap hid the flow.
+	taintedIndex := -1
+	for i, edge := range node.In {
+		if edge.Caller != nil && edge.Caller.Func != nil && edge.Caller.Func.Name() == "aTainted" {
+			taintedIndex = i
+			break
+		}
+	}
+	if taintedIndex < 0 {
+		t.Fatal("tainted caller edge not found")
+	}
+	taintedEdge := node.In[taintedIndex]
+	node.In = append(node.In[:taintedIndex], node.In[taintedIndex+1:]...)
+	node.In = append(node.In, taintedEdge)
+
+	analyzer := New(&Config{
+		Sources: []Source{{Package: "p", Name: "Request", Pointer: true}},
+		Sinks:   []Sink{{Package: "p", Method: "sink", CheckArgs: []int{0}}},
+	})
+	analyzer.SetCallGraph(callGraph)
+
+	results := analyzer.Analyze(prog, []*ssa.Function{logFn})
+	if len(results) != 1 {
+		t.Fatalf("expected one taint result when the tainted caller is beyond the edge limit, got %d", len(results))
+	}
+}
+
+func TestTaintAnalysisSortsCallerEdgesWhenCapIsReached(t *testing.T) {
+	t.Parallel()
+
+	// This fixture is deliberately just beyond maxCallerEdges. The tainted
+	// caller is moved to the end of the unordered input slice, but its name
+	// sorts before the filler callers and should remain in the retained prefix.
+	prog, logFn := buildWideCallerTaintFixture(t, maxCallerEdges, true)
+	callGraph := cha.CallGraph(prog)
+	node := callGraph.Nodes[logFn]
+	if node == nil || len(node.In) <= maxCallerEdges {
+		t.Fatalf("expected more than %d incoming edges, got %d", maxCallerEdges, len(node.In))
+	}
+
+	taintedIndex := -1
+	for i, edge := range node.In {
+		if edge.Caller != nil && edge.Caller.Func != nil && edge.Caller.Func.Name() == "aTainted" {
+			taintedIndex = i
+			break
+		}
+	}
+	if taintedIndex < 0 {
+		t.Fatal("tainted caller edge not found")
+	}
+	taintedEdge := node.In[taintedIndex]
+	node.In = append(node.In[:taintedIndex], node.In[taintedIndex+1:]...)
+	node.In = append(node.In, taintedEdge)
+
+	analyzer := New(&Config{
+		Sources: []Source{{Package: "p", Name: "Request", Pointer: true}},
+		Sinks:   []Sink{{Package: "p", Method: "sink", CheckArgs: []int{0}}},
+	})
+	analyzer.SetCallGraph(callGraph)
+
+	results := analyzer.Analyze(prog, []*ssa.Function{logFn})
+	if len(results) != 1 {
+		t.Fatalf("expected one taint result after sorting caller edges at the cap, got %d", len(results))
+	}
+}
+
+func TestTaintAnalysisDoesNotReportSafeWideCallerSet(t *testing.T) {
+	t.Parallel()
+
+	// Exercise the bounded path with more edges than the retained prefix.
+	prog, logFn := buildWideCallerTaintFixture(t, maxCallerEdges+1, false)
+	analyzer := New(&Config{
+		Sources: []Source{{Package: "p", Name: "Request", Pointer: true}},
+		Sinks:   []Sink{{Package: "p", Method: "sink", CheckArgs: []int{0}}},
+	})
+
+	results := analyzer.Analyze(prog, []*ssa.Function{logFn})
+	if len(results) != 0 {
+		t.Fatalf("expected no taint results for callers that pass only constants, got %d", len(results))
+	}
+}
+
 func TestTaintAnalysisPerformanceWithManySinkCalls(t *testing.T) {
 	t.Parallel()
 
@@ -544,6 +695,30 @@ func BenchmarkTaintAnalysisManySinkCalls(b *testing.B) {
 	for b.Loop() {
 		analyzer := New(cfg)
 		analyzer.Analyze(prog, srcFuncs)
+	}
+}
+
+func BenchmarkTaintAnalysisAtCallerEdgeCap(b *testing.B) {
+	// Include just over the retained prefix so this measures the
+	// sorting and bounded traversal path at the configured edge limit.
+	prog, logFn := buildWideCallerTaintFixture(b, maxCallerEdges, true)
+	callGraph := cha.CallGraph(prog)
+	node := callGraph.Nodes[logFn]
+	if node == nil || len(node.In) <= maxCallerEdges {
+		b.Fatalf("expected more than %d incoming edges, got %d", maxCallerEdges, len(node.In))
+	}
+
+	analyzer := New(&Config{
+		Sources: []Source{{Package: "p", Name: "Request", Pointer: true}},
+		Sinks:   []Sink{{Package: "p", Method: "sink", CheckArgs: []int{0}}},
+	})
+	analyzer.SetCallGraph(callGraph)
+
+	b.ResetTimer()
+	for b.Loop() {
+		if results := analyzer.Analyze(prog, []*ssa.Function{logFn}); len(results) != 1 {
+			b.Fatalf("expected one taint result, got %d", len(results))
+		}
 	}
 }
 
