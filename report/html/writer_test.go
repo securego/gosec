@@ -151,5 +151,21 @@ var _ = Describe("HTML Writer", func() {
 			htmlCloseCount := strings.Count(result, "</html>")
 			Expect(htmlCloseCount).To(Equal(1))
 		})
+
+		It("should include the Babel script with the correct integrity hash", func() {
+			data := &gosec.ReportInfo{
+				Errors: map[string][]gosec.Error{},
+				Issues: []*issue.Issue{},
+				Stats:  &gosec.Metrics{},
+			}
+
+			buf := new(bytes.Buffer)
+			err := html.WriteReport(buf, data)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			result := buf.String()
+			Expect(result).To(ContainSubstring(`src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/8.0.4/babel.min.js" integrity="sha512-4EbyfF7Lt/JPkr7+9dMHGqif4hJmqmE+cWGG3c9o4aGrHqyFH+IFE8iVFyAieEB0BtN8yHjL08DvQxFlbn31gw=="`))
+			Expect(result).NotTo(ContainSubstring("sha512-0kogYX+JRNNH6mtJ3d4ZGS50A5IbSQdyOQRX4suqvLbIKjUmJ4/oMFlqhVLSO/hUVUKXJ6TS7Tvqa1wdEj/wHg=="))
+		})
 	})
 })
