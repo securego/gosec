@@ -25,9 +25,6 @@ type RuleInfo struct {
 // issueText builds the message for a taint finding, naming the sink so that
 // two findings of one rule at different sinks do not share a message. The
 // description alone is byte-identical for every finding a rule produces.
-//
-// The source is not named: Analyze never populates Result.Source, so
-// formatSourceKey would render a zero value here.
 func issueText(description string, sink Sink) string {
 	return fmt.Sprintf("%s: %s", description, formatSinkKey(sink))
 }
