@@ -197,10 +197,8 @@ type Sanitizer struct {
 	Pointer bool
 }
 
-// Result represents a detected taint flow from source to sink.
+// Result represents a detected taint flow to a sink.
 type Result struct {
-	// Source is the origin of the tainted data
-	Source Source
 	// Sink is the dangerous function that receives the tainted data
 	Sink Sink
 	// SinkPos is the source code position of the sink call
