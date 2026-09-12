@@ -20,7 +20,19 @@ package main
 import "math/rand"
 
 func main() {
-	bad := rand.Int()
+nums := []int{1, 2, 3}
+rand.Shuffle(len(nums), func(i, j int) {
+nums[i], nums[j] = nums[j], nums[i]
+})
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "math/rand"
+
+func main() {
+bad := rand.Int()
 	println(bad)
 }
 `}, 1, gosec.NewConfig()},
@@ -30,7 +42,19 @@ package main
 import "math/rand/v2"
 
 func main() {
-	bad := rand.Int()
+nums := []int{1, 2, 3}
+rand.Shuffle(len(nums), func(i, j int) {
+nums[i], nums[j] = nums[j], nums[i]
+})
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "math/rand/v2"
+
+func main() {
+bad := rand.Int()
 	println(bad)
 }
 `}, 1, gosec.NewConfig()},
