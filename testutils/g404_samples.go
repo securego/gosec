@@ -195,12 +195,12 @@ func main() {
 	f := rand.ExpFloat64() // bad
 	println(f)
 	nums := []int{1, 2, 3}
-	rand.Shuffle(len(nums), func(i, j int) { // bad
+	rand.Shuffle(len(nums), func(i, j int) { // not security-sensitive
 		nums[i], nums[j] = nums[j], nums[i]
 	})
 	println(nums[0])
 }
-`}, 3, gosec.NewConfig()},
+`}, 2, gosec.NewConfig()},
 	{[]string{`
 package main
 
@@ -214,10 +214,10 @@ func main() {
 	f := rand.ExpFloat64() // bad
 	println(f)
 	nums := []int{1, 2, 3}
-	rand.Shuffle(len(nums), func(i, j int) { // bad
+	rand.Shuffle(len(nums), func(i, j int) { // not security-sensitive
 		nums[i], nums[j] = nums[j], nums[i]
 	})
 	println(nums[0])
 }
-`}, 4, gosec.NewConfig()},
+`}, 3, gosec.NewConfig()},
 }
