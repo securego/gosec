@@ -595,5 +595,44 @@ func main() {
 	}
 }
 `}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import (
+	"fmt"
+	"net/url"
+	"os"
+)
+
+// #nosec G101 -- example connection strings in help text are not real credentials
+var serveCmd = &struct {
+	Use, Long string
+	RunE      func(args []string) error
+}{
+	Use: "serve",
+	Long: ` + "`" + `Config file format:
+  databases:
+    db1:
+      url: "postgres://user:pass@host:5432/db1"
+    db2:
+      url: "postgres://user:pass@host:5432/db2"
+` + "`" + `,
+	RunE: func(args []string) error {
+		cfgPath := os.Getenv("CFG")
+		raw, err := os.ReadFile(cfgPath) // #nosec G304 -- operator-supplied path
+		if err != nil {
+			return fmt.Errorf("read: %w", err)
+		}
+		_ = raw
+		u, _ := url.Parse(os.Getenv("DB_URL"))
+		if u != nil && u.User != nil {
+			u.User = url.UserPassword(u.User.Username(), "x")
+		}
+		return nil
+	},
+}
+
+func main() { _ = serveCmd }
+`}, 0, gosec.NewConfig()},
 	}
 )
