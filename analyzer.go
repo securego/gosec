@@ -16,6 +16,7 @@
 package gosec
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -31,6 +32,7 @@ import (
 	"reflect"
 	"regexp"
 	"runtime/debug"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -98,50 +100,30 @@ func (i ignores) parseLine(line string) (int, int) {
 }
 
 func (i ignores) add(file string, line string, suppressions map[string]issue.SuppressionInfo) {
-	is := []ignore{}
-	if _, ok := i[file]; ok {
-		is = i[file]
-	}
-	found := false
 	start, end := i.parseLine(line)
-	for _, ig := range is {
-		if ig.start <= start && ig.end >= end {
-			found = true
-			for r, s := range suppressions {
-				ss, ok := ig.suppressions[r]
-				if !ok {
-					ss = []issue.SuppressionInfo{}
-				}
-				ss = append(ss, s)
-				ig.suppressions[r] = ss
-			}
-			break
-		}
+	ig := ignore{
+		start:        start,
+		end:          end,
+		suppressions: make(map[string][]issue.SuppressionInfo, len(suppressions)),
 	}
-	if !found {
-		ig := ignore{
-			start:        start,
-			end:          end,
-			suppressions: map[string][]issue.SuppressionInfo{},
-		}
-		for r, s := range suppressions {
-			ig.suppressions[r] = []issue.SuppressionInfo{s}
-		}
-		is = append(is, ig)
+	for r, s := range suppressions {
+		ig.suppressions[r] = []issue.SuppressionInfo{s}
 	}
-	i[file] = is
+	// Keep each directive's range intact, even when it is nested in another.
+	i[file] = append(i[file], ig)
 }
 
 func (i ignores) get(file string, line string) map[string][]issue.SuppressionInfo {
 	start, end := i.parseLine(line)
-	if is, ok := i[file]; ok {
-		for _, i := range is {
-			if i.start <= start && i.end >= end || start <= i.start && end >= i.end {
-				return i.suppressions
+	suppressions := make(map[string][]issue.SuppressionInfo)
+	for _, ig := range i[file] {
+		if ig.start <= start && ig.end >= end || start <= ig.start && end >= ig.end {
+			for r, ss := range ig.suppressions {
+				suppressions[r] = append(suppressions[r], ss...)
 			}
 		}
 	}
-	return map[string][]issue.SuppressionInfo{}
+	return suppressions
 }
 
 // The Context is populated with data parsed from the source code as it is scanned.
@@ -911,7 +893,11 @@ func (v *astVisitor) Visit(n ast.Node) ast.Visitor {
 
 // updateIgnores parses comments to find and update ignored rules.
 func (v *astVisitor) updateIgnores() {
-	for c := range v.context.Comments {
+	// Keep tracked suppression justifications in source order.
+	nodes := slices.SortedFunc(maps.Keys(v.context.Comments), func(a, b ast.Node) int {
+		return cmp.Or(cmp.Compare(a.Pos(), b.Pos()), cmp.Compare(a.End(), b.End()))
+	})
+	for _, c := range nodes {
 		v.updateIgnoredRulesForNode(c)
 	}
 }
