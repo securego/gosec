@@ -324,8 +324,12 @@ func runSliceBounds(pass *analysis.Pass) (result any, err error) {
 									delete(issues, instr)
 								}
 							case *ssa.IndexAddr:
+								// invBound maps bounded to itself, so the "else" successor
+								// is walked with the same bound and value even though it
+								// only proves the length is *not* the asserted one. Trust
+								// the asserted length in the "then" successor alone.
 								if indexValue, ok := GetConstantInt64(tinstr.Index); ok {
-									if isSliceIndexInsideBounds(assertedLen(binop, value), int(indexValue)) {
+									if i == 0 && isSliceIndexInsideBounds(assertedLen(binop, value), int(indexValue)) {
 										delete(issues, instr)
 									}
 								}
