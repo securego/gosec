@@ -740,4 +740,54 @@ func main() {
 	}
 }
 `}, 1, gosec.NewConfig()},
+	// Issue #1727: G602 not reported for a constant index equal to the length
+	// asserted by an equality guard (index == len is always out of range)
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]int, 0)
+	if len(s) == 3 {
+		fmt.Println(s[3])
+	}
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]int, 0)
+	if len(s) == 3 {
+		fmt.Println(s[4])
+	}
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]int, 0)
+	if len(s) == 3 {
+		fmt.Println(s[2])
+	}
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]int, 0)
+	if len(s)-1 == 1 {
+		fmt.Println(s[1])
+	}
+}
+`}, 0, gosec.NewConfig()},
 }
