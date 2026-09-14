@@ -74,6 +74,9 @@ func makeAnalyzerRunner(rule *RuleInfo, config *Config) func(*analysis.Pass) (in
 
 		// Run taint analysis
 		analyzer := New(config)
+		if !analyzer.hasSinkCalls(srcFuncs) {
+			return nil, nil
+		}
 		if ssaResult.Shared != nil {
 			analyzer.SetCallGraph(ssaResult.Shared.CallGraph())
 		}
@@ -129,6 +132,25 @@ func makeAnalyzerRunner(rule *RuleInfo, config *Config) func(*analysis.Pass) (in
 		}
 		return nil, nil
 	}
+}
+
+// hasSinkCalls checks only source instructions, which call graph construction does not change.
+func (a *Analyzer) hasSinkCalls(funcs []*ssa.Function) bool {
+	for _, fn := range funcs {
+		if fn == nil {
+			continue
+		}
+		for _, block := range fn.Blocks {
+			for _, instr := range block.Instrs {
+				if call, ok := instr.(*ssa.Call); ok {
+					if _, found := a.isSinkCall(call); found {
+						return true
+					}
+				}
+			}
+		}
+	}
+	return false
 }
 
 // newIssue creates a new gosec issue
