@@ -828,4 +828,132 @@ func main() {
 	}
 }
 `}, 1, gosec.NewConfig()},
+	// Reversed operand order: the constant sits on the left of the guard, which
+	// extractBinOpBound handles in its binop.X arm. The asserted length has to
+	// be honoured in the "then" branch and distrusted in the "else" branch just
+	// as it is when the constant is on the right.
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]int, 0)
+	if 3 == len(s) {
+		fmt.Println(s[3])
+	}
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]int, 0)
+	if 3 == len(s) {
+		fmt.Println(s[2])
+	}
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]int, 0)
+	if 3 == len(s) {
+	} else {
+		fmt.Println(s[1])
+	}
+}
+`}, 1, gosec.NewConfig()},
+	// A positive constant offset on the compared expression: "len(s) + 1 == 4"
+	// asserts a length of 3, so index 3 is out of range and index 2 is not.
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]int, 0)
+	if len(s)+1 == 4 {
+		fmt.Println(s[3])
+	}
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]int, 0)
+	if len(s)+1 == 4 {
+		fmt.Println(s[2])
+	}
+}
+`}, 0, gosec.NewConfig()},
+	// An "else if" chain: the inner guard owns its own "then" successor, so the
+	// length it asserts still clears an index inside that length.
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]int, 0)
+	if len(s) == 3 {
+	} else if len(s) == 5 {
+		fmt.Println(s[4])
+	}
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]int, 0)
+	if len(s) == 3 {
+	} else if len(s) == 5 {
+		fmt.Println(s[5])
+	}
+}
+`}, 1, gosec.NewConfig()},
+	// A nested equality guard inside the outer "else" branch: the nested guard
+	// is authoritative for the block it opens, so an index inside the length it
+	// asserts is cleared even though the outer branch asserts nothing.
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]int, 0)
+	if len(s) == 3 {
+	} else {
+		if len(s) == 1 {
+			fmt.Println(s[0])
+		}
+	}
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]int, 0)
+	if len(s) == 3 {
+	} else {
+		if len(s) == 1 {
+			fmt.Println(s[1])
+		}
+	}
+}
+`}, 1, gosec.NewConfig()},
 }
