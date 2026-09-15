@@ -324,8 +324,12 @@ func runSliceBounds(pass *analysis.Pass) (result any, err error) {
 									delete(issues, instr)
 								}
 							case *ssa.IndexAddr:
+								// invBound maps bounded to itself, so the "else" successor
+								// is walked with the same bound and value even though it
+								// only proves the length is *not* the asserted one. Trust
+								// the asserted length in the "then" successor alone.
 								if indexValue, ok := GetConstantInt64(tinstr.Index); ok {
-									if int(indexValue) == value {
+									if i == 0 && isSliceIndexInsideBounds(assertedLen(binop, value), int(indexValue)) {
 										delete(issues, instr)
 									}
 								}
@@ -908,6 +912,25 @@ func extractBinOpBound(binop *ssa.BinOp) (bound, int, error) {
 		}
 	}
 	return lowerUnbounded, 0, errExtractBinOp
+}
+
+// assertedLen returns the slice length asserted by an equality comparison whose
+// constant side is value. The compared expression is usually len(s) itself, but
+// it may carry a constant offset (e.g. "len(s) - 1 == 1" asserts a length of 2),
+// in which case the offset has to be undone to recover the length.
+func assertedLen(binop *ssa.BinOp, value int) int {
+	if binop == nil {
+		return value
+	}
+	for _, operand := range []ssa.Value{binop.X, binop.Y} {
+		if _, isConst := operand.(*ssa.Const); isConst {
+			continue
+		}
+		if _, offset := decomposeIndex(operand); offset != 0 {
+			return value - offset
+		}
+	}
+	return value
 }
 
 func isSliceIndexInsideBounds(h int, index int) bool {
