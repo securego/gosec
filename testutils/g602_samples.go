@@ -956,4 +956,188 @@ func main() {
 	}
 }
 `}, 1, gosec.NewConfig()},
+
+	// Equality guards must validate the actual subslice bounds, only in the then branch.
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]int, 0)
+	if len(s) == 3 {
+		fmt.Println(s[:3])
+	}
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]int, 0)
+	if len(s) == 3 {
+		fmt.Println(s[1:3])
+	}
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]int, 0)
+	if 3 == len(s) {
+		fmt.Println(s[:3])
+	}
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]int, 0)
+	if len(s)-1 == 2 {
+		fmt.Println(s[:3])
+	}
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]int, 0)
+	if len(s)+1 == 4 {
+		fmt.Println(s[:3])
+	}
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]int, 0)
+	if len(s) == 3 {
+		fmt.Println(s[:3:3])
+	}
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]int, 0)
+	if len(s) == 3 {
+		fmt.Println(s[:4])
+	}
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]int, 0)
+	if len(s) == 3 {
+		fmt.Println(s[:3:4])
+	}
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]int, 0)
+	if len(s) == 3 {
+	} else {
+		fmt.Println(s[:3])
+	}
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]int, 0)
+	if len(s) == 3 {
+	} else {
+		fmt.Println(s[:3:3])
+	}
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]int, 0)
+	if len(s) == 3 {
+		fmt.Println(s[1:])
+	}
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]int, 0)
+	if len(s) == 3 {
+		fmt.Println(s[3:3])
+	}
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func check(n int) {
+	s := make([]int, 0)
+	if len(s) == 3 {
+		fmt.Println(s[1:n])
+	}
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func check(n int) {
+	s := make([]int, 0)
+	if len(s) == 3 {
+		fmt.Println(s[n:3])
+	}
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "fmt"
+
+func check(n int) {
+	s := make([]int, 0)
+	if len(s) == 3 {
+		fmt.Println(s[:3:n])
+	}
+}
+`}, 1, gosec.NewConfig()},
 }
