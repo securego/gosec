@@ -62,4 +62,17 @@ func main() {
 	_, _ = rsa.GenerateKey(rand.Reader, secureKeyBits)
 }
 `}, 0, gosec.NewConfig()},
+	// Runtime values are unknown and must not be reported as weak constants.
+	{[]string{`
+package main
+
+import (
+	"crypto/rand"
+	"crypto/rsa"
+)
+
+func generate(bits int) {
+	_, _ = rsa.GenerateKey(rand.Reader, bits)
+}
+`}, 0, gosec.NewConfig()},
 }
