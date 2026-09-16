@@ -319,8 +319,8 @@ func runSliceBounds(pass *analysis.Pass) (result any, err error) {
 						case bounded:
 							switch tinstr := instr.(type) {
 							case *ssa.Slice:
-								_, _, m := GetSliceBounds(tinstr)
-								if isSliceInsideBounds(value, value, m, value) {
+								// Equality only establishes a length in the then branch.
+								if i == 0 && sliceWithinAssertedLen(tinstr, assertedLen(binop, value)) {
 									delete(issues, instr)
 								}
 							case *ssa.IndexAddr:
@@ -931,6 +931,23 @@ func assertedLen(binop *ssa.BinOp, value int) int {
 		}
 	}
 	return value
+}
+
+// sliceWithinAssertedLen only clears findings when every explicit bound is
+// constant and fits within the guaranteed length (and therefore capacity).
+func sliceWithinAssertedLen(slice *ssa.Slice, length int) bool {
+	bounds := []int{0, length, length}
+	for i, value := range []ssa.Value{slice.Low, slice.High, slice.Max} {
+		if value == nil {
+			continue
+		}
+		bound, ok := GetConstantInt64(value)
+		if !ok || bound < 0 || bound > int64(length) {
+			return false
+		}
+		bounds[i] = int(bound)
+	}
+	return isThreeIndexSliceInsideBounds(bounds[0], bounds[1], bounds[2], length)
 }
 
 func isSliceIndexInsideBounds(h int, index int) bool {
