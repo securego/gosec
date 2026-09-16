@@ -124,12 +124,12 @@ func (s *insecureCookieState) trackCookieFieldStore(store *ssa.Store) {
 	switch fieldName {
 	case "Secure":
 		cs.secureSet = true
-		if b, ok := boolConstValue(store.Val); ok {
+		if b, ok := cookieBoolValue(store.Val); ok {
 			cs.secureTrue = b
 		}
 	case "HttpOnly":
 		cs.httpOnlySet = true
-		if b, ok := boolConstValue(store.Val); ok {
+		if b, ok := cookieBoolValue(store.Val); ok {
 			cs.httpOnlyTrue = b
 		}
 	case "SameSite":
@@ -142,6 +142,24 @@ func (s *insecureCookieState) trackCookieFieldStore(store *ssa.Store) {
 			}
 		}
 	}
+}
+
+// cookieBoolValue resolves boolean constants through logical negations.
+// Other expressions remain unknown rather than being assumed safe.
+func cookieBoolValue(v ssa.Value) (bool, bool) {
+	negated := false
+	for depth := 0; depth < MaxDepth; depth++ {
+		if b, ok := boolConstValue(v); ok {
+			return b != negated, true
+		}
+		unary, ok := v.(*ssa.UnOp)
+		if !ok || unary.Op != token.NOT {
+			break
+		}
+		negated = !negated
+		v = unary.X
+	}
+	return false, false
 }
 
 func (s *insecureCookieState) getOrCreateCookieState(root ssa.Value) *cookieState {

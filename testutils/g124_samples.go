@@ -105,4 +105,158 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		Errors: 0,
 		Config: gosec.NewConfig(),
 	},
+	// Negative: negating a known false value enables Secure
+	{
+		Code: []string{`
+package main
+
+import "net/http"
+
+func handler(w http.ResponseWriter, r *http.Request) {
+	x := false
+	cookie := &http.Cookie{
+		Name:     "session",
+		Value:    "abc123",
+		Secure:   !x,
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+	}
+	http.SetCookie(w, cookie)
+}
+`},
+		Errors: 0,
+		Config: gosec.NewConfig(),
+	},
+	// Negative: negating a known false value enables HttpOnly
+	{
+		Code: []string{`
+package main
+
+import "net/http"
+
+func handler(w http.ResponseWriter, r *http.Request) {
+	x := false
+	cookie := &http.Cookie{
+		Name:     "session",
+		Value:    "abc123",
+		Secure:   true,
+		HttpOnly: !x,
+		SameSite: http.SameSiteStrictMode,
+	}
+	http.SetCookie(w, cookie)
+}
+`},
+		Errors: 0,
+		Config: gosec.NewConfig(),
+	},
+	// Negative: nested negations preserve a known true value
+	{
+		Code: []string{`
+package main
+
+import "net/http"
+
+func handler(w http.ResponseWriter, r *http.Request) {
+	x := true
+	cookie := &http.Cookie{
+		Name:     "session",
+		Value:    "abc123",
+		Secure:   !!x,
+		HttpOnly: !!x,
+		SameSite: http.SameSiteStrictMode,
+	}
+	http.SetCookie(w, cookie)
+}
+`},
+		Errors: 0,
+		Config: gosec.NewConfig(),
+	},
+	// Positive: negating a known true value disables Secure
+	{
+		Code: []string{`
+package main
+
+import "net/http"
+
+func handler(w http.ResponseWriter, r *http.Request) {
+	x := true
+	cookie := &http.Cookie{
+		Name:     "session",
+		Value:    "abc123",
+		Secure:   !x,
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+	}
+	http.SetCookie(w, cookie)
+}
+`},
+		Errors: 1,
+		Config: gosec.NewConfig(),
+	},
+	// Positive: negating a known true value disables HttpOnly
+	{
+		Code: []string{`
+package main
+
+import "net/http"
+
+func handler(w http.ResponseWriter, r *http.Request) {
+	x := true
+	cookie := &http.Cookie{
+		Name:     "session",
+		Value:    "abc123",
+		Secure:   true,
+		HttpOnly: !x,
+		SameSite: http.SameSiteStrictMode,
+	}
+	http.SetCookie(w, cookie)
+}
+`},
+		Errors: 1,
+		Config: gosec.NewConfig(),
+	},
+	// Positive: an unknown negated Secure value is not assumed safe
+	{
+		Code: []string{`
+package main
+
+import "net/http"
+
+func handler(w http.ResponseWriter, r *http.Request) {
+	x := r.TLS == nil
+	cookie := &http.Cookie{
+		Name:     "session",
+		Value:    "abc123",
+		Secure:   !x,
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+	}
+	http.SetCookie(w, cookie)
+}
+`},
+		Errors: 1,
+		Config: gosec.NewConfig(),
+	},
+	// Positive: an unknown negated HttpOnly value is not assumed safe
+	{
+		Code: []string{`
+package main
+
+import "net/http"
+
+func handler(w http.ResponseWriter, r *http.Request) {
+	x := r.TLS == nil
+	cookie := &http.Cookie{
+		Name:     "session",
+		Value:    "abc123",
+		Secure:   true,
+		HttpOnly: !x,
+		SameSite: http.SameSiteStrictMode,
+	}
+	http.SetCookie(w, cookie)
+}
+`},
+		Errors: 1,
+		Config: gosec.NewConfig(),
+	},
 }
