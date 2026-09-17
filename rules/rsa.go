@@ -17,6 +17,7 @@ package rules
 import (
 	"fmt"
 	"go/ast"
+	"go/constant"
 
 	"github.com/securego/gosec/v2"
 	"github.com/securego/gosec/v2/issue"
@@ -30,11 +31,21 @@ type weakKeyStrength struct {
 // Match overrides the base to check the bits argument of rsa.GenerateKey
 func (w *weakKeyStrength) Match(n ast.Node, c *gosec.Context) (*issue.Issue, error) {
 	if callExpr := w.calls.ContainsPkgCallExpr(n, c, false); callExpr != nil {
-		if bits, err := gosec.GetInt(callExpr.Args[1]); err == nil && bits < int64(w.bits) {
+		if bits, ok := rsaKeyBits(callExpr.Args[1], c); ok && bits < int64(w.bits) {
 			return c.NewIssue(n, w.ID(), w.What, w.Severity, w.Confidence), nil
 		}
 	}
 	return nil, nil
+}
+
+// rsaKeyBits resolves integer compile-time constants, including named
+// constants and expressions such as 1<<10.
+func rsaKeyBits(expr ast.Expr, c *gosec.Context) (int64, bool) {
+	if tv, ok := c.Info.Types[expr]; ok && tv.Value != nil && tv.Value.Kind() == constant.Int {
+		return constant.Int64Val(tv.Value)
+	}
+	bits, err := gosec.GetInt(expr)
+	return bits, err == nil
 }
 
 // NewWeakKeyStrength builds a rule that detects RSA keys < 2048 bits
