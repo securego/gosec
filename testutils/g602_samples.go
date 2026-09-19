@@ -1140,4 +1140,90 @@ func check(n int) {
 	}
 }
 `}, 1, gosec.NewConfig()},
+
+	// Issue #1727 (continued): a nil-declared slice under an equality guard
+	// should be trusted exactly the way a make()/literal-backed slice already
+	// is (see the earlier #1727 cases above) -- index 2 is safe once len(s)
+	// is asserted to be 3.
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	var s []int
+	if len(s) == 3 {
+		fmt.Println(s[2])
+	}
+}
+`}, 0, gosec.NewConfig()},
+	// Same nil slice, but the guarded index is not covered by the asserted
+	// length -- must still be flagged.
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	var s []int
+	if len(s) == 3 {
+		fmt.Println(s[3])
+	}
+}
+`}, 1, gosec.NewConfig()},
+	// Safety case: two distinct nil-declared slices of the same type in one
+	// function. Only "a" is guarded; "b" must still be flagged even though
+	// Go's SSA builder represents both as the same canonical nil constant --
+	// the fix must not let a's guard silence b's unguarded access.
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	var a []int
+	var b []int
+	if len(a) == 3 {
+		fmt.Println(a[2])
+	}
+	fmt.Println(b[2])
+}
+`}, 1, gosec.NewConfig()},
+	// Same shape, but the unguarded access sits textually before the guard --
+	// still must be flagged (the guard's block cannot dominate it either way).
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	var a []int
+	var b []int
+	fmt.Println(b[2])
+	if len(a) == 3 {
+		fmt.Println(a[2])
+	}
+}
+`}, 1, gosec.NewConfig()},
+	// Two distinct nil-declared slices of the same type, EACH independently
+	// guarded and safe: both accesses must be cleared. Go's SSA builder gives
+	// "a" and "b" distinct constant objects even though their type is
+	// identical, so a's guard and b's guard must not be conflated into a
+	// false "ambiguous, flag everything" fallback for one another.
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	var a []int
+	var b []int
+	if len(a) == 3 {
+		fmt.Println(a[2])
+	}
+	if len(b) == 5 {
+		fmt.Println(b[2])
+	}
+}
+`}, 0, gosec.NewConfig()},
 }
