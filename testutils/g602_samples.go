@@ -1140,4 +1140,164 @@ func check(n int) {
 	}
 }
 `}, 1, gosec.NewConfig()},
+
+	// Issue #1753: G602 performs no bounds checking at all on the direct
+	// result of append() -- the IndexAddr base-type dispatch never reaches
+	// any bounds-checking path for a *ssa.Call. A statically-determinable
+	// append() growth (literal args) must now be tracked like make()/composite
+	// literals are, so an out-of-bounds constant index is flagged.
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := []int{}
+	s = append(s, 10)
+	fmt.Println(s[6])
+}
+`}, 1, gosec.NewConfig()},
+	// Same append()-grown slice, but the access is properly guarded by a
+	// satisfied len() equality check matching the asserted length -- must
+	// not be flagged.
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := []int{}
+	s = append(s, 10)
+	if len(s) == 1 {
+		fmt.Println(s[0])
+	}
+}
+`}, 0, gosec.NewConfig()},
+	// Cross-variable guard mismatch from #1753's own reproduction: a guard on
+	// one slice's len() must not "protect" a completely different slice's
+	// out-of-bounds index.
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := []int{}
+	s = append(s, 10)
+
+	s2 := []int{10}
+	if len(s) == 3 {
+		fmt.Println(s2[6])
+	}
+}
+`}, 1, gosec.NewConfig()},
+	// A spread of a slice whose length is not statically determinable (e.g.
+	// spreading a function parameter) must not be treated as adding any
+	// guaranteed growth -- no new false positive from guessing an unknown
+	// length.
+	{[]string{`
+package main
+
+import "fmt"
+
+func f(other []int) {
+	s := []int{}
+	s = append(s, other...)
+	fmt.Println(s[6])
+}
+
+func main() {
+	f([]int{1, 2, 3})
+}
+`}, 0, gosec.NewConfig()},
+	// #1753's own equality-guard case: the constant index (6) falls outside
+	// the length asserted by the guard (3), so it's flagged under the same
+	// trust model #1746/#1749 already established for make()/composite-literal
+	// slices -- an append()-derived slice must reach the same conclusion.
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := []int{}
+	s = append(s, 10)
+	if len(s) == 3 {
+		fmt.Println(s[6])
+	}
+}
+`}, 1, gosec.NewConfig()},
+	// #1753's own inequality-guard case: a "len(s) >= N" guard clears the
+	// access unconditionally under the pre-existing (unrelated to append())
+	// upperUnbounded/unbounded correlation behavior. Locks in the current
+	// trust model for an append()-derived slice.
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := []int{}
+	s = append(s, 10)
+	if len(s) >= 3 {
+		fmt.Println(s[6])
+	}
+}
+`}, 0, gosec.NewConfig()},
+	// #1753 follow-up: append(s) with zero variadic arguments must still be
+	// tracked as zero guaranteed growth, not silently dropped (the SSA
+	// builder lowers this to append(s, nil...), a *ssa.Const, not a
+	// *ssa.Slice).
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := []int{1}
+	t := append(s)
+	fmt.Println(t[3])
+}
+`}, 1, gosec.NewConfig()},
+	// append() inside a loop with an in-bounds index must not be flagged --
+	// the most common real-world append() shape.
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	var s []int
+	for i := 0; i < 3; i++ {
+		s = append(s, i)
+		fmt.Println(s[i])
+	}
+}
+`}, 0, gosec.NewConfig()},
+	// Chained append() calls: the recursion must follow the growth of a
+	// nested append() result, not just a single level.
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := []int{}
+	s = append(append(s, 1), 2)
+	fmt.Println(s[5])
+}
+`}, 1, gosec.NewConfig()},
+	// A multi-element literal append() must count every added element, not
+	// just one.
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := []int{}
+	s = append(s, 1, 2, 3)
+	fmt.Println(s[5])
+}
+`}, 1, gosec.NewConfig()},
 }
