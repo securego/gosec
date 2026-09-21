@@ -50,7 +50,7 @@ func runCORSBypassPatternAnalysis(pass *analysis.Pass) (any, error) {
 	issuesByPos := make(map[token.Pos]*issue.Issue)
 
 	for _, fn := range collectAnalyzerFunctions(ssaResult.SSA.SrcFuncs) {
-		requestParam := findHTTPRequestParam(fn)
+		requestSource := findHTTPRequestSource(fn)
 
 		for _, block := range fn.Blocks {
 			for _, instr := range block.Instrs {
@@ -80,7 +80,7 @@ func runCORSBypassPatternAnalysis(pass *analysis.Pass) (any, error) {
 					continue
 				}
 
-				if requestParam != nil && valueDependsOn(patternArg, requestParam, 0) {
+				if requestSource != nil && valueDependsOn(patternArg, requestSource, 0) {
 					addG121Issue(issuesByPos, pass, instr.Pos(), msgRequestBypassPattern, issue.High, issue.Medium)
 				}
 			}
@@ -109,7 +109,7 @@ func addG121Issue(issues map[token.Pos]*issue.Issue, pass *analysis.Pass, pos to
 	issues[pos] = newIssue(pass.Analyzer.Name, what, pass.Fset, pos, severity, confidence)
 }
 
-func findHTTPRequestParam(fn *ssa.Function) *ssa.Parameter {
+func findHTTPRequestSource(fn *ssa.Function) ssa.Value {
 	if fn == nil {
 		return nil
 	}
@@ -119,6 +119,22 @@ func findHTTPRequestParam(fn *ssa.Function) *ssa.Parameter {
 		}
 		if isHTTPRequestPointerType(param.Type()) {
 			return param
+		}
+	}
+
+	for _, freeVar := range fn.FreeVars {
+		if freeVar == nil {
+			continue
+		}
+		if isHTTPRequestPointerType(freeVar.Type()) {
+			return freeVar
+		}
+
+		// Captured locals/parameters are commonly represented by SSA as a
+		// pointer to the captured variable. For a captured *http.Request this
+		// means the FreeVar can have type **http.Request.
+		if ptr, ok := freeVar.Type().(*types.Pointer); ok && isHTTPRequestPointerType(ptr.Elem()) {
+			return freeVar
 		}
 	}
 	return nil
