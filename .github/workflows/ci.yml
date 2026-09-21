@@ -108,7 +108,7 @@ jobs:
           autofix-model: gemini-3-flash-preview
           output-format: sarif
       - name: Upload SARIF to GitHub Security Center
-        uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4
+        uses: github/codeql-action/upload-sarif@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4
         if: steps.barry.outcome == 'success'
         with:
           sarif_file: ${{ github.workspace }}/barry-results.sarif
@@ -138,7 +138,7 @@ jobs:
       - name: Create Test Coverage
         run: make test-coverage
       - name: Upload Test Coverage
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
