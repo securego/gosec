@@ -1140,4 +1140,118 @@ func check(n int) {
 	}
 }
 `}, 1, gosec.NewConfig()},
+	// Issue #1755: a len() inequality on one slice must not suppress a
+	// violation on a different slice.
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := []int{1}
+	s2 := []int{10}
+	if len(s) >= 3 {
+		fmt.Println(s2[6])
+	}
+	fmt.Println(s2[6])
+}
+`}, 2, gosec.NewConfig()},
+	// Same-slice lower bounds still suppress accesses they actually prove safe.
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]int, 0)
+	if len(s) >= 3 {
+		fmt.Println(s[2])
+	}
+}
+`}, 0, gosec.NewConfig()},
+	// The boundary itself is not proved safe.
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]int, 0)
+	if len(s) >= 3 {
+		fmt.Println(s[3])
+	}
+}
+`}, 1, gosec.NewConfig()},
+	// Reversed comparison has the same meaning.
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]int, 0)
+	if 3 <= len(s) {
+		fmt.Println(s[2])
+	}
+}
+`}, 0, gosec.NewConfig()},
+	// The false branch of len(s) < 3 establishes len(s) >= 3.
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]int, 0)
+	if len(s) < 3 {
+		return
+	}
+	fmt.Println(s[2])
+}
+`}, 0, gosec.NewConfig()},
+	// != 0 guarantees at least one element.
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]int, 0)
+	if len(s) != 0 {
+		fmt.Println(s[0])
+	}
+}
+`}, 0, gosec.NewConfig()},
+	// != N for N > 0 does not guarantee a positive length.
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]int, 0)
+	if len(s) != 3 {
+		fmt.Println(s[0])
+	}
+}
+`}, 1, gosec.NewConfig()},
+	// A nested branch must not lose the outer same-slice guarantee. The outer
+	// len(s) > 0 proves s[0] safe, while the inner else does not prove s[2].
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]byte, 0)
+	if len(s) > 0 {
+		if len(s) > 4 {
+			fmt.Println(s[3])
+		} else {
+			fmt.Println(s[2])
+		}
+		fmt.Println(s[0])
+	}
+}
+`}, 1, gosec.NewConfig()},
 }

@@ -281,6 +281,36 @@ func runSliceBounds(pass *analysis.Pass) (result any, err error) {
 			if i == 1 {
 				bound = invBound(bound)
 			}
+
+			// Inequality guards need slice identity and index-value checks. Walk
+			// every issue in the CFG region dominated by this successor so an
+			// outer len() guard also applies after nested branch joins.
+			if bound == upperUnbounded || bound == unbounded {
+				guardedSlice := lenConditionSlice(binop)
+				minLen, hasMinLen := minimumLenForBranch(binop, i)
+				if guardedSlice != nil && hasMinLen {
+					for instr := range issues {
+						instrBlock := instr.Block()
+						if instrBlock == nil || !block.Dominates(instrBlock) {
+							continue
+						}
+						switch tinstr := instr.(type) {
+						case *ssa.Slice:
+							if tinstr.X == guardedSlice && sliceWithinAssertedLen(tinstr, minLen) {
+								delete(issues, instr)
+							}
+						case *ssa.IndexAddr:
+							if tinstr.X == guardedSlice {
+								if indexValue, ok := GetConstantInt64(tinstr.Index); ok &&
+									isSliceIndexInsideBounds(minLen, int(indexValue)) {
+									delete(issues, instr)
+								}
+							}
+						}
+					}
+				}
+			}
+
 			var processBlock func(block *ssa.BasicBlock, depth int)
 			processBlock = func(block *ssa.BasicBlock, depth int) {
 				if depth == MaxDepth {
@@ -293,7 +323,8 @@ func runSliceBounds(pass *analysis.Pass) (result any, err error) {
 						case lowerUnbounded:
 							break
 						case upperUnbounded, unbounded:
-							delete(issues, instr)
+							// Handled above with branch dominance, slice identity,
+							// and a proven minimum length.
 						case upperBounded:
 							switch tinstr := instr.(type) {
 							case *ssa.Slice:
@@ -858,6 +889,131 @@ func invBound(bound bound) bound {
 		return bounded
 	default:
 		return unbounded
+	}
+}
+
+// lenConditionSlice returns the slice whose len() participates in binop.
+// Constant +/- offsets around len() are handled by decomposeIndex.
+func lenConditionSlice(binop *ssa.BinOp) ssa.Value {
+	if binop == nil {
+		return nil
+	}
+	for _, operand := range []ssa.Value{binop.X, binop.Y} {
+		if _, isConst := operand.(*ssa.Const); isConst {
+			continue
+		}
+		base, _ := decomposeIndex(operand)
+		call, ok := base.(*ssa.Call)
+		if !ok {
+			continue
+		}
+		builtin, ok := call.Call.Value.(*ssa.Builtin)
+		if !ok || builtin.Name() != "len" || len(call.Call.Args) != 1 {
+			continue
+		}
+		return call.Call.Args[0]
+	}
+	return nil
+}
+
+// minimumLenForBranch returns the minimum slice length guaranteed by a
+// constant comparison involving len(slice) in the selected successor.
+// Comparisons that do not prove a useful lower bound are rejected.
+func minimumLenForBranch(binop *ssa.BinOp, successor int) (int, bool) {
+	if binop == nil || (successor != 0 && successor != 1) {
+		return 0, false
+	}
+
+	op := binop.Op
+	var lengthExpr ssa.Value
+	var threshold int64
+
+	if value, ok := GetConstantInt64(binop.Y); ok {
+		lengthExpr = binop.X
+		threshold = value
+	} else if value, ok := GetConstantInt64(binop.X); ok {
+		lengthExpr = binop.Y
+		threshold = value
+		op = reverseComparison(op)
+	} else {
+		return 0, false
+	}
+
+	base, offset := decomposeIndex(lengthExpr)
+	call, ok := base.(*ssa.Call)
+	if !ok {
+		return 0, false
+	}
+	builtin, ok := call.Call.Value.(*ssa.Builtin)
+	if !ok || builtin.Name() != "len" || len(call.Call.Args) != 1 {
+		return 0, false
+	}
+
+	threshold -= int64(offset)
+	if successor == 1 {
+		op = invertComparison(op)
+	}
+
+	var minLen int64
+	switch op {
+	case token.GTR:
+		if threshold == int64(^uint64(0)>>1) {
+			return 0, false
+		}
+		minLen = threshold + 1
+	case token.GEQ:
+		minLen = threshold
+	case token.NEQ:
+		// Only != 0 proves a positive lower bound.
+		if threshold != 0 {
+			return 0, false
+		}
+		minLen = 1
+	default:
+		return 0, false
+	}
+
+	if minLen < 0 {
+		minLen = 0
+	}
+	maxInt := int64(^uint(0) >> 1)
+	if minLen > maxInt {
+		return 0, false
+	}
+	return int(minLen), true
+}
+
+func reverseComparison(op token.Token) token.Token {
+	switch op {
+	case token.LSS:
+		return token.GTR
+	case token.LEQ:
+		return token.GEQ
+	case token.GTR:
+		return token.LSS
+	case token.GEQ:
+		return token.LEQ
+	default:
+		return op
+	}
+}
+
+func invertComparison(op token.Token) token.Token {
+	switch op {
+	case token.LSS:
+		return token.GEQ
+	case token.LEQ:
+		return token.GTR
+	case token.GTR:
+		return token.LEQ
+	case token.GEQ:
+		return token.LSS
+	case token.EQL:
+		return token.NEQ
+	case token.NEQ:
+		return token.EQL
+	default:
+		return op
 	}
 }
 
