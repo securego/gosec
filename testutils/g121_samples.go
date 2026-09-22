@@ -66,4 +66,22 @@ func setup() {
 	cop.AddInsecureBypassPattern("/metrics")
 }
 `}, 0, gosec.NewConfig()},
+	// Vulnerable: request-derived pattern through a request captured by a closure.
+	{[]string{`
+package main
+
+import "net/http"
+
+func handler(w http.ResponseWriter, r *http.Request) {
+	_ = w
+	var cop http.CrossOriginProtection
+
+	run := func() {
+		pattern := r.URL.Query().Get("bypass")
+		cop.AddInsecureBypassPattern(pattern)
+	}
+
+	run()
+}
+`}, 1, gosec.NewConfig()},
 }
