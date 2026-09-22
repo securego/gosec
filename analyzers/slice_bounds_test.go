@@ -106,3 +106,74 @@ func TestInvBound(t *testing.T) {
 		})
 	}
 }
+
+func TestReverseComparison(t *testing.T) {
+	tests := []struct {
+		name string
+		in   token.Token
+		want token.Token
+	}{
+		{"less", token.LSS, token.GTR},
+		{"less-or-equal", token.LEQ, token.GEQ},
+		{"greater", token.GTR, token.LSS},
+		{"greater-or-equal", token.GEQ, token.LEQ},
+		{"unchanged", token.EQL, token.EQL},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := reverseComparison(tt.in); got != tt.want {
+				t.Fatalf("reverseComparison(%v) = %v, want %v", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestInvertComparison(t *testing.T) {
+	tests := []struct {
+		name string
+		in   token.Token
+		want token.Token
+	}{
+		{"less", token.LSS, token.GEQ},
+		{"less-or-equal", token.LEQ, token.GTR},
+		{"greater", token.GTR, token.LEQ},
+		{"greater-or-equal", token.GEQ, token.LSS},
+		{"equal", token.EQL, token.NEQ},
+		{"not-equal", token.NEQ, token.EQL},
+		{"unchanged", token.ILLEGAL, token.ILLEGAL},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := invertComparison(tt.in); got != tt.want {
+				t.Fatalf("invertComparison(%v) = %v, want %v", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestLenConditionSliceInvalidInputs(t *testing.T) {
+	if got := lenConditionSlice(nil); got != nil {
+		t.Fatalf("lenConditionSlice(nil) = %v, want nil", got)
+	}
+
+	binop := &ssa.BinOp{Op: token.LSS}
+	if got := lenConditionSlice(binop); got != nil {
+		t.Fatalf("lenConditionSlice(non-len binop) = %v, want nil", got)
+	}
+}
+
+func TestMinimumLenForBranchInvalidInputs(t *testing.T) {
+	if _, ok := minimumLenForBranch(nil, 0); ok {
+		t.Fatal("minimumLenForBranch(nil, 0) unexpectedly succeeded")
+	}
+
+	if _, ok := minimumLenForBranch(&ssa.BinOp{}, 2); ok {
+		t.Fatal("minimumLenForBranch accepted an invalid successor")
+	}
+
+	if _, ok := minimumLenForBranch(&ssa.BinOp{Op: token.LSS}, 0); ok {
+		t.Fatal("minimumLenForBranch accepted a comparison without a constant")
+	}
+}
