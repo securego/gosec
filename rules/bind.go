@@ -22,7 +22,7 @@ import (
 	"github.com/securego/gosec/v2/issue"
 )
 
-// Looks for net.Listen("0.0.0.0") or net.Listen(":8080")
+// Looks for net.Listen("0.0.0.0"), net.Listen("[::]:8080") or net.Listen(":8080")
 type bindsToAllNetworkInterfaces struct {
 	callListRule
 	pattern *regexp.Regexp
@@ -65,7 +65,7 @@ func (r *bindsToAllNetworkInterfaces) Match(n ast.Node, c *gosec.Context) (*issu
 func NewBindsToAllNetworkInterfaces(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	rule := &bindsToAllNetworkInterfaces{
 		callListRule: newCallListRule(id, "Binds to all network interfaces", issue.Medium, issue.High),
-		pattern:      regexp.MustCompile(`^(0.0.0.0|:).*$`),
+		pattern:      regexp.MustCompile(`^(0\.0\.0\.0|\[::\]|:).*$`),
 	}
 	rule.Add("net", "Listen").Add("crypto/tls", "Listen")
 	return rule, []ast.Node{(*ast.CallExpr)(nil)}
