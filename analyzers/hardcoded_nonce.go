@@ -787,7 +787,10 @@ func (s *analysisState) collectCoveredRanges(val ssa.Value, usage ssa.Instructio
 	}
 
 	for _, ref := range *refs {
-		if s.isFullDynamicRead(ref, val) {
+		// The call that consumes the nonce cannot also be the read that
+		// fills it. Without this an unresolved AEAD.Seal counts as a dynamic
+		// read of its own nonce, since Precedes(usage, usage) is true.
+		if ref != usage && s.isFullDynamicRead(ref, val) {
 			if s.Analyzer.Precedes(ref, usage) {
 				if absRange, ok := s.resolveAbsoluteRange(val); ok {
 					*actions = append(*actions, RangeAction{
