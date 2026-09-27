@@ -619,8 +619,14 @@ func (s *analysisState) allTaintedEventsCovered(val ssa.Value, usage ssa.Instruc
 	// 1. Collection Phase: Gathering all Safe (Reads) and Unsafe (Allocs/Stores) actions.
 	var actions []RangeAction
 
+	// The walk back to the source can cycle: a named result is stored back
+	// into its own Alloc on return (t1 = *t0; *t0 = t1), so following the
+	// Store from the Alloc leads to a load of the same Alloc. Stop at the
+	// first value seen twice; it is the root allocation.
+	visited := make(map[ssa.Value]bool)
 	v := val
-	for {
+	for !visited[v] {
+		visited[v] = true
 		s.collectTaintedEvents(v, usage, &actions)
 		s.collectCoveredRanges(v, usage, &actions)
 

@@ -1357,4 +1357,84 @@ func main() {
 	aesCFB.XORKeyStream(output, []byte("Very Cool thing!"))
 }
 `}, 1, gosec.NewConfig()},
+
+	// Named array result used as the nonce: the return stores the result back
+	// into its own Alloc, which must not send the analyzer into a loop.
+	{[]string{`package main
+
+import (
+	"crypto/cipher"
+	"crypto/rand"
+)
+
+func seal(aead cipher.AEAD, plaintext []byte) (ciphertext []byte, nonce [12]byte) {
+	_, _ = rand.Read(nonce[:])
+	return aead.Seal(nil, nonce[:], plaintext, nil), nonce
+}
+
+func main() {}
+`}, 0, gosec.NewConfig()},
+
+	{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"errors"
+)
+
+type keyring struct {
+	key []byte
+}
+
+func (k *keyring) seal(plaintext []byte) (ciphertext []byte, nonce [12]byte, err error) {
+	if k == nil {
+		return nil, nonce, errors.New("no keyring")
+	}
+	block, err := aes.NewCipher(k.key)
+	if err != nil {
+		return nil, nonce, err
+	}
+	aead, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, nonce, err
+	}
+	if _, err := rand.Read(nonce[:]); err != nil {
+		return nil, nonce, err
+	}
+	return aead.Seal(nil, nonce[:], plaintext, nil), nonce, nil
+}
+
+func main() {}
+`}, 0, gosec.NewConfig()},
+
+	// Named results are still traced to a hardcoded source.
+	{[]string{`package main
+
+import (
+	"crypto/cipher"
+)
+
+func seal(aead cipher.AEAD, plaintext []byte) (ciphertext []byte, nonce []byte) {
+	nonce = []byte("ILoveMyNonce")
+	return aead.Seal(nil, nonce, plaintext, nil), nonce
+}
+
+func main() {}
+`}, 1, gosec.NewConfig()},
+
+	{[]string{`package main
+
+import (
+	"crypto/cipher"
+)
+
+func seal(aead cipher.AEAD, plaintext []byte) (ciphertext []byte, nonce []byte) {
+	nonce = make([]byte, aead.NonceSize())
+	return aead.Seal(nil, nonce, plaintext, nil), nonce
+}
+
+func main() {}
+`}, 1, gosec.NewConfig()},
 }
