@@ -1258,6 +1258,152 @@ func main() {
 }
 `}, 1, gosec.NewConfig()},
 
+	// An array IV starts zeroed, just like a buffer from make.
+	{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+)
+
+func main() {
+	var iv [16]byte
+	block, _ := aes.NewCipher([]byte("12345678123456781234567812345678"))
+	_ = cipher.NewCTR(block, iv[:])
+}
+`}, 1, gosec.NewConfig()},
+
+	{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+)
+
+func main() {
+	iv := new([16]byte)
+	block, _ := aes.NewCipher([]byte("12345678123456781234567812345678"))
+	_ = cipher.NewCTR(block, iv[:])
+}
+`}, 1, gosec.NewConfig()},
+
+	{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+)
+
+func main() {
+	var iv [16]byte
+	rand.Read(iv[:8])
+	block, _ := aes.NewCipher([]byte("12345678123456781234567812345678"))
+	_ = cipher.NewCTR(block, iv[:])
+}
+`}, 1, gosec.NewConfig()},
+
+	{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+)
+
+func main() {
+	var iv [16]byte
+	rand.Read(iv[:])
+	iv[0] = 1
+	block, _ := aes.NewCipher([]byte("12345678123456781234567812345678"))
+	_ = cipher.NewCTR(block, iv[:])
+}
+`}, 1, gosec.NewConfig()},
+
+	{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+)
+
+func main() {
+	iv := [16]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}
+	block, _ := aes.NewCipher([]byte("12345678123456781234567812345678"))
+	_ = cipher.NewCTR(block, iv[:])
+}
+`}, 1, gosec.NewConfig()},
+
+	{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+)
+
+func main() {
+	var iv [16]byte
+	rand.Read(iv[:])
+	block, _ := aes.NewCipher([]byte("12345678123456781234567812345678"))
+	_ = cipher.NewCTR(block, iv[:])
+}
+`}, 0, gosec.NewConfig()},
+
+	{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"io"
+)
+
+func main() {
+	var iv [16]byte
+	io.ReadFull(rand.Reader, iv[:])
+	block, _ := aes.NewCipher([]byte("12345678123456781234567812345678"))
+	_ = cipher.NewCTR(block, iv[:])
+}
+`}, 0, gosec.NewConfig()},
+
+	{[]string{`package main
+
+import (
+	"crypto/cipher"
+	"io"
+)
+
+func stream(r io.Reader, block cipher.Block) cipher.Stream {
+	var iv [16]byte
+	r.Read(iv[:])
+	return cipher.NewCTR(block, iv[:])
+}
+
+func main() {}
+`}, 0, gosec.NewConfig()},
+
+	{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+)
+
+func randomIV() [16]byte {
+	var iv [16]byte
+	rand.Read(iv[:])
+	return iv
+}
+
+func main() {
+	iv := randomIV()
+	block, _ := aes.NewCipher([]byte("12345678123456781234567812345678"))
+	_ = cipher.NewCTR(block, iv[:])
+}
+`}, 0, gosec.NewConfig()},
+
 	// Decryption tests - should NOT be flagged as decryption uses the same nonce as encryption
 	{[]string{`package main
 
