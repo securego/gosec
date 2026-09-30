@@ -101,4 +101,73 @@ func main() {
 	defer l.Close()
 }
 `}, 1, gosec.NewConfig()},
+	// Bind to all networks through the IPv6 unspecified address
+	{[]string{`
+package main
+
+import (
+	"log"
+	"net"
+)
+
+func main() {
+	l, err := net.Listen("tcp", "[::]:2000")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer l.Close()
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import (
+	"crypto/tls"
+	"log"
+)
+
+const addr = "[::]:2000"
+
+func main() {
+	l, err := tls.Listen("tcp", addr, &tls.Config{})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer l.Close()
+}
+`}, 1, gosec.NewConfig()},
+	// Bind to the IPv6 loopback address only
+	{[]string{`
+package main
+
+import (
+	"log"
+	"net"
+)
+
+func main() {
+	l, err := net.Listen("tcp", "[::1]:2000")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer l.Close()
+}
+`}, 0, gosec.NewConfig()},
+	// Bind to the IPv4 loopback address only
+	{[]string{`
+package main
+
+import (
+	"log"
+	"net"
+)
+
+func main() {
+	l, err := net.Listen("tcp", "127.0.0.1:2000")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer l.Close()
+}
+`}, 0, gosec.NewConfig()},
 }
