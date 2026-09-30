@@ -709,6 +709,89 @@ func main() {
 	_ = cipher.NewCTR(block, buf[32:48])
 }
 `}, 0, gosec.NewConfig()},
+
+	// AEAD.Seal is an interface call: it must not count as the read that
+	// fills its own nonce.
+	{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+)
+
+func main() {
+	nonce := make([]byte, 12)
+	block, _ := aes.NewCipher([]byte("12345678123456781234567812345678"))
+	aesGCM, _ := cipher.NewGCM(block)
+	_ = aesGCM.Seal(nil, nonce, []byte("My secret message"), nil)
+}
+`}, 1, gosec.NewConfig()},
+
+	{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+)
+
+func main() {
+	nonce := make([]byte, 12)
+	rand.Read(nonce)
+	nonce[0] = 1
+	block, _ := aes.NewCipher([]byte("12345678123456781234567812345678"))
+	aesGCM, _ := cipher.NewGCM(block)
+	_ = aesGCM.Seal(nil, nonce, []byte("My secret message"), nil)
+}
+`}, 1, gosec.NewConfig()},
+
+	{[]string{`package main
+
+import (
+	"crypto/cipher"
+	"crypto/rand"
+)
+
+func seal(aead cipher.AEAD, plaintext []byte) []byte {
+	nonce := make([]byte, 12)
+	rand.Read(nonce[:6])
+	return aead.Seal(nil, nonce, plaintext, nil)
+}
+
+func main() {}
+`}, 1, gosec.NewConfig()},
+
+	{[]string{`package main
+
+import (
+	"crypto/cipher"
+	"crypto/rand"
+)
+
+func seal(aead cipher.AEAD, plaintext []byte) []byte {
+	nonce := make([]byte, 12)
+	rand.Read(nonce)
+	return aead.Seal(nil, nonce, plaintext, nil)
+}
+
+func main() {}
+`}, 0, gosec.NewConfig()},
+
+	{[]string{`package main
+
+import (
+	"crypto/cipher"
+	"io"
+)
+
+func seal(r io.Reader, aead cipher.AEAD, plaintext []byte) []byte {
+	nonce := make([]byte, 12)
+	r.Read(nonce)
+	return aead.Seal(nil, nonce, plaintext, nil)
+}
+
+func main() {}
+`}, 0, gosec.NewConfig()},
 	{[]string{`package main
 
 import (
