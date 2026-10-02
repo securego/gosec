@@ -17,6 +17,7 @@ package rules
 import (
 	"fmt"
 	"go/ast"
+	"go/constant"
 	"strconv"
 
 	"github.com/securego/gosec/v2"
@@ -56,12 +57,22 @@ func (r *filePermissions) Match(n ast.Node, c *gosec.Context) (*issue.Issue, err
 	for _, pkg := range r.pkgs {
 		if callexpr, matched := gosec.MatchCallByPackage(n, c, pkg, r.calls...); matched {
 			modeArg := callexpr.Args[len(callexpr.Args)-1]
-			if mode, err := gosec.GetInt(modeArg); err == nil && !modeIsSubset(mode, r.mode) || isOsPerm(modeArg) {
+			if mode, ok := fileModeValue(modeArg, c); ok && !modeIsSubset(mode, r.mode) || isOsPerm(modeArg) {
 				return c.NewIssue(n, r.ID(), r.What, r.Severity, r.Confidence), nil
 			}
 		}
 	}
 	return nil, nil
+}
+
+// fileModeValue resolves integer compile-time constants, including named
+// constants, constant expressions (e.g. 0600|0066), and type conversions.
+func fileModeValue(expr ast.Expr, c *gosec.Context) (int64, bool) {
+	if tv, ok := c.Info.Types[expr]; ok && tv.Value != nil && tv.Value.Kind() == constant.Int {
+		return constant.Int64Val(tv.Value)
+	}
+	mode, err := gosec.GetInt(expr)
+	return mode, err == nil
 }
 
 // isOsPerm check if the provide ast node contains a os.PermMode symbol
