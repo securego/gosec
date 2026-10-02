@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"go/constant"
 	"go/token"
+	"go/types"
 	"slices"
 	"strings"
 	"sync"
@@ -289,7 +290,28 @@ func (s *analysisState) raiseIssue(val ssa.Value, issueDescription string, fromI
 				issueDescription += " by passing a zeroed buffer from make"
 				allIssues = append(allIssues, newIssue(s.Pass.Analyzer.Name, issueDescription, s.Pass.Fset, fromInstr.Pos(), issue.High, issue.High))
 			}
+		case "complit":
+			// An array literal stores its elements one by one.
+			if s.analyzeUsage(v)&statusHard != 0 {
+				issueDescription += " by passing hardcoded array literal"
+				allIssues = append(allIssues, newIssue(s.Pass.Analyzer.Name, issueDescription, s.Pass.Fset, fromInstr.Pos(), issue.High, issue.High))
+			}
 		default:
+			// An array that is not assigned as a whole before the use holds
+			// its zero value until something writes to it, just like a
+			// buffer from make.
+			if isArrayAlloc(v) && !s.isAssignedBefore(v, fromInstr) {
+				if s.allTaintedEventsCovered(v, fromInstr) {
+					return nil, nil
+				}
+				if s.analyzeUsage(v)&statusHard != 0 {
+					issueDescription += " by passing an array modified with hardcoded values"
+				} else {
+					issueDescription += " by passing a zeroed array"
+				}
+				allIssues = append(allIssues, newIssue(s.Pass.Analyzer.Name, issueDescription, s.Pass.Fset, fromInstr.Pos(), issue.High, issue.High))
+				break
+			}
 			// Ensure we trace the specific Store that tainted this Alloc
 			if refs := v.Referrers(); refs != nil {
 				for _, ref := range *refs {
@@ -422,6 +444,39 @@ func (s *analysisState) isFuncReturnsHardcoded(fn *ssa.Function) bool {
 					return true
 				}
 			}
+		}
+	}
+	return false
+}
+
+// isArrayAlloc reports whether alloc allocates an array.
+func isArrayAlloc(alloc *ssa.Alloc) bool {
+	ptr, ok := alloc.Type().Underlying().(*types.Pointer)
+	if !ok {
+		return false
+	}
+	_, ok = ptr.Elem().Underlying().(*types.Array)
+	return ok
+}
+
+// isAssignedBefore reports whether the whole value of alloc is stored before
+// usage. A store of a value loaded from alloc itself, as a named result gets
+// on return, does not count.
+func (s *analysisState) isAssignedBefore(alloc *ssa.Alloc, usage ssa.Instruction) bool {
+	refs := alloc.Referrers()
+	if refs == nil {
+		return false
+	}
+	for _, ref := range *refs {
+		store, ok := ref.(*ssa.Store)
+		if !ok || store.Addr != alloc {
+			continue
+		}
+		if load, ok := store.Val.(*ssa.UnOp); ok && load.Op == token.MUL && load.X == alloc {
+			continue
+		}
+		if s.Analyzer.Precedes(store, usage) {
+			return true
 		}
 	}
 	return false
