@@ -258,6 +258,41 @@ var _ = Describe("Sarif Formatter", func() {
 			Expect(sarifReport.Runs[0].Results[0].Locations[0].PhysicalLocation.Region.Snippet.Text).Should(Equal(expectedCode))
 			Expect(validateSarifSchema(sarifReport)).To(Succeed())
 		})
+		It("sarif formatted report should keep the rules sorted and the indexes correct", func() {
+			// Rule IDs arriving in ascending order used to be inserted at the front, which
+			// reversed the driver list and left most results pointing at the wrong rule.
+			rules := []string{"G101", "G102", "G103", "G404"}
+			issues := []*issue.Issue{}
+			for _, rule := range rules {
+				cwe := issue.GetCweByRule(rule)
+				newissue := issue.Issue{
+					File:       "/home/src/project/test.go",
+					Line:       "1",
+					Col:        "1",
+					RuleID:     rule,
+					What:       "test",
+					Confidence: issue.High,
+					Severity:   issue.High,
+					Cwe:        cwe,
+				}
+				issues = append(issues, &newissue)
+			}
+			reportInfo := gosec.NewReportInfo(issues, &gosec.Metrics{}, map[string][]gosec.Error{}).WithVersion("v2.7.0")
+
+			sarifReport, err := sarif.GenerateReport([]string{}, reportInfo)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			driverRuleIDs := []string{}
+			for _, rule := range sarifReport.Runs[0].Tool.Driver.Rules {
+				driverRuleIDs = append(driverRuleIDs, rule.ID)
+			}
+			Expect(driverRuleIDs).Should(Equal(rules))
+
+			for _, result := range sarifReport.Runs[0].Results {
+				Expect(sarifReport.Runs[0].Tool.Driver.Rules[result.RuleIndex].ID).Should(Equal(result.RuleID))
+			}
+			Expect(validateSarifSchema(sarifReport)).To(Succeed())
+		})
 		It("sarif formatted report should have proper rule index", func() {
 			rules := []string{"G404", "G101", "G102", "G103"}
 			issues := []*issue.Issue{}
