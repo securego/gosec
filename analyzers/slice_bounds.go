@@ -208,7 +208,7 @@ func runSliceBounds(pass *analysis.Pass) (result any, err error) {
 											violations = append(violations, slice)
 										}
 									} else {
-										if !isSliceInsideBounds(0, sliceCap, l, h) {
+										if !isSliceInsideBounds(sliceCap, l, h) {
 											violations = append(violations, slice)
 										}
 									}
@@ -358,7 +358,7 @@ func runSliceBounds(pass *analysis.Pass) (result any, err error) {
 							switch tinstr := instr.(type) {
 							case *ssa.Slice:
 								_, _, m := GetSliceBounds(tinstr)
-								if !isLenBound && isSliceInsideBounds(0, value, m, value) {
+								if !isLenBound && isSliceInsideBounds(value, m, value) {
 									delete(issues, instr)
 								}
 							case *ssa.IndexAddr:
@@ -847,7 +847,7 @@ func (s *sliceBoundsState) checkAllSlicesBounds(depth int, sliceCap int, slice *
 			*violations = append(*violations, slice)
 		}
 	} else {
-		if !isSliceInsideBounds(0, sliceCap, sliceLow, sliceHigh) {
+		if !isSliceInsideBounds(sliceCap, sliceLow, sliceHigh) {
 			*violations = append(*violations, slice)
 		}
 	}
@@ -931,7 +931,7 @@ func staticSliceLen(v ssa.Value) (int, bool) {
 		}
 		return h - l, true
 	}
-	if !isSliceInsideBounds(0, arrLen, l, h) {
+	if !isSliceInsideBounds(arrLen, l, h) {
 		return 0, false
 	}
 	return ComputeSliceNewCap(l, h, maxIdx, arrLen), true
