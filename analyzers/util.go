@@ -177,8 +177,9 @@ type IntTypeInfo struct {
 }
 
 // isSliceInsideBounds checks if the requested slice range is within the parent slice's boundaries.
-func isSliceInsideBounds(l, h int, cl, ch int) bool {
-	return (l <= cl && h >= ch) && (l <= ch && h >= cl)
+// The parent's lower bound is always 0, so only its upper bound h is taken.
+func isSliceInsideBounds(h int, cl, ch int) bool {
+	return (0 <= cl && h >= ch) && (0 <= ch && h >= cl)
 }
 
 // isThreeIndexSliceInsideBounds validates the boundaries and capacity of a 3-index slice (s[i:j:k]).

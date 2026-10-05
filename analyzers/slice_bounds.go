@@ -208,7 +208,7 @@ func runSliceBounds(pass *analysis.Pass) (result any, err error) {
 											violations = append(violations, slice)
 										}
 									} else {
-										if !isSliceInsideBounds(0, sliceCap, l, h) {
+										if !isSliceInsideBounds(sliceCap, l, h) {
 											violations = append(violations, slice)
 										}
 									}
@@ -358,7 +358,7 @@ func runSliceBounds(pass *analysis.Pass) (result any, err error) {
 							switch tinstr := instr.(type) {
 							case *ssa.Slice:
 								_, _, m := GetSliceBounds(tinstr)
-								if !isLenBound && isSliceInsideBounds(0, value, m, value) {
+								if !isLenBound && isSliceInsideBounds(value, m, value) {
 									delete(issues, instr)
 								}
 							case *ssa.IndexAddr:
@@ -611,7 +611,9 @@ func (s *sliceBoundsState) trackSliceBounds(depth int, sliceCap int, slice ssa.N
 					*localViolations = append(*localViolations, refinstr)
 				}
 			case *ssa.Call:
-				if ifref, cond := extractSliceIfLenCondition(refinstr); ifref != nil && cond != nil {
+				if addedLen, ok := staticAppendGrowth(refinstr, slice); ok {
+					s.trackSliceBounds(depth, sliceCap+addedLen, refinstr, localViolations, localIfs)
+				} else if ifref, cond := extractSliceIfLenCondition(refinstr); ifref != nil && cond != nil {
 					localIfs[*ifref] = cond
 				} else {
 					parPos := -1
@@ -845,7 +847,7 @@ func (s *sliceBoundsState) checkAllSlicesBounds(depth int, sliceCap int, slice *
 			*violations = append(*violations, slice)
 		}
 	} else {
-		if !isSliceInsideBounds(0, sliceCap, sliceLow, sliceHigh) {
+		if !isSliceInsideBounds(sliceCap, sliceLow, sliceHigh) {
 			*violations = append(*violations, slice)
 		}
 	}
@@ -872,6 +874,67 @@ func (s *sliceBoundsState) checkAllSlicesBounds(depth int, sliceCap int, slice *
 			}
 		}
 	}
+}
+
+// staticAppendGrowth reports the guaranteed number of elements append()
+// adds to slice, when call is append(slice, ...) and the appended count
+// is statically determinable. Returns false when it isn't (e.g. spreading
+// a slice of unknown length) -- no growth is assumed in that case.
+func staticAppendGrowth(call *ssa.Call, slice ssa.Node) (int, bool) {
+	builtin, ok := call.Call.Value.(*ssa.Builtin)
+	if !ok || builtin.Name() != "append" {
+		return 0, false
+	}
+	sliceVal, ok := slice.(ssa.Value)
+	if !ok {
+		return 0, false
+	}
+	args := call.Call.Args
+	if len(args) != 2 || args[0] != sliceVal {
+		return 0, false
+	}
+	// append(s) with zero variadic arguments always lowers to append(s, nil...):
+	// args[1] is a *ssa.Const placeholder for the empty variadic slice, never a
+	// *ssa.Slice value, so it has to be recognized here rather than falling
+	// through to staticSliceLen (which would reject it as "not determinable").
+	if _, isConst := args[1].(*ssa.Const); isConst {
+		return 0, true
+	}
+	return staticSliceLen(args[1])
+}
+
+// staticSliceLen returns v's guaranteed length (not capacity) when v is a
+// *ssa.Slice over a *ssa.Alloc-backed fixed-size array with statically-known
+// bounds -- reusing the same GetSliceBounds/extractArrayLen machinery already
+// used for the make()/composite-literal Alloc case. append() only ever adds
+// as many elements as the spread value's length, so capacity is irrelevant
+// here even for a 3-index slice: ComputeSliceNewCap(l, h, maxIdx, arrLen)
+// returns maxIdx-l (capacity) in that case, not h-l (length), so it is used
+// only for the 2-index case below, where the two values coincide.
+func staticSliceLen(v ssa.Value) (int, bool) {
+	sl, ok := v.(*ssa.Slice)
+	if !ok {
+		return 0, false
+	}
+	alloc, ok := sl.X.(*ssa.Alloc)
+	if !ok {
+		return 0, false
+	}
+	arrLen, ok := extractArrayLen(alloc.Type())
+	if !ok {
+		return 0, false
+	}
+	l, h, maxIdx := GetSliceBounds(sl)
+	if maxIdx > 0 {
+		if !isThreeIndexSliceInsideBounds(l, h, maxIdx, arrLen) {
+			return 0, false
+		}
+		return h - l, true
+	}
+	if !isSliceInsideBounds(arrLen, l, h) {
+		return 0, false
+	}
+	return ComputeSliceNewCap(l, h, maxIdx, arrLen), true
 }
 
 func extractSliceIfLenCondition(call *ssa.Call) (*ssa.If, *ssa.BinOp) {
