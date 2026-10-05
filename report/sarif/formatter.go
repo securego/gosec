@@ -33,8 +33,7 @@ func GenerateReport(rootPaths []string, data *gosec.ReportInfo) (*Report, error)
 		}
 
 		rule := parseSarifRule(issue)
-		var ruleIndex int
-		rules, ruleIndex = addRuleInOrder(rules, rule)
+		rules, _ = addRuleInOrder(rules, rule)
 
 		location, err := parseSarifLocation(issue, rootPaths)
 		if err != nil {
@@ -43,7 +42,7 @@ func GenerateReport(rootPaths []string, data *gosec.ReportInfo) (*Report, error)
 
 		result := NewResult(
 			issue.RuleID,
-			ruleIndex,
+			0,
 			getSarifLevel(issue.Severity.String()),
 			issue.What,
 			buildSarifSuppressions(issue.Suppressions),
@@ -51,6 +50,16 @@ func GenerateReport(rootPaths []string, data *gosec.ReportInfo) (*Report, error)
 		).WithLocations(location)
 
 		results = append(results, result)
+	}
+
+	// Indexes are assigned once the rule list is final: inserting a rule shifts the
+	// position of every rule after it, so an index taken during the loop above goes stale.
+	ruleIndexes := make(map[string]int, len(rules))
+	for i, rule := range rules {
+		ruleIndexes[rule.ID] = i
+	}
+	for _, result := range results {
+		result.RuleIndex = ruleIndexes[result.RuleID]
 	}
 
 	sort.SliceStable(cweTaxa, func(i, j int) bool { return cweTaxa[i].ID < cweTaxa[j].ID })
@@ -70,7 +79,7 @@ func GenerateReport(rootPaths []string, data *gosec.ReportInfo) (*Report, error)
 // addRuleInOrder inserts a rule into the rules slice keeping the rules IDs order, it returns the new rules
 // slice and the position where the rule was inserted
 func addRuleInOrder(rules []*ReportingDescriptor, rule *ReportingDescriptor) ([]*ReportingDescriptor, int) {
-	position := 0
+	position := len(rules)
 	for i, r := range rules {
 		if r.ID < rule.ID {
 			continue
