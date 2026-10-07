@@ -87,4 +87,70 @@ func main() {
 	t.Execute(os.Stdout, v)
 }
 `}, 1, gosec.NewConfig()},
+	{[]string{`
+// A named constant is as safe as a literal
+package main
+
+import (
+	"html/template"
+	"os"
+)
+
+const tmpl = ""
+
+const banner = "<b>Scheduled maintenance tonight</b>"
+
+func main() {
+	t := template.Must(template.New("ex").Parse(tmpl))
+	v := map[string]interface{}{
+		"Title":    "Test <b>World</b>",
+		"Body":     template.HTML(banner),
+	}
+	t.Execute(os.Stdout, v)
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+// Concatenated literals are constant as well
+package main
+
+import (
+	"html/template"
+	"os"
+)
+
+const tmpl = ""
+
+const greeting = "hello"
+
+func main() {
+	t := template.Must(template.New("ex").Parse(tmpl))
+	v := map[string]interface{}{
+		"Title":    "Test <b>World</b>",
+		"Body":     template.HTML("<i>" + greeting + "</i>"),
+		"Script":   template.JS("console.log('" + greeting + "')"),
+	}
+	t.Execute(os.Stdout, v)
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+// Concatenating a variable into a constant is not safe
+package main
+
+import (
+	"html/template"
+	"os"
+)
+
+const tmpl = ""
+
+func main() {
+	name := os.Getenv("NAME")
+	t := template.Must(template.New("ex").Parse(tmpl))
+	v := map[string]interface{}{
+		"Title":    "Test <b>World</b>",
+		"Body":     template.HTML("<b>" + name + "</b>"),
+	}
+	t.Execute(os.Stdout, v)
+}
+`}, 1, gosec.NewConfig()},
 }

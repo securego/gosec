@@ -26,11 +26,11 @@ type templateCheck struct {
 }
 
 // Match checks for calls to html/template methods that do not auto-escape
-// inputs. Basic literals are considered safe.
+// inputs. Compile-time constants, such as basic literals, are considered safe.
 func (t *templateCheck) Match(n ast.Node, c *gosec.Context) (*issue.Issue, error) {
 	if call := t.calls.ContainsPkgCallExpr(n, c, false); call != nil {
 		for _, arg := range call.Args {
-			if _, ok := arg.(*ast.BasicLit); !ok {
+			if tv, ok := c.Info.Types[arg]; !ok || tv.Value == nil {
 				return c.NewIssue(n, t.ID(), t.What, t.Severity, t.Confidence), nil
 			}
 		}
