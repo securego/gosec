@@ -402,4 +402,100 @@ func main() {
 	}
 }
 `}, 0, gosec.NewConfig()},
+	{[]string{`
+// InsecureSkipVerify set through a *tls.Config
+package main
+
+import "crypto/tls"
+
+func main() {
+	cfg := &tls.Config{}
+	cfg.InsecureSkipVerify = true
+	_ = cfg
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+// InsecureSkipVerify set on a nested *tls.Config field
+package main
+
+import (
+	"crypto/tls"
+	"net/http"
+)
+
+func main() {
+	tr := &http.Transport{TLSClientConfig: &tls.Config{}}
+	tr.TLSClientConfig.InsecureSkipVerify = true
+	_ = tr
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+// InsecureSkipVerify false set through a *tls.Config (no issue)
+package main
+
+import "crypto/tls"
+
+func main() {
+	cfg := &tls.Config{}
+	cfg.InsecureSkipVerify = false
+	_ = cfg
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+// MinVersion too low set by assignment
+package main
+
+import "crypto/tls"
+
+func main() {
+	cfg := &tls.Config{}
+	cfg.MinVersion = tls.VersionTLS10
+	_ = cfg
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+// MaxVersion too low set by assignment
+package main
+
+import "crypto/tls"
+
+func main() {
+	var cfg tls.Config
+	cfg.MaxVersion = tls.VersionTLS11
+	_ = cfg
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+// MinVersion set by assignment is safe (no issue)
+package main
+
+import "crypto/tls"
+
+func main() {
+	cfg := &tls.Config{}
+	cfg.MinVersion = tls.VersionTLS12
+	_ = cfg
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+// MinVersion assigned on one config is not applied to the next tls.Config literal
+package main
+
+import "crypto/tls"
+
+func legacy() tls.Config {
+	var cfg tls.Config
+	cfg.MinVersion = tls.VersionTLS10 // #nosec G402 -- legacy device
+	return cfg
+}
+
+func modern() *tls.Config {
+	return &tls.Config{ServerName: "example.com"}
+}
+
+func main() {
+	_ = legacy()
+	_ = modern()
+}
+`}, 0, gosec.NewConfig()},
 }
