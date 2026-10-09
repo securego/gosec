@@ -320,4 +320,3 @@ func appendParam(other []int) []int {
 		})
 	}
 }
-
