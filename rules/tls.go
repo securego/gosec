@@ -293,8 +293,15 @@ func (t *insecureConfigTLS) Match(n ast.Node, c *gosec.Context) (*issue.Issue, e
 	if assign, ok := n.(*ast.AssignStmt); ok && len(assign.Lhs) > 0 {
 		if selector, ok := assign.Lhs[0].(*ast.SelectorExpr); ok {
 			actualType := c.Info.TypeOf(selector.X)
+			if ptr, ok := actualType.(*types.Pointer); ok {
+				actualType = ptr.Elem()
+			}
 			if actualType != nil && actualType.String() == t.requiredType {
-				return t.processTLSConf(assign, c), nil
+				defer t.resetVersion()
+				if issue := t.processTLSConf(assign, c); issue != nil {
+					return issue, nil
+				}
+				return t.checkVersion(assign, c), nil
 			}
 		}
 	}
