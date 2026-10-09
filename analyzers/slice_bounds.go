@@ -20,6 +20,7 @@ import (
 	"go/token"
 	"go/types"
 	"maps"
+	"math"
 	"sync"
 
 	"golang.org/x/tools/go/analysis"
@@ -272,6 +273,27 @@ func runSliceBounds(pass *analysis.Pass) (result any, err error) {
 										issue.Low,
 										issue.High)
 								}
+							}
+						}
+					case *ssa.Call:
+						if instr.Pos() > 0 {
+							if sliceLen, ok := staticAppendCallLen(indexInstr); ok {
+								var isOutOfRange bool
+								if idxVal, ok := GetConstantInt64(instr.Index); ok && !isSliceIndexInsideBounds(sliceLen, int(idxVal)) {
+									isOutOfRange = true
+								} else if indexValue, err := state.extractIntValueIndexAddr(instr, sliceLen); err == nil && !isSliceIndexInsideBounds(sliceLen, indexValue) {
+									isOutOfRange = true
+								}
+								if isOutOfRange {
+									issues[instr] = newIssue(
+										pass.Analyzer.Name,
+										"slice index out of range",
+										pass.Fset,
+										instr.Pos(),
+										issue.Low,
+										issue.High)
+								}
+								collectSliceLenGuards(indexInstr, ifs)
 							}
 						}
 					}
@@ -881,10 +903,6 @@ func (s *sliceBoundsState) checkAllSlicesBounds(depth int, sliceCap int, slice *
 // is statically determinable. Returns false when it isn't (e.g. spreading
 // a slice of unknown length) -- no growth is assumed in that case.
 func staticAppendGrowth(call *ssa.Call, slice ssa.Node) (int, bool) {
-	builtin, ok := call.Call.Value.(*ssa.Builtin)
-	if !ok || builtin.Name() != "append" {
-		return 0, false
-	}
 	sliceVal, ok := slice.(ssa.Value)
 	if !ok {
 		return 0, false
@@ -893,48 +911,130 @@ func staticAppendGrowth(call *ssa.Call, slice ssa.Node) (int, bool) {
 	if len(args) != 2 || args[0] != sliceVal {
 		return 0, false
 	}
-	// append(s) with zero variadic arguments always lowers to append(s, nil...):
-	// args[1] is a *ssa.Const placeholder for the empty variadic slice, never a
-	// *ssa.Slice value, so it has to be recognized here rather than falling
-	// through to staticSliceLen (which would reject it as "not determinable").
-	if _, isConst := args[1].(*ssa.Const); isConst {
-		return 0, true
+	return appendGrowth(call)
+}
+
+func appendGrowth(call *ssa.Call) (int, bool) {
+	return appendGrowthDepth(call, 0)
+}
+
+func appendGrowthDepth(call *ssa.Call, depth int) (int, bool) {
+	if call == nil || depth >= MaxDepth {
+		return 0, false
 	}
-	return staticSliceLen(args[1])
+	builtin, ok := call.Call.Value.(*ssa.Builtin)
+	if !ok || builtin.Name() != "append" || len(call.Call.Args) < 2 {
+		return 0, false
+	}
+	args := call.Call.Args
+	if len(args) == 2 {
+		// append(s) with zero variadic arguments lowers to append(s, nil...):
+		// args[1] is a *ssa.Const placeholder for the empty variadic slice, never a
+		// *ssa.Slice value, so it has to be recognized here rather than falling
+		// through to staticSliceLen (which would reject it as indeterminable).
+		if _, isConst := args[1].(*ssa.Const); isConst {
+			return 0, true
+		}
+		return staticSliceLenDepth(args[1], depth+1)
+	}
+	return len(args) - 1, true
+}
+
+// staticAppendCallLen computes the guaranteed length of a slice resulting from an append() call
+// when both the base slice and appended elements have statically known lengths.
+func staticAppendCallLen(call *ssa.Call) (int, bool) {
+	return staticAppendCallLenDepth(call, 0)
+}
+
+func staticAppendCallLenDepth(call *ssa.Call, depth int) (int, bool) {
+	if call == nil || depth >= MaxDepth {
+		return 0, false
+	}
+	builtin, ok := call.Call.Value.(*ssa.Builtin)
+	if !ok || builtin.Name() != "append" || len(call.Call.Args) < 2 {
+		return 0, false
+	}
+	baseLen, ok := staticSliceLenDepth(call.Call.Args[0], depth+1)
+	if !ok {
+		return 0, false
+	}
+	growth, ok := appendGrowthDepth(call, depth+1)
+	if !ok {
+		return 0, false
+	}
+	if baseLen < 0 || growth < 0 || baseLen > math.MaxInt-growth {
+		return 0, false
+	}
+	return baseLen + growth, true
 }
 
 // staticSliceLen returns v's guaranteed length (not capacity) when v is a
-// *ssa.Slice over a *ssa.Alloc-backed fixed-size array with statically-known
-// bounds -- reusing the same GetSliceBounds/extractArrayLen machinery already
-// used for the make()/composite-literal Alloc case. append() only ever adds
-// as many elements as the spread value's length, so capacity is irrelevant
-// here even for a 3-index slice: ComputeSliceNewCap(l, h, maxIdx, arrLen)
-// returns maxIdx-l (capacity) in that case, not h-l (length), so it is used
-// only for the 2-index case below, where the two values coincide.
+// slice value with statically known bounds.
 func staticSliceLen(v ssa.Value) (int, bool) {
-	sl, ok := v.(*ssa.Slice)
-	if !ok {
+	return staticSliceLenDepth(v, 0)
+}
+
+func staticSliceLenDepth(v ssa.Value, depth int) (int, bool) {
+	if v == nil || depth >= MaxDepth {
 		return 0, false
 	}
-	alloc, ok := sl.X.(*ssa.Alloc)
-	if !ok {
-		return 0, false
-	}
-	arrLen, ok := extractArrayLen(alloc.Type())
-	if !ok {
-		return 0, false
-	}
-	l, h, maxIdx := GetSliceBounds(sl)
-	if maxIdx > 0 {
-		if !isThreeIndexSliceInsideBounds(l, h, maxIdx, arrLen) {
+	switch val := v.(type) {
+	case *ssa.Const:
+		if val.Value == nil {
+			if _, ok := val.Type().Underlying().(*types.Slice); ok {
+				return 0, true
+			}
+		}
+	case *ssa.Call:
+		return staticAppendCallLenDepth(val, depth+1)
+	case *ssa.Convert:
+		if strConst, ok := val.X.(*ssa.Const); ok && strConst.Value != nil && strConst.Value.Kind() == constant.String {
+			return len(constant.StringVal(strConst.Value)), true
+		}
+	case *ssa.Slice:
+		alloc, ok := val.X.(*ssa.Alloc)
+		if !ok {
 			return 0, false
 		}
-		return h - l, true
+		arrLen, ok := extractArrayLen(alloc.Type())
+		if !ok {
+			return 0, false
+		}
+		low, high := GetSliceRange(val)
+		if high == -1 {
+			high = int64(arrLen)
+		}
+		if low < 0 || high < low || int(high) > arrLen {
+			return 0, false
+		}
+		if val.Max != nil {
+			if maxVal, ok := GetConstantInt64(val.Max); ok {
+				if maxVal < high || int(maxVal) > arrLen {
+					return 0, false
+				}
+			}
+		}
+		return int(high - low), true
 	}
-	if !isSliceInsideBounds(arrLen, l, h) {
-		return 0, false
+	return 0, false
+}
+
+// collectSliceLenGuards gathers len(sliceVal) guards associated with sliceVal.
+func collectSliceLenGuards(sliceVal ssa.Value, ifs map[ssa.If]*ssa.BinOp) {
+	if sliceVal == nil || ifs == nil {
+		return
 	}
-	return ComputeSliceNewCap(l, h, maxIdx, arrLen), true
+	refs := sliceVal.Referrers()
+	if refs == nil {
+		return
+	}
+	for _, ref := range *refs {
+		if call, ok := ref.(*ssa.Call); ok {
+			if ifref, cond := extractSliceIfLenCondition(call); ifref != nil && cond != nil {
+				ifs[*ifref] = cond
+			}
+		}
+	}
 }
 
 func extractSliceIfLenCondition(call *ssa.Call) (*ssa.If, *ssa.BinOp) {

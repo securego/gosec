@@ -15,7 +15,11 @@
 package analyzers
 
 import (
+	"go/ast"
+	"go/importer"
+	"go/parser"
 	"go/token"
+	"go/types"
 	"testing"
 
 	"golang.org/x/tools/go/ssa"
@@ -177,3 +181,143 @@ func TestMinimumLenForBranchInvalidInputs(t *testing.T) {
 		t.Fatal("minimumLenForBranch accepted a comparison without a constant")
 	}
 }
+
+func TestAppendGrowthInvalidInputs(t *testing.T) {
+	if _, ok := appendGrowth(nil); ok {
+		t.Fatal("appendGrowth(nil) unexpectedly succeeded")
+	}
+	call := &ssa.Call{}
+	if _, ok := appendGrowth(call); ok {
+		t.Fatal("appendGrowth on empty call unexpectedly succeeded")
+	}
+}
+
+func TestStaticAppendCallLenInvalidInputs(t *testing.T) {
+	if _, ok := staticAppendCallLen(nil); ok {
+		t.Fatal("staticAppendCallLen(nil) unexpectedly succeeded")
+	}
+	call := &ssa.Call{}
+	if _, ok := staticAppendCallLen(call); ok {
+		t.Fatal("staticAppendCallLen on empty call unexpectedly succeeded")
+	}
+}
+
+func TestStaticSliceLenNil(t *testing.T) {
+	if _, ok := staticSliceLen(nil); ok {
+		t.Fatal("staticSliceLen(nil) unexpectedly succeeded")
+	}
+}
+
+func TestCollectSliceLenGuardsNil(t *testing.T) {
+	ifs := make(map[ssa.If]*ssa.BinOp)
+	collectSliceLenGuards(nil, ifs)
+	if len(ifs) != 0 {
+		t.Fatal("collectSliceLenGuards(nil) unexpectedly added guards")
+	}
+}
+
+func buildTestSSA(t *testing.T, src string) *ssa.Package {
+	t.Helper()
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, "p.go", src, 0)
+	if err != nil {
+		t.Fatalf("parser.ParseFile: %v", err)
+	}
+	conf := types.Config{Importer: importer.Default()}
+	info := &types.Info{
+		Types: make(map[ast.Expr]types.TypeAndValue),
+		Defs:  make(map[*ast.Ident]types.Object),
+		Uses:  make(map[*ast.Ident]types.Object),
+	}
+	pkg, err := conf.Check("p", fset, []*ast.File{f}, info)
+	if err != nil {
+		t.Fatalf("types.Check: %v", err)
+	}
+	prog := ssa.NewProgram(fset, ssa.SanityCheckFunctions)
+	ssapkg := prog.CreatePackage(pkg, []*ast.File{f}, info, true)
+	ssapkg.Build()
+	return ssapkg
+}
+
+func findAppendCall(fn *ssa.Function) *ssa.Call {
+	for _, b := range fn.Blocks {
+		for _, instr := range b.Instrs {
+			if call, ok := instr.(*ssa.Call); ok {
+				if b, ok := call.Call.Value.(*ssa.Builtin); ok && b.Name() == "append" {
+					return call
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func TestStaticAppendCallLenSSA(t *testing.T) {
+	src := `package p
+
+func appendNil() []int {
+	var s []int
+	return append(s, 10)
+}
+
+func appendLiteral() []int {
+	s := []int{1, 2}
+	return append(s, 3)
+}
+
+func appendMake() []int {
+	s := make([]int, 0, 4)
+	return append(s, 10)
+}
+
+func appendMulti() []int {
+	var s []int
+	return append(s, 10, 20, 30)
+}
+
+func appendZero() []int {
+	s := []int{1}
+	return append(s)
+}
+
+func appendParam(other []int) []int {
+	s := []int{}
+	return append(s, other...)
+}
+`
+	ssapkg := buildTestSSA(t, src)
+
+	tests := []struct {
+		funcName string
+		wantLen  int
+		wantOk   bool
+	}{
+		{"appendNil", 1, true},
+		{"appendLiteral", 3, true},
+		{"appendMake", 1, true},
+		{"appendMulti", 3, true},
+		{"appendZero", 1, true},
+		{"appendParam", 0, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.funcName, func(t *testing.T) {
+			fn := ssapkg.Func(tt.funcName)
+			if fn == nil {
+				t.Fatalf("function %s not found", tt.funcName)
+			}
+			call := findAppendCall(fn)
+			if call == nil {
+				t.Fatalf("append call not found in %s", tt.funcName)
+			}
+			gotLen, gotOk := staticAppendCallLen(call)
+			if gotOk != tt.wantOk {
+				t.Fatalf("staticAppendCallLen(%s) ok = %v, want %v", tt.funcName, gotOk, tt.wantOk)
+			}
+			if gotLen != tt.wantLen {
+				t.Fatalf("staticAppendCallLen(%s) len = %d, want %d", tt.funcName, gotLen, tt.wantLen)
+			}
+		})
+	}
+}
+
