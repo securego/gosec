@@ -19,9 +19,9 @@ jobs:
     strategy:
       matrix:
         version:
-          - go-version: "1.26.8"
+          - go-version: "1.26.9"
             golangci: "latest"
-          - go-version: "1.27.1"
+          - go-version: "1.27.2"
             golangci: "latest"
     runs-on: ubuntu-latest
     permissions:
