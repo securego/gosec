@@ -67,7 +67,7 @@ jobs:
       - name: Setup go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
-          go-version: "1.27.1"
+          go-version: "1.27.2"
       - name: Checkout Source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -108,7 +108,7 @@ jobs:
           autofix-model: gemini-3-flash-preview
           output-format: sarif
       - name: Upload SARIF to GitHub Security Center
-        uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4
+        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4
         if: steps.barry.outcome == 'success'
         with:
           sarif_file: ${{ github.workspace }}/barry-results.sarif
@@ -124,7 +124,7 @@ jobs:
       - name: Setup go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
-          go-version: "1.27.1"
+          go-version: "1.27.2"
       - name: Checkout Source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
