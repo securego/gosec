@@ -1499,4 +1499,178 @@ func main() {
 	fmt.Println(s[5])
 }
 `}, 1, gosec.NewConfig()},
+	// Bounds check on nil slice populated via append: out-of-bounds index.
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	var s []int
+	s = append(s, 10)
+	fmt.Println(s[6])
+}
+`}, 1, gosec.NewConfig()},
+	// Bounds check on nil slice populated via append: valid in-bounds index.
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	var s []int
+	s = append(s, 10)
+	fmt.Println(s[0])
+}
+`}, 0, gosec.NewConfig()},
+	// Bounds check on nil slice populated via append: guarded by len equality check.
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	var s []int
+	s = append(s, 10)
+	if len(s) == 3 {
+		fmt.Println(s[2])
+	}
+}
+`}, 0, gosec.NewConfig()},
+	// Bounds check on nil slice populated via append: guard asserts len 3, index 6 out-of-bounds.
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	var s []int
+	s = append(s, 10)
+	if len(s) == 3 {
+		fmt.Println(s[6])
+	}
+}
+`}, 1, gosec.NewConfig()},
+	// Bounds check on nil slice populated via append: guard asserts len >= 3, index 2 in-bounds.
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	var s []int
+	s = append(s, 10)
+	if len(s) >= 3 {
+		fmt.Println(s[2])
+	}
+}
+`}, 0, gosec.NewConfig()},
+	// Bounds check on nil slice populated via append: guard asserts len >= 3, index 6 out-of-bounds.
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	var s []int
+	s = append(s, 10)
+	if len(s) >= 3 {
+		fmt.Println(s[6])
+	}
+}
+`}, 1, gosec.NewConfig()},
+	// Bounds check on make(..., 0, cap) slice populated via append: out-of-bounds index.
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]int, 0, 4)
+	s = append(s, 10)
+	fmt.Println(s[6])
+}
+`}, 1, gosec.NewConfig()},
+	// Bounds check on make(..., 0, cap) slice populated via append: in-bounds index.
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := make([]int, 0, 4)
+	s = append(s, 10)
+	fmt.Println(s[0])
+}
+`}, 0, gosec.NewConfig()},
+	// Bounds check on direct indexing into append result: out-of-bounds index.
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := append([]int{1, 2}, 3)
+	fmt.Println(s[6])
+}
+`}, 1, gosec.NewConfig()},
+	// Bounds check on direct indexing into append result: in-bounds index.
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	s := append([]int{1, 2}, 3)
+	fmt.Println(s[2])
+}
+`}, 0, gosec.NewConfig()},
+	// Chained append on nil slice: out-of-bounds index.
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	var s []int
+	s = append(append(s, 1), 2)
+	fmt.Println(s[5])
+}
+`}, 1, gosec.NewConfig()},
+	// Chained append on nil slice: in-bounds index.
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	var s []int
+	s = append(append(s, 1), 2)
+	fmt.Println(s[1])
+}
+`}, 0, gosec.NewConfig()},
+	// Multi-element append on nil slice: out-of-bounds index.
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	var s []int
+	s = append(s, 10, 20)
+	fmt.Println(s[3])
+}
+`}, 1, gosec.NewConfig()},
+	// Multi-element append on nil slice: in-bounds index.
+	{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	var s []int
+	s = append(s, 10, 20)
+	fmt.Println(s[1])
+}
+`}, 0, gosec.NewConfig()},
 }
