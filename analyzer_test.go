@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"go/build"
 	"log"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -53,6 +55,28 @@ var _ = Describe("Analyzer", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			_, _, errors := analyzer.Report()
 			Expect(errors).To(BeEmpty())
+		})
+
+		It("should analyse a package in a nested module when run from the parent module", func() {
+			analyzer.LoadRules(rules.Generate(false).RulesInfo())
+			root := GinkgoT().TempDir()
+			pkgDir := filepath.Join(root, "sub", "pkg")
+			Expect(os.MkdirAll(pkgDir, 0o755)).To(Succeed())
+			Expect(os.WriteFile(filepath.Join(root, "go.mod"), []byte("module example.com/root\n\ngo 1.21\n"), 0o600)).To(Succeed())
+			Expect(os.WriteFile(filepath.Join(root, "sub", "go.mod"), []byte("module example.com/sub\n\ngo 1.21\n"), 0o600)).To(Succeed())
+			Expect(os.WriteFile(filepath.Join(pkgDir, "p.go"), []byte("package pkg\n\nfunc F() int { return 1 }\n"), 0o600)).To(Succeed())
+
+			// The package is given relative to the working directory, which isn't the module root of the package.
+			wd, err := os.Getwd()
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(os.Chdir(root)).To(Succeed())
+			DeferCleanup(os.Chdir, wd)
+
+			err = analyzer.Process(buildTags, filepath.Join("sub", "pkg"))
+			Expect(err).ShouldNot(HaveOccurred())
+			_, metrics, errors := analyzer.Report()
+			Expect(errors).To(BeEmpty())
+			Expect(metrics.NumFiles).To(Equal(1))
 		})
 
 		It("should report an error if the package fails to build", func() {
