@@ -134,4 +134,87 @@ func main() {
 	fmt.Print("test")
 }
 `}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import (
+	"net/http"
+	"time"
+)
+
+func main() {
+	server := &http.Server{Addr: ":1234"}
+	server.ReadHeaderTimeout = 3 * time.Second
+	if err := server.ListenAndServe(); err != nil {
+		panic(err)
+	}
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import (
+	"net/http"
+	"time"
+)
+
+func main() {
+	var server = http.Server{Addr: ":1234"}
+	server.ReadTimeout = time.Second
+	if err := server.ListenAndServe(); err != nil {
+		panic(err)
+	}
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import (
+	"net/http"
+	"time"
+)
+
+func main() {
+	server := &http.Server{Addr: ":1234"}
+	server.WriteTimeout = 3 * time.Second
+	if err := server.ListenAndServe(); err != nil {
+		panic(err)
+	}
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import (
+	"net/http"
+	"time"
+)
+
+func main() {
+	public := &http.Server{Addr: ":1234"}
+	internal := &http.Server{Addr: ":5678"}
+	internal.ReadHeaderTimeout = 3 * time.Second
+	go func() { _ = internal.ListenAndServe() }()
+	if err := public.ListenAndServe(); err != nil {
+		panic(err)
+	}
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import (
+	"net/http"
+	"time"
+)
+
+func main() {
+	server := &http.Server{Addr: ":1234"}
+	server.ReadHeaderTimeout = 3 * time.Second
+	server = &http.Server{Addr: ":5678"}
+	if err := server.ListenAndServe(); err != nil {
+		panic(err)
+	}
+}
+`}, 1, gosec.NewConfig()},
 }
