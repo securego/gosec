@@ -16,6 +16,7 @@ package rules
 
 import (
 	"go/ast"
+	"go/constant"
 	"regexp"
 
 	"github.com/securego/gosec/v2"
@@ -29,8 +30,20 @@ type badTempFile struct {
 	nestedCalls gosec.CallList
 }
 
+// tempPathValue resolves string compile-time constants, including named
+// constants and concatenations of constants.
+func tempPathValue(n ast.Node, c *gosec.Context) (string, bool) {
+	if expr, ok := n.(ast.Expr); ok {
+		if tv, ok := c.Info.Types[expr]; ok && tv.Value != nil && tv.Value.Kind() == constant.String {
+			return constant.StringVal(tv.Value), true
+		}
+	}
+	s, err := gosec.GetString(n)
+	return s, err == nil
+}
+
 func (t *badTempFile) findTempDirArgs(n ast.Node, c *gosec.Context, suspect ast.Node) *issue.Issue {
-	if s, e := gosec.GetString(suspect); e == nil {
+	if s, ok := tempPathValue(suspect, c); ok {
 		if gosec.RegexMatchWithCache(t.args, s) {
 			return c.NewIssue(n, t.ID(), t.What, t.Severity, t.Confidence)
 		}
