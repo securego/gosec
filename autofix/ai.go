@@ -13,7 +13,7 @@ import (
 const (
 	AIProviderFlagHelp = `AI API provider to generate auto fixes to issues. Valid options are:
 	- atlas (Atlas Cloud default), atlas-deepseek-v4-flash, atlas-qwen3-coder-next, atlas-kimi-k2.6, atlas:<model-id>;
-- gemini-3-pro-preview (gemini, default), gemini-2.5-pro, gemini-2.5-flash, gemini-2.5-flash-lite;
+- gemini-3.1-pro-preview (gemini, default), gemini-2.5-pro, gemini-2.5-flash, gemini-2.5-flash-lite;
 - claude-sonnet-4-6 (claude, default), claude-opus-4-7, claude-opus-4-6, claude-sonnet-4-5, claude-opus-4-5, claude-haiku-4-5;
 - gpt-5.4 (openai, default), gpt-5.4-mini, gpt-5.4-nano`
 

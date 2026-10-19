@@ -405,7 +405,7 @@ line arguments:
     `atlas:<model-id>` for any Atlas Cloud hosted chat model.
     Atlas Cloud is an OpenAI-compatible provider available at
     [atlascloud.ai](https://www.atlascloud.ai/?utm_source=github&utm_medium=link&utm_campaign=gosec)
-  - **Gemini**: `gemini-3-pro-preview` (default),
+  - **Gemini**: `gemini-3.1-pro-preview` (default),
     `gemini-2.5-pro`, `gemini-2.5-flash`,
     `gemini-2.5-flash-lite`
   - **Claude**: `claude-sonnet-4-6` (default),
@@ -454,7 +454,7 @@ GOSEC_AI_API_KEY="your_key" \
   gosec -ai-api-provider="atlas:qwen/qwen3-coder-next" ./...
 
 # Using Gemini
-gosec -ai-api-provider="gemini-3-pro-preview" \
+gosec -ai-api-provider="gemini-3.1-pro-preview" \
   -ai-api-key="your_key" ./...
 
 # Using Claude
