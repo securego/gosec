@@ -46,6 +46,7 @@
 - G122 — Filesystem TOCTOU race risk in `filepath.Walk/WalkDir` callbacks (**SSA**)
 - G123 — TLS resumption may bypass `VerifyPeerCertificate` when `VerifyConnection` is unset (**SSA**)
 - G124 — Insecure HTTP cookie configuration missing Secure, HttpOnly, or SameSite attributes (**SSA**)
+- G125 — Detect unescaped elements in url.JoinPath calls (**AST**)
 
 ### G2xx: Injection Patterns
 
