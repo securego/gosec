@@ -1937,4 +1937,30 @@ func arrayStore(ctx context.Context) [1]context.CancelFunc {
 	return arr
 }
 `}, 0, gosec.NewConfig()},
+
+	// Safe: cancel sent on a channel to the goroutine that will call it
+	{[]string{`
+package main
+
+import "context"
+
+func handOff(ctx context.Context, cancels chan<- context.CancelFunc) context.Context {
+	ctx, cancel := context.WithCancel(ctx)
+	cancels <- cancel
+	return ctx
+}
+`}, 0, gosec.NewConfig()},
+
+	// Vulnerable: only the context is sent on the channel, cancel is dropped
+	{[]string{`
+package main
+
+import "context"
+
+func handOff(ctx context.Context, ctxs chan<- context.Context) {
+	ctx, cancel := context.WithCancel(ctx)
+	_ = cancel
+	ctxs <- ctx
+}
+`}, 1, gosec.NewConfig()},
 }

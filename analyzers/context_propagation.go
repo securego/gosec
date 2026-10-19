@@ -744,6 +744,13 @@ func isCancelCalled(cancelValue ssa.Value, allFuncs []*ssa.Function) bool {
 				if r.Value == current {
 					return true
 				}
+			case *ssa.Send:
+				// Cancel sent on a channel (e.g. `cancels <- cancel`). The
+				// receiver takes over the cancel; treat it like the map and
+				// slice stores above.
+				if r.X == current {
+					return true
+				}
 			case *ssa.UnOp:
 				if r.Op == token.MUL && r.X == current {
 					queue = append(queue, r)
