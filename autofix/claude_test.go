@@ -1,6 +1,10 @@
 package autofix
 
 import (
+	"context"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/anthropics/anthropic-sdk-go"
@@ -224,6 +228,54 @@ func TestNewClaudeClient_AllSupportedModels(t *testing.T) {
 			client, err := NewClaudeClient(model, "test-key")
 			require.NoError(t, err)
 			assert.NotNil(t, client)
+		})
+	}
+}
+
+func TestClaudeGenerateSolution_SkipsLeadingNonTextBlocks(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+		want    string
+		wantErr string
+	}{
+		{
+			name:    "text only",
+			content: `[{"type":"text","text":"Use parameterized queries."}]`,
+			want:    "Use parameterized queries.",
+		},
+		{
+			name:    "thinking before text",
+			content: `[{"type":"thinking","thinking":"let me think","signature":"sig"},{"type":"text","text":"Use parameterized queries."}]`,
+			want:    "Use parameterized queries.",
+		},
+		{
+			name:    "no text block",
+			content: `[{"type":"thinking","thinking":"let me think","signature":"sig"}]`,
+			wantErr: "nothing found in the first autofix returned by claude",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = fmt.Fprintf(w, `{"id":"msg_1","type":"message","role":"assistant","model":"claude-sonnet-4-6","content":%s,"stop_reason":"end_turn","usage":{"input_tokens":1,"output_tokens":1}}`, tt.content)
+			}))
+			defer server.Close()
+			t.Setenv("ANTHROPIC_BASE_URL", server.URL)
+
+			client, err := NewClaudeClient("claude-sonnet-4-6", "test-key")
+			require.NoError(t, err)
+
+			got, err := client.GenerateSolution(context.Background(), "prompt")
+
+			if tt.wantErr != "" {
+				require.EqualError(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
