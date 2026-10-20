@@ -418,10 +418,10 @@ func (gosec *Analyzer) load(pkgPath string, buildTags []string) ([]*packages.Pac
 
 	var packageFiles []string
 	for _, filename := range basePackage.GoFiles {
-		packageFiles = append(packageFiles, path.Join(pkgPath, filename))
+		packageFiles = append(packageFiles, filepath.Join(abspath, filename))
 	}
 	for _, filename := range basePackage.CgoFiles {
-		packageFiles = append(packageFiles, path.Join(pkgPath, filename))
+		packageFiles = append(packageFiles, filepath.Join(abspath, filename))
 	}
 
 	if gosec.tests {
@@ -429,7 +429,7 @@ func (gosec *Analyzer) load(pkgPath string, buildTags []string) ([]*packages.Pac
 		testsFiles = append(testsFiles, basePackage.TestGoFiles...)
 		testsFiles = append(testsFiles, basePackage.XTestGoFiles...)
 		for _, filename := range testsFiles {
-			packageFiles = append(packageFiles, path.Join(pkgPath, filename))
+			packageFiles = append(packageFiles, filepath.Join(abspath, filename))
 		}
 	}
 
