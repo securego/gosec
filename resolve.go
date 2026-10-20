@@ -222,6 +222,14 @@ func isEmptyCompositeLit(e ast.Expr) bool {
 // all values contained within to a known constant. It is used to check for any
 // unknown values in compound expressions.
 func TryResolve(n ast.Node, c *Context) bool {
+	// The type checker already knows the value of constant expressions, which
+	// covers constants from other packages (os.DevNull), typed constant
+	// conversions and parenthesized constants.
+	if expr, ok := n.(ast.Expr); ok && c.Info != nil {
+		if tv, ok := c.Info.Types[expr]; ok && tv.Value != nil {
+			return true
+		}
+	}
 	switch node := n.(type) {
 	case *ast.BasicLit:
 		return true

@@ -552,4 +552,52 @@ func main() {
 	defer rows.Close()
 }
 `}, 1, gosec.NewConfig()},
+	{[]string{`
+// typed constant converted to string - should NOT flag
+package main
+
+import (
+	"database/sql"
+)
+
+type tableName string
+
+const usersTable tableName = "users"
+
+func main() {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	rows, err := db.Query("SELECT * FROM " + string(usersTable) + " WHERE id = 1")
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+// typed variable converted to string - should flag
+package main
+
+import (
+	"database/sql"
+	"os"
+)
+
+type tableName string
+
+func main() {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	table := tableName(os.Args[1])
+	rows, err := db.Query("SELECT * FROM " + string(table) + " WHERE id = 1")
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}
+`}, 1, gosec.NewConfig()},
 }
