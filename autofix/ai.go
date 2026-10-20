@@ -72,9 +72,6 @@ func GenerateSolution(model, aiAPIKey, baseURL string, skipSSL bool, issues []*i
 }
 
 func generateSolution(client GenAIClient, issues []*issue.Issue) error {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
 	cachedAutofix := make(map[string]string)
 	for _, issue := range issues {
 		if val, ok := cachedAutofix[issue.What]; ok {
@@ -83,7 +80,7 @@ func generateSolution(client GenAIClient, issues []*issue.Issue) error {
 		}
 
 		prompt := fmt.Sprintf(AIPrompt, issue.What)
-		resp, err := client.GenerateSolution(ctx, prompt)
+		resp, err := generateWithTimeout(client, prompt)
 		if err != nil {
 			return fmt.Errorf("generating autofix with AI provider: %w", err)
 		}
@@ -96,4 +93,14 @@ func generateSolution(client GenAIClient, issues []*issue.Issue) error {
 		cachedAutofix[issue.What] = issue.Autofix
 	}
 	return nil
+}
+
+// generateWithTimeout gives every request its own timeout. A single deadline for
+// the whole loop would expire after the first few issues and leave the rest
+// without an autofix.
+func generateWithTimeout(client GenAIClient, prompt string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	return client.GenerateSolution(ctx, prompt)
 }
