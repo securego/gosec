@@ -147,7 +147,7 @@ Use "*" to exclude all rules for a path: "scripts/.*:*"`)
 	flagConfidence = flag.String("confidence", "low", "Filter out the issues with a lower confidence than the given value. Valid options are: low, medium, high")
 
 	// concurrency value
-	flagConcurrency = flag.Int("concurrency", runtime.NumCPU(), "Concurrency value")
+	flagConcurrency = flag.Int("concurrency", runtime.GOMAXPROCS(0), "Concurrency value")
 
 	// do not fail
 	flagNoFail = flag.Bool("no-fail", false, "Do not fail the scanning, even if issues were found")
