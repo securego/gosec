@@ -16,6 +16,8 @@ package rules
 
 import (
 	"go/ast"
+	"go/constant"
+	"go/token"
 	"regexp"
 
 	"github.com/securego/gosec/v2"
@@ -34,19 +36,9 @@ func (r *bindsToAllNetworkInterfaces) Match(n ast.Node, c *gosec.Context) (*issu
 		return nil, nil
 	}
 	if len(callExpr.Args) > 1 {
-		arg := callExpr.Args[1]
-		if bl, ok := arg.(*ast.BasicLit); ok {
-			if arg, err := gosec.GetString(bl); err == nil {
-				if gosec.RegexMatchWithCache(r.pattern, arg) {
-					return c.NewIssue(n, r.ID(), r.What, r.Severity, r.Confidence), nil
-				}
-			}
-		} else if ident, ok := arg.(*ast.Ident); ok {
-			values := gosec.GetIdentStringValues(ident)
-			for _, value := range values {
-				if gosec.RegexMatchWithCache(r.pattern, value) {
-					return c.NewIssue(n, r.ID(), r.What, r.Severity, r.Confidence), nil
-				}
+		for _, value := range listenAddressValues(callExpr.Args[1], c) {
+			if gosec.RegexMatchWithCache(r.pattern, value) {
+				return c.NewIssue(n, r.ID(), r.What, r.Severity, r.Confidence), nil
 			}
 		}
 	} else if len(callExpr.Args) > 0 {
@@ -58,6 +50,26 @@ func (r *bindsToAllNetworkInterfaces) Match(n ast.Node, c *gosec.Context) (*issu
 		}
 	}
 	return nil, nil
+}
+
+// listenAddressValues returns the values of a listen address that can be resolved
+// statically. For a string concatenation only the leading operand is resolved,
+// because it holds the host part of the address (e.g. ":" + port).
+func listenAddressValues(expr ast.Expr, c *gosec.Context) []string {
+	if tv, ok := c.Info.Types[expr]; ok && tv.Value != nil && tv.Value.Kind() == constant.String {
+		return []string{constant.StringVal(tv.Value)}
+	}
+	switch e := expr.(type) {
+	case *ast.Ident:
+		return gosec.GetIdentStringValues(e)
+	case *ast.ParenExpr:
+		return listenAddressValues(e.X, c)
+	case *ast.BinaryExpr:
+		if e.Op == token.ADD {
+			return listenAddressValues(e.X, c)
+		}
+	}
+	return nil
 }
 
 // NewBindsToAllNetworkInterfaces detects socket connections that are setup to
