@@ -61,7 +61,7 @@ func (g *geminiWrapper) GenerateSolution(ctx context.Context, prompt string) (st
 		return "", errors.New("no autofix returned by gemini")
 	}
 
-	if len(resp.Candidates[0].Content.Parts) == 0 {
+	if resp.Candidates[0].Content == nil || len(resp.Candidates[0].Content.Parts) == 0 {
 		return "", errors.New("nothing found in the first autofix returned by gemini")
 	}
 
