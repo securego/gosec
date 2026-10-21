@@ -338,6 +338,68 @@ var _ = Describe("Resolve ast node to concrete value", func() {
 			Expect(gosec.TryResolve(value, ctx)).Should(BeFalse())
 		})
 
+		It("should resolve a constant from another package", func() {
+			var value *ast.SelectorExpr
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("foo.go", `package main; import "os"; func main(){ println(os.DevNull) }`)
+			ctx := pkg.CreateContext("foo.go")
+			v := testutils.NewMockVisitor()
+			v.Callback = func(n ast.Node, ctx *gosec.Context) bool {
+				if node, ok := n.(*ast.SelectorExpr); ok {
+					value = node
+					return false
+				}
+				return true
+			}
+			v.Context = ctx
+			ast.Walk(v, ctx.Root)
+			Expect(value).ShouldNot(BeNil())
+			Expect(gosec.TryResolve(value, ctx)).Should(BeTrue())
+		})
+
+		It("should not resolve a variable from another package", func() {
+			var value *ast.SelectorExpr
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("foo.go", `package main; import "os"; func main(){ println(os.Args) }`)
+			ctx := pkg.CreateContext("foo.go")
+			v := testutils.NewMockVisitor()
+			v.Callback = func(n ast.Node, ctx *gosec.Context) bool {
+				if node, ok := n.(*ast.SelectorExpr); ok {
+					value = node
+					return false
+				}
+				return true
+			}
+			v.Context = ctx
+			ast.Walk(v, ctx.Root)
+			Expect(value).ShouldNot(BeNil())
+			Expect(gosec.TryResolve(value, ctx)).Should(BeFalse())
+		})
+
+		It("should resolve a typed constant conversion", func() {
+			var value *ast.CallExpr
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("foo.go", `package main; type name string; const x name = "bar"; func main(){ println(string(x)) }`)
+			ctx := pkg.CreateContext("foo.go")
+			v := testutils.NewMockVisitor()
+			v.Callback = func(n ast.Node, ctx *gosec.Context) bool {
+				if node, ok := n.(*ast.CallExpr); ok {
+					if fn, ok := node.Fun.(*ast.Ident); ok && fn.Name == "string" {
+						value = node
+						return false
+					}
+				}
+				return true
+			}
+			v.Context = ctx
+			ast.Walk(v, ctx.Root)
+			Expect(value).ShouldNot(BeNil())
+			Expect(gosec.TryResolve(value, ctx)).Should(BeTrue())
+		})
+
 		It("should resolve a strings.Builder built only from constants", func() {
 			var call *ast.CallExpr
 			pkg := testutils.NewTestPackage()

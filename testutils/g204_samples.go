@@ -315,4 +315,32 @@ func main() {
 	vulnerable("echo safe")
 }
 `}, 1, gosec.NewConfig()},
+	{[]string{`
+// constants from another package are known at compile time
+package main
+
+import (
+	"os"
+	"os/exec"
+	"runtime"
+)
+
+func main() {
+	_ = exec.Command("go", "build", "-o", os.DevNull, ".").Run()
+	_ = exec.Command("go", "env", "GOOS="+runtime.GOOS).Run()
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+// variables from another package are still reported
+package main
+
+import (
+	"os"
+	"os/exec"
+)
+
+func main() {
+	_ = exec.Command("go", "build", "-o", os.Args[1], ".").Run()
+}
+`}, 1, gosec.NewConfig()},
 }
