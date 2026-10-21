@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -189,4 +190,32 @@ func TestGenerateSolution_OpenAIProvider(t *testing.T) {
 	// Assert
 	// Without a real API key, we expect an error from the API
 	require.Error(t, err)
+}
+
+func TestGenerateSolution_EachIssueGetsItsOwnTimeout(t *testing.T) {
+	// Arrange
+	issues := []*issue.Issue{
+		{What: "Issue 1"},
+		{What: "Issue 2"},
+	}
+
+	var deadlines []time.Time
+	mockClient := new(MockGenAIClient)
+	mockClient.On("GenerateSolution", mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) {
+			deadline, ok := args.Get(0).(context.Context).Deadline()
+			require.True(t, ok)
+			deadlines = append(deadlines, deadline)
+			time.Sleep(20 * time.Millisecond)
+		}).
+		Return("Fix", nil).Twice()
+
+	// Act
+	err := generateSolution(mockClient, issues)
+
+	// Assert: the second request's deadline is measured from its own start, so it
+	// is later than the first one's instead of the same shared deadline.
+	require.NoError(t, err)
+	require.Len(t, deadlines, 2)
+	assert.True(t, deadlines[1].After(deadlines[0]), "second deadline %v should be after the first %v", deadlines[1], deadlines[0])
 }
