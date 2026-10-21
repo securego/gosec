@@ -56,11 +56,15 @@ func (c *claudeWrapper) GenerateSolution(ctx context.Context, prompt string) (st
 		return "", errors.New("no autofix returned by claude")
 	}
 
-	if len(resp.Content[0].Text) == 0 {
-		return "", errors.New("nothing found in the first autofix returned by claude")
+	// The answer is the first text block: a thinking block can come before it
+	// and has no text of its own.
+	for _, block := range resp.Content {
+		if block.Type == "text" && block.Text != "" {
+			return block.Text, nil
+		}
 	}
 
-	return resp.Content[0].Text, nil
+	return "", errors.New("nothing found in the first autofix returned by claude")
 }
 
 func parseAnthropicModel(model string) anthropic.Model {
