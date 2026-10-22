@@ -432,10 +432,10 @@ func runSliceBoundsTest(t *testing.T, src string) []*issue.Issue {
 	}
 
 	pass := &analysis.Pass{
-		Analyzer: newSliceBoundsAnalyzer("G602", "slice bounds check"),
-		Fset:     fset,
-		Files:    []*ast.File{f},
-		Pkg:      pkg,
+		Analyzer:  newSliceBoundsAnalyzer("G602", "slice bounds check"),
+		Fset:      fset,
+		Files:     []*ast.File{f},
+		Pkg:       pkg,
 		TypesInfo: info,
 		ResultOf: map[*analysis.Analyzer]any{
 			buildssa.Analyzer: &ssautil.SSAAnalyzerResult{
@@ -596,4 +596,3 @@ func f() {
 		})
 	}
 }
-
