@@ -16,6 +16,7 @@ package rules
 
 import (
 	"go/ast"
+	"go/constant"
 	"go/token"
 	"go/types"
 
@@ -42,6 +43,13 @@ func isReadTimeoutField(name string) bool {
 	return name == "ReadHeaderTimeout" || name == "ReadTimeout"
 }
 
+// disablesTimeout reports whether expr is a constant zero or negative duration,
+// which net/http treats as no timeout at all.
+func disablesTimeout(expr ast.Expr, ctx *gosec.Context) bool {
+	tv, ok := ctx.Info.Types[expr]
+	return ok && tv.Value != nil && tv.Value.Kind() == constant.Int && constant.Sign(tv.Value) <= 0
+}
+
 func isHTTPServerType(t types.Type) bool {
 	if t == nil {
 		return false
@@ -52,14 +60,14 @@ func isHTTPServerType(t types.Type) bool {
 	return t.String() == "net/http.Server"
 }
 
-func containsReadHeaderTimeout(node *ast.CompositeLit) bool {
+func containsReadHeaderTimeout(node *ast.CompositeLit, ctx *gosec.Context) bool {
 	if node == nil {
 		return false
 	}
 	for _, elt := range node.Elts {
 		if kv, ok := elt.(*ast.KeyValueExpr); ok {
 			if ident, ok := kv.Key.(*ast.Ident); ok {
-				if isReadTimeoutField(ident.Name) {
+				if isReadTimeoutField(ident.Name) && !disablesTimeout(kv.Value, ctx) {
 					return true
 				}
 			}
@@ -108,9 +116,12 @@ func newSlowlorisFileState(ctx *gosec.Context) *slowlorisFileState {
 					}
 				}
 			}
-			for _, lhs := range node.Lhs {
+			for i, lhs := range node.Lhs {
 				sel, ok := ast.Unparen(lhs).(*ast.SelectorExpr)
 				if !ok || !isReadTimeoutField(sel.Sel.Name) {
+					continue
+				}
+				if len(node.Lhs) == len(node.Rhs) && disablesTimeout(node.Rhs[i], ctx) {
 					continue
 				}
 				ident, ok := ast.Unparen(sel.X).(*ast.Ident)
@@ -161,7 +172,7 @@ func (r *slowloris) Match(n ast.Node, ctx *gosec.Context) (*issue.Issue, error) 
 	case *ast.CompositeLit:
 		actualType := ctx.Info.TypeOf(node.Type)
 		if actualType != nil && actualType.String() == "net/http.Server" {
-			if !containsReadHeaderTimeout(node) && !r.timeoutAssignedLater(node, ctx) {
+			if !containsReadHeaderTimeout(node, ctx) && !r.timeoutAssignedLater(node, ctx) {
 				return ctx.NewIssue(node, r.ID(), r.What, r.Severity, r.Confidence), nil
 			}
 		}
