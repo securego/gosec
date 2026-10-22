@@ -217,4 +217,73 @@ func main() {
 	}
 }
 `}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "net/http"
+
+func main() {
+	server := &http.Server{
+		Addr:              ":1234",
+		ReadHeaderTimeout: 0,
+	}
+	if err := server.ListenAndServe(); err != nil {
+		panic(err)
+	}
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "net/http"
+
+func main() {
+	server := &http.Server{Addr: ":1234"}
+	server.ReadTimeout = 0
+	if err := server.ListenAndServe(); err != nil {
+		panic(err)
+	}
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import (
+	"net/http"
+	"time"
+)
+
+func main() {
+	server := &http.Server{
+		Addr:              ":1234",
+		ReadHeaderTimeout: 0,
+		ReadTimeout:       5 * time.Second,
+	}
+	if err := server.ListenAndServe(); err != nil {
+		panic(err)
+	}
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import (
+	"net/http"
+	"time"
+)
+
+func serve(timeout time.Duration) error {
+	server := &http.Server{
+		Addr:              ":1234",
+		ReadHeaderTimeout: timeout,
+	}
+	return server.ListenAndServe()
+}
+
+func main() {
+	if err := serve(3 * time.Second); err != nil {
+		panic(err)
+	}
+}
+`}, 0, gosec.NewConfig()},
 }
