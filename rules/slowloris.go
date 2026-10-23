@@ -29,13 +29,14 @@ type slowloris struct {
 }
 
 // slowlorisFileState records, for one file, which http.Server composite
-// literals are bound to a variable and where that variable later gets a read
-// timeout assigned.
+// literals are bound to a variable or struct field and where it later gets a
+// read timeout assigned.
 type slowlorisFileState struct {
-	// boundLits maps an http.Server literal to the variable it is assigned to.
+	// boundLits maps an http.Server literal to the variable or struct field it
+	// is assigned to.
 	boundLits map[*ast.CompositeLit]types.Object
 	// timeoutAssigns holds the positions of ReadHeaderTimeout/ReadTimeout
-	// assignments for each http.Server variable.
+	// assignments for each http.Server variable or struct field.
 	timeoutAssigns map[types.Object][]token.Pos
 }
 
@@ -87,6 +88,18 @@ func serverLiteral(expr ast.Expr) *ast.CompositeLit {
 	return lit
 }
 
+// serverObject returns the variable or struct field that expr refers to, so
+// that both srv and a.srv can be tracked.
+func serverObject(expr ast.Expr, ctx *gosec.Context) types.Object {
+	switch e := ast.Unparen(expr).(type) {
+	case *ast.Ident:
+		return ctx.Info.ObjectOf(e)
+	case *ast.SelectorExpr:
+		return ctx.Info.ObjectOf(e.Sel)
+	}
+	return nil
+}
+
 func newSlowlorisFileState(ctx *gosec.Context) *slowlorisFileState {
 	state := &slowlorisFileState{
 		boundLits:      make(map[*ast.CompositeLit]types.Object),
@@ -96,12 +109,12 @@ func newSlowlorisFileState(ctx *gosec.Context) *slowlorisFileState {
 		return state
 	}
 
-	bind := func(lhs *ast.Ident, rhs ast.Expr) {
+	bind := func(lhs, rhs ast.Expr) {
 		lit := serverLiteral(rhs)
 		if lit == nil {
 			return
 		}
-		if obj := ctx.Info.ObjectOf(lhs); obj != nil {
+		if obj := serverObject(lhs, ctx); obj != nil {
 			state.boundLits[lit] = obj
 		}
 	}
@@ -111,9 +124,7 @@ func newSlowlorisFileState(ctx *gosec.Context) *slowlorisFileState {
 		case *ast.AssignStmt:
 			if len(node.Lhs) == len(node.Rhs) {
 				for i, lhs := range node.Lhs {
-					if ident, ok := ast.Unparen(lhs).(*ast.Ident); ok {
-						bind(ident, node.Rhs[i])
-					}
+					bind(lhs, node.Rhs[i])
 				}
 			}
 			for i, lhs := range node.Lhs {
@@ -124,13 +135,11 @@ func newSlowlorisFileState(ctx *gosec.Context) *slowlorisFileState {
 				if len(node.Lhs) == len(node.Rhs) && disablesTimeout(node.Rhs[i], ctx) {
 					continue
 				}
-				ident, ok := ast.Unparen(sel.X).(*ast.Ident)
-				if !ok || !isHTTPServerType(ctx.Info.TypeOf(ident)) {
+				obj := serverObject(sel.X, ctx)
+				if obj == nil || !isHTTPServerType(obj.Type()) {
 					continue
 				}
-				if obj := ctx.Info.ObjectOf(ident); obj != nil {
-					state.timeoutAssigns[obj] = append(state.timeoutAssigns[obj], node.Pos())
-				}
+				state.timeoutAssigns[obj] = append(state.timeoutAssigns[obj], node.Pos())
 			}
 		case *ast.ValueSpec:
 			if len(node.Names) == len(node.Values) {
@@ -144,11 +153,15 @@ func newSlowlorisFileState(ctx *gosec.Context) *slowlorisFileState {
 	return state
 }
 
-// timeoutAssignedLater reports whether the variable that node is bound to gets
-// a ReadHeaderTimeout or ReadTimeout assigned after the literal, as in:
+// timeoutAssignedLater reports whether the variable or struct field that node
+// is bound to gets a ReadHeaderTimeout or ReadTimeout assigned after the
+// literal, as in:
 //
 //	srv := &http.Server{Addr: ":8080"}
 //	srv.ReadHeaderTimeout = 5 * time.Second
+//
+//	a.srv = &http.Server{Addr: ":8080"}
+//	a.srv.ReadHeaderTimeout = 5 * time.Second
 func (r *slowloris) timeoutAssignedLater(node *ast.CompositeLit, ctx *gosec.Context) bool {
 	state, ok := ctx.PassedValues[r.ID()].(*slowlorisFileState)
 	if !ok {
