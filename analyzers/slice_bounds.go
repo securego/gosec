@@ -1220,6 +1220,11 @@ func minimumLenForBranch(binop *ssa.BinOp, successor int) (int, bool) {
 		minLen = threshold + 1
 	case token.GEQ:
 		minLen = threshold
+	case token.EQL:
+		if threshold < 0 {
+			return 0, false
+		}
+		minLen = threshold
 	case token.NEQ:
 		// Only != 0 proves a positive lower bound.
 		if threshold != 0 {
