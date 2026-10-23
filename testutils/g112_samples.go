@@ -286,4 +286,97 @@ func main() {
 	}
 }
 `}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import (
+	"net/http"
+	"time"
+)
+
+type app struct {
+	server *http.Server
+}
+
+func (a *app) start() error {
+	a.server = &http.Server{Addr: ":1234"}
+	a.server.ReadHeaderTimeout = 3 * time.Second
+	return a.server.ListenAndServe()
+}
+
+func main() {
+	if err := (&app{}).start(); err != nil {
+		panic(err)
+	}
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import (
+	"net/http"
+	"time"
+)
+
+type app struct {
+	server http.Server
+}
+
+func main() {
+	var a app
+	a.server = http.Server{Addr: ":1234"}
+	a.server.ReadTimeout = 3 * time.Second
+	if err := a.server.ListenAndServe(); err != nil {
+		panic(err)
+	}
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import (
+	"net/http"
+	"time"
+)
+
+type app struct {
+	public   *http.Server
+	internal *http.Server
+}
+
+func (a *app) start() error {
+	a.public = &http.Server{Addr: ":1234"}
+	a.internal = &http.Server{Addr: ":5678"}
+	a.internal.ReadHeaderTimeout = 3 * time.Second
+	go func() { _ = a.internal.ListenAndServe() }()
+	return a.public.ListenAndServe()
+}
+
+func main() {
+	if err := (&app{}).start(); err != nil {
+		panic(err)
+	}
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "net/http"
+
+type app struct {
+	server *http.Server
+}
+
+func (a *app) start() error {
+	a.server = &http.Server{Addr: ":1234"}
+	a.server.ReadHeaderTimeout = 0
+	return a.server.ListenAndServe()
+}
+
+func main() {
+	if err := (&app{}).start(); err != nil {
+		panic(err)
+	}
+}
+`}, 1, gosec.NewConfig()},
 }
