@@ -440,13 +440,31 @@ func (gosec *Analyzer) load(pkgPath string, buildTags []string) ([]*packages.Pac
 		BuildFlags: CLIBuildTags(buildTags),
 		Tests:      gosec.tests,
 	}
+	patterns := packageFiles
 	if modRoot := FindModuleRoot(abspath); modRoot != "" {
 		conf.Dir = modRoot
+		// Load module packages as a unit. go/packages chunks long filename
+		// lists into incomplete packages, losing cross-file type information.
+		// Keep the ad-hoc file route for sources outside a module.
+		patterns = []string{abspath}
+		conf.Mode |= packages.NeedForTest
 	}
-	pkgs, err := packages.Load(conf, packageFiles...)
+	pkgs, err := packages.Load(conf, patterns...)
 	if err != nil {
 		return []*packages.Package{}, fmt.Errorf("loading files from package %q: %w", pkgPath, err)
 	}
+	// With tests enabled, the loader returns both the ordinary package and
+	// its augmented test variant. Scan the latter once, while retaining
+	// ordinary packages that have only external tests.
+	tested := make(map[string]bool)
+	for _, pkg := range pkgs {
+		if pkg.ForTest != "" && pkg.PkgPath == pkg.ForTest {
+			tested[pkg.PkgPath] = true
+		}
+	}
+	pkgs = slices.DeleteFunc(pkgs, func(pkg *packages.Package) bool {
+		return pkg.ForTest == "" && tested[pkg.PkgPath]
+	})
 	return pkgs, nil
 }
 
