@@ -100,4 +100,62 @@ func main() {
 	_, _ = os.OpenFile("/tmp/thing", os.O_CREATE|os.O_WRONLY, os.FileMode(safeFilePerm))
 }
 `}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "os"
+
+func main() {
+	f, err := os.Create("/tmp/somefile")
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	_ = f.Chmod(0777)
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "os"
+
+type logFile struct {
+	*os.File
+}
+
+func main() {
+	f, err := os.OpenFile("/tmp/somefile", os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		return
+	}
+	lf := logFile{f}
+	_ = lf.Chmod(os.ModePerm)
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "os"
+
+func main() {
+	f, err := os.Create("/tmp/somefile")
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	_ = f.Chmod(0600)
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+type file struct{}
+
+func (file) Chmod(mode uint32) error { return nil }
+
+func main() {
+	var f file
+	_ = f.Chmod(0777)
+}
+`}, 0, gosec.NewConfig()},
 }
