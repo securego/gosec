@@ -1963,4 +1963,78 @@ func handOff(ctx context.Context, ctxs chan<- context.Context) {
 	ctxs <- ctx
 }
 `}, 1, gosec.NewConfig()},
+
+	// Safe: goroutine waits for ctx.Done() before using context.Background for shutdown
+	{[]string{`
+package main
+
+import (
+	"context"
+	"net/http"
+)
+
+func serve(ctx context.Context, srv *http.Server) {
+	go func() {
+		<-ctx.Done()
+		_ = srv.Shutdown(context.Background())
+	}()
+}
+`}, 0, gosec.NewConfig()},
+
+	// Safe: context.TODO used in a later block, after waiting for ctx.Done()
+	{[]string{`
+package main
+
+import (
+	"context"
+	"net/http"
+)
+
+func serve(ctx context.Context, srv *http.Server, force bool) {
+	go func() {
+		<-ctx.Done()
+		if force {
+			_ = srv.Close()
+			return
+		}
+		_ = srv.Shutdown(context.TODO())
+	}()
+}
+`}, 0, gosec.NewConfig()},
+
+	// Vulnerable: context.Background used before waiting for ctx.Done()
+	{[]string{`
+package main
+
+import (
+	"context"
+	"net/http"
+)
+
+func serve(ctx context.Context, srv *http.Server) {
+	go func() {
+		_ = srv.Shutdown(context.Background())
+		<-ctx.Done()
+	}()
+}
+`}, 1, gosec.NewConfig()},
+
+	// Vulnerable: ctx.Done() is only awaited on one branch
+	{[]string{`
+package main
+
+import (
+	"context"
+	"net/http"
+)
+
+func serve(ctx context.Context, srv *http.Server, wait bool) {
+	go func() {
+		if wait {
+			<-ctx.Done()
+		}
+		_ = srv.Shutdown(context.Background())
+	}()
+}
+`}, 1, gosec.NewConfig()},
 }
