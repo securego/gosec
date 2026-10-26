@@ -154,6 +154,56 @@ func main() {
 	_ = b
 }
 `}, 0, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import (
+	crand "crypto/rand"
+	f "fmt"
+	"os"
+)
+
+func main() {
+	b := make([]byte, 8)
+	crand.Read(b)
+	f.Fprintln(os.Stderr, "renamed imports")
+}
+`}, 0, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import (
+	iou "io/ioutil"
+	"os"
+)
+
+func main() {
+	iou.WriteFile("foo.txt", []byte("bar"), os.ModeExclusive)
+}
+`}, 0, gosec.Config{"G104": map[string]interface{}{"ioutil": []interface{}{"WriteFile"}}}},
+		{[]string{`
+package main
+
+import (
+	crand "crypto/rand"
+	o "os"
+)
+
+type reader struct{}
+
+func (reader) Read(b []byte) error { return nil }
+
+var _ = crand.Reader
+
+func main() {
+	b := make([]byte, 8)
+	rand := reader{}
+	rand.Read(b)
+	crand := reader{}
+	crand.Read(b)
+	o.Remove("foo.txt")
+}
+`}, 3, gosec.NewConfig()},
 	} // it shouldn't return any errors because all method calls are whitelisted by default
 
 	// SampleCodeG104Audit finds errors that aren't being handled in audit mode
@@ -233,6 +283,16 @@ func main() {
 package main
 
 func dummy(){}
+`}, 0, gosec.Config{gosec.Globals: map[gosec.GlobalOption]string{gosec.Audit: "enabled"}}},
+		{[]string{`
+package main
+
+import crand "crypto/rand"
+
+func main() {
+	b := make([]byte, 8)
+	_, _ = crand.Read(b)
+}
 `}, 0, gosec.Config{gosec.Globals: map[gosec.GlobalOption]string{gosec.Audit: "enabled"}}},
 	}
 )

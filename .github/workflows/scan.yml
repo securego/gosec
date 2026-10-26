@@ -23,12 +23,12 @@ jobs:
       with:
         persist-credentials: false
     - name: Security Scan
-      uses: securego/gosec@deb54465fea23d19a77f037e11e6589021f8501d # v2.29.0
+      uses: securego/gosec@5eb1d104ef85ff2c905c877eb600e8c1dee33a22 # v2.30.0
       with:
         # we let the report trigger content trigger a failure using the GitHub Security features.
         args: '-no-fail -fmt sarif -out results.sarif -exclude-dir=testdata ./...'
     - name: Upload SARIF file
-      uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4
+      uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
       with:
         # Path to SARIF file relative to the root of the repository
         sarif_file: results.sarif

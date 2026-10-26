@@ -435,21 +435,19 @@ func (gosec *Analyzer) load(pkgPath string, buildTags []string) ([]*packages.Pac
 
 	// step 2/2: pass in cli encoded build flags to build correctly,
 	// and set Dir to the module root of the package being loaded.
-	mode := LoadMode
-	if gosec.tests {
-		mode |= packages.NeedForTest
-	}
 	conf := &packages.Config{
-		Mode:       mode,
+		Mode:       LoadMode,
 		BuildFlags: CLIBuildTags(buildTags),
 		Tests:      gosec.tests,
 	}
-	// Modules need their canonical package identity for imported named types.
-	// Standalone source directories retain file-list loading without a go.mod.
 	patterns := packageFiles
 	if modRoot := FindModuleRoot(abspath); modRoot != "" {
 		conf.Dir = modRoot
+		// Load module packages as a unit. go/packages chunks long filename
+		// lists into incomplete packages, losing cross-file type information.
+		// Keep the ad-hoc file route for sources outside a module.
 		patterns = []string{abspath}
+		conf.Mode |= packages.NeedForTest
 	}
 	pkgs, err := packages.Load(conf, patterns...)
 	if err != nil {
