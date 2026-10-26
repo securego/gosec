@@ -537,6 +537,16 @@ func functionCallsBackground(fn *ssa.Function) bool {
 	if fn == nil {
 		return false
 	}
+	var doneRecvs []*ssa.UnOp
+	for _, block := range fn.Blocks {
+		for _, instr := range block.Instrs {
+			if recv, ok := instr.(*ssa.UnOp); ok && recv.Op == token.ARROW {
+				if call, ok := recv.X.(*ssa.Call); ok && isContextDoneCall(call.Common()) {
+					doneRecvs = append(doneRecvs, recv)
+				}
+			}
+		}
+	}
 	for _, block := range fn.Blocks {
 		for _, instr := range block.Instrs {
 			callInstr, ok := instr.(ssa.CallInstruction)
@@ -547,8 +557,31 @@ func functionCallsBackground(fn *ssa.Function) bool {
 			if common == nil {
 				continue
 			}
-			if isBackgroundOrTodoCall(common) {
+			if isBackgroundOrTodoCall(common) && !runsAfterAny(instr, doneRecvs) {
 				return true
+			}
+		}
+	}
+	return false
+}
+
+// runsAfterAny reports whether instr can only run after one of the given
+// receives, e.g. a fresh context created after `<-ctx.Done()` for a
+// graceful shutdown.
+func runsAfterAny(instr ssa.Instruction, recvs []*ssa.UnOp) bool {
+	for _, recv := range recvs {
+		if recv.Block() != instr.Block() {
+			if recv.Block().Dominates(instr.Block()) {
+				return true
+			}
+			continue
+		}
+		for _, i := range instr.Block().Instrs {
+			if i == recv {
+				return true
+			}
+			if i == instr {
+				break
 			}
 		}
 	}
