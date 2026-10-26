@@ -435,19 +435,52 @@ func (gosec *Analyzer) load(pkgPath string, buildTags []string) ([]*packages.Pac
 
 	// step 2/2: pass in cli encoded build flags to build correctly,
 	// and set Dir to the module root of the package being loaded.
+	mode := LoadMode
+	if gosec.tests {
+		mode |= packages.NeedForTest
+	}
 	conf := &packages.Config{
-		Mode:       LoadMode,
+		Mode:       mode,
 		BuildFlags: CLIBuildTags(buildTags),
 		Tests:      gosec.tests,
 	}
+	// Modules need their canonical package identity for imported named types.
+	// Standalone source directories retain file-list loading without a go.mod.
+	patterns := packageFiles
 	if modRoot := FindModuleRoot(abspath); modRoot != "" {
 		conf.Dir = modRoot
+		patterns = []string{abspath}
 	}
-	pkgs, err := packages.Load(conf, packageFiles...)
+	pkgs, err := packages.Load(conf, patterns...)
 	if err != nil {
 		return []*packages.Package{}, fmt.Errorf("loading files from package %q: %w", pkgPath, err)
 	}
-	return pkgs, nil
+	return gosec.selectTestVariants(pkgs), nil
+}
+
+// selectTestVariants avoids scanning a production package twice when its
+// test-augmented variant is present. External tests remain distinct packages.
+// Keep any errored base so Process can report every loader error.
+func (gosec *Analyzer) selectTestVariants(pkgs []*packages.Package) []*packages.Package {
+	if !gosec.tests {
+		return pkgs
+	}
+	augmented := make(map[string]struct{})
+	for _, pkg := range pkgs {
+		if pkg.ForTest != "" && pkg.PkgPath == pkg.ForTest {
+			augmented[pkg.PkgPath] = struct{}{}
+		}
+	}
+	selected := make([]*packages.Package, 0, len(pkgs))
+	for _, pkg := range pkgs {
+		if pkg.ForTest == "" && len(pkg.Errors) == 0 && !pkg.IllTyped {
+			if _, duplicated := augmented[pkg.PkgPath]; duplicated {
+				continue
+			}
+		}
+		selected = append(selected, pkg)
+	}
+	return selected
 }
 
 // CheckRules runs analysis on the given package.
