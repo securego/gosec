@@ -147,6 +147,21 @@ func newSlowlorisFileState(ctx *gosec.Context) *slowlorisFileState {
 					bind(name, node.Values[i])
 				}
 			}
+		case *ast.CompositeLit:
+			// A literal set as a field of an enclosing struct literal, as in
+			// &app{srv: &http.Server{...}}, is bound to that field.
+			t := ctx.Info.TypeOf(node)
+			if t == nil {
+				return true
+			}
+			if _, ok := t.Underlying().(*types.Struct); !ok {
+				return true
+			}
+			for _, elt := range node.Elts {
+				if kv, ok := elt.(*ast.KeyValueExpr); ok {
+					bind(kv.Key, kv.Value)
+				}
+			}
 		}
 		return true
 	})
