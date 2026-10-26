@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"go/ast"
 	"go/constant"
+	"go/types"
+	"slices"
 	"strconv"
 
 	"github.com/securego/gosec/v2"
@@ -29,6 +31,8 @@ type filePermissions struct {
 	mode  int64
 	pkgs  []string
 	calls []string
+	// fileMethods are methods of *os.File that take the file mode as their last argument.
+	fileMethods []string
 }
 
 func getConfiguredMode(conf map[string]interface{}, configKey string, defaultMode int64) int64 {
@@ -56,13 +60,40 @@ func modeIsSubset(subset int64, superset int64) bool {
 func (r *filePermissions) Match(n ast.Node, c *gosec.Context) (*issue.Issue, error) {
 	for _, pkg := range r.pkgs {
 		if callexpr, matched := gosec.MatchCallByPackage(n, c, pkg, r.calls...); matched {
-			modeArg := callexpr.Args[len(callexpr.Args)-1]
-			if mode, ok := fileModeValue(modeArg, c); ok && !modeIsSubset(mode, r.mode) || isOsPerm(modeArg) {
+			if r.isTooPermissive(callexpr, c) {
 				return c.NewIssue(n, r.ID(), r.What, r.Severity, r.Confidence), nil
 			}
 		}
 	}
+	if callexpr, matched := matchOsFileMethod(n, c, r.fileMethods...); matched {
+		if r.isTooPermissive(callexpr, c) {
+			return c.NewIssue(n, r.ID(), r.What, r.Severity, r.Confidence), nil
+		}
+	}
 	return nil, nil
+}
+
+func (r *filePermissions) isTooPermissive(callexpr *ast.CallExpr, c *gosec.Context) bool {
+	if len(callexpr.Args) == 0 {
+		return false
+	}
+	modeArg := callexpr.Args[len(callexpr.Args)-1]
+	mode, ok := fileModeValue(modeArg, c)
+	return ok && !modeIsSubset(mode, r.mode) || isOsPerm(modeArg)
+}
+
+// matchOsFileMethod matches calls to the given methods of *os.File, including
+// calls through a type that embeds it.
+func matchOsFileMethod(n ast.Node, c *gosec.Context, names ...string) (*ast.CallExpr, bool) {
+	if len(names) == 0 {
+		return nil, false
+	}
+	callexpr, obj := gosec.GetCallObject(n, c)
+	fn, ok := obj.(*types.Func)
+	if !ok || !slices.Contains(names, fn.Name()) || fn.FullName() != "(*os.File)."+fn.Name() {
+		return nil, false
+	}
+	return callexpr, true
 }
 
 // fileModeValue resolves integer compile-time constants, including named
@@ -103,10 +134,11 @@ func NewWritePerms(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 func NewFilePerms(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 	mode := getConfiguredMode(conf, id, 0o600)
 	return &filePermissions{
-		mode:     mode,
-		pkgs:     []string{"os"},
-		calls:    []string{"OpenFile", "Chmod"},
-		MetaData: issue.NewMetaData(id, fmt.Sprintf("Expect file permissions to be %#o or less", mode), issue.Medium, issue.High),
+		mode:        mode,
+		pkgs:        []string{"os"},
+		calls:       []string{"OpenFile", "Chmod"},
+		fileMethods: []string{"Chmod"},
+		MetaData:    issue.NewMetaData(id, fmt.Sprintf("Expect file permissions to be %#o or less", mode), issue.Medium, issue.High),
 	}, []ast.Node{(*ast.CallExpr)(nil)}
 }
 
