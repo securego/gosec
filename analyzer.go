@@ -453,19 +453,32 @@ func (gosec *Analyzer) load(pkgPath string, buildTags []string) ([]*packages.Pac
 	if err != nil {
 		return []*packages.Package{}, fmt.Errorf("loading files from package %q: %w", pkgPath, err)
 	}
-	// With tests enabled, the loader returns both the ordinary package and
-	// its augmented test variant. Scan the latter once, while retaining
-	// ordinary packages that have only external tests.
-	tested := make(map[string]bool)
+	return gosec.selectTestVariants(pkgs), nil
+}
+
+// selectTestVariants avoids scanning a production package twice when its
+// test-augmented variant is present. External tests remain distinct packages.
+// Keep any errored base so Process can report every loader error.
+func (gosec *Analyzer) selectTestVariants(pkgs []*packages.Package) []*packages.Package {
+	if !gosec.tests {
+		return pkgs
+	}
+	augmented := make(map[string]struct{})
 	for _, pkg := range pkgs {
 		if pkg.ForTest != "" && pkg.PkgPath == pkg.ForTest {
-			tested[pkg.PkgPath] = true
+			augmented[pkg.PkgPath] = struct{}{}
 		}
 	}
-	pkgs = slices.DeleteFunc(pkgs, func(pkg *packages.Package) bool {
-		return pkg.ForTest == "" && tested[pkg.PkgPath]
-	})
-	return pkgs, nil
+	selected := make([]*packages.Package, 0, len(pkgs))
+	for _, pkg := range pkgs {
+		if pkg.ForTest == "" && len(pkg.Errors) == 0 && !pkg.IllTyped {
+			if _, duplicated := augmented[pkg.PkgPath]; duplicated {
+				continue
+			}
+		}
+		selected = append(selected, pkg)
+	}
+	return selected
 }
 
 // CheckRules runs analysis on the given package.
