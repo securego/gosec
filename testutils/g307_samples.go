@@ -7,10 +7,7 @@ var SampleCodeG307 = []CodeSample{
 	{[]string{`
 package main
 
-import (
-	"fmt"
-	"os"
-)
+import "os"
 
 func check(e error) {
 	if e != nil {
@@ -27,10 +24,7 @@ func main() {
 	{[]string{`
 package main
 
-import (
-	"fmt"
-	"os"
-)
+import "os"
 
 func check(e error) {
 	if e != nil {
@@ -44,4 +38,40 @@ func main() {
 	defer f.Close()
 }
 `}, 1, gosec.Config{"G307": "0o600"}},
+	{[]string{`
+package main
+
+import "os"
+
+func main() {
+	root, err := os.OpenRoot("/tmp")
+	if err != nil {
+		return
+	}
+	defer root.Close()
+	f, err := root.Create("dat2")
+	if err != nil {
+		return
+	}
+	defer f.Close()
+}
+`}, 1, gosec.Config{"G307": "0o600"}},
+	{[]string{`
+package main
+
+import "os"
+
+func main() {
+	root, err := os.OpenRoot("/tmp")
+	if err != nil {
+		return
+	}
+	defer root.Close()
+	f, err := root.Create("dat2")
+	if err != nil {
+		return
+	}
+	defer f.Close()
+}
+`}, 0, gosec.NewConfig()},
 }
