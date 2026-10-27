@@ -104,4 +104,32 @@ func main() {
 	_ = os.WriteFile("/tmp/dat2", []byte("hello"), os.FileMode(safeWritePerm))
 }
 `}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "os"
+
+func main() {
+	root, err := os.OpenRoot("/tmp")
+	if err != nil {
+		return
+	}
+	defer root.Close()
+	_ = root.WriteFile("dat1", []byte("hello"), 0666)
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "os"
+
+func main() {
+	root, err := os.OpenRoot("/tmp")
+	if err != nil {
+		return
+	}
+	defer root.Close()
+	_ = root.WriteFile("dat1", []byte("hello"), 0600)
+}
+`}, 0, gosec.NewConfig()},
 }

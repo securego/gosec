@@ -31,8 +31,9 @@ type filePermissions struct {
 	mode  int64
 	pkgs  []string
 	calls []string
-	// fileMethods are methods of *os.File that take the file mode as their last argument.
-	fileMethods []string
+	// methods are full method names (e.g. "(*os.File).Chmod") that take the
+	// file mode as their last argument.
+	methods []string
 }
 
 func getConfiguredMode(conf map[string]interface{}, configKey string, defaultMode int64) int64 {
@@ -65,7 +66,7 @@ func (r *filePermissions) Match(n ast.Node, c *gosec.Context) (*issue.Issue, err
 			}
 		}
 	}
-	if callexpr, matched := matchOsFileMethod(n, c, r.fileMethods...); matched {
+	if callexpr, matched := matchMethod(n, c, r.methods...); matched {
 		if r.isTooPermissive(callexpr, c) {
 			return c.NewIssue(n, r.ID(), r.What, r.Severity, r.Confidence), nil
 		}
@@ -82,15 +83,16 @@ func (r *filePermissions) isTooPermissive(callexpr *ast.CallExpr, c *gosec.Conte
 	return ok && !modeIsSubset(mode, r.mode) || isOsPerm(modeArg)
 }
 
-// matchOsFileMethod matches calls to the given methods of *os.File, including
-// calls through a type that embeds it.
-func matchOsFileMethod(n ast.Node, c *gosec.Context, names ...string) (*ast.CallExpr, bool) {
-	if len(names) == 0 {
+// matchMethod matches calls to the given methods, identified by their full
+// name (e.g. "(*os.File).Chmod"), including calls through a type that embeds
+// the receiver.
+func matchMethod(n ast.Node, c *gosec.Context, fullNames ...string) (*ast.CallExpr, bool) {
+	if len(fullNames) == 0 {
 		return nil, false
 	}
 	callexpr, obj := gosec.GetCallObject(n, c)
 	fn, ok := obj.(*types.Func)
-	if !ok || !slices.Contains(names, fn.Name()) || fn.FullName() != "(*os.File)."+fn.Name() {
+	if !ok || !slices.Contains(fullNames, fn.FullName()) {
 		return nil, false
 	}
 	return callexpr, true
@@ -125,6 +127,7 @@ func NewWritePerms(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 		mode:     mode,
 		pkgs:     []string{"io/ioutil", "os"},
 		calls:    []string{"WriteFile"},
+		methods:  []string{"(*os.Root).WriteFile"},
 		MetaData: issue.NewMetaData(id, fmt.Sprintf("Expect WriteFile permissions to be %#o or less", mode), issue.Medium, issue.High),
 	}, []ast.Node{(*ast.CallExpr)(nil)}
 }
@@ -134,11 +137,11 @@ func NewWritePerms(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 func NewFilePerms(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 	mode := getConfiguredMode(conf, id, 0o600)
 	return &filePermissions{
-		mode:        mode,
-		pkgs:        []string{"os"},
-		calls:       []string{"OpenFile", "Chmod"},
-		fileMethods: []string{"Chmod"},
-		MetaData:    issue.NewMetaData(id, fmt.Sprintf("Expect file permissions to be %#o or less", mode), issue.Medium, issue.High),
+		mode:     mode,
+		pkgs:     []string{"os"},
+		calls:    []string{"OpenFile", "Chmod"},
+		methods:  []string{"(*os.File).Chmod", "(*os.Root).OpenFile", "(*os.Root).Chmod"},
+		MetaData: issue.NewMetaData(id, fmt.Sprintf("Expect file permissions to be %#o or less", mode), issue.Medium, issue.High),
 	}, []ast.Node{(*ast.CallExpr)(nil)}
 }
 
@@ -150,6 +153,7 @@ func NewMkdirPerms(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 		mode:     mode,
 		pkgs:     []string{"os"},
 		calls:    []string{"Mkdir", "MkdirAll"},
+		methods:  []string{"(*os.Root).Mkdir", "(*os.Root).MkdirAll"},
 		MetaData: issue.NewMetaData(id, fmt.Sprintf("Expect directory permissions to be %#o or less", mode), issue.Medium, issue.High),
 	}, []ast.Node{(*ast.CallExpr)(nil)}
 }

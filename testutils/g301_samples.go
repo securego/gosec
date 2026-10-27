@@ -83,4 +83,34 @@ func main() {
 	_ = os.Mkdir("/tmp/mydir", safeDirPerm)
 }
 `}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "os"
+
+func main() {
+	root, err := os.OpenRoot("/tmp")
+	if err != nil {
+		return
+	}
+	defer root.Close()
+	_ = root.Mkdir("mydir", 0777)
+	_ = root.MkdirAll("mydir/a/b", os.ModePerm)
+}
+`}, 2, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "os"
+
+func main() {
+	root, err := os.OpenRoot("/tmp")
+	if err != nil {
+		return
+	}
+	defer root.Close()
+	_ = root.Mkdir("mydir", 0750)
+	_ = root.MkdirAll("mydir/a/b", 0700)
+}
+`}, 0, gosec.NewConfig()},
 }

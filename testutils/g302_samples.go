@@ -158,4 +158,42 @@ func main() {
 	_ = f.Chmod(0777)
 }
 `}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "os"
+
+func main() {
+	root, err := os.OpenRoot("/tmp")
+	if err != nil {
+		return
+	}
+	defer root.Close()
+	f, err := root.OpenFile("thing", os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	_ = root.Chmod("somefile", 0777)
+}
+`}, 2, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "os"
+
+func main() {
+	root, err := os.OpenRoot("/tmp")
+	if err != nil {
+		return
+	}
+	defer root.Close()
+	f, err := root.OpenFile("thing", os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	_ = root.Chmod("somefile", 0400)
+}
+`}, 0, gosec.NewConfig()},
 }
