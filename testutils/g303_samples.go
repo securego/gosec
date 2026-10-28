@@ -131,4 +131,75 @@ func main() {
 	}
 }
 `}, 0, gosec.NewConfig()},
+	{[]string{`
+package samples
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+)
+
+const createFlags = os.O_RDWR | os.O_CREATE | os.O_TRUNC
+
+func main() {
+	f, err := os.OpenFile("/tmp/demo2", os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		fmt.Println("Error while opening!")
+	} else if err = f.Close(); err != nil {
+		fmt.Println("Error while closing!")
+	}
+	f, err = os.OpenFile(filepath.Join(os.TempDir(), "demo2"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		fmt.Println("Error while opening!")
+	} else if err = f.Close(); err != nil {
+		fmt.Println("Error while closing!")
+	}
+	f, err = os.OpenFile("/var/tmp/demo2", createFlags, 0600)
+	if err != nil {
+		fmt.Println("Error while opening!")
+	} else if err = f.Close(); err != nil {
+		fmt.Println("Error while closing!")
+	}
+}
+`}, 3, gosec.NewConfig()},
+	{[]string{`
+package samples
+
+import (
+	"fmt"
+	"os"
+)
+
+func open(name string, flag int) {
+	f, err := os.OpenFile(name, flag, 0600)
+	if err != nil {
+		fmt.Println("Error while opening!")
+	} else if err = f.Close(); err != nil {
+		fmt.Println("Error while closing!")
+	}
+}
+
+func main() {
+	f, err := os.OpenFile("/tmp/demo2", os.O_RDONLY, 0)
+	if err != nil {
+		fmt.Println("Error while opening!")
+	} else if err = f.Close(); err != nil {
+		fmt.Println("Error while closing!")
+	}
+	f, err = os.OpenFile("/tmp/demo2", os.O_WRONLY|os.O_APPEND, 0)
+	if err != nil {
+		fmt.Println("Error while opening!")
+	} else if err = f.Close(); err != nil {
+		fmt.Println("Error while closing!")
+	}
+	f, err = os.OpenFile("/var/lib/demo/demo2", os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		fmt.Println("Error while opening!")
+	} else if err = f.Close(); err != nil {
+		fmt.Println("Error while closing!")
+	}
+	open("/tmp/demo2", os.O_RDONLY)
+}
+`}, 0, gosec.NewConfig()},
 }
