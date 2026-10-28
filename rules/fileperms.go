@@ -160,9 +160,10 @@ func NewMkdirPerms(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 
 type osCreatePermissions struct {
 	issue.MetaData
-	mode  int64
-	pkgs  []string
-	calls []string
+	mode    int64
+	pkgs    []string
+	calls   []string
+	methods []string
 }
 
 const defaultOsCreateMode = 0o666
@@ -176,6 +177,11 @@ func (r *osCreatePermissions) Match(n ast.Node, c *gosec.Context) (*issue.Issue,
 			}
 		}
 	}
+	if _, matched := matchMethod(n, c, r.methods...); matched {
+		if !modeIsSubset(defaultOsCreateMode, r.mode) {
+			return c.NewIssue(n, r.ID(), r.What, r.Severity, r.Confidence), nil
+		}
+	}
 	return nil, nil
 }
 
@@ -184,9 +190,10 @@ func (r *osCreatePermissions) Match(n ast.Node, c *gosec.Context) (*issue.Issue,
 func NewOsCreatePerms(id string, conf gosec.Config) (gosec.Rule, []ast.Node) {
 	mode := getConfiguredMode(conf, id, 0o666)
 	return &osCreatePermissions{
-		mode:  mode,
-		pkgs:  []string{"os"},
-		calls: []string{"Create"},
+		mode:    mode,
+		pkgs:    []string{"os"},
+		calls:   []string{"Create"},
+		methods: []string{"(*os.Root).Create"},
 		MetaData: issue.NewMetaData(id, fmt.Sprintf("Expect file permissions to be %#o or less but os.Create used with default permissions %#o",
 			mode, defaultOsCreateMode), issue.Medium, issue.High),
 	}, []ast.Node{(*ast.CallExpr)(nil)}
