@@ -103,6 +103,9 @@
 - G708 — Server-side template injection via `text/template` (**Taint**)
 - G709 — Unsafe deserialization of untrusted data (**Taint**)
 - G710 — Open redirect via taint analysis (**Taint**)
+- G711 — LDAP injection via taint analysis (**Taint**)
+- G712 — XPath injection via taint analysis (**Taint**)
+- G713 — Code injection via taint analysis (**Taint**)
 
 _Note: Implementation types used in this document:_
 - **AST**: rule implemented in `rules/` and evaluated on AST patterns

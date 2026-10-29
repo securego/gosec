@@ -138,5 +138,17 @@ var _ = Describe("gosec analyzers", func() {
 		It("should detect open redirect via taint analysis", func() {
 			runner("G710", testutils.SampleCodeG710)
 		})
+
+		It("should detect LDAP injection via taint analysis", func() {
+			runner("G711", testutils.SampleCodeG711)
+		})
+
+		It("should detect XPath injection via taint analysis", func() {
+			runner("G712", testutils.SampleCodeG712)
+		})
+
+		It("should detect code injection via taint analysis", func() {
+			runner("G713", testutils.SampleCodeG713)
+		})
 	})
 })

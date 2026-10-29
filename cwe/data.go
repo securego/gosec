@@ -43,6 +43,11 @@ var idWeaknesses = map[string]*Weakness{
 		Description: "The software constructs all or part of an SQL command using externally-influenced input from an upstream component, but it does not neutralize or incorrectly neutralizes special elements that could modify the intended SQL command when it is sent to a downstream component.",
 		Name:        "Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')",
 	},
+	"90": {
+		ID:          "90",
+		Description: "The software constructs all or part of an LDAP query using externally-influenced input from an upstream component, but it does not neutralize or incorrectly neutralizes special elements that could modify the intended LDAP query when it is sent to a downstream component.",
+		Name:        "Improper Neutralization of Special Elements used in an LDAP Query ('LDAP Injection')",
+	},
 	"93": {
 		ID:          "93",
 		Description: "The software does not properly neutralize CRLF sequences before using externally-influenced input in protocol elements that rely on CRLF as delimiters, allowing attackers to inject additional commands or headers.",
@@ -182,6 +187,11 @@ var idWeaknesses = map[string]*Weakness{
 		ID:          "614",
 		Description: "The Secure attribute for a sensitive cookie is not set, which could cause the user agent to send that cookie in plaintext over an HTTP session.",
 		Name:        "Sensitive Cookie in HTTPS Session Without 'Secure' Attribute",
+	},
+	"643": {
+		ID:          "643",
+		Description: "The software uses external input to dynamically construct an XPath expression used to retrieve data from an XML database, but it does not neutralize or incorrectly neutralizes that input, allowing an attacker to control the structure of the XPath query and access data that would not otherwise be available.",
+		Name:        "Improper Neutralization of Data within XPath Expressions ('XPath Injection')",
 	},
 	"918": {
 		ID:          "918",

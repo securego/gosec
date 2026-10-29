@@ -227,7 +227,8 @@ gosec includes rules across these categories:
   range aliasing and slice bounds)
 - `G7xx`: taint analysis rules (SQL injection, command
   injection, path traversal, SSRF, XSS, log, SMTP injection,
-  SSTI, unsafe deserialization, and open redirect)
+  SSTI, unsafe deserialization, open redirect, LDAP injection,
+  XPath injection, and code injection)
 
 For the full list, rule descriptions, and per-rule
 configuration, see [RULES.md](RULES.md).

@@ -38,6 +38,8 @@ func UnsafeDeserialization() taint.Config {
 			// Type sources: tainted when received as parameters
 			{Package: "net/http", Name: "Request", Pointer: true},
 			{Package: "net/url", Name: "Values"},
+			// Named interface source: matches entry-function parameters typed io.Reader.
+			{Package: "io", Name: "Reader"},
 
 			// Function sources
 			{Package: "os", Name: "Args", IsFunc: true},

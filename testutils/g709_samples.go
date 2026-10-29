@@ -133,4 +133,48 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		Errors: 0,
 		Config: gosec.NewConfig(),
 	},
+	// Positive: mirrors an entry function with an io.Reader parameter.
+	// The gob branch is detected; the xml branch over a bare string parameter is
+	// not detected because a plain string parameter is not a taint source in the engine.
+	{
+		Code: []string{`
+package main
+
+import (
+	"encoding/gob"
+	"encoding/xml"
+	"io"
+)
+
+func deserialization(flag string, r io.Reader, xmlData string) {
+	if flag == "xml" {
+		var v interface{}
+		_ = xml.Unmarshal([]byte(xmlData), &v)
+		return
+	}
+	var v interface{}
+	_ = gob.NewDecoder(r).Decode(&v)
+}
+`},
+		Errors: 1,
+		Config: gosec.NewConfig(),
+	},
+	// Negative: encoding/json is not a G709 sink. Because a plain string parameter
+	// is not a taint source, the xml.Unmarshal branch in the sample above is not flagged.
+	{
+		Code: []string{`
+package main
+
+import (
+	"encoding/json"
+)
+
+func deserializationJSON(data string) {
+	var v interface{}
+	_ = json.Unmarshal([]byte(data), &v)
+}
+`},
+		Errors: 0,
+		Config: gosec.NewConfig(),
+	},
 }

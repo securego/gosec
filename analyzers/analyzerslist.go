@@ -103,6 +103,27 @@ var (
 		CWE:         "CWE-601",
 	}
 
+	LDAPInjectionRule = taint.RuleInfo{
+		ID:          "G711",
+		Description: "LDAP injection via taint analysis",
+		Severity:    "HIGH",
+		CWE:         "CWE-90",
+	}
+
+	XPathInjectionRule = taint.RuleInfo{
+		ID:          "G712",
+		Description: "XPath injection via taint analysis",
+		Severity:    "HIGH",
+		CWE:         "CWE-643",
+	}
+
+	CodeInjectionRule = taint.RuleInfo{
+		ID:          "G713",
+		Description: "Code injection via taint analysis",
+		Severity:    "CRITICAL",
+		CWE:         "CWE-94",
+	}
+
 	FormParsingLimitRule = taint.RuleInfo{
 		ID:          "G120",
 		Description: "Unbounded multipart form parsing can cause memory exhaustion",
@@ -170,6 +191,9 @@ var defaultAnalyzers = []AnalyzerDefinition{
 	{"G708", "Server-side template injection via taint analysis", newSSTIAnalyzer},
 	{"G709", "Unsafe deserialization of untrusted data via taint analysis", newUnsafeDeserializationAnalyzer},
 	{"G710", "Open redirect via taint analysis", newOpenRedirectAnalyzer},
+	{"G711", "LDAP injection via taint analysis", newLDAPInjectionAnalyzer},
+	{"G712", "XPath injection via taint analysis", newXPathInjectionAnalyzer},
+	{"G713", "Code injection via taint analysis", newCodeInjectionAnalyzer},
 }
 
 // Generate the list of analyzers to use
@@ -208,6 +232,9 @@ func DefaultTaintAnalyzers() []*analysis.Analyzer {
 	deserConfig := UnsafeDeserialization()
 	formConfig := FormParsingLimits()
 	openRedirectConfig := OpenRedirect()
+	ldapConfig := LDAPInjection()
+	xpathConfig := XPathInjection()
+	codeConfig := CodeInjection()
 
 	return []*analysis.Analyzer{
 		taint.NewGosecAnalyzer(&SQLInjectionRule, &sqlConfig),
@@ -221,5 +248,8 @@ func DefaultTaintAnalyzers() []*analysis.Analyzer {
 		taint.NewGosecAnalyzer(&UnsafeDeserializationRule, &deserConfig),
 		taint.NewGosecAnalyzer(&FormParsingLimitRule, &formConfig),
 		taint.NewGosecAnalyzer(&OpenRedirectRule, &openRedirectConfig),
+		taint.NewGosecAnalyzer(&LDAPInjectionRule, &ldapConfig),
+		taint.NewGosecAnalyzer(&XPathInjectionRule, &xpathConfig),
+		taint.NewGosecAnalyzer(&CodeInjectionRule, &codeConfig),
 	}
 }
