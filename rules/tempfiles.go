@@ -18,6 +18,7 @@ import (
 	"go/ast"
 	"go/constant"
 	"go/types"
+	"path"
 	"regexp"
 
 	"github.com/securego/gosec/v2"
@@ -44,6 +45,24 @@ func tempPathValue(n ast.Node, c *gosec.Context) (string, bool) {
 	return s, err == nil
 }
 
+// joinedTempPath joins the leading constant elements of a path.Join or
+// filepath.Join call, so that filepath.Join("/", "tmp", name) resolves to
+// "/tmp". It returns false if the first element is not a constant.
+func joinedTempPath(call *ast.CallExpr, c *gosec.Context) (string, bool) {
+	var elems []string
+	for _, arg := range call.Args {
+		s, ok := tempPathValue(arg, c)
+		if !ok {
+			break
+		}
+		elems = append(elems, s)
+	}
+	if len(elems) == 0 {
+		return "", false
+	}
+	return path.Join(elems...), true
+}
+
 func (t *badTempFile) findTempDirArgs(n ast.Node, c *gosec.Context, suspect ast.Node) *issue.Issue {
 	if s, ok := tempPathValue(suspect, c); ok {
 		if gosec.RegexMatchWithCache(t.args, s) {
@@ -60,7 +79,13 @@ func (t *badTempFile) findTempDirArgs(n ast.Node, c *gosec.Context, suspect ast.
 		}
 		return nil
 	}
-	if ce := t.nestedCalls.ContainsPkgCallExpr(suspect, c, false); ce != nil {
+	if ce := t.nestedCalls.ContainsPkgCallExpr(suspect, c, false); ce != nil && len(ce.Args) != 0 {
+		if s, ok := joinedTempPath(ce, c); ok {
+			if gosec.RegexMatchWithCache(t.args, s) {
+				return c.NewIssue(n, t.ID(), t.What, t.Severity, t.Confidence)
+			}
+			return nil
+		}
 		return t.findTempDirArgs(n, c, ce.Args[0])
 	}
 	return nil
