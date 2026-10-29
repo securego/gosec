@@ -62,7 +62,8 @@ func getEnclosingBodyStart(pos token.Pos, ctx *gosec.Context) token.Pos {
 func (r *subprocess) Match(n ast.Node, c *gosec.Context) (*issue.Issue, error) {
 	if node := r.calls.ContainsPkgCallExpr(n, c, false); node != nil {
 		args := node.Args
-		if r.isContext(n, c) {
+		// Code that does not compile can call CommandContext without arguments.
+		if r.isContext(n, c) && len(args) > 0 {
 			args = args[1:]
 		}
 		for i, arg := range args {
@@ -95,15 +96,12 @@ func (r *subprocess) Match(n ast.Node, c *gosec.Context) (*issue.Issue, error) {
 
 // isContext checks whether or not the node is a CommandContext call or not
 // This is required in order to skip the first argument from the check.
+// Match only calls it for functions in the call list, so the function name is
+// enough: the package name in the call depends on the import, e.g. execabs or
+// a renamed os/exec.
 func (r *subprocess) isContext(n ast.Node, ctx *gosec.Context) bool {
-	selector, indent, err := gosec.GetCallInfo(n, ctx)
-	if err != nil {
-		return false
-	}
-	if selector == "exec" && indent == "CommandContext" {
-		return true
-	}
-	return false
+	_, fn, err := gosec.GetCallInfo(n, ctx)
+	return err == nil && fn == "CommandContext"
 }
 
 // NewSubproc detects cases where we are forking out to an external process

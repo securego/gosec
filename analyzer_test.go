@@ -860,17 +860,17 @@ func main() {
 		})
 
 		It("should not panic if a file can not compile", func() {
-			sample := testutils.SampleCodeCompilationFail[0]
-			source := sample.Code[0]
 			analyzer.LoadRules(rules.Generate(false).RulesInfo())
-			pkg := testutils.NewTestPackage()
-			defer pkg.Close()
+			for _, sample := range testutils.SampleCodeCompilationFail {
+				pkg := testutils.NewTestPackage()
+				defer pkg.Close()
 
-			pkg.AddFile("main.go", source)
-			err := pkg.Build()
-			Expect(err).ShouldNot(HaveOccurred())
-			err = analyzer.Process(buildTags, pkg.Path)
-			Expect(err).ShouldNot(HaveOccurred())
+				pkg.AddFile("main.go", sample.Code[0])
+				err := pkg.Build()
+				Expect(err).ShouldNot(HaveOccurred())
+				err = analyzer.Process(buildTags, pkg.Path)
+				Expect(err).ShouldNot(HaveOccurred())
+			}
 		})
 
 		It("should exclude a reportable file, if excluded by build tags", func() {

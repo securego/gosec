@@ -12,6 +12,15 @@ func main() {
   fmt.Println("no package imported error")
 }
 `}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "os/exec"
+
+func main() {
+	_ = exec.CommandContext()
+}
+`}, 1, gosec.NewConfig()},
 	}
 
 	// SampleCodeBuildTag provides a small program that should only compile
