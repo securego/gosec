@@ -202,4 +202,76 @@ func main() {
 	open("/tmp/demo2", os.O_RDONLY)
 }
 `}, 0, gosec.NewConfig()},
+	{[]string{`
+package samples
+
+import (
+	"fmt"
+	"os"
+	"path"
+	"path/filepath"
+)
+
+const tmpDir = "tmp"
+
+func write(name string) {
+	err := os.WriteFile(path.Join("/var", "tmp", name), []byte("This is some data"), 0600)
+	if err != nil {
+		fmt.Println("Error while writing!")
+	}
+	f, err := os.OpenFile(filepath.Join("/", tmpDir, name), os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		fmt.Println("Error while opening!")
+	} else if err = f.Close(); err != nil {
+		fmt.Println("Error while closing!")
+	}
+}
+
+func main() {
+	f, err := os.Create(filepath.Join("/", "tmp", "demo2"))
+	if err != nil {
+		fmt.Println("Error while writing!")
+	} else if err = f.Close(); err != nil {
+		fmt.Println("Error while closing!")
+	}
+	write("demo2")
+}
+`}, 3, gosec.NewConfig()},
+	{[]string{`
+package samples
+
+import (
+	"fmt"
+	"os"
+	"path"
+	"path/filepath"
+)
+
+func write(name string) {
+	err := os.WriteFile(filepath.Join("/", "tmpdata", name), []byte("This is some data"), 0600)
+	if err != nil {
+		fmt.Println("Error while writing!")
+	}
+	err = os.WriteFile(path.Join("/var", name, "tmp"), []byte("This is some data"), 0600)
+	if err != nil {
+		fmt.Println("Error while writing!")
+	}
+}
+
+func main() {
+	f, err := os.Create(filepath.Join("/", "var", "lib", "demo2"))
+	if err != nil {
+		fmt.Println("Error while writing!")
+	} else if err = f.Close(); err != nil {
+		fmt.Println("Error while closing!")
+	}
+	f, err = os.Create(filepath.Join())
+	if err != nil {
+		fmt.Println("Error while writing!")
+	} else if err = f.Close(); err != nil {
+		fmt.Println("Error while closing!")
+	}
+	write("demo2")
+}
+`}, 0, gosec.NewConfig()},
 }
