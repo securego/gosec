@@ -2196,4 +2196,120 @@ func handler(db *sql.DB, _ *http.Request) {
 	db.Query(query)
 }
 `}, 0, gosec.NewConfig()},
+
+	// Constructor shared by a safe and a tainted caller of one sink helper (issue #1814)
+	// The tainted caller must be reported whichever caller is analyzed first.
+	{[]string{`
+package main
+
+import (
+	"database/sql"
+	"net/http"
+)
+
+type query struct {
+	text string
+}
+
+func newQuery(text string) *query {
+	return &query{text: text}
+}
+
+func run(db *sql.DB, q string) {
+	db.Query(q)
+}
+
+func Health(db *sql.DB) {
+	run(db, newQuery("SELECT 1").text)
+}
+
+func Search(db *sql.DB, r *http.Request) {
+	run(db, newQuery(r.FormValue("q")).text)
+}
+`}, 1, gosec.NewConfig()},
+
+	// Second call to a constructor whose first call was given a constant (issue #1814)
+	{[]string{`
+package main
+
+import (
+	"database/sql"
+	"net/http"
+)
+
+type part struct {
+	text string
+}
+
+func newPart(text string) *part {
+	return &part{text: text}
+}
+
+func Search(db *sql.DB, r *http.Request) {
+	table := newPart("users")
+	filter := newPart(r.FormValue("q"))
+	db.Query("SELECT * FROM " + table.text + " WHERE name = '" + filter.text + "'")
+}
+`}, 1, gosec.NewConfig()},
+
+	// No taint: the shared constructor stores request data only in a field
+	// that is not queried (issue #1814)
+	{[]string{`
+package main
+
+import (
+	"database/sql"
+	"net/http"
+)
+
+type query struct {
+	text  string
+	label string
+}
+
+func newQuery(text, label string) *query {
+	return &query{text: text, label: label}
+}
+
+func run(db *sql.DB, q string) {
+	db.Query(q)
+}
+
+func Health(db *sql.DB) {
+	run(db, newQuery("SELECT 1", "health").text)
+}
+
+func Search(db *sql.DB, r *http.Request) {
+	run(db, newQuery("SELECT name FROM users", r.FormValue("label")).text)
+}
+`}, 0, gosec.NewConfig()},
+
+	// No taint: request data reaches a variadic constructor only from a caller
+	// that logs the field, never from the caller that queries it (issue #1814)
+	{[]string{`
+package main
+
+import (
+	"database/sql"
+	"log"
+	"net/http"
+)
+
+type part struct {
+	text string
+}
+
+func newPart(parts ...string) *part {
+	return &part{text: parts[0]}
+}
+
+func List(db *sql.DB) {
+	p := newPart("SELECT name FROM users")
+	db.Query(p.text)
+}
+
+func Echo(r *http.Request) {
+	log.Println(newPart(r.FormValue("q")).text)
+}
+`}, 0, gosec.NewConfig()},
 }

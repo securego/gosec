@@ -1216,6 +1216,9 @@ func (a *Analyzer) isFieldTaintedViaCall(call *ssa.Call, fieldIdx int, callee *s
 		return false
 	}
 
+	// Callee values are shared by all call sites, so track them per call site.
+	calleeVisited := make(map[ssa.Value]bool)
+
 	// Find all Return instructions in the callee
 	for _, block := range callee.Blocks {
 		for _, instr := range block.Instrs {
@@ -1230,7 +1233,7 @@ func (a *Analyzer) isFieldTaintedViaCall(call *ssa.Call, fieldIdx int, callee *s
 					continue
 				}
 				// Check stores to this alloc's field at fieldIdx
-				if a.isFieldOfAllocTaintedInCallee(alloc, fieldIdx, callee, call, callerFn, visited, depth+1) {
+				if a.isFieldOfAllocTaintedInCallee(alloc, fieldIdx, callee, call, callerFn, visited, calleeVisited, depth+1) {
 					return true
 				}
 			}
@@ -1242,15 +1245,15 @@ func (a *Analyzer) isFieldTaintedViaCall(call *ssa.Call, fieldIdx int, callee *s
 
 // isFieldOfAllocTaintedInCallee checks if a specific field of an allocated struct
 // (inside a callee function) receives tainted data from the caller's arguments.
-func (a *Analyzer) isFieldOfAllocTaintedInCallee(alloc *ssa.Alloc, fieldIdx int, callee *ssa.Function, call *ssa.Call, callerFn *ssa.Function, visited map[ssa.Value]bool, depth int) bool {
+func (a *Analyzer) isFieldOfAllocTaintedInCallee(alloc *ssa.Alloc, fieldIdx int, callee *ssa.Function, call *ssa.Call, callerFn *ssa.Function, visited, calleeVisited map[ssa.Value]bool, depth int) bool {
 	if alloc.Referrers() == nil || depth > maxTaintDepth {
 		return false
 	}
 
-	if visited[alloc] {
+	if calleeVisited[alloc] {
 		return false
 	}
-	visited[alloc] = true
+	calleeVisited[alloc] = true
 	for _, ref := range *alloc.Referrers() {
 		fa, ok := ref.(*ssa.FieldAddr)
 		if !ok || fa.Field != fieldIdx {
@@ -1266,7 +1269,7 @@ func (a *Analyzer) isFieldOfAllocTaintedInCallee(alloc *ssa.Alloc, fieldIdx int,
 			}
 			// Check if the stored value traces back to a tainted caller argument.
 			// Map callee parameters back to caller arguments.
-			if a.isCalleValueTainted(store.Val, callee, call, callerFn, visited, depth+1) {
+			if a.isCalleValueTainted(store.Val, callee, call, callerFn, visited, calleeVisited, depth+1) {
 				return true
 			}
 		}
@@ -1276,16 +1279,16 @@ func (a *Analyzer) isFieldOfAllocTaintedInCallee(alloc *ssa.Alloc, fieldIdx int,
 
 // isCalleValueTainted checks if a value inside a callee is tainted, mapping
 // callee parameters back to the actual caller arguments for interprocedural analysis.
-func (a *Analyzer) isCalleValueTainted(v ssa.Value, callee *ssa.Function, call *ssa.Call, callerFn *ssa.Function, visited map[ssa.Value]bool, depth int) bool {
+func (a *Analyzer) isCalleValueTainted(v ssa.Value, callee *ssa.Function, call *ssa.Call, callerFn *ssa.Function, visited, calleeVisited map[ssa.Value]bool, depth int) bool {
 	if v == nil || depth > maxTaintDepth {
 		return false
 	}
 
 	// Prevent infinite recursion on cyclic SSA value graphs
-	if visited[v] {
+	if calleeVisited[v] {
 		return false
 	}
-	visited[v] = true
+	calleeVisited[v] = true
 
 	// If the value is a callee parameter, map it to the caller's argument
 	if param, ok := v.(*ssa.Parameter); ok {
@@ -1312,7 +1315,7 @@ func (a *Analyzer) isCalleValueTainted(v ssa.Value, callee *ssa.Function, call *
 			return true
 		}
 		for _, arg := range innerCall.Call.Args {
-			if a.isCalleValueTainted(arg, callee, call, callerFn, visited, depth+1) {
+			if a.isCalleValueTainted(arg, callee, call, callerFn, visited, calleeVisited, depth+1) {
 				return true
 			}
 		}
@@ -1321,13 +1324,13 @@ func (a *Analyzer) isCalleValueTainted(v ssa.Value, callee *ssa.Function, call *
 
 	// For Extract (tuple unpacking), trace the tuple
 	if extract, ok := v.(*ssa.Extract); ok {
-		return a.isCalleValueTainted(extract.Tuple, callee, call, callerFn, visited, depth+1)
+		return a.isCalleValueTainted(extract.Tuple, callee, call, callerFn, visited, calleeVisited, depth+1)
 	}
 
 	// For Phi, check all edges
 	if phi, ok := v.(*ssa.Phi); ok {
 		for _, edge := range phi.Edges {
-			if a.isCalleValueTainted(edge, callee, call, callerFn, visited, depth+1) {
+			if a.isCalleValueTainted(edge, callee, call, callerFn, visited, calleeVisited, depth+1) {
 				return true
 			}
 		}
@@ -1336,30 +1339,30 @@ func (a *Analyzer) isCalleValueTainted(v ssa.Value, callee *ssa.Function, call *
 
 	// For BinOp, check both sides
 	if binop, ok := v.(*ssa.BinOp); ok {
-		return a.isCalleValueTainted(binop.X, callee, call, callerFn, visited, depth+1) ||
-			a.isCalleValueTainted(binop.Y, callee, call, callerFn, visited, depth+1)
+		return a.isCalleValueTainted(binop.X, callee, call, callerFn, visited, calleeVisited, depth+1) ||
+			a.isCalleValueTainted(binop.Y, callee, call, callerFn, visited, calleeVisited, depth+1)
 	}
 
 	// For Convert/ChangeType, trace through
 	if conv, ok := v.(*ssa.Convert); ok {
-		return a.isCalleValueTainted(conv.X, callee, call, callerFn, visited, depth+1)
+		return a.isCalleValueTainted(conv.X, callee, call, callerFn, visited, calleeVisited, depth+1)
 	}
 	if ct, ok := v.(*ssa.ChangeType); ok {
-		return a.isCalleValueTainted(ct.X, callee, call, callerFn, visited, depth+1)
+		return a.isCalleValueTainted(ct.X, callee, call, callerFn, visited, calleeVisited, depth+1)
 	}
 
 	// For FieldAddr on a callee parameter (e.g., accessing a field of an arg struct)
 	if fa, ok := v.(*ssa.FieldAddr); ok {
-		return a.isCalleValueTainted(fa.X, callee, call, callerFn, visited, depth+1)
+		return a.isCalleValueTainted(fa.X, callee, call, callerFn, visited, calleeVisited, depth+1)
 	}
 
 	// For UnOp (pointer deref), trace through
 	if unop, ok := v.(*ssa.UnOp); ok {
-		return a.isCalleValueTainted(unop.X, callee, call, callerFn, visited, depth+1)
+		return a.isCalleValueTainted(unop.X, callee, call, callerFn, visited, calleeVisited, depth+1)
 	}
 
-	// For other SSA values, fall back to the callee-local taint check
-	return a.isTainted(v, callee, visited, depth)
+	// Other values are not mapped to this call; isTainted in callee would follow every caller.
+	return false
 }
 
 // doTaintedArgsFlowToReturn checks if any tainted argument to an internal function
