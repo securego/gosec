@@ -85,6 +85,43 @@ func TestNewIssuePopulatesFields(t *testing.T) {
 	}
 }
 
+func TestRunnerMapsRuleSeverityToIssueSeverity(t *testing.T) {
+	t.Parallel()
+
+	const source = `package p
+func Source() string { return "" }
+func Sink(string) {}
+func F() { Sink(Source()) }
+`
+	for severity, want := range map[string]issue.Score{
+		"LOW":      issue.Low,
+		"MEDIUM":   issue.Medium,
+		"HIGH":     issue.High,
+		"CRITICAL": issue.High,
+	} {
+		t.Run(severity, func(t *testing.T) {
+			pass, result := sinkPrecheckPass(t, source, "F")
+			pass.ResultOf[buildssa.Analyzer] = &ssautil.SSAAnalyzerResult{SSA: result}
+			runner := NewGosecAnalyzer(&RuleInfo{ID: "T001", Description: "desc", Severity: severity}, &Config{
+				Sources: []Source{{Package: "p", Name: "Source", IsFunc: true}},
+				Sinks:   []Sink{{Package: "p", Method: "Sink"}},
+			})
+
+			value, err := runner.Run(pass)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			issues, ok := value.([]*issue.Issue)
+			if !ok || len(issues) != 1 {
+				t.Fatalf("expected one issue, got %#v", value)
+			}
+			if issues[0].Severity != want {
+				t.Fatalf("severity %s: got %v, want %v", severity, issues[0].Severity, want)
+			}
+		})
+	}
+}
+
 func TestIssueCodeSnippetReadsSource(t *testing.T) {
 	t.Parallel()
 
