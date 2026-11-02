@@ -654,6 +654,85 @@ func TestTaintAnalysisDoesNotReportSafeWideCallerSet(t *testing.T) {
 	}
 }
 
+func TestTaintAnalysisChecksEveryCallSiteOfSharedConstructor(t *testing.T) {
+	t.Parallel()
+
+	// Both callers of logIt build its argument with the same constructor. CHA
+	// returns the caller edges in no fixed order, so analyzing the safe caller
+	// first must not hide the tainted one.
+	tests := map[string]string{
+		"field set from parameter":   `func newMessage(text string) *Message { return &Message{Text: text} }`,
+		"field built from parameter": `func newMessage(text string) *Message { return &Message{Text: "message: " + text} }`,
+		"field set from call result": `func newMessage(text string) *Message { return &Message{Text: quote(text)} }
+
+func quote(s string) string { return "'" + s + "'" }`,
+	}
+
+	for name, constructor := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			src := `package p
+
+type Request struct{ Path string }
+
+type Message struct{ Text string }
+
+func sink(message string) {}
+
+func logIt(message string) { sink(message) }
+
+func safe() { logIt(newMessage("static").Text) }
+
+func tainted(r *Request) { logIt(newMessage(r.Path).Text) }
+
+` + constructor + "\n"
+
+			fset := token.NewFileSet()
+			parsed, err := parser.ParseFile(fset, "p.go", src, 0)
+			if err != nil {
+				t.Fatalf("parse: %v", err)
+			}
+			info := &types.Info{
+				Types:      make(map[ast.Expr]types.TypeAndValue),
+				Defs:       make(map[*ast.Ident]types.Object),
+				Uses:       make(map[*ast.Ident]types.Object),
+				Implicits:  make(map[ast.Node]types.Object),
+				Scopes:     make(map[ast.Node]*types.Scope),
+				Selections: make(map[*ast.SelectorExpr]*types.Selection),
+			}
+			pkg, err := (&types.Config{}).Check("p", fset, []*ast.File{parsed}, info)
+			if err != nil {
+				t.Fatalf("type-check: %v", err)
+			}
+			prog := ssa.NewProgram(fset, ssa.BuilderMode(0))
+			ssaPkg := prog.CreatePackage(pkg, []*ast.File{parsed}, info, true)
+			prog.Build()
+
+			logFn := ssaPkg.Func("logIt")
+			callGraph := cha.CallGraph(prog)
+			node := callGraph.Nodes[logFn]
+			if node == nil || len(node.In) != 2 {
+				t.Fatalf("expected logIt to have 2 incoming edges, got %v", node)
+			}
+			if node.In[0].Caller.Func.Name() != "safe" {
+				node.In[0], node.In[1] = node.In[1], node.In[0]
+			}
+
+			analyzer := New(&Config{
+				Sources: []Source{{Package: "p", Name: "Request", Pointer: true}},
+				Sinks:   []Sink{{Package: "p", Method: "sink", CheckArgs: []int{0}}},
+			})
+			analyzer.SetCallGraph(callGraph)
+
+			results := analyzer.Analyze(prog, []*ssa.Function{logFn})
+			if len(results) != 1 {
+				t.Fatalf("expected one taint result from the tainted caller, got %d", len(results))
+			}
+		})
+	}
+}
+
 func TestTaintAnalysisPerformanceWithManySinkCalls(t *testing.T) {
 	t.Parallel()
 
