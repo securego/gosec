@@ -343,4 +343,65 @@ func main() {
 	_ = exec.Command("go", "build", "-o", os.Args[1], ".").Run()
 }
 `}, 1, gosec.NewConfig()},
+	{[]string{`
+// the context is not the command when CommandContext comes from sys/execabs
+package main
+
+import (
+	"context"
+
+	"golang.org/x/sys/execabs"
+)
+
+func main() {
+	_ = execabs.CommandContext(context.Background(), "git", "status").Run()
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+// the context is not the command when os/exec is imported under another name
+package main
+
+import (
+	"context"
+	"time"
+
+	osexec "os/exec"
+)
+
+func main() {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	_ = osexec.CommandContext(ctx, "git", "status").Run()
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+// a variable command is still reported through sys/execabs
+package main
+
+import (
+	"context"
+	"os"
+
+	"golang.org/x/sys/execabs"
+)
+
+func main() {
+	_ = execabs.CommandContext(context.Background(), os.Args[1]).Run()
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+// variable arguments are still reported when os/exec is imported under another name
+package main
+
+import (
+	"context"
+	"os"
+
+	osexec "os/exec"
+)
+
+func main() {
+	_ = osexec.CommandContext(context.Background(), "sh", "-c", os.Getenv("CMD")).Run()
+}
+`}, 1, gosec.NewConfig()},
 }
