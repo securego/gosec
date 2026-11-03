@@ -63,6 +63,36 @@ func joinedTempPath(call *ast.CallExpr, c *gosec.Context) (string, bool) {
 	return path.Join(elems...), true
 }
 
+// localVarValue returns the value a local variable is initialized with where
+// it is declared, so that a path stored in a variable is checked like one
+// passed inline. It returns nil for parameters, package-level variables and
+// declarations that don't assign each variable its own value.
+func localVarValue(ident *ast.Ident, c *gosec.Context) ast.Expr {
+	v, ok := c.Info.Uses[ident].(*types.Var)
+	if !ok || ident.Obj == nil || v.Parent() == nil || v.Parent() == v.Pkg().Scope() {
+		return nil
+	}
+	switch decl := ident.Obj.Decl.(type) {
+	case *ast.AssignStmt:
+		if len(decl.Lhs) == len(decl.Rhs) {
+			for i, lhs := range decl.Lhs {
+				if lhs.Pos() == v.Pos() {
+					return decl.Rhs[i]
+				}
+			}
+		}
+	case *ast.ValueSpec:
+		if len(decl.Names) == len(decl.Values) {
+			for i, name := range decl.Names {
+				if name.Pos() == v.Pos() {
+					return decl.Values[i]
+				}
+			}
+		}
+	}
+	return nil
+}
+
 func (t *badTempFile) findTempDirArgs(n ast.Node, c *gosec.Context, suspect ast.Node) *issue.Issue {
 	if s, ok := tempPathValue(suspect, c); ok {
 		if gosec.RegexMatchWithCache(t.args, s) {
@@ -87,6 +117,11 @@ func (t *badTempFile) findTempDirArgs(n ast.Node, c *gosec.Context, suspect ast.
 			return nil
 		}
 		return t.findTempDirArgs(n, c, ce.Args[0])
+	}
+	if ident, ok := suspect.(*ast.Ident); ok {
+		if value := localVarValue(ident, c); value != nil {
+			return t.findTempDirArgs(n, c, value)
+		}
 	}
 	return nil
 }
