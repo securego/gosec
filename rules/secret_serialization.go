@@ -21,16 +21,18 @@ type secretSerialization struct {
 }
 
 type formatSpec struct {
-	name            string
-	tagKey          string
-	marshalerMethod string // e.g. "MarshalJSON"; empty if no standard interface exists
-	functionSinks   []functionSink
-	methodSinks     []methodSink
+	name                 string
+	tagKey               string
+	marshalerMethod      string // e.g. "MarshalJSON"; empty if no standard interface exists
+	extraMarshalerMethod string // e.g. "MarshalJSONTo" for encoding/json/v2; empty if none
+	functionSinks        []functionSink
+	methodSinks          []methodSink
 }
 
 type functionSink struct {
-	pkgPath string
-	names   []string
+	pkgPath  string
+	names    []string
+	argIndex int // index of the serialized value argument; 0 unless specified
 }
 
 type methodSink struct {
@@ -52,11 +54,16 @@ type sensitiveFieldMatch struct {
 
 var g117Formats = []formatSpec{
 	{
-		name:            "JSON",
-		tagKey:          "json",
-		marshalerMethod: "MarshalJSON",
+		name:                 "JSON",
+		tagKey:               "json",
+		marshalerMethod:      "MarshalJSON",
+		extraMarshalerMethod: "MarshalJSONTo",
 		functionSinks: []functionSink{
 			{pkgPath: "encoding/json", names: []string{"Marshal", "MarshalIndent"}},
+			// encoding/json/v2: Marshal takes the value as its first argument,
+			// while MarshalWrite/MarshalEncode take it as their second argument.
+			{pkgPath: "encoding/json/v2", names: []string{"Marshal"}},
+			{pkgPath: "encoding/json/v2", names: []string{"MarshalWrite", "MarshalEncode"}, argIndex: 1},
 		},
 		methodSinks: []methodSink{
 			{pkgPath: "encoding/json", typeName: "Encoder", method: "Encode"},
@@ -124,7 +131,7 @@ func (r *secretSerialization) Match(n ast.Node, ctx *gosec.Context) (*issue.Issu
 		return nil, nil
 	}
 
-	if typeImplementsMarshaler(typ, format.marshalerMethod) {
+	if typeImplementsMarshaler(typ, format.marshalerMethod) || typeImplementsMarshaler(typ, format.extraMarshalerMethod) {
 		return nil, nil
 	}
 
@@ -145,12 +152,13 @@ func (r *secretSerialization) Match(n ast.Node, ctx *gosec.Context) (*issue.Issu
 // implementation. When a marshal call occurs inside one of these methods, the
 // developer is explicitly controlling serialization, so G117 should not flag it.
 var customMarshalerMethods = map[string]bool{
-	"MarshalJSON": true,
-	"MarshalYAML": true,
-	"MarshalXML":  true,
-	"MarshalText": true,
-	"MarshalTOML": true,
-	"MarshalBSON": true,
+	"MarshalJSON":   true,
+	"MarshalJSONTo": true, // encoding/json/v2 custom marshaler
+	"MarshalYAML":   true,
+	"MarshalXML":    true,
+	"MarshalText":   true,
+	"MarshalTOML":   true,
+	"MarshalBSON":   true,
 }
 
 // isInsideCustomMarshaler reports whether callExpr is located inside a method
@@ -280,8 +288,8 @@ func (r *secretSerialization) findSerializedArgument(callExpr *ast.CallExpr, ctx
 	for _, format := range g117Formats {
 		for _, sink := range format.functionSinks {
 			if callMatchesPackageFunction(callExpr, ctx, sink.pkgPath, sink.names...) {
-				if len(callExpr.Args) > 0 {
-					return callExpr.Args[0], format, true
+				if len(callExpr.Args) > sink.argIndex {
+					return callExpr.Args[sink.argIndex], format, true
 				}
 				return nil, format, true
 			}
