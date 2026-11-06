@@ -47,6 +47,39 @@ var _ = Describe("Issue", func() {
 			Expect(issue.Cwe).Should(BeNil())
 		})
 
+		It("should report the position a //line directive maps the node to", func() {
+			var target *ast.BasicLit
+			// The shape cgo gives the copy of a file it rewrites: the generated file names the
+			// original's line before each statement it carries over. A directive counts only at
+			// the start of a line.
+			source := `package main
+			func main(){
+//line orig.go:42:2
+				println("bar")
+			}
+			`
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("gen.go", source)
+			ctx := pkg.CreateContext("gen.go")
+			v := testutils.NewMockVisitor()
+			v.Callback = func(n ast.Node, ctx *gosec.Context) bool {
+				if node, ok := n.(*ast.BasicLit); ok {
+					target = node
+					return false
+				}
+				return true
+			}
+			v.Context = ctx
+			ast.Walk(v, ctx.Root)
+			Expect(target).ShouldNot(BeNil())
+
+			fobj := ctx.GetFileAtNodePos(target)
+			issue := issue.New(fobj, target, "TEST", "", issue.High, issue.High)
+			Expect(issue.File).Should(HaveSuffix("orig.go"))
+			Expect(issue.Line).Should(Equal("42"))
+		})
+
 		It("should return an error if specific context is not able to be obtained", func() {
 			Skip("Not implemented")
 		})

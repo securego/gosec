@@ -205,12 +205,18 @@ func newIssue(analyzerID string, desc string, fileSet *token.FileSet,
 	if file == nil {
 		return &issue.Issue{}
 	}
-	line := file.Line(pos)
-	col := file.Position(pos).Column
+	// Position applies //line directives, so code cgo or a generator rewrote is reported at the
+	// line of the file it came from, as go vet reports it.
+	position := file.Position(pos)
+	if position.Filename == "" {
+		position.Filename = file.Name()
+	}
+	line := position.Line
+	col := position.Column
 
 	return &issue.Issue{
 		RuleID:     analyzerID,
-		File:       file.Name(),
+		File:       position.Filename,
 		Line:       strconv.Itoa(line),
 		Col:        strconv.Itoa(col),
 		Severity:   severity,
@@ -224,15 +230,19 @@ func newIssue(analyzerID string, desc string, fileSet *token.FileSet,
 func issueCodeSnippet(fileSet *token.FileSet, pos token.Pos) string {
 	file := fileSet.File(pos)
 
-	start := int64(file.Line(pos))
+	start := int64(file.Position(pos).Line)
 	if start-issue.SnippetOffset > 0 {
 		start = start - issue.SnippetOffset
 	}
-	end := int64(file.Line(pos))
+	end := int64(file.Position(pos).Line)
 	end = end + issue.SnippetOffset
 
 	var code string
-	if file, err := os.Open(file.Name()); err == nil {
+	name := file.Position(pos).Filename
+	if name == "" {
+		name = file.Name()
+	}
+	if file, err := os.Open(name); err == nil {
 		defer file.Close() // #nosec
 		code, err = issue.CodeSnippet(file, start, end)
 		if err != nil {
