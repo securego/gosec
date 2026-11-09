@@ -873,4 +873,117 @@ func main() {
 	_ = Encoder{}.Encode(Config{})
 }
 `}, 0, gosec.NewConfig()},
+
+	// Positive (issue #1820): encoding/json/v2 Marshal on sensitive field
+	{[]string{`
+package main
+
+import (
+	"bytes"
+	jsonv2 "encoding/json/v2"
+	"encoding/json/jsontext"
+	"os"
+)
+
+type Login struct {
+	Username string
+	Password string
+}
+
+func main() {
+	l := Login{Username: "admin", Password: "secret123"}
+	_, _ = jsonv2.Marshal(l)
+	_ = jsonv2.MarshalWrite(os.Stdout, l)
+	_ = jsonv2.MarshalEncode(jsontext.NewEncoder(&bytes.Buffer{}), l)
+}
+`}, 3, gosec.NewConfig()},
+
+	// Positive (issue #1820): encoding/json/v2 MarshalWrite takes value as second arg
+	{[]string{`
+package main
+
+import (
+	jsonv2 "encoding/json/v2"
+	"os"
+)
+
+type Login struct {
+	Username string
+	Password string
+}
+
+func main() {
+	_ = jsonv2.MarshalWrite(os.Stdout, Login{Username: "admin", Password: "secret123"})
+}
+`}, 1, gosec.NewConfig()},
+
+	// Positive (issue #1820): encoding/json/v2 MarshalEncode takes value as second arg
+	{[]string{`
+package main
+
+import (
+	"bytes"
+	jsonv2 "encoding/json/v2"
+	"encoding/json/jsontext"
+)
+
+type Login struct {
+	Username string
+	Password string
+}
+
+func main() {
+	var buf bytes.Buffer
+	_ = jsonv2.MarshalEncode(jsontext.NewEncoder(&buf), Login{Username: "admin", Password: "secret123"})
+}
+`}, 1, gosec.NewConfig()},
+
+	// Negative (issue #1820): type implements MarshalJSONTo — custom marshaler controls output
+	{[]string{`
+package main
+
+import (
+	jsonv2 "encoding/json/v2"
+	"encoding/json/jsontext"
+)
+
+type Credentials struct {
+	Username string
+	Password string
+}
+
+func (c Credentials) MarshalJSONTo(enc *jsontext.Encoder) error {
+	return enc.WriteToken(jsontext.String("redacted"))
+}
+
+func main() {
+	_, _ = jsonv2.Marshal(Credentials{})
+}
+`}, 0, gosec.NewConfig()},
+
+	// Negative (issue #1820): marshal inside MarshalJSONTo custom marshaler
+	{[]string{`
+package main
+
+import (
+	jsonv2 "encoding/json/v2"
+	"encoding/json/jsontext"
+)
+
+type Credentials struct {
+	Username string
+	Password string
+}
+
+func (c Credentials) MarshalJSONTo(enc *jsontext.Encoder) error {
+	type Aux struct {
+		Username string
+	}
+	return jsonv2.MarshalEncode(enc, Aux{Username: c.Username})
+}
+
+func main() {
+	_, _ = jsonv2.Marshal(Credentials{})
+}
+`}, 0, gosec.NewConfig()},
 }
