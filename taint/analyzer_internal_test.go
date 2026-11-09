@@ -9,11 +9,13 @@ import (
 	"go/types"
 	"os"
 	"path/filepath"
+	"sort"
 	"testing"
 	"time"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/buildssa"
+	"golang.org/x/tools/go/callgraph"
 	"golang.org/x/tools/go/callgraph/cha"
 	"golang.org/x/tools/go/ssa"
 
@@ -672,6 +674,97 @@ func TestTaintAnalysisSortsCallerEdgesWhenCapIsReached(t *testing.T) {
 	results := analyzer.Analyze(prog, []*ssa.Function{logFn})
 	if len(results) != 1 {
 		t.Fatalf("expected one taint result after sorting caller edges at the cap, got %d", len(results))
+	}
+}
+
+func TestSortedCallerEdgesOrdersBelowCap(t *testing.T) {
+	t.Parallel()
+
+	// Well below maxCallerEdges: sorting used to be skipped here, so CHA edge
+	// order could flip findings when the shared visited map was in play (#1814).
+	const belowCapFillers = 8
+	prog, logFn := buildWideCallerTaintFixture(t, belowCapFillers, true)
+	callGraph := cha.CallGraph(prog)
+	node := callGraph.Nodes[logFn]
+	if node == nil {
+		t.Fatal("expected call graph node for logIt")
+	}
+	if len(node.In) == 0 || len(node.In) > maxCallerEdges {
+		t.Fatalf("expected a non-empty caller set below maxCallerEdges, got %d", len(node.In))
+	}
+
+	// Deliberately reverse the CHA order so an unsorted walk would differ.
+	reversed := append([]*callgraph.Edge(nil), node.In...)
+	for i, j := 0, len(reversed)-1; i < j; i, j = i+1, j-1 {
+		reversed[i], reversed[j] = reversed[j], reversed[i]
+	}
+
+	sorted := sortedCallerEdges(reversed)
+	if len(sorted) != len(reversed) {
+		t.Fatalf("expected %d sorted edges, got %d", len(reversed), len(sorted))
+	}
+
+	names := make([]string, len(sorted))
+	for i, edge := range sorted {
+		if edge.Caller == nil || edge.Caller.Func == nil {
+			t.Fatalf("sorted edge %d missing caller", i)
+		}
+		names[i] = edge.Caller.Func.String()
+	}
+	if !sort.StringsAreSorted(names) {
+		t.Fatalf("expected sortedCallerEdges to order by caller name below the cap, got %v", names)
+	}
+
+	// Mutation check: restoring the old `len(node.In) > maxCallerEdges` gate
+	// leaves this helper-based assertion failing only if sortedCallerEdges is
+	// removed or made conditional again. Keep the helper always sorting.
+}
+
+func TestTaintAnalysisFindsTaintedCallerBelowCapRegardlessOfEdgeOrder(t *testing.T) {
+	t.Parallel()
+
+	const belowCapFillers = 8
+	prog, logFn := buildWideCallerTaintFixture(t, belowCapFillers, true)
+	callGraph := cha.CallGraph(prog)
+	node := callGraph.Nodes[logFn]
+	if node == nil || len(node.In) == 0 || len(node.In) > maxCallerEdges {
+		t.Fatalf("expected a non-empty caller set below maxCallerEdges, got %d", len(node.In))
+	}
+
+	taintedIndex := -1
+	for i, edge := range node.In {
+		if edge.Caller != nil && edge.Caller.Func != nil && edge.Caller.Func.Name() == "aTainted" {
+			taintedIndex = i
+			break
+		}
+	}
+	if taintedIndex < 0 {
+		t.Fatal("tainted caller edge not found")
+	}
+	taintedEdge := node.In[taintedIndex]
+	node.In = append(node.In[:taintedIndex], node.In[taintedIndex+1:]...)
+	node.In = append(node.In, taintedEdge)
+
+	orders := [][]*callgraph.Edge{
+		append([]*callgraph.Edge(nil), node.In...),
+	}
+	reversed := append([]*callgraph.Edge(nil), node.In...)
+	for i, j := 0, len(reversed)-1; i < j; i, j = i+1, j-1 {
+		reversed[i], reversed[j] = reversed[j], reversed[i]
+	}
+	orders = append(orders, reversed)
+
+	for i, order := range orders {
+		node.In = append([]*callgraph.Edge(nil), order...)
+		analyzer := New(&Config{
+			Sources: []Source{{Package: "p", Name: "Request", Pointer: true}},
+			Sinks:   []Sink{{Package: "p", Method: "sink", CheckArgs: []int{0}}},
+		})
+		analyzer.SetCallGraph(callGraph)
+		results := analyzer.Analyze(prog, []*ssa.Function{logFn})
+		if len(results) != 1 {
+			t.Fatalf("order %d: expected one taint result below the cap, got %d", i, len(results))
+		}
 	}
 }
 
