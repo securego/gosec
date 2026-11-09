@@ -634,5 +634,45 @@ var serveCmd = &struct {
 
 func main() { _ = serveCmd }
 `}, 0, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	sshKey := "-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW\n-----END OPENSSH PRIVATE KEY-----"
+	fmt.Println(sshKey)
+}
+`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	pemKey := "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC7\n-----END PRIVATE KEY-----"
+	fmt.Println(pemKey)
+}
+`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	pemKey := "-----BEGIN ENCRYPTED PRIVATE KEY-----\nMIIFHDBOBgkqhkiG9w0BBQ0wQTApBgkqhkiG9w0BBQwwHAQI\n-----END ENCRYPTED PRIVATE KEY-----"
+	fmt.Println(pemKey)
+}
+`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	saJSON := ` + "`" + `{"type":"service_account","project_id":"demo","private_key":"-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC7\n-----END PRIVATE KEY-----\n"}` + "`" + `
+	fmt.Println(saJSON)
+}
+`}, 1, gosec.NewConfig()},
 	}
 )

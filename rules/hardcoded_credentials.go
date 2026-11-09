@@ -20,6 +20,7 @@ import (
 	"go/token"
 	"regexp"
 	"strconv"
+	"strings"
 
 	zxcvbn "github.com/ccojocar/zxcvbn-go"
 
@@ -54,6 +55,14 @@ var secretsPatterns = [...]secretPattern{
 	{
 		name:   "PGP private key block",
 		regexp: regexp.MustCompile(`-----BEGIN PGP PRIVATE KEY BLOCK-----`),
+	},
+	{
+		name:   "SSH (OpenSSH) private key",
+		regexp: regexp.MustCompile(`-----BEGIN OPENSSH PRIVATE KEY-----`),
+	},
+	{
+		name:   "PKCS#8 private key",
+		regexp: regexp.MustCompile(`-----BEGIN (?:ENCRYPTED )?PRIVATE KEY-----`),
 	},
 	{
 		name:   "Slack Token",
@@ -218,6 +227,12 @@ func (r *credentials) isHighEntropyString(str string) bool {
 	return res
 }
 
+// PEM private keys skip the entropy check, which would only see their fixed "-----BEGIN" header.
+func (r *credentials) shouldMatchSecretPatterns(val string) bool {
+	return r.ignoreEntropy || r.isHighEntropyString(val) ||
+		(strings.Contains(val, "-----BEGIN ") && strings.Contains(val, "PRIVATE KEY"))
+}
+
 type secretResult struct {
 	ok          bool
 	patternName string
@@ -277,7 +292,7 @@ func (r *credentials) matchAssign(assign *ast.AssignStmt, ctx *gosec.Context) (*
 					continue
 				}
 
-				if r.ignoreEntropy || r.isHighEntropyString(val) {
+				if r.shouldMatchSecretPatterns(val) {
 					if ok, patternName := r.isSecretPattern(val); ok {
 						return ctx.NewIssue(assign, r.ID(), fmt.Sprintf("%s: %s", r.What, patternName), r.Severity, r.Confidence), nil
 					}
@@ -308,7 +323,7 @@ func (r *credentials) matchValueSpec(valueSpec *ast.ValueSpec, ctx *gosec.Contex
 	// Now that no variable names have been matched, match the actual values to find any creds
 	for _, ident := range valueSpec.Values {
 		if val, err := gosec.GetString(ident); err == nil {
-			if r.ignoreEntropy || r.isHighEntropyString(val) {
+			if r.shouldMatchSecretPatterns(val) {
 				if ok, patternName := r.isSecretPattern(val); ok {
 					return ctx.NewIssue(valueSpec, r.ID(), fmt.Sprintf("%s: %s", r.What, patternName), r.Severity, r.Confidence), nil
 				}
@@ -347,7 +362,7 @@ func (r *credentials) matchEqualityCheck(binaryExpr *ast.BinaryExpr, ctx *gosec.
 
 		if ok && identStrConst.Kind == token.STRING {
 			s, _ := gosec.GetString(identStrConst)
-			if r.ignoreEntropy || r.isHighEntropyString(s) {
+			if r.shouldMatchSecretPatterns(s) {
 				if ok, patternName := r.isSecretPattern(s); ok {
 					return ctx.NewIssue(binaryExpr, r.ID(), fmt.Sprintf("%s: %s", r.What, patternName), r.Severity, r.Confidence), nil
 				}
@@ -384,7 +399,7 @@ func (r *credentials) matchCompositeLit(lit *ast.CompositeLit, ctx *gosec.Contex
 
 			// Separately check value for specific secret patterns (regardless of key)
 			if val, err := gosec.GetString(kv.Value); err == nil {
-				if r.ignoreEntropy || r.isHighEntropyString(val) {
+				if r.shouldMatchSecretPatterns(val) {
 					if ok, patternName := r.isSecretPattern(val); ok {
 						return ctx.NewIssue(lit, r.ID(), fmt.Sprintf("%s: %s", r.What, patternName), r.Severity, r.Confidence), nil
 					}
