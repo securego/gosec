@@ -230,19 +230,17 @@ func newIssue(analyzerID string, desc string, fileSet *token.FileSet,
 func issueCodeSnippet(fileSet *token.FileSet, pos token.Pos) string {
 	file := fileSet.File(pos)
 
-	start := int64(file.Position(pos).Line)
+	// The snippet comes from the file that was parsed, at its own lines, never from the file a //line
+	// directive names: a directive is part of the scanned code and can name any path.
+	start := int64(file.Line(pos))
 	if start-issue.SnippetOffset > 0 {
 		start = start - issue.SnippetOffset
 	}
-	end := int64(file.Position(pos).Line)
+	end := int64(file.Line(pos))
 	end = end + issue.SnippetOffset
 
 	var code string
-	name := file.Position(pos).Filename
-	if name == "" {
-		name = file.Name()
-	}
-	if file, err := os.Open(name); err == nil { // #nosec G304 -- the scanned source file, from the analyzed package's position data
+	if file, err := os.Open(file.Name()); err == nil {
 		defer file.Close() // #nosec
 		code, err = issue.CodeSnippet(file, start, end)
 		if err != nil {

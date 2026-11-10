@@ -2,6 +2,8 @@ package issue_test
 
 import (
 	"go/ast"
+	"os"
+	"path/filepath"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -78,6 +80,38 @@ var _ = Describe("Issue", func() {
 			issue := issue.New(fobj, target, "TEST", "", issue.High, issue.High)
 			Expect(issue.File).Should(HaveSuffix("orig.go"))
 			Expect(issue.Line).Should(Equal("42"))
+		})
+
+		It("should take the code snippet from the parsed file, not the file a //line directive names", func() {
+			// A directive is part of the scanned code, so the file it names is not trusted: it can name
+			// any path on the machine running gosec.
+			outside := filepath.Join(GinkgoT().TempDir(), "outside.txt")
+			Expect(os.WriteFile(outside, []byte("first\nsecond\nnot-from-the-scanned-file\n"), 0o600)).To(Succeed())
+
+			var target *ast.BasicLit
+			source := "package main\nfunc main(){\n//line " + outside + ":3:1\n\tprintln(\"bar\")\n}\n"
+			pkg := testutils.NewTestPackage()
+			defer pkg.Close()
+			pkg.AddFile("gen.go", source)
+			ctx := pkg.CreateContext("gen.go")
+			v := testutils.NewMockVisitor()
+			v.Callback = func(n ast.Node, ctx *gosec.Context) bool {
+				if node, ok := n.(*ast.BasicLit); ok {
+					target = node
+					return false
+				}
+				return true
+			}
+			v.Context = ctx
+			ast.Walk(v, ctx.Root)
+			Expect(target).ShouldNot(BeNil())
+
+			fobj := ctx.GetFileAtNodePos(target)
+			issue := issue.New(fobj, target, "TEST", "", issue.High, issue.High)
+			Expect(issue.File).Should(Equal(outside))
+			Expect(issue.Line).Should(Equal("3"))
+			Expect(issue.Code).ShouldNot(ContainSubstring("not-from-the-scanned-file"))
+			Expect(issue.Code).Should(ContainSubstring(`println("bar")`))
 		})
 
 		It("should return an error if specific context is not able to be obtained", func() {

@@ -210,7 +210,7 @@ func CodeSnippet(file *os.File, start int64, end int64) (string, error) {
 }
 
 func codeSnippetStartLine(node ast.Node, fobj *token.File) int64 {
-	s := int64(fobj.Position(node.Pos()).Line)
+	s := int64(fobj.Line(node.Pos()))
 	if s-SnippetOffset > 0 {
 		return s - SnippetOffset
 	}
@@ -218,7 +218,7 @@ func codeSnippetStartLine(node ast.Node, fobj *token.File) int64 {
 }
 
 func codeSnippetEndLine(node ast.Node, fobj *token.File) int64 {
-	e := int64(fobj.Position(node.End()).Line)
+	e := int64(fobj.Line(node.End()))
 	return e + SnippetOffset
 }
 
@@ -247,7 +247,9 @@ func New(fobj *token.File, node ast.Node, ruleID, desc string, severity, confide
 	if node == nil {
 		code = "invalid AST node provided"
 	}
-	if file, err := os.Open(name); err == nil && node != nil { // #nosec G304 -- the scanned source file, from the analyzed package's position data
+	// The snippet comes from the file that was parsed, at its own lines, never from the file a //line
+	// directive names: a directive is part of the scanned code and can name any path.
+	if file, err := os.Open(fobj.Name()); err == nil && node != nil {
 		defer file.Close() // #nosec
 		s := codeSnippetStartLine(node, fobj)
 		e := codeSnippetEndLine(node, fobj)
