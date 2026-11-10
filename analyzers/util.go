@@ -242,7 +242,7 @@ func issueCodeSnippet(fileSet *token.FileSet, pos token.Pos) string {
 	if name == "" {
 		name = file.Name()
 	}
-	if file, err := os.Open(name); err == nil {
+	if file, err := os.Open(name); err == nil { // #nosec G304 -- the scanned source file, from the analyzed package's position data
 		defer file.Close() // #nosec
 		code, err = issue.CodeSnippet(file, start, end)
 		if err != nil {

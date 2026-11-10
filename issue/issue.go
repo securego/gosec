@@ -247,7 +247,7 @@ func New(fobj *token.File, node ast.Node, ruleID, desc string, severity, confide
 	if node == nil {
 		code = "invalid AST node provided"
 	}
-	if file, err := os.Open(name); err == nil && node != nil {
+	if file, err := os.Open(name); err == nil && node != nil { // #nosec G304 -- the scanned source file, from the analyzed package's position data
 		defer file.Close() // #nosec
 		s := codeSnippetStartLine(node, fobj)
 		e := codeSnippetEndLine(node, fobj)
