@@ -973,4 +973,53 @@ func main() {
 	defer rows.Close()
 }
 `}, 1, gosec.NewConfig()},
+	{[]string{`
+// integer verbs with a variable and a constant argument - safe
+package main
+
+import (
+	"database/sql"
+	"fmt"
+	"os"
+)
+
+func main() {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	query := "SELECT * FROM foo WHERE 1=1"
+	n := len(os.Args)
+	query += fmt.Sprintf(" LIMIT %d OFFSET %d", n, 10)
+	rows, err := db.Query(query)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+// other fmt functions have no format to check - should flag
+package main
+
+import (
+	"database/sql"
+	"fmt"
+	"os"
+)
+
+func main() {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	query := "SELECT * FROM foo WHERE 1=1"
+	query += fmt.Sprint(" AND name = ", os.Args[1])
+	rows, err := db.Query(query)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}
+`}, 1, gosec.NewConfig()},
 }
