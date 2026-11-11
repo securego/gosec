@@ -600,4 +600,426 @@ func main() {
 	defer rows.Close()
 }
 `}, 1, gosec.NewConfig()},
+	{[]string{`
+// numbered placeholder appended with an integer verb - safe
+package main
+
+import (
+	"database/sql"
+	"fmt"
+)
+
+func main() {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	args := []any{}
+	argCount := 1
+	query := "SELECT * FROM foo WHERE 1=1"
+	query += fmt.Sprintf(" AND id > $%d", argCount)
+	args = append(args, 10)
+	argCount++
+	query += fmt.Sprintf(" LIMIT $%d", argCount)
+	args = append(args, 5)
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+// numbered placeholder concatenated with an integer verb - safe
+package main
+
+import (
+	"database/sql"
+	"fmt"
+)
+
+func main() {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	args := []any{5}
+	argCount := len(args)
+	query := "SELECT * FROM foo" + fmt.Sprintf(" LIMIT $%d", argCount)
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+// x = x + Sprintf with an integer verb - safe
+package main
+
+import (
+	"database/sql"
+	"fmt"
+)
+
+func main() {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	args := []any{}
+	argCount := 1
+	query := "SELECT * FROM foo WHERE 1=1"
+	query = query + fmt.Sprintf(" LIMIT $%d", argCount)
+	args = append(args, 5)
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+// string verb appended through Sprintf - should flag
+package main
+
+import (
+	"database/sql"
+	"fmt"
+	"os"
+)
+
+func main() {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	args := []any{}
+	argCount := 1
+	query := "SELECT * FROM foo WHERE 1=1"
+	query += fmt.Sprintf(" AND name = '%s'", os.Args[1])
+	_ = argCount
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+// integer verb next to a string verb - should flag
+package main
+
+import (
+	"database/sql"
+	"fmt"
+	"os"
+)
+
+func main() {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	args := []any{}
+	argCount := 1
+	query := "SELECT * FROM foo WHERE 1=1"
+	query += fmt.Sprintf(" AND id = $%d AND name = '%s'", argCount, os.Args[1])
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+// %v verb appended through Sprintf - should flag
+package main
+
+import (
+	"database/sql"
+	"fmt"
+	"os"
+)
+
+func main() {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	args := []any{}
+	argCount := 1
+	query := "SELECT * FROM foo WHERE 1=1"
+	query += fmt.Sprintf(" LIMIT %v", os.Args[1])
+	_ = argCount
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+// integer verb fed a string prints the string - should flag
+package main
+
+import (
+	"database/sql"
+	"fmt"
+	"os"
+)
+
+func main() {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	args := []any{}
+	argCount := 1
+	query := "SELECT * FROM foo WHERE 1=1"
+	query += fmt.Sprintf(" LIMIT %d", os.Args[1])
+	_ = argCount
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+// extra string argument is printed after the format - should flag
+package main
+
+import (
+	"database/sql"
+	"fmt"
+	"os"
+)
+
+func main() {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	args := []any{}
+	argCount := 1
+	query := "SELECT * FROM foo WHERE 1=1"
+	query += fmt.Sprintf(" LIMIT $%d", argCount, os.Args[1])
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+// non-constant format string - should flag
+package main
+
+import (
+	"database/sql"
+	"fmt"
+	"os"
+)
+
+func main() {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	args := []any{}
+	argCount := 1
+	query := "SELECT * FROM foo WHERE 1=1"
+	query += fmt.Sprintf(os.Args[1], argCount)
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+// format held in a named constant with an integer verb - safe
+package main
+
+import (
+	"database/sql"
+	"fmt"
+	"os"
+)
+
+const limitClause = " LIMIT %d"
+
+func main() {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	query := "SELECT * FROM foo WHERE 1=1"
+	n := len(os.Args)
+	query += fmt.Sprintf(limitClause, n)
+	rows, err := db.Query(query)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+// integer verb fed a reassigned string variable - should flag
+package main
+
+import (
+	"database/sql"
+	"fmt"
+	"os"
+)
+
+func main() {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	query := "SELECT * FROM foo WHERE 1=1"
+	n := "5"
+	n = os.Args[1]
+	query += fmt.Sprintf(" LIMIT %d", n)
+	rows, err := db.Query(query)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+// format variable reassigned from user input - should flag
+package main
+
+import (
+	"database/sql"
+	"fmt"
+	"os"
+)
+
+func main() {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	query := "SELECT * FROM foo WHERE 1=1"
+	f := " LIMIT %d"
+	f = os.Args[1]
+	query += fmt.Sprintf(f, 5)
+	rows, err := db.Query(query)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+// numeric type with its own Format method - should flag
+package main
+
+import (
+	"database/sql"
+	"fmt"
+	"os"
+)
+
+type id int
+
+func (id) Format(f fmt.State, _ rune) {
+	_, _ = f.Write([]byte(os.Args[1]))
+}
+
+func main() {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	query := "SELECT * FROM foo WHERE 1=1"
+	query += fmt.Sprintf(" AND id = %d", id(len(os.Args)))
+	rows, err := db.Query(query)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+// %c turns an integer into an arbitrary character - should flag
+package main
+
+import (
+	"database/sql"
+	"fmt"
+	"os"
+	"strconv"
+)
+
+func main() {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	query := "SELECT * FROM foo WHERE 1=1"
+	n, _ := strconv.Atoi(os.Args[1])
+	query += fmt.Sprintf(" AND name = %c", rune(n))
+	rows, err := db.Query(query)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+// integer verbs with a variable and a constant argument - safe
+package main
+
+import (
+	"database/sql"
+	"fmt"
+	"os"
+)
+
+func main() {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	query := "SELECT * FROM foo WHERE 1=1"
+	n := len(os.Args)
+	query += fmt.Sprintf(" LIMIT %d OFFSET %d", n, 10)
+	rows, err := db.Query(query)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+// other fmt functions have no format to check - should flag
+package main
+
+import (
+	"database/sql"
+	"fmt"
+	"os"
+)
+
+func main() {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+	query := "SELECT * FROM foo WHERE 1=1"
+	query += fmt.Sprint(" AND name = ", os.Args[1])
+	rows, err := db.Query(query)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+}
+`}, 1, gosec.NewConfig()},
 }

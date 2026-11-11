@@ -17,6 +17,7 @@ package rules
 import (
 	"fmt"
 	"go/ast"
+	"go/constant"
 	"go/token"
 	"go/types"
 	"regexp"
@@ -93,6 +94,67 @@ func (s *sqlStatement) MatchPatterns(str string) bool {
 	return true
 }
 
+// isSafeFormatting reports whether node is a fmt.Sprintf call that cannot
+// carry attacker-controlled text into the query: its format string is a
+// compile-time constant using only the verbs G201 already treats as safe (see
+// sqlFormatRegexp), and every argument is a compile-time constant or a plain
+// number or boolean. This is the usual way to build numbered placeholders,
+// e.g. query += fmt.Sprintf(" LIMIT $%d", argCount).
+//
+// The checks rely on the type checker rather than on TryResolve, which looks
+// only at a variable's declaration and so misses a later reassignment. The
+// argument types matter because fmt prints a string passed to %d, and any
+// argument left over after the format, verbatim inside a %!verb(...) marker,
+// and because a type with its own Format method decides what gets printed.
+func isSafeFormatting(node ast.Node, ctx *gosec.Context) bool {
+	expr, ok := node.(ast.Expr)
+	if !ok || ctx.Info == nil {
+		return false
+	}
+	call, ok := ast.Unparen(expr).(*ast.CallExpr)
+	if !ok || len(call.Args) == 0 || call.Ellipsis.IsValid() {
+		return false
+	}
+	sel, ok := call.Fun.(*ast.SelectorExpr)
+	if !ok {
+		return false
+	}
+	fn, ok := ctx.Info.ObjectOf(sel.Sel).(*types.Func)
+	if !ok || fn.Pkg() == nil || fn.Pkg().Path() != "fmt" || fn.Name() != "Sprintf" {
+		return false
+	}
+
+	format := ctx.Info.Types[call.Args[0]].Value
+	if format == nil || format.Kind() != constant.String ||
+		gosec.RegexMatchWithCache(sqlFormatRegexp, constant.StringVal(format)) {
+		return false
+	}
+
+	for _, arg := range call.Args[1:] {
+		tv, ok := ctx.Info.Types[arg]
+		if !ok || tv.Type == nil {
+			return false
+		}
+		if tv.Value != nil {
+			continue
+		}
+		basic, ok := tv.Type.Underlying().(*types.Basic)
+		if !ok || basic.Info()&(types.IsNumeric|types.IsBoolean) == 0 {
+			return false
+		}
+		if types.NewMethodSet(tv.Type).Lookup(nil, "Format") != nil {
+			return false
+		}
+	}
+	return true
+}
+
+// isSafeOperand reports whether a concatenated operand is free of injection
+// risk: it is constant, or it is a safe formatting call.
+func isSafeOperand(node ast.Node, ctx *gosec.Context) bool {
+	return gosec.TryResolve(node, ctx) || isSafeFormatting(node, ctx)
+}
+
 type sqlStrConcat struct {
 	sqlStatement
 }
@@ -108,7 +170,7 @@ func (s *sqlStrConcat) findInjectionInBranch(ctx *gosec.Context, branch []ast.Ex
 		}
 
 		for _, op := range gosec.GetBinaryExprOperands(be) {
-			if gosec.TryResolve(op, ctx) {
+			if isSafeOperand(op, ctx) {
 				continue
 			}
 			return be
@@ -130,7 +192,7 @@ func (s *sqlStrConcat) checkQuery(call *ast.CallExpr, ctx *gosec.Context) (*issu
 		if start, ok := operands[0].(*ast.BasicLit); ok {
 			if str, e := gosec.GetString(start); e == nil && s.MatchPatterns(str) {
 				for _, op := range operands[1:] {
-					if gosec.TryResolve(op, ctx) {
+					if isSafeOperand(op, ctx) {
 						continue
 					}
 					return ctx.NewIssue(be, s.ID(), s.What, s.Severity, s.Confidence), nil
@@ -263,7 +325,7 @@ func (s *sqlStrConcat) checkQuery(call *ast.CallExpr, ctx *gosec.Context) (*issu
 				return true
 			}
 
-			if !gosec.TryResolve(appended, ctx) {
+			if !isSafeOperand(appended, ctx) {
 				found = assign
 				return false
 			}
