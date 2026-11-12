@@ -161,12 +161,18 @@ func newIssue(analyzerID string, desc string, fileSet *token.FileSet,
 	if file == nil {
 		return &issue.Issue{}
 	}
-	line := file.Line(pos)
-	col := file.Position(pos).Column
+	// Position applies //line directives, so code cgo or a generator rewrote is reported at the
+	// line of the file it came from, as go vet reports it.
+	position := file.Position(pos)
+	if position.Filename == "" {
+		position.Filename = file.Name()
+	}
+	line := position.Line
+	col := position.Column
 
 	return &issue.Issue{
 		RuleID:     analyzerID,
-		File:       file.Name(),
+		File:       position.Filename,
 		Line:       strconv.Itoa(line),
 		Col:        strconv.Itoa(col),
 		Severity:   severity,
@@ -179,6 +185,8 @@ func newIssue(analyzerID string, desc string, fileSet *token.FileSet,
 
 func issueCodeSnippet(fileSet *token.FileSet, pos token.Pos) string {
 	file := fileSet.File(pos)
+	// The snippet comes from the file that was parsed, at its own lines, never from the file a //line
+	// directive names: a directive is part of the scanned code and can name any path.
 	start := int64(file.Line(pos))
 	if start-issue.SnippetOffset > 0 {
 		start = start - issue.SnippetOffset

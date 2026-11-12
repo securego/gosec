@@ -224,7 +224,14 @@ func codeSnippetEndLine(node ast.Node, fobj *token.File) int64 {
 
 // New creates a new Issue
 func New(fobj *token.File, node ast.Node, ruleID, desc string, severity, confidence Score) *Issue {
+	// Position applies //line directives, so code cgo or a generator rewrote is reported at the
+	// line of the file it came from, as go vet reports it.
 	name := fobj.Name()
+	if node != nil {
+		if adjusted := fobj.Position(node.Pos()).Filename; adjusted != "" {
+			name = adjusted
+		}
+	}
 	var line string
 	var col string
 
@@ -240,6 +247,8 @@ func New(fobj *token.File, node ast.Node, ruleID, desc string, severity, confide
 	if node == nil {
 		code = "invalid AST node provided"
 	}
+	// The snippet comes from the file that was parsed, at its own lines, never from the file a //line
+	// directive names: a directive is part of the scanned code and can name any path.
 	if file, err := os.Open(fobj.Name()); err == nil && node != nil {
 		defer file.Close() // #nosec
 		s := codeSnippetStartLine(node, fobj)
@@ -271,7 +280,7 @@ func (i *Issue) WithSuppressions(suppressions []SuppressionInfo) *Issue {
 
 // GetLine returns the line number of a given ast.Node
 func GetLine(fobj *token.File, node ast.Node) string {
-	start, end := fobj.Line(node.Pos()), fobj.Line(node.End())
+	start, end := fobj.Position(node.Pos()).Line, fobj.Position(node.End()).Line
 	line := strconv.Itoa(start)
 	if start != end {
 		line = fmt.Sprintf("%d-%d", start, end)
