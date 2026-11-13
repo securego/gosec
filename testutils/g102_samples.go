@@ -272,4 +272,55 @@ func main() {
 	listen("localhost", "2000")
 }
 `}, 0, gosec.NewConfig()},
+	// Bind a packet listener to all networks implicitly
+	{[]string{`
+package main
+
+import (
+	"log"
+	"net"
+)
+
+func main() {
+	conn, err := net.ListenPacket("udp", ":5353")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
+}
+`}, 1, gosec.NewConfig()},
+	// Bind a packet listener to all networks explicitly
+	{[]string{`
+package main
+
+import (
+	"log"
+	"net"
+)
+
+func main() {
+	conn, err := net.ListenPacket("udp", "0.0.0.0:5353")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
+}
+`}, 1, gosec.NewConfig()},
+	// Bind a packet listener to localhost
+	{[]string{`
+package main
+
+import (
+	"log"
+	"net"
+)
+
+func main() {
+	conn, err := net.ListenPacket("udp", "127.0.0.1:5353")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
+}
+`}, 0, gosec.NewConfig()},
 }

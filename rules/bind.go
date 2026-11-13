@@ -79,6 +79,6 @@ func NewBindsToAllNetworkInterfaces(id string, _ gosec.Config) (gosec.Rule, []as
 		callListRule: newCallListRule(id, "Binds to all network interfaces", issue.Medium, issue.High),
 		pattern:      regexp.MustCompile(`^(0\.0\.0\.0|\[::\]|:).*$`),
 	}
-	rule.Add("net", "Listen").Add("crypto/tls", "Listen")
+	rule.Add("net", "Listen").Add("net", "ListenPacket").Add("crypto/tls", "Listen")
 	return rule, []ast.Node{(*ast.CallExpr)(nil)}
 }
