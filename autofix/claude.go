@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/anthropics/anthropic-sdk-go/v2"
 	"github.com/anthropics/anthropic-sdk-go/v2/option"
@@ -71,7 +72,7 @@ func parseAnthropicModel(model string) anthropic.Model {
 	switch model {
 	case "claude-opus-4-7":
 		return anthropic.ModelClaudeOpus4_7
-	case "claude-sonnet-4-6", "claude-sonnet": // Default
+	case "claude-sonnet-4-6", "claude-sonnet", "claude": // Default
 		return anthropic.ModelClaudeSonnet4_6
 	case "claude-opus-4-6", "claude-opus":
 		return anthropic.ModelClaudeOpus4_6
@@ -81,6 +82,12 @@ func parseAnthropicModel(model string) anthropic.Model {
 		return anthropic.ModelClaudeOpus4_5_20251101
 	case "claude-haiku-4-5", "claude-haiku-4-5-20251001":
 		return anthropic.ModelClaudeHaiku4_5_20251001
+	}
+
+	// Pass any other claude-* model ID through to the API instead of silently
+	// replacing it with the default model.
+	if strings.HasPrefix(model, "claude-") {
+		return anthropic.Model(model)
 	}
 
 	return anthropic.ModelClaudeSonnet4_6

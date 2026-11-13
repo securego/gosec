@@ -74,7 +74,17 @@ func TestParseAnthropicModel_AllModels(t *testing.T) {
 			expected: anthropic.ModelClaudeHaiku4_5_20251001,
 		},
 		{
-			name:     "default to claude-sonnet-4-6",
+			name:     "bare claude alias is the default",
+			input:    "claude",
+			expected: anthropic.ModelClaudeSonnet4_6,
+		},
+		{
+			name:     "unlisted claude model is passed through",
+			input:    "claude-opus-5-5",
+			expected: anthropic.Model("claude-opus-5-5"),
+		},
+		{
+			name:     "non-claude name falls back to claude-sonnet-4-6",
 			input:    "unknown-model",
 			expected: anthropic.ModelClaudeSonnet4_6,
 		},
