@@ -85,9 +85,10 @@ func parseAnthropicModel(model string) anthropic.Model {
 	}
 
 	// Pass any other claude-* model ID through to the API instead of silently
-	// replacing it with the default model.
+	// replacing it with the default model. Model is a string alias, so a
+	// conversion is rejected by unconvert.
 	if strings.HasPrefix(model, "claude-") {
-		return anthropic.Model(model)
+		return model
 	}
 
 	return anthropic.ModelClaudeSonnet4_6
