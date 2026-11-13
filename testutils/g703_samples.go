@@ -167,6 +167,26 @@ func main() {
 	os.ReadFile(filename)
 }
 `}, 1, gosec.NewConfig()},
+	// True positive: filepath.Rel does not confine the path either. When the
+	// target is outside the base the result starts with "..", so joining it
+	// back onto the base reads /etc/passwd for file=/etc/passwd.
+	{[]string{`
+package main
+
+import (
+	"net/http"
+	"os"
+	"path/filepath"
+)
+
+func relHandler(r *http.Request) {
+	rel, err := filepath.Rel("/srv/files", r.URL.Query().Get("file"))
+	if err != nil {
+		return
+	}
+	os.Open(filepath.Join("/srv/files", rel))
+}
+`}, 1, gosec.NewConfig()},
 	// Test: strconv sanitizer
 	{[]string{`
 package main

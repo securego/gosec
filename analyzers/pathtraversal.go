@@ -68,20 +68,21 @@ func PathTraversal() taint.Config {
 		Sanitizers: []taint.Sanitizer{
 			// filepath.Base extracts just the filename, removing directory traversal
 			{Package: "path/filepath", Method: "Base"},
-			// filepath.Rel computes a relative path safely
-			{Package: "path/filepath", Method: "Rel"},
 
 			// path.Base provides identical traversal-stripping semantics as its
 			// filepath counterpart (the only difference is separator handling,
 			// which is irrelevant for security).
 			{Package: "path", Method: "Base"},
 
-			// NOTE: Clean/filepath.Clean, filepath.Abs and url.PathEscape are
-			// deliberately NOT sanitizers. Clean only lexically normalizes a
-			// path: it evaluates ".." elements instead of rejecting them, so
+			// NOTE: Clean/filepath.Clean, filepath.Abs, filepath.Rel and
+			// url.PathEscape are deliberately NOT sanitizers. Clean only
+			// lexically normalizes a path: it evaluates ".." elements instead of rejecting them, so
 			// Clean("/prefix/../../etc/passwd") yields "/etc/passwd" — the
 			// traversal succeeds. filepath.Abs calls Clean internally and
-			// inherits the same behavior, and url.PathUnescape reverses
+			// inherits the same behavior. filepath.Rel returns a path that starts
+			// with ".." whenever the target lies outside the base, such as
+			// Rel("/srv/files", "/etc/passwd") == "../../etc/passwd", so joining
+			// its result back onto the base escapes it. url.PathUnescape reverses
 			// url.PathEscape, restoring any ".." that was escaped. Confining a
 			// path to a directory requires os.Root or an explicit prefix check,
 			// not Clean. See https://github.com/securego/gosec/issues/1721.
