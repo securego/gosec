@@ -1,6 +1,10 @@
 package testutils
 
-import "github.com/securego/gosec/v2"
+import (
+	"strings"
+
+	"github.com/securego/gosec/v2"
+)
 
 var (
 	// SampleCodeG101 code snippets for hardcoded credentials
@@ -674,5 +678,62 @@ func main() {
 	fmt.Println(saJSON)
 }
 `}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	client := "` + fakeAnthropicKey + `"
+	fmt.Println(client)
+}
+`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	client := "` + fakeOpenAIProjectKey + `"
+	fmt.Println(client)
+}
+`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+func main() {
+	_ = map[string]string{
+		"openai": "` + fakeOpenAILegacyKey + `",
 	}
+}
+`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	placeholder := "sk-ant-api03-REPLACE_WITH_YOUR_KEY"
+	fmt.Println(placeholder)
+}
+`}, 0, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	placeholder := "sk-proj-0000000000000000000000000000000000000000"
+	fmt.Println(placeholder)
+}
+`}, 0, gosec.NewConfig()},
+	}
+)
+
+// Fake keys in the documented formats. They are assembled from parts so the
+// full key never appears in this file and secret scanners don't flag it.
+var (
+	fakeAnthropicKey     = "sk-ant-" + "api03-" + strings.Repeat("Xr7mQ2vLp9", 9) + "Tz4" + "AA"
+	fakeOpenAIProjectKey = "sk-" + "proj-" + strings.Repeat("Xr7mQ2vLp9", 5) + "T3Blbk" + "FJ" + strings.Repeat("Tz4WkC8nB1", 5)
+	fakeOpenAILegacyKey  = "sk-" + "Xr7mQ2vLp9Tz4WkC8nB1" + "T3Blbk" + "FJ" + "Tz4WkC8nB1Xr7mQ2vLp9"
 )
