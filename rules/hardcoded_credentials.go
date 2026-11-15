@@ -97,6 +97,30 @@ var secretsPatterns = [...]secretPattern{
 		regexp: regexp.MustCompile(`ghs_[a-zA-Z0-9]{36}`),
 	},
 	{
+		name:   "GitHub OAuth access token",
+		regexp: regexp.MustCompile(`gho_[a-zA-Z0-9]{36}`),
+	},
+	{
+		name:   "GitHub user-to-server token",
+		regexp: regexp.MustCompile(`ghu_[a-zA-Z0-9]{36}`),
+	},
+	{
+		name:   "GitHub refresh token",
+		regexp: regexp.MustCompile(`ghr_[a-zA-Z0-9]{36}`),
+	},
+	{
+		name:   "GitLab personal access token",
+		regexp: regexp.MustCompile(`glpat-[0-9a-zA-Z_-]{20,}`),
+	},
+	{
+		name:   "npm access token",
+		regexp: regexp.MustCompile(`npm_[a-zA-Z0-9]{36}`),
+	},
+	{
+		name:   "Hugging Face access token",
+		regexp: regexp.MustCompile(`hf_[a-zA-Z0-9]{34,}`),
+	},
+	{
 		name:   "Google API Key", // Also Google Cloud Platform, Gmail, Drive, YouTube, etc.
 		regexp: regexp.MustCompile(`AIza[0-9A-Za-z\-_]{35}`),
 	},
@@ -175,19 +199,6 @@ var secretsPatterns = [...]secretPattern{
 	{
 		name:   "Twitter OAuth",
 		regexp: regexp.MustCompile(`[tT][wW][iI][tT][tT][eE][rR].*[''|"][0-9a-zA-Z]{35,44}[''|"]`),
-	},
-
-	{
-		name:   "GitHub personal access token",
-		regexp: regexp.MustCompile(`ghp_[a-zA-Z0-9]{36}`),
-	},
-	{
-		name:   "GitHub fine-grained access token",
-		regexp: regexp.MustCompile(`github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59}`),
-	},
-	{
-		name:   "GitHub action temporary token",
-		regexp: regexp.MustCompile(`ghs_[a-zA-Z0-9]{36}`),
 	},
 }
 
