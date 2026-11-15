@@ -176,6 +176,14 @@ var secretsPatterns = [...]secretPattern{
 		name:   "Twitter OAuth",
 		regexp: regexp.MustCompile(`[tT][wW][iI][tT][tT][eE][rR].*[''|"][0-9a-zA-Z]{35,44}[''|"]`),
 	},
+	{
+		name:   "Anthropic API Key",
+		regexp: regexp.MustCompile(`sk-ant-(?:api03|admin01)-[a-zA-Z0-9_\-]{93}AA`),
+	},
+	{
+		name:   "OpenAI API Key", // legacy, project and service account keys all embed "T3BlbkFJ" (base64 for "OpenAI")
+		regexp: regexp.MustCompile(`sk-[a-zA-Z0-9_\-]{20,}T3BlbkFJ[a-zA-Z0-9_\-]{20,}`),
+	},
 
 	{
 		name:   "GitHub personal access token",
