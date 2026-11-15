@@ -674,5 +674,104 @@ func main() {
 	fmt.Println(saJSON)
 }
 `}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	token := "` + fakeGitHubOAuth + `"
+	fmt.Println(token)
+}
+`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	token := "` + fakeGitHubUser + `"
+	fmt.Println(token)
+}
+`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+func main() {
+	_ = map[string]string{
+		"github_refresh": "` + fakeGitHubRefresh + `",
 	}
+}
+`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	token := "` + fakeGitLabPAT + `"
+	fmt.Println(token)
+}
+`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	token := "` + fakeNpmToken + `"
+	fmt.Println(token)
+}
+`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+func main() {
+	_ = map[string]string{
+		"hf_token": "` + fakeHuggingFaceToken + `",
+	}
+}
+`}, 1, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	placeholder := "gho_SHORT"
+	fmt.Println(placeholder)
+}
+`}, 0, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	placeholder := "glpat-short"
+	fmt.Println(placeholder)
+}
+`}, 0, gosec.NewConfig()},
+		{[]string{`
+package main
+
+import "fmt"
+
+func main() {
+	placeholder := "hf_notarealtoken"
+	fmt.Println(placeholder)
+}
+`}, 0, gosec.NewConfig()},
+	}
+)
+
+// Fake tokens in the documented formats. They are assembled from parts so the
+// full token never appears in this file and secret scanners don't flag it.
+var (
+	fakeGitHubOAuth      = "gho_" + "Xr7mQ2vLp9Tz4WkC8nB1" + "AbCdEfGhIjKlMnOp"
+	fakeGitHubUser       = "ghu_" + "Xr7mQ2vLp9Tz4WkC8nB1" + "CdEfGhIjKlMnOpQr"
+	fakeGitHubRefresh    = "ghr_" + "Xr7mQ2vLp9Tz4WkC8nB1" + "EfGhIjKlMnOpQrSt"
+	fakeGitLabPAT        = "glpat-" + "Xr7mQ2vLp9Tz4WkC8nB1"
+	fakeNpmToken         = "npm_" + "Xr7mQ2vLp9Tz4WkC8nB1" + "AbCdEfGhIjKlMnOp"
+	fakeHuggingFaceToken = "hf_" + "Xr7mQ2vLp9Tz4WkC8nB1" + "AbCdEfGhIjKlMn"
 )
