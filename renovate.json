@@ -1,7 +1,9 @@
 {
     "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-    "dependencyDashboard": true,
-    "dependencyDashboardTitle": "Renovate(bot) : dependency dashboard",
+    "dependencyDashboard": {
+        "enabled": true,
+        "title": "Renovate(bot) : dependency dashboard"
+    },
     "vulnerabilityAlerts": {
         "enabled": true
     },
