@@ -31,7 +31,7 @@
 - G107 — URL provided to HTTP request as taint input (**AST**)
 - G108 — Profiling endpoint is automatically exposed (**AST**)
 - G109 — Converting `strconv.Atoi` result to `int32/int16` (**AST**)
-- G110 — Detect `io.Copy` instead of `io.CopyN` when decompressing (**AST**)
+- G110 — Detect unbounded `io.Copy` or `io.ReadAll` when decompressing (**AST**)
 - [G111](#g111) — Detect `http.Dir('/')` as a potential risk (**AST**)
 - G112 — Detect `ReadHeaderTimeout` not configured as a potential risk (**AST**)
 - G113 — HTTP request smuggling via conflicting headers or bare LF in body parsing (**SSA**)

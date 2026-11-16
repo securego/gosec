@@ -25,8 +25,9 @@ import (
 
 type decompressionBombCheck struct {
 	issue.MetaData
-	readerCalls gosec.CallList
-	copyCalls   gosec.CallList
+	readerCalls  gosec.CallList
+	copyCalls    gosec.CallList
+	readAllCalls gosec.CallList
 }
 
 func containsReaderCall(node ast.Node, ctx *gosec.Context, list gosec.CallList) bool {
@@ -67,30 +68,42 @@ func (d *decompressionBombCheck) Match(node ast.Node, ctx *gosec.Context) (*issu
 			}
 		}
 	case *ast.CallExpr:
+		// io.Copy(dst, src) and io.CopyBuffer(dst, src, buf) read from their second argument,
+		// io.ReadAll(r) and ioutil.ReadAll(r) from their first.
+		srcArg := -1
 		if d.copyCalls.ContainsPkgCallExpr(n, ctx, false) != nil {
-			if len(n.Args) > 1 {
-				if idt, ok := n.Args[1].(*ast.Ident); ok {
-					if obj := ctx.Info.ObjectOf(idt); obj != nil {
-						if v, ok := obj.(*types.Var); ok {
-							if _, tracked := readerVars[v]; tracked {
-								return ctx.NewIssue(n, d.ID(), d.What, d.Severity, d.Confidence), nil
-							}
-						}
-					}
-				}
-			}
+			srcArg = 1
+		} else if d.readAllCalls.ContainsPkgCallExpr(n, ctx, false) != nil {
+			srcArg = 0
+		}
+		if srcArg >= 0 && len(n.Args) > srcArg && isTrackedReader(n.Args[srcArg], ctx, readerVars) {
+			return ctx.NewIssue(n, d.ID(), d.What, d.Severity, d.Confidence), nil
 		}
 	}
 
 	return nil, nil
 }
 
+func isTrackedReader(arg ast.Expr, ctx *gosec.Context, readerVars map[*types.Var]struct{}) bool {
+	idt, ok := arg.(*ast.Ident)
+	if !ok {
+		return false
+	}
+	v, ok := ctx.Info.ObjectOf(idt).(*types.Var)
+	if !ok {
+		return false
+	}
+	_, tracked := readerVars[v]
+	return tracked
+}
+
 // NewDecompressionBombCheck detects potential DoS via decompression bomb
 func NewDecompressionBombCheck(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	rule := &decompressionBombCheck{
-		MetaData:    issue.NewMetaData(id, "Potential DoS vulnerability via decompression bomb", issue.Medium, issue.Medium),
-		readerCalls: gosec.NewCallList(),
-		copyCalls:   gosec.NewCallList(),
+		MetaData:     issue.NewMetaData(id, "Potential DoS vulnerability via decompression bomb", issue.Medium, issue.Medium),
+		readerCalls:  gosec.NewCallList(),
+		copyCalls:    gosec.NewCallList(),
+		readAllCalls: gosec.NewCallList(),
 	}
 	rule.readerCalls.Add("compress/gzip", "NewReader")
 	rule.readerCalls.AddAll("compress/zlib", "NewReader", "NewReaderDict")
@@ -102,6 +115,8 @@ func NewDecompressionBombCheck(id string, _ gosec.Config) (gosec.Rule, []ast.Nod
 	rule.readerCalls.Add("*archive/zip.File", "Open")
 
 	rule.copyCalls.AddAll("io", "Copy", "CopyBuffer")
+	rule.readAllCalls.Add("io", "ReadAll")
+	rule.readAllCalls.Add("io/ioutil", "ReadAll")
 
 	return rule, []ast.Node{(*ast.AssignStmt)(nil), (*ast.CallExpr)(nil)}
 }

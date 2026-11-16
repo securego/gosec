@@ -123,4 +123,117 @@ func main() {
 	}
 }
 `}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import (
+	"compress/gzip"
+	"fmt"
+	"io"
+	"os"
+)
+
+func main() {
+	f, err := os.Open("data.gz")
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+
+	r, err := gzip.NewReader(f)
+	if err != nil {
+		panic(err)
+	}
+	defer r.Close()
+
+	data, err := io.ReadAll(r)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(len(data))
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import (
+	"archive/zip"
+	"fmt"
+	"io/ioutil"
+)
+
+func main() {
+	r, err := zip.OpenReader("tmp.zip")
+	if err != nil {
+		panic(err)
+	}
+	defer r.Close()
+
+	for _, f := range r.File {
+		rc, err := f.Open()
+		if err != nil {
+			panic(err)
+		}
+		data, err := ioutil.ReadAll(rc)
+		rc.Close()
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println(len(data))
+	}
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import (
+	"compress/gzip"
+	"fmt"
+	"io"
+	"os"
+)
+
+func main() {
+	f, err := os.Open("data.gz")
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+
+	r, err := gzip.NewReader(f)
+	if err != nil {
+		panic(err)
+	}
+	defer r.Close()
+
+	data, err := io.ReadAll(io.LimitReader(r, 1<<20))
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(len(data))
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import (
+	"fmt"
+	"io"
+	"os"
+)
+
+func main() {
+	f, err := os.Open("data.txt")
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+
+	data, err := io.ReadAll(f)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(len(data))
+}
+`}, 0, gosec.NewConfig()},
 }
