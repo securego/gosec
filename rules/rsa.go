@@ -25,17 +25,29 @@ import (
 
 type weakKeyStrength struct {
 	callListRule
-	bits int
+	multiPrimeCalls gosec.CallList
+	bits            int
 }
 
-// Match overrides the base to check the bits argument of rsa.GenerateKey
+// Match overrides the base to check the bits argument of rsa.GenerateKey and
+// rsa.GenerateMultiPrimeKey
 func (w *weakKeyStrength) Match(n ast.Node, c *gosec.Context) (*issue.Issue, error) {
+	// rsa.GenerateKey(random, bits)
 	if callExpr := w.calls.ContainsPkgCallExpr(n, c, false); callExpr != nil {
-		if bits, ok := rsaKeyBits(callExpr.Args[1], c); ok && bits < int64(w.bits) {
-			return c.NewIssue(n, w.ID(), w.What, w.Severity, w.Confidence), nil
-		}
+		return w.checkBits(n, callExpr.Args[1], c), nil
+	}
+	// rsa.GenerateMultiPrimeKey(random, nprimes, bits)
+	if callExpr := w.multiPrimeCalls.ContainsPkgCallExpr(n, c, false); callExpr != nil {
+		return w.checkBits(n, callExpr.Args[2], c), nil
 	}
 	return nil, nil
+}
+
+func (w *weakKeyStrength) checkBits(n ast.Node, expr ast.Expr, c *gosec.Context) *issue.Issue {
+	if bits, ok := rsaKeyBits(expr, c); ok && bits < int64(w.bits) {
+		return c.NewIssue(n, w.ID(), w.What, w.Severity, w.Confidence)
+	}
+	return nil
 }
 
 // rsaKeyBits resolves integer compile-time constants, including named
@@ -52,9 +64,11 @@ func rsaKeyBits(expr ast.Expr, c *gosec.Context) (int64, bool) {
 func NewWeakKeyStrength(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	bits := 2048
 	rule := &weakKeyStrength{
-		callListRule: newCallListRule(id, fmt.Sprintf("RSA keys should be at least %d bits", bits), issue.Medium, issue.High),
-		bits:         bits,
+		callListRule:    newCallListRule(id, fmt.Sprintf("RSA keys should be at least %d bits", bits), issue.Medium, issue.High),
+		multiPrimeCalls: gosec.NewCallList(),
+		bits:            bits,
 	}
 	rule.Add("crypto/rsa", "GenerateKey")
+	rule.multiPrimeCalls.Add("crypto/rsa", "GenerateMultiPrimeKey")
 	return rule, []ast.Node{(*ast.CallExpr)(nil)}
 }

@@ -75,4 +75,55 @@ func generate(bits int) {
 	_, _ = rsa.GenerateKey(rand.Reader, bits)
 }
 `}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import (
+	"crypto/rand"
+	"crypto/rsa"
+)
+
+func main() {
+	_, _ = rsa.GenerateMultiPrimeKey(rand.Reader, 2, 1024)
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import (
+	"crypto/rand"
+	"crypto/rsa"
+)
+
+const weakKeyBits = 1536
+
+func main() {
+	_, _ = rsa.GenerateMultiPrimeKey(rand.Reader, 3, weakKeyBits)
+}
+`}, 1, gosec.NewConfig()},
+	// The prime count is not the key size.
+	{[]string{`
+package main
+
+import (
+	"crypto/rand"
+	"crypto/rsa"
+)
+
+func main() {
+	_, _ = rsa.GenerateMultiPrimeKey(rand.Reader, 2, 4096)
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import (
+	"crypto/rand"
+	"crypto/rsa"
+)
+
+func generate(bits int) {
+	_, _ = rsa.GenerateMultiPrimeKey(rand.Reader, 2, bits)
+}
+`}, 0, gosec.NewConfig()},
 }
