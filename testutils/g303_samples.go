@@ -351,4 +351,75 @@ func main() {
 	write("/tmp/demo2")
 }
 `}, 0, gosec.NewConfig()},
+	{[]string{`
+package samples
+
+import (
+	"fmt"
+	"os"
+)
+
+const logFormat = "/var/tmp/%s.log"
+
+func main() {
+	name := "demo2"
+	f, err := os.Create(fmt.Sprintf("/tmp/%s", name))
+	if err != nil {
+		fmt.Println("Error while writing!")
+	} else if err = f.Close(); err != nil {
+		fmt.Println("Error while closing!")
+	}
+	err = os.WriteFile(fmt.Sprintf(logFormat, name), []byte("This is some data"), 0600)
+	if err != nil {
+		fmt.Println("Error while writing!")
+	}
+	dataPath := fmt.Sprintf("/tmp/demo/%s-%d.txt", name, 2)
+	f, err = os.OpenFile(dataPath, os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		fmt.Println("Error while opening!")
+	} else if err = f.Close(); err != nil {
+		fmt.Println("Error while closing!")
+	}
+}
+`}, 3, gosec.NewConfig()},
+	{[]string{`
+package samples
+
+import (
+	"fmt"
+	"os"
+)
+
+func write(format, dir, name string) {
+	err := os.WriteFile(fmt.Sprintf(format, name), []byte("This is some data"), 0600)
+	if err != nil {
+		fmt.Println("Error while writing!")
+	}
+	err = os.WriteFile(fmt.Sprintf("%s/%s", dir, name), []byte("This is some data"), 0600)
+	if err != nil {
+		fmt.Println("Error while writing!")
+	}
+}
+
+func main() {
+	name := "demo2"
+	f, err := os.Create(fmt.Sprintf("/tmp%s", name))
+	if err != nil {
+		fmt.Println("Error while writing!")
+	} else if err = f.Close(); err != nil {
+		fmt.Println("Error while closing!")
+	}
+	f, err = os.Create(fmt.Sprintf("/var/lib/%s/tmp", name))
+	if err != nil {
+		fmt.Println("Error while writing!")
+	} else if err = f.Close(); err != nil {
+		fmt.Println("Error while closing!")
+	}
+	err = os.WriteFile(fmt.Sprintf("/tmp/../etc/%s", name), []byte("This is some data"), 0600)
+	if err != nil {
+		fmt.Println("Error while writing!")
+	}
+	write("/tmp/%s", "/tmp", name)
+}
+`}, 0, gosec.NewConfig()},
 }
