@@ -1,5 +1,5 @@
 name: CI
-on: # zizmor: ignore[dangerous-triggers]
+on: # zizmor: ignore[dangerous-triggers] -- checkout uses base ref; PR data is read via GitHub API
   push:
     branches:
       - master
@@ -92,12 +92,10 @@ jobs:
       - name: Checkout Source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
-          allow-unsafe-pr-checkout: true
       - name: Run Barry AI Security Review
         id: barry
-        uses: ccojocar/barry@main # zizmor: ignore[unpinned-uses]
+        uses: ccojocar/barry@66654985f3a1b5fe417656467fa0d0b1e9f6e1db
         continue-on-error: true
         with:
           google-api-key: ${{ secrets.GOOGLE_API_KEY }}
