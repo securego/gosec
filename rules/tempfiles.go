@@ -20,6 +20,7 @@ import (
 	"go/types"
 	"path"
 	"regexp"
+	"strings"
 
 	"github.com/securego/gosec/v2"
 	"github.com/securego/gosec/v2/issue"
@@ -30,6 +31,7 @@ type badTempFile struct {
 	args          *regexp.Regexp
 	argCalls      gosec.CallList
 	nestedCalls   gosec.CallList
+	formatCalls   gosec.CallList
 	openFileCalls gosec.CallList
 }
 
@@ -61,6 +63,18 @@ func joinedTempPath(call *ast.CallExpr, c *gosec.Context) (string, bool) {
 		return "", false
 	}
 	return path.Join(elems...), true
+}
+
+// formatTempDir returns the directory a constant format string starts with,
+// so that fmt.Sprintf("/tmp/%s.log", name) resolves to "/tmp". Only the text
+// before the first verb is used, up to its last slash, since "/tmp%s" could
+// expand to a path outside "/tmp".
+func formatTempDir(format string) string {
+	prefix, _, found := strings.Cut(format, "%")
+	if found {
+		prefix = prefix[:strings.LastIndex(prefix, "/")+1]
+	}
+	return path.Clean(prefix)
 }
 
 // localVarValue returns the value a local variable is initialized with where
@@ -118,6 +132,12 @@ func (t *badTempFile) findTempDirArgs(n ast.Node, c *gosec.Context, suspect ast.
 		}
 		return t.findTempDirArgs(n, c, ce.Args[0])
 	}
+	if ce := t.formatCalls.ContainsPkgCallExpr(suspect, c, false); ce != nil && len(ce.Args) != 0 {
+		if format, ok := tempPathValue(ce.Args[0], c); ok && gosec.RegexMatchWithCache(t.args, formatTempDir(format)) {
+			return c.NewIssue(n, t.ID(), t.What, t.Severity, t.Confidence)
+		}
+		return nil
+	}
 	if ident, ok := suspect.(*ast.Ident); ok {
 		if value := localVarValue(ident, c); value != nil {
 			return t.findTempDirArgs(n, c, value)
@@ -166,6 +186,7 @@ func NewBadTempFile(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 		args:          regexp.MustCompile(`^(/(usr|var))?/tmp(/.*)?$`),
 		argCalls:      gosec.NewCallList(),
 		nestedCalls:   gosec.NewCallList(),
+		formatCalls:   gosec.NewCallList(),
 		openFileCalls: gosec.NewCallList(),
 	}
 	rule.Add("io/ioutil", "WriteFile")
@@ -174,5 +195,6 @@ func NewBadTempFile(id string, _ gosec.Config) (gosec.Rule, []ast.Node) {
 	rule.argCalls.Add("os", "TempDir")
 	rule.nestedCalls.AddAll("path", "Join")
 	rule.nestedCalls.Add("path/filepath", "Join")
+	rule.formatCalls.Add("fmt", "Sprintf")
 	return rule, []ast.Node{(*ast.CallExpr)(nil)}
 }
