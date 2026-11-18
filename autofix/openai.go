@@ -50,14 +50,12 @@ func NewOpenAIClient(config OpenAIConfig) (GenAIClient, error) {
 
 	// Support skip SSL verification
 	if config.SkipSSL {
-		// Create custom HTTP client with InsecureSkipVerify
-		httpClient := &http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: true, // #nosec G402
-				},
-			},
+		// Clone the default transport so proxy settings and timeouts are preserved
+		transport := http.DefaultTransport.(*http.Transport).Clone()
+		transport.TLSClientConfig = &tls.Config{
+			InsecureSkipVerify: true, // #nosec G402
 		}
+		httpClient := &http.Client{Transport: transport}
 		options = append(options, option.WithHTTPClient(httpClient))
 	}
 
