@@ -1,6 +1,11 @@
 package autofix
 
 import (
+	"context"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"sync/atomic"
 	"testing"
 
 	"github.com/openai/openai-go/v3"
@@ -353,4 +358,36 @@ func TestNewOpenAIClient_DefaultValues(t *testing.T) {
 	// Verify defaults
 	assert.Equal(t, 1024, wrapper.maxTokens, "should use default maxTokens")
 	assert.InEpsilon(t, 0.7, wrapper.temperature, 0.001, "should use default temperature")
+}
+
+func TestNewOpenAIClient_SkipSSLHonorsProxyEnv(t *testing.T) {
+	var hits atomic.Int32
+	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		hits.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"fixed"}}]}`))
+	}))
+	defer proxy.Close()
+
+	proxyURL, err := url.Parse(proxy.URL)
+	require.NoError(t, err)
+
+	defaultTransport, ok := http.DefaultTransport.(*http.Transport)
+	require.True(t, ok)
+	orig := defaultTransport.Proxy
+	defaultTransport.Proxy = http.ProxyURL(proxyURL)
+	defer func() { defaultTransport.Proxy = orig }()
+
+	client, err := NewOpenAIClient(OpenAIConfig{
+		APIKey:  "test-key",
+		Model:   "custom-model",
+		BaseURL: "http://upstream.invalid/v1",
+		SkipSSL: true,
+	})
+	require.NoError(t, err)
+
+	out, err := client.GenerateSolution(context.Background(), "prompt")
+	require.NoError(t, err)
+	assert.Equal(t, "fixed", out)
+	assert.Equal(t, int32(1), hits.Load(), "request should go through the proxy")
 }
