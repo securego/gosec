@@ -498,4 +498,65 @@ func main() {
 	_ = modern()
 }
 `}, 0, gosec.NewConfig()},
+	{[]string{`
+// CurvePreferences without a post-quantum key exchange
+package main
+
+import "crypto/tls"
+
+func main() {
+	_ = &tls.Config{
+		MinVersion:       tls.VersionTLS13,
+		CurvePreferences: []tls.CurveID{tls.CurveP256, tls.X25519},
+	}
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+// CurvePreferences without a post-quantum key exchange set by assignment
+package main
+
+import "crypto/tls"
+
+func main() {
+	cfg := &tls.Config{MinVersion: tls.VersionTLS13}
+	cfg.CurvePreferences = []tls.CurveID{tls.X25519}
+	_ = cfg
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+// CurvePreferences unset keeps the default post-quantum key exchange (no issue)
+package main
+
+import "crypto/tls"
+
+func main() {
+	_ = &tls.Config{MinVersion: tls.VersionTLS13}
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+// CurvePreferences empty keeps the default (no issue)
+package main
+
+import "crypto/tls"
+
+func main() {
+	_ = &tls.Config{
+		MinVersion:       tls.VersionTLS13,
+		CurvePreferences: []tls.CurveID{},
+	}
+}
+`}, 0, gosec.NewConfig()},
+	{[]string{`
+// CurvePreferences including a post-quantum key exchange (no issue)
+package main
+
+import "crypto/tls"
+
+func main() {
+	_ = &tls.Config{
+		MinVersion:       tls.VersionTLS13,
+		CurvePreferences: []tls.CurveID{tls.X25519MLKEM768, tls.X25519, tls.CurveP256},
+	}
+}
+`}, 0, gosec.NewConfig()},
 }
