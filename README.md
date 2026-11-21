@@ -407,7 +407,7 @@ line arguments:
     [atlascloud.ai](https://www.atlascloud.ai/?utm_source=github&utm_medium=link&utm_campaign=gosec)
   - **Gemini**: `gemini-3.1-pro-preview` (default),
     `gemini-2.5-pro`, `gemini-2.5-flash`,
-    `gemini-2.5-flash-lite`
+    `gemini-2.5-flash-lite`, or any other `gemini-*` model ID
   - **Claude**: `claude-sonnet-4-6` (default),
     `claude-opus-4-7`, `claude-opus-4-6`,
     `claude-sonnet-4-5`, `claude-opus-4-5`,

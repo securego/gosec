@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"google.golang.org/genai"
 )
@@ -78,6 +79,18 @@ func parseGeminiModel(model string) (GenAIModel, error) {
 		return ModelGeminiFlash2_5, nil
 	case "gemini-2.5-flash-lite":
 		return ModelGeminiFlash2_5Lite, nil
+	}
+
+	// gemini-3-pro-preview was shut down by Google; keep rejecting it with a
+	// clear error rather than sending a request that is guaranteed to fail.
+	if model == "gemini-3-pro-preview" {
+		return "", fmt.Errorf("unsupported gemini model: %s", model)
+	}
+
+	// Pass any other gemini-* model ID through to the API instead of rejecting
+	// it, so newer models work without a code change.
+	if strings.HasPrefix(model, "gemini-") {
+		return GenAIModel(model), nil
 	}
 
 	return "", fmt.Errorf("unsupported gemini model: %s", model)
