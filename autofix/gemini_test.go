@@ -55,8 +55,14 @@ func TestParseGeminiModel_AllModels(t *testing.T) {
 			expectErr: true,
 		},
 		{
+			name:      "unlisted gemini model passes through",
+			input:     "gemini-3.8-flash",
+			expected:  GenAIModel("gemini-3.8-flash"),
+			expectErr: false,
+		},
+		{
 			name:      "unsupported model",
-			input:     "gemini-unknown",
+			input:     "geminix",
 			expected:  "",
 			expectErr: true,
 		},
