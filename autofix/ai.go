@@ -15,7 +15,8 @@ const (
 	- atlas (Atlas Cloud default), atlas-deepseek-v4-flash, atlas-qwen3-coder-next, atlas-kimi-k2.6, atlas:<model-id>;
 - gemini-3.1-pro-preview (gemini, default), gemini-2.5-pro, gemini-2.5-flash, gemini-2.5-flash-lite;
 - claude-sonnet-4-6 (claude, default), claude-opus-4-7, claude-opus-4-6, claude-sonnet-4-5, claude-opus-4-5, claude-haiku-4-5;
-- gpt-5.4 (openai, default), gpt-5.4-mini, gpt-5.4-nano`
+- gpt-5.4 (openai, default), gpt-5.4-mini, gpt-5.4-nano;
+- litellm (first model the proxy lists), litellm/<model>, litellm:<model> (LiteLLM proxy, ai-base-url defaults to http://localhost:4000)`
 
 	AIPrompt = `Provide a brief explanation and a solution to fix this security issue
   in Go programming language: %q.
@@ -33,6 +34,15 @@ func GenerateSolution(model, aiAPIKey, baseURL string, skipSSL bool, issues []*i
 	var client GenAIClient
 
 	switch {
+	// Before the claude and gemini prefixes: a proxy alias can carry those names.
+	case isLiteLLMModel(model):
+		config := liteLLMConfig{
+			Model:   model,
+			APIKey:  aiAPIKey,
+			BaseURL: baseURL,
+			SkipSSL: skipSSL,
+		}
+		client, err = newLiteLLMClient(context.Background(), config)
 	case model == "atlas" || strings.HasPrefix(model, "atlas-") || strings.HasPrefix(model, "atlas/") || strings.HasPrefix(model, "atlas:"):
 		config := atlasConfig{
 			Model:   model,
