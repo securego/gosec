@@ -28,6 +28,24 @@ func TestRun_VersionReturnsSuccess(t *testing.T) {
 	}
 }
 
+func TestRun_NonexistentPathReturnsFailure(t *testing.T) {
+	t.Parallel()
+
+	code := runInSubprocess(t, "nonexistent-path")
+	if code != exitFailure {
+		t.Fatalf("unexpected exit code: got %d want %d", code, exitFailure)
+	}
+}
+
+func TestRun_FlagAfterPackageReturnsFailure(t *testing.T) {
+	t.Parallel()
+
+	code := runInSubprocess(t, "flag-after-package")
+	if code != exitFailure {
+		t.Fatalf("unexpected exit code: got %d want %d", code, exitFailure)
+	}
+}
+
 func runInSubprocess(t *testing.T, scenario string) int {
 	t.Helper()
 
@@ -94,8 +112,13 @@ func TestRunHelperProcess(t *testing.T) {
 	*flagAiSkipSSL = false
 	flagDirsExclude = nil
 
-	if scenario == "version" {
+	switch scenario {
+	case "version":
 		*flagVersion = true
+	case "nonexistent-path":
+		os.Args = []string{"gosec", "/definitely/not/a/path"}
+	case "flag-after-package":
+		os.Args = []string{"gosec", ".", "-fmt=json"}
 	}
 
 	os.Exit(run())

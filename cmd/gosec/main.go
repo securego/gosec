@@ -529,6 +529,17 @@ func run() int {
 	if len(paths) == 0 {
 		paths = append(paths, "./...")
 	}
+
+	// the standard flag parser stops at the first non-flag argument, so flags written after the
+	// packages to analyze (e.g. "gosec ./... -fmt=json") are handed over as paths and would
+	// silently be skipped, running the scan with the defaults instead of the requested flags.
+	for _, path := range paths {
+		if strings.HasPrefix(path, "-") {
+			fmt.Fprintf(os.Stderr, "\nError: %q looks like a flag but appears after the packages to analyze; flags must be specified before them (e.g. gosec -fmt=json ./...)\n", path) // #nosec
+			return exitFailure
+		}
+	}
+
 	for _, path := range paths {
 		pcks, err := gosec.PackagePaths(path, excludedDirs)
 		if err != nil {
@@ -541,6 +552,16 @@ func run() int {
 	if len(packages) == 0 {
 		logger.Print("No packages found")
 		return exitFailure
+	}
+
+	// a path that does not exist is skipped by the analyzer, which would make a mistyped or moved
+	// directory look like a clean scan (exit 0 and an empty report), while the same mistake with a
+	// "..." suffix does fail with "No packages found".
+	for _, pck := range packages {
+		if _, err := os.Stat(pck); err != nil {
+			logger.Printf("Failed to find package %q: %v", pck, err)
+			return exitFailure
+		}
 	}
 
 	var buildTags []string
