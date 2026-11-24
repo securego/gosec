@@ -40,7 +40,7 @@ const defaultIssueDescription = "Use of hardcoded IV/nonce for encryption"
 // Note: We only track encryption functions, not decryption functions (like NewCBCDecrypter, NewCFBDecrypter, etc.)
 // because decryption must use the same nonce as encryption, which will naturally appear as a known/hardcoded value.
 var tracked = map[string][]int{
-	"(crypto/cipher.AEAD).Seal":     {4, 1},
+	aeadSealMethod:                  {4, 1},
 	"crypto/cipher.NewCBCEncrypter": {2, 1},
 	"crypto/cipher.NewCFBEncrypter": {2, 1},
 	"crypto/cipher.NewCTREncrypter": {2, 1},
@@ -96,6 +96,9 @@ func runHardCodedNonce(pass *analysis.Pass) (any, error) {
 		i, err := state.raiseIssue(argInfo.val, "", argInfo.instr)
 		if err != nil {
 			return issues, fmt.Errorf("raising issue error: %w", err)
+		}
+		if len(i) > 0 && state.isRandomNonceAEADSeal(argInfo.instr) {
+			continue
 		}
 		issues = append(issues, i...)
 	}
@@ -160,6 +163,91 @@ func isAEADOpenCall(c *ssa.Call) bool {
 		return strings.Contains(name, "AEAD") && strings.HasSuffix(name, "Open")
 	}
 	return false
+}
+
+const (
+	aeadSealMethod     = "(crypto/cipher.AEAD).Seal"
+	randomNonceGCMFunc = "crypto/cipher.NewGCMWithRandomNonce"
+)
+
+// isRandomNonceAEADSeal reports whether instr is AEAD.Seal on an AEAD from
+// cipher.NewGCMWithRandomNonce. That AEAD generates the nonce itself and panics
+// on a non-empty one, so its nil nonce argument is not a hardcoded nonce.
+func (s *analysisState) isRandomNonceAEADSeal(instr ssa.Instruction) bool {
+	c, ok := instr.(*ssa.Call)
+	if !ok || !c.Call.IsInvoke() || c.Call.Method == nil || c.Call.Method.FullName() != aeadSealMethod {
+		return false
+	}
+	found, safe := s.randomNonceAEADOrigins(c.Call.Value, make(map[ssa.Value]bool))
+	return found && safe
+}
+
+// randomNonceAEADOrigins reports whether an origin of val is cipher.NewGCMWithRandomNonce
+// and whether all its origins are, ignoring nil values such as error-path returns.
+func (s *analysisState) randomNonceAEADOrigins(val ssa.Value, visited map[ssa.Value]bool) (bool, bool) {
+	if val == nil || s.Depth > MaxDepth {
+		return false, false
+	}
+	if visited[val] {
+		return false, true
+	}
+	visited[val] = true
+	s.Depth++
+	defer func() { s.Depth-- }()
+
+	switch v := val.(type) {
+	case *ssa.Const:
+		return false, v.IsNil()
+	case *ssa.ChangeInterface:
+		return s.randomNonceAEADOrigins(v.X, visited)
+	case *ssa.Phi:
+		return s.allRandomNonceAEADOrigins(v.Edges, visited)
+	case *ssa.Extract:
+		if call, ok := v.Tuple.(*ssa.Call); ok {
+			if fn := call.Call.StaticCallee(); fn != nil {
+				if fn.String() == randomNonceGCMFunc {
+					return v.Index == 0, v.Index == 0
+				}
+				return s.funcResultOrigins(fn, v.Index, visited)
+			}
+		}
+	case *ssa.Call:
+		if fn := v.Call.StaticCallee(); fn != nil {
+			return s.funcResultOrigins(fn, 0, visited)
+		}
+	}
+	return false, false
+}
+
+func (s *analysisState) allRandomNonceAEADOrigins(vals []ssa.Value, visited map[ssa.Value]bool) (bool, bool) {
+	anyFound := false
+	for _, val := range vals {
+		found, safe := s.randomNonceAEADOrigins(val, visited)
+		if !safe {
+			return false, false
+		}
+		anyFound = anyFound || found
+	}
+	return anyFound, true
+}
+
+// funcResultOrigins checks result index of fn on every return path.
+func (s *analysisState) funcResultOrigins(fn *ssa.Function, index int, visited map[ssa.Value]bool) (bool, bool) {
+	if len(fn.Blocks) == 0 || s.FuncMap[fn] {
+		return false, false
+	}
+	s.FuncMap[fn] = true
+	defer delete(s.FuncMap, fn)
+
+	var results []ssa.Value
+	for _, block := range fn.Blocks {
+		for _, instr := range block.Instrs {
+			if ret, ok := instr.(*ssa.Return); ok && index < len(ret.Results) {
+				results = append(results, ret.Results[index])
+			}
+		}
+	}
+	return s.allRandomNonceAEADOrigins(results, visited)
 }
 
 // getInitialArgs is now unified in util.go TraverseSSA or kept here if specific.

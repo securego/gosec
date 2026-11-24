@@ -1666,4 +1666,123 @@ func seal(aead cipher.AEAD, plaintext []byte) (ciphertext []byte, nonce []byte) 
 
 func main() {}
 `}, 1, gosec.NewConfig()},
+
+	// cipher.NewGCMWithRandomNonce generates the nonce itself, so its nil nonce is not hardcoded (#1845).
+	{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"fmt"
+)
+
+func randomAEAD(key []byte) cipher.AEAD {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		panic(err)
+	}
+	aead, err := cipher.NewGCMWithRandomNonce(block)
+	if err != nil {
+		panic(err)
+	}
+	return aead
+}
+
+func main() {
+	key := make([]byte, 32)
+	if _, err := rand.Read(key); err != nil {
+		panic(err)
+	}
+	aead := randomAEAD(key)
+	fmt.Println(aead.Seal(nil, nil, []byte("message"), nil))
+}
+`}, 0, gosec.NewConfig()},
+
+	{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+	"fmt"
+)
+
+func main() {
+	block, _ := aes.NewCipher(make([]byte, 32))
+	aead, _ := cipher.NewGCMWithRandomNonce(block)
+	fmt.Println(aead.Seal(nil, nil, []byte("message"), nil))
+}
+`}, 0, gosec.NewConfig()},
+
+	{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+	"fmt"
+)
+
+func newAEAD(key []byte) (cipher.AEAD, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	return cipher.NewGCMWithRandomNonce(block)
+}
+
+func main() {
+	aead, err := newAEAD(make([]byte, 32))
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(aead.Seal(nil, nil, []byte("message"), nil))
+}
+`}, 0, gosec.NewConfig()},
+
+	// The AEAD may come from cipher.NewGCM, so the hardcoded nonce is still reported.
+	{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+	"fmt"
+	"os"
+)
+
+func main() {
+	block, _ := aes.NewCipher(make([]byte, 32))
+	var aead cipher.AEAD
+	if len(os.Args) > 1 {
+		aead, _ = cipher.NewGCMWithRandomNonce(block)
+	} else {
+		aead, _ = cipher.NewGCM(block)
+	}
+	fmt.Println(aead.Seal(nil, []byte("ILoveMyNonce"), []byte("message"), nil))
+}
+`}, 1, gosec.NewConfig()},
+
+	{[]string{`package main
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+	"fmt"
+)
+
+func newAEAD(key []byte) (cipher.AEAD, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	return cipher.NewGCM(block)
+}
+
+func main() {
+	aead, err := newAEAD(make([]byte, 32))
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(aead.Seal(nil, []byte("ILoveMyNonce"), []byte("message"), nil))
+}
+`}, 1, gosec.NewConfig()},
 }
