@@ -66,6 +66,35 @@ func (t *insecureConfigTLS) processTLSCipherSuites(n ast.Node, c *gosec.Context)
 	return nil
 }
 
+// postQuantumCurves are the hybrid ML-KEM key exchanges in crypto/tls. Since
+// Go 1.24 a nil CurvePreferences enables X25519MLKEM768 by default (and from
+// Go 1.26 SecP256r1MLKEM768 and SecP384r1MLKEM1024 too); setting the field
+// enables only the listed key exchanges.
+var postQuantumCurves = []string{
+	"X25519MLKEM768",
+	"SecP256r1MLKEM768",
+	"SecP384r1MLKEM1024",
+	"MLKEM1024",
+}
+
+func (t *insecureConfigTLS) processTLSCurvePreferences(n ast.Node, c *gosec.Context) *issue.Issue {
+	curves, ok := n.(*ast.CompositeLit)
+	if !ok || len(curves.Elts) == 0 {
+		// Unset, empty or non-literal values keep the default or cannot be resolved.
+		return nil
+	}
+	for _, elt := range curves.Elts {
+		ident, ok := elt.(*ast.SelectorExpr)
+		if !ok {
+			return nil
+		}
+		if slices.Contains(postQuantumCurves, ident.Sel.Name) {
+			return nil
+		}
+	}
+	return c.NewIssue(curves, t.ID(), "TLS CurvePreferences disables post-quantum key exchange", issue.Low, issue.High)
+}
+
 func (t *insecureConfigTLS) resolveTLSVersion(expr ast.Expr, c *gosec.Context) int64 {
 	if val, err := gosec.GetInt(expr); err == nil {
 		return val
@@ -183,6 +212,9 @@ func (t *insecureConfigTLS) processTLSConfVal(key ast.Expr, value ast.Expr, c *g
 
 		case "CipherSuites":
 			return t.processTLSCipherSuites(value, c)
+
+		case "CurvePreferences":
+			return t.processTLSCurvePreferences(value, c)
 		}
 	}
 	return nil
