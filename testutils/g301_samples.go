@@ -89,6 +89,15 @@ package main
 import "os"
 
 func main() {
+	_ = os.MkdirAll("/tmp/mydir", 0755)
+}
+`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+import "os"
+
+func main() {
 	root, err := os.OpenRoot("/tmp")
 	if err != nil {
 		return
