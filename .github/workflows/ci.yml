@@ -30,7 +30,7 @@ jobs:
       GO111MODULE: on
     steps:
       - name: Setup go ${{ matrix.version.go-version }}
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7
         with:
           go-version: ${{ matrix.version.go-version }}
       - name: Checkout Source
@@ -65,7 +65,7 @@ jobs:
       BENCH_COUNT: "5"
     steps:
       - name: Setup go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7
         with:
           go-version: "1.27.4"
       - name: Checkout Source
@@ -108,7 +108,7 @@ jobs:
           autofix-model: gemini-3-flash-preview
           output-format: sarif
       - name: Upload SARIF to GitHub Security Center
-        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
+        uses: github/codeql-action/upload-sarif@915412ff23e8b7659517e607487dbeae018f2934 # v4
         if: steps.barry.outcome == 'success'
         with:
           sarif_file: ${{ github.workspace }}/barry-results.sarif
@@ -122,7 +122,7 @@ jobs:
       GO111MODULE: on
     steps:
       - name: Setup go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7
         with:
           go-version: "1.27.4"
       - name: Checkout Source
