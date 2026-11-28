@@ -403,6 +403,11 @@ func (ra *RangeAnalyzer) updateResultFromBinOpForValue(result *rangeResult, binO
 				val += vAdd
 			}
 		case "-":
+			if isUint(v) {
+				// v = x - extra or v = extra - x wraps around below zero,
+				// so a bound on x alone doesn't bound v.
+				return
+			}
 			if vSub, ok := GetConstantInt64(op.extra); ok {
 				if op.flipped { // v = extra - x. x < val => v > extra - val
 					val = vSub - val
@@ -676,7 +681,7 @@ func (ra *RangeAnalyzer) ComputeRange(v ssa.Value, block *ssa.BasicBlock) *range
 		case token.SUB:
 			if val, ok := GetConstantInt64(v.Y); ok {
 				subRes := ra.ResolveRange(v.X, block)
-				if subRes.isRangeCheck {
+				if subRes.isRangeCheck && (!isSrcUnsigned || unsignedSubCannotWrap(subRes, val)) {
 					if subRes.minValueSet {
 						constrainRange(res, toUint64(toInt64(subRes.minValue)-val), true, isSrcUnsigned)
 					}
@@ -687,7 +692,7 @@ func (ra *RangeAnalyzer) ComputeRange(v ssa.Value, block *ssa.BasicBlock) *range
 				ra.releaseResult(subRes)
 			} else if val, ok := GetConstantInt64(v.X); ok {
 				subRes := ra.ResolveRange(v.Y, block)
-				if subRes.isRangeCheck {
+				if subRes.isRangeCheck && (!isSrcUnsigned || (subRes.maxValueSet && subRes.maxValue <= toUint64(val))) {
 					if subRes.maxValueSet {
 						// res = val - subRes.maxValue (this is the new min if subtract max)
 						constrainRange(res, toUint64(val-toInt64(subRes.maxValue)), true, isSrcUnsigned)
@@ -701,7 +706,9 @@ func (ra *RangeAnalyzer) ComputeRange(v ssa.Value, block *ssa.BasicBlock) *range
 			} else {
 				subResX := ra.ResolveRange(v.X, block)
 				subResY := ra.ResolveRange(v.Y, block)
-				if subResX.isRangeCheck || subResY.isRangeCheck {
+				// Unsigned x - y wraps around when x < y, and then the operand bounds say nothing about the result.
+				canWrap := isSrcUnsigned && (!subResY.maxValueSet || !unsignedSubCannotWrap(subResX, toInt64(subResY.maxValue)))
+				if !canWrap && (subResX.isRangeCheck || subResY.isRangeCheck) {
 					if subResX.minValueSet && subResY.maxValueSet {
 						// Min = MinX - MaxY
 						constrainRange(res, toUint64(toInt64(subResX.minValue)-toInt64(subResY.maxValue)), true, isSrcUnsigned)
@@ -713,7 +720,7 @@ func (ra *RangeAnalyzer) ComputeRange(v ssa.Value, block *ssa.BasicBlock) *range
 					if res.minValueSet || res.maxValueSet {
 						res.isRangeCheck = true
 					}
-				} else if subResX.minValueSet && subResX.maxValueSet && subResY.minValueSet && subResY.maxValueSet {
+				} else if !canWrap && subResX.minValueSet && subResX.maxValueSet && subResY.minValueSet && subResY.maxValueSet {
 					// Constant folding case for SUB
 					constrainRange(res, toUint64(toInt64(subResX.minValue)-toInt64(subResY.maxValue)), true, isSrcUnsigned)
 					constrainRange(res, toUint64(toInt64(subResX.maxValue)-toInt64(subResY.minValue)), false, isSrcUnsigned)
@@ -1276,6 +1283,17 @@ func IsRangeCheck(v ssa.Value, x ssa.Value) bool {
 		}
 	}
 	return false
+}
+
+// unsignedSubCannotWrap reports whether subtracting val from an unsigned value in the
+// range res stays at or above zero. Below zero the result wraps around to a large value,
+// so the bounds of the operands say nothing about it.
+func unsignedSubCannotWrap(res *rangeResult, val int64) bool {
+	minValue := uint64(0)
+	if res.minValueSet {
+		minValue = res.minValue
+	}
+	return minValue >= toUint64(val)
 }
 
 func updateExplicitValues(result *rangeResult, val int64) {

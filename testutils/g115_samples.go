@@ -2068,4 +2068,71 @@ func process(runes []rune) []byte {
 	return out
 }
 	`}, 1, gosec.NewConfig()},
+	// Unsigned subtraction wraps around below zero, so an upper bound on
+	// the operands doesn't bound the result.
+	{[]string{`
+package main
+
+func subConst(x uint) uint8 {
+	if x <= 255 {
+		return uint8(x - 1) // x == 0 wraps to math.MaxUint
+	}
+	return 0
+}
+	`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+func subConstAssigned(x uint32) uint8 {
+	if x < 256 {
+		y := x - 10
+		return uint8(y)
+	}
+	return 0
+}
+	`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+func subFromConst(x uint) uint8 {
+	if x <= 255 {
+		return uint8(200 - x) // x > 200 wraps
+	}
+	return 0
+}
+	`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+func subVars(x, y uint) uint8 {
+	if x <= 255 && y <= 255 {
+		return uint8(x - y) // x < y wraps
+	}
+	return 0
+}
+	`}, 1, gosec.NewConfig()},
+	{[]string{`
+package main
+
+func subConstNoWrap(x uint) uint8 {
+	if x >= 1 && x <= 256 {
+		return uint8(x - 1)
+	}
+	return 0
+}
+
+func subFromConstNoWrap(x uint) uint8 {
+	if x <= 200 {
+		return uint8(200 - x)
+	}
+	return 0
+}
+
+func subVarsNoWrap(x, y uint) uint8 {
+	if x >= 100 && x <= 255 && y <= 100 {
+		return uint8(x - y)
+	}
+	return 0
+}
+	`}, 0, gosec.NewConfig()},
 }
